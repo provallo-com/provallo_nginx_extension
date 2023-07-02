@@ -1,39 +1,72 @@
 /**
  * @file   ngx_provallo_interface_module.c
- * @author António P. P. Almeida <appa@perusio.net>
- * @date   Wed Aug 17 12:06:52 2011
+ * @author Yaniv Karta
+ * @date       2023-07-01
  *
- * @brief  A hello world module for Nginx.
- *
- * @section LICENSE
- *
- * Copyright (C) 2011 by Dominic Fallows, António P. P. Almeida <appa@perusio.net>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
+ * @brief   Provallo's Nginx. wrapper
  */
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#define HELLO_WORLD "hello world\r\n"
+#define PROVALLO_HELLO "ENGINE UP\r\n"
+
+#include "helpers/nginx_helper.h"
+
+
+
+//taken from hello world module sample as a stub:
 
 static char *ngx_provallo_interface(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_provallo_interface_handler(ngx_http_request_t *r);
+
+//since we're running on the process context, we can use the global variables and struct instances.
+//we can also use the ngx_log_error function to log to the error log.
+//we can also use the ngx_cycle->log to log to the error log.
+#ifdef ANALYZE_VARS
+
+extern  ngx_cycle_t *ngx_cycle;
+extern  ngx_module_t ngx_provallo_interface_module;
+extern  ngx_http_request_t *ngx_http_request;
+extern  ngx_http_core_main_conf_t *ngx_http_core_main_conf;
+extern  ngx_http_connection_t *ngx_http_connection;
+extern  ngx_http_core_srv_conf_t *ngx_http_core_srv_conf;
+extern  ngx_http_core_loc_conf_t *ngx_http_core_loc_conf;
+extern  ngx_http_upstream_srv_conf_t *ngx_http_upstream_srv_conf;
+extern  ngx_http_upstream_main_conf_t *ngx_http_upstream_main_conf;
+extern  ngx_http_upstream_t *ngx_http_upstream;
+
+extern  ngx_http_upstream_conf_t *ngx_http_upstream_conf;
+extern  ngx_http_upstream_server_t *ngx_http_upstream_server;
+extern  ngx_http_upstream_loc_conf_t *ngx_http_upstream_loc_conf;
+extern  ngx_http_upstream_rr_peer_t *ngx_http_upstream_rr_peer;
+extern  ngx_http_upstream_rr_peers_t *ngx_http_upstream_rr_peers;
+extern  ngx_http_upstream_rr_peer_data_t *ngx_http_upstream_rr_peer_data;
+extern  ngx_http_upstream_rr_peer_t *ngx_http_upstream_rr_peer;
+
+#endif
+extern ngx_module_t ngx_provallo_interface_module;
+
+
+
+void start_provallo_interface()
+{
+     //init detection engine    
+
+     ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0, "start_provallo_interface");
+}
+
+void reload_provallo_interface()
+{
+    ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0, "reload_provallo_interface");   
+}
+
+void stop_provallo_interface()
+{
+    ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0, "stop_provallo_interface");
+}   
+
 
 /**
  * This module provided directive: hello world.
@@ -53,7 +86,7 @@ static ngx_command_t ngx_provallo_interface_commands[] = {
 };
 
 /* The hello world string. */
-static u_char ngx_provallo[] = HELLO_WORLD;
+static u_char ngx_provallo[] = PROVALLO_HELLO;
 
 /* The module context. */
 static ngx_http_module_t ngx_provallo_interface_module_ctx = {
