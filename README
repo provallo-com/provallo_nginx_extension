@@ -1,6 +1,28 @@
 #####################################################################################################################################
 # provallo nginx extension WIP
 #####################################################################################################################################
+
+
+
+Structure : 
+```mermaid
+graph TD;
+    nginx_addon;
+    provallo_engine-->data;
+    provallo_engine-->decision_engine;
+    provallo_engine-->glue;
+    provallo_engine-->helpers;
+    provallo_engine-->parsers;
+    provallo_engine-->statistics;
+    provallo_engine-->third_party;
+    provallo_engine-->util;
+    
+
+```
+ 
+
+
+
 ## 
 ## 
 ## 
