@@ -27,3 +27,19 @@ graph TD;
 
 	}
   
+```mermaid
+graph TD;
+    Detonator-->Service;
+    Detonator-->Host;
+    Detonator-->Hypervisor;
+    Detonator-->Networking;
+    Detonator-->Data;
+    Detonator-->Service-->simulation_service_monitor;
+    Detonator-->Data-->raw_server_db;
+    Detonator-->Networking-->Tools-->sim_server;
+    Detonator-->Networking-->Scripts-->third_party;
+    Detonator-->Networking-->Scripts-->optimization;
+    Detonator-->Networking-->Scripts-->security;
+
+
+```
