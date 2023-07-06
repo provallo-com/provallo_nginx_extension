@@ -1,4 +1,6 @@
- 
+#
+#
+#
 
 
 Structure : 
@@ -12,13 +14,10 @@ graph TD;
     provallo_nginx_extension->provallo_engine-->parsers;
     provallo_nginx_extension->provallo_engine-->statistics;
     provallo_nginx_extension->provallo_engine-->third_party;
-    provallo_nginx_extension->provallo_engine-->util;
-
+    provallo_nginx_extension->provallo_engine-->util; 
 ```
 
-
-
-
+# example:
 
  
  
@@ -30,17 +29,6 @@ graph TD;
   
 ```mermaid
 graph TD;
-    Detonator-->Service;
-    Detonator-->Host;
-    Detonator-->Hypervisor;
-    Detonator-->Networking;
-    Detonator-->Data;
-    Detonator-->Service-->simulation_service_monitor;
-    Detonator-->Data-->raw_server_db;
-    Detonator-->Networking-->Tools-->sim_server;
-    Detonator-->Networking-->Scripts-->third_party;
-    Detonator-->Networking-->Scripts-->optimization;
-    Detonator-->Networking-->Scripts-->security;
-
+  provallo_nginx_extension
 
 ```
