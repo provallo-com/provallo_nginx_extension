@@ -2,8 +2,7 @@
 #
 #
 
-
-Structure : 
+ 
 ```mermaid
 graph TD;
     provallo_nginx_extension->nginx_addon;
