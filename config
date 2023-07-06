@@ -1,0 +1,139 @@
+ngx_addon_name=provallo_nginx
+
+
+
+
+
+CFLAGS="$CFLAGS -D_GLIBCXX_USE_CXX11_ABI=0"
+CC_OLD_TEST_FLAGS="$CC_TEST_FLAGS"
+CC_TEST_FLAGS="$CC_TEST_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 --std=c++11"
+
+
+
+prov_gpp_base=`basename $CC| sed s/gcc/g++/`
+prov_pot_gpp="`dirname $CC`/$prov_gpp_base"
+if [ -n "$NGX_GCC_VER" -a \( -x "$ps_pot_gpp" \) ]; then
+  LINK=$prov_pot_gpp 
+fi
+
+
+NGINX_PROVALLO_DEPS="                                                 \
+                $ngx_addon_dir/provallo_engine/data/minidal.h               \
+                $ngx_addon_dir/provallo_engine/util/safe_queue.h 	\
+                $ngx_addon_dir/provallo_engine/util/safehttp.h	\
+		$ngx_addon_dir/provallo_engine/util/procwatcher.h \
+		$ngx_addon_dir/provallo_engine/util/portanalyzer.h \
+		$ngx_addon_dir/provallo_engine/util/objectfactory.h \
+		$ngx_addon_dir/provallo_engine/util/monitorpolicy.h \
+		$ngx_addon_dir/provallo_engine/util/mmap_allocator.h  \
+		$ngx_addon_dir/provallo_engine/util/ip_address.h \
+		$ngx_addon_dir/provallo_engine/util/interface_info.h \
+		$ngx_addon_dir/provallo_engine/util/hash_tools.h \
+		$ngx_addon_dir/provallo_engine/util/csv_file.h \
+		$ngx_addon_dir/provallo_engine/util/basic_encoding.h \
+		$ngx_addon_dir/provallo_engine/util/aes_wrapper.h \
+		$ngx_addon_dir/provallo_engine/third_party/syslog.h \
+                $ngx_addon_dir/provallo_engine/third_party/sqlite.h   \
+                $ngx_addon_dir/provallo_engine/statistics/statscollector.h        \
+                $ngx_addon_dir/provallo_engine/helpers/netlinkhelper.h      \
+                $ngx_addon_dir/provallo_engine/helpers/nginx_helper.h              \
+                $ngx_addon_dir/provallo_engine/helpers/pcap_support/pcap_packet.h \
+                $ngx_addon_dir/provallo_engine/glue/glueprocessinfo.h           \
+                $ngx_addon_dir/provallo_engine/glue/linuxglue.h       \
+                $ngx_addon_dir/provallo_engine/glue/patch.h    \
+                $ngx_addon_dir/provallo_engine/decision_engine/utils.h    \
+                $ngx_addon_dir/provallo_engine/decision_engine/matrix.h       \
+                $ngx_addon_dir/provallo_engine/decision_engine/parameters.h \
+                $ngx_addon_dir/provallo_engine/decision_engine/kNearestNeighbor.h \
+                $ngx_addon_dir/provallo_engine/decision_engine/kdt.h             \
+                $ngx_addon_dir/provallo_engine/decision_engine/hmm.h    \
+                $ngx_addon_dir/provallo_engine/decision_engine/dataset.h    \
+                $ngx_addon_dir/provallo_engine/decision_engine/classifier.h   \
+                $ngx_addon_dir/provallo_engine/decision_engine/crit.h \
+		$ngx_addon_dir/provallo_engine/decision_engine/attribute.h \
+		$ngx_addon_dir/provallo_engine/decision_engine/distributedkmeans.h \
+		$ngx_addon_dir/provallo_engine/decision_engine/optimizers.h "
+		
+
+
+
+		
+		
+NGNIX_PROVALLO_CORE_SRCS="$ngx_addon_dir/provallo_engine/data/minidal.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/optimizers.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/split_utils.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/matrix.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/classdist.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/attribute.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/kNearestNeighbor.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/decision_engine.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/distributedkmeans.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/parameters.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/pipelinebuilder.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/dataset.cpp  \
+$ngx_addon_dir/provallo_engine/decision_engine/neuralhelper.cpp \
+$ngx_addon_dir/provallo_engine/decision_engine/classifier.cpp \
+$ngx_addon_dir/provallo_engine/statistics/statcollector.cpp \
+$ngx_addon_dir/provallo_engine/glue/linuxglue.cpp  \
+$ngx_addon_dir/provallo_engine/glue/turnserverglue.cpp \
+$ngx_addon_dir/provallo_engine/glue/gluelinuxinvoker.cpp \
+$ngx_addon_dir/provallo_engine/glue/glueprocessinfo.cpp \
+$ngx_addon_dir/provallo_engine/util/monitorpolicy.cpp \
+$ngx_addon_dir/provallo_engine/util/basic_encoding.cpp \
+$ngx_addon_dir/provallo_engine/util/portanalyzer.cpp \
+$ngx_addon_dir/provallo_engine/util/aes_wrapper.cpp \
+$ngx_addon_dir/provallo_engine/util/ip_address.cpp \
+$ngx_addon_dir/provallo_engine/util/procwatcher.cpp \
+$ngx_addon_dir/provallo_engine/util/hash_tools.cpp \
+$ngx_addon_dir/provallo_engine/util/interface_info.cpp \
+$ngx_addon_dir/provallo_engine/util/safehttp.cpp \
+$ngx_addon_dir/provallo_engine/third_party/sqlite.cpp \
+$ngx_addon_dir/provallo_engine/helpers/netlinkstatshelper.cpp \
+$ngx_addon_dir/provallo_engine/helpers/netlinkhelper.cpp \
+$ngx_addon_dir/provallo_engine/helpers/netfilterhelper.cpp \
+$ngx_addon_dir/provallo_engine/helpers/nginx_helper.cpp "
+
+#ngx_module_deps=$NGINX_PROVALLO_DEPS
+
+
+if test -n "$ngx_module_link"; then
+  ngx_module_type=HTTP
+  ngx_module_name=provallo_nginx_module
+  ngx_module_srcs="$ngx_addon_dir/ngx_provallo_interface.c $NGNIX_PROVALLO_CORE_SRCS"
+  #. auto/module
+  . "$ngx_addon_dir/cpp_feature"
+  
+else
+	HTTP_MODULES="$HTTP_MODULES provallo_nginx_module"
+	NGX_ADDON_SRCS="$NGX_ADDON_SRCS $NGINX_PROVALLO_CORE_SRCS $ngx_addon_dir/ngx_provallo_interface.c  $ngx_addon_dir/helpers/nginx_helper.cpp "
+fi
+
+
+ngx_module_type=HTTP_FILTER
+ngx_module_name=provallo_nginx
+ngx_module_libs="-lz -lstdc++ -lelf -lsqlite3 -lm -lcrypto -lpthread -lnfnetlink -lnetfilter_queue"
+. auto/module
+
+#if [ "$ngx_module_link" != DYNAMIC ]; then
+    # ngx_module_order doesn't work with static modules,
+    # so we must re-order filters here.
+
+#    if [ "$HTTP_GZIP" = YES ]; then
+#        next=ngx_http_gzip_filter_module
+#    elif echo $HTTP_FILTER_MODULES | grep pagespeed_etag_filter >/dev/null; then
+#        next=provallo_ngx
+#    else
+#        next=ngx_http_range_header_filter_module
+#    fi
+
+#    HTTP_FILTER_MODULES=`echo $HTTP_FILTER_MODULES \
+#                         | sed "s/$ngx_module_name//" \
+#                         | sed "s/$next/$next $ngx_module_name/"`
+# fi
+
+
+CFLAGS="$CFLAGS -Wno-deprecated-declarations -Wno-deprecated -Wno-unused-local-typedefs"
+CCFLAGS="$CCFLAGS  -Wno-reorder"
+
+#have=NGX_HTTP_BROTLI_FILTER . auto/have
+#have=NGX_HTTP_BROTLI_FILTER_MODULE . auto/have  # deprecated
