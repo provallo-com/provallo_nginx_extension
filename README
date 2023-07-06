@@ -1,7 +1,10 @@
 #
 #
 #
-
+```mermaid
+sequenceDiagram
+  A-->B: Works!
+```
  
 ```mermaid
 graph TD;
