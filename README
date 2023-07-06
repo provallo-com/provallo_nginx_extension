@@ -1,37 +1,81 @@
 #
 #
-#
+# 
 
-```mermaid
-sequenceDiagram
-  A-->B: Works!
-```
- 
+
+  Provallo's nginx extension 
+==================================
+
 ```mermaid
 graph TD;
-    provallo_nginx_extension->nginx_addon;
-    provallo_nginx_extension->provallo_engine-->data;
-    provallo_nginx_extension->provallo_engine-->decision_engine;
-    provallo_nginx_extension->provallo_engine-->glue;
-    provallo_nginx_extension->provallo_engine-->helpers;
-    provallo_nginx_extension->provallo_engine-->parsers;
-    provallo_nginx_extension->provallo_engine-->statistics;
-    provallo_nginx_extension->provallo_engine-->third_party;
-    provallo_nginx_extension->provallo_engine-->util; 
-```
+  provallo_nginx_extension;
+  provallo_nginx_extension-->nginx_addon;
+  provallo_nginx_extension-->provallo_engine;
+  
+  ```
 
-# example:
 
++  download your current nginx version source code 
++  configure the project with the path to the extension addons, for example:
+**
+  `./configure --add-dynamic-module=/opt/nginx/provallo-nginx-module  --add-module=/opt/nginx/provallo-nginx-module`
+
+
+   if everything is successful, you should see : 
  
- 
-    location = /provallo {	
+   ``
+      checking for getaddrinfo() ... found 
+      configuring additional modules [b]
+      adding module in /opt/nginx/provallo-nginx-module 
+      checking for getaddrinfo() ... found 
+      \+ provallo_nginx was configured 
+      configuring additional dynamic modules 
+      adding module in /opt/nginx/provallo-nginx-module 
+      checking for getaddrinfo() ... found 
+    `` 
++ run make on the nginx build folder : 
+
+   `make -j8 modules` 
+   if successfull you should see something like : 
+   ` make[1]: Leaving directory '/opt/nginx/nginx-1.23.future ` 
+   
+   you can either `make install` or copy the module to the modules folder 
+   `sudo cp objs/provallo_nginx.so /usr/share/nginx/modules/provallo_nginx.so`
+
+
++ add location entry on your nginx file: 
+   
+   ```
+   location = /provallo {	
 
 		provallo_nginx ;	
 
 	}
+
+   ```
++ validate the configuration with  `nginx -t` , if everything works fine reload the service configuration with  : `nginx -s reload`  
+
+
++ validate the service response with curl/wget over the server's location path make sure response is valid (expect 200 server response with : `provallo engine is up` or something similar before enough data is accumulated)
+
++ check nginx statistics modules for provallo's extension metrics [icmp,udp,etc...]
   
+
+
+**extension structure** 
+
+
+
 ```mermaid
 graph TD;
-  provallo_nginx_extension
-
+    provallo_nginx_extension-->nginx_addon;
+    provallo_nginx_extension-->provallo_engine-->data;
+    provallo_nginx_extension-->provallo_engine-->decision_engine;
+    provallo_nginx_extension-->provallo_engine-->glue;
+    provallo_nginx_extension-->provallo_engine-->helpers;
+    provallo_nginx_extension-->provallo_engine-->parsers;
+    provallo_nginx_extension-->provallo_engine-->statistics;
+    provallo_nginx_extension-->provallo_engine-->third_party;
+    provallo_nginx_extension-->provallo_engine-->util; 
 ```
+ 
