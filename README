@@ -1,0 +1,46 @@
+# provallo nginx extension WIP
+#####################################################################################################################################
+## 
+## 
+## 
+## Capabilities : 
+## 
+####################################################################################################################################
+ ###  1) observe non-service traffic sources 
+ ###  2) aggregate service metrics and non-service metrics 
+ ###  3) load / run  isoforest<>kdt classifiers with neuralhelper's serialized GAN 
+ ###  4) on .so first load train and fit classifiers 
+ ###  5) extend nginx builtin metrics 
+####################################################################################################################################
+
+
+## Requirements : 
+####################################################################################################################################
+## 
+##
+## dev libraries : 
+## 
+## libz , libelf, libsqlite3 ,libm, libcrypt(ssl), libpthread, libnfnetlink  (for non-service filtering) 
+##
+## 
+##
+##
+##
+##
+##
+##
+
+## Extended capabilties : 
+## use nginx config for the plugin context for example : 
+	[i]
+   location = /provallo {
+	
+
+		provallo_nginx ;	
+
+	}
+   [/i]
+
+#######################################################################################################################################
+
+
