@@ -1,21 +1,18 @@
-#####################################################################################################################################
-# provallo nginx extension WIP
-#####################################################################################################################################
-
+ 
 
 
 Structure : 
 ```mermaid
 graph TD;
-    nginx_addon;
-    provallo_engine-->data;
-    provallo_engine-->decision_engine;
-    provallo_engine-->glue;
-    provallo_engine-->helpers;
-    provallo_engine-->parsers;
-    provallo_engine-->statistics;
-    provallo_engine-->third_party;
-    provallo_engine-->util;
+    provallo_nginx_extension->nginx_addon;
+    provallo_nginx_extension->provallo_engine-->data;
+    provallo_nginx_extension->provallo_engine-->decision_engine;
+    provallo_nginx_extension->provallo_engine-->glue;
+    provallo_nginx_extension->provallo_engine-->helpers;
+    provallo_nginx_extension->provallo_engine-->parsers;
+    provallo_nginx_extension->provallo_engine-->statistics;
+    provallo_nginx_extension->provallo_engine-->third_party;
+    provallo_nginx_extension->provallo_engine-->util;
     
 
 ```
