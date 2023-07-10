@@ -23,14 +23,15 @@
 #include <iostream>
 #include <iosfwd>
 #include <strstream>
-
+ 
+ 
 namespace provallo
 {
-
+__extension__ typedef  unsigned  __int128 uint128_t ;
+ 
   //mac addr utility
   //minimized version of webrtc ipaddr wrapper with compatability to std::experimental net_ts ipaddr
 
-  typedef unsigned __int128 uint128_t;
 // ip tools : prefix <> taken from  BGP Extrapolator.
 // Use uint32_t for IPv4, unsigned __int128 for IPv6
   template<typename Integer = uint32_t>

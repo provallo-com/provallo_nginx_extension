@@ -306,7 +306,7 @@ namespace provallo
     private:
       struct node
       {
-	      provallo::point<N> point;
+	        provallo::point<N> point;
 	        node *left;
 	        node *right;
 	      int level;  // level of the node in the tree, starts at 0 for the root

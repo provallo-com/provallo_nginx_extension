@@ -145,7 +145,7 @@ namespace provallo
     int
     process_netlink_msg (struct sockaddr_nl *net, struct nlmsghdr *msg)
     {
-      if (!msg)
+      if (!msg||!net)
 	return 0;
       
       struct ifaddrmsg *ifa = (struct ifaddrmsg*) NLMSG_DATA(msg);

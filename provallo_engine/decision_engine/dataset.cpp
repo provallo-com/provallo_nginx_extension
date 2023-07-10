@@ -36,10 +36,15 @@ namespace provallo
   dataset_base::splitdataset(dataset_ptr &train, dataset_ptr &valid,
                              double train_percent)
   {
-    int randomIndices[rows];
+    
+    std::vector<int> randomIndices;
+    randomIndices.resize(rows);
+
+
     for (size_t i = 0; i < rows; i++)
       randomIndices[i] = i;
-    std::random_shuffle(randomIndices, randomIndices + rows);
+
+    std::random_shuffle(randomIndices.begin(), randomIndices.end());
 
     size_t threshold = (size_t)(train_percent * rows);
 
@@ -713,13 +718,27 @@ namespace provallo
   afiles_collector::afiles_collector(const std::string &filestem,
                                      const std::random_device &rm) : _filestem(filestem), _target(""), _orig_attributes(0), _attributes_info(parseNames(_filestem + ".names"))
   {
+	  //undefined reference to rm
+	  //
+	  //std::mt19937 generator(rm); 
+	  //generator();
+	  ptrdiff_t last_random= ptrdiff_t(&rm);
+	  if ( last_random == ptrdiff_t(0) )
+		  throw std::runtime_error( "should never reach random null" );
+
+	  
   }
 
   afiles_collector::afiles_collector(
       const std::string &filestem, const std::string &target,
       const std::vector<std::pair<std::string, std::string>> &attrs,
-      const std::random_device &random) : _filestem(filestem), _target(target), _orig_attributes(attrs), _attributes_info(addArtificial(target, attrs))
+      const std::random_device &rm) : _filestem(filestem), _target(target), _orig_attributes(attrs), _attributes_info(addArtificial(target, attrs))
   {
+
+	  ptrdiff_t last_random= ptrdiff_t(&rm);
+          if ( last_random == ptrdiff_t(0) )
+                  throw std::runtime_error( "should never reach random null" );
+
   }
 
   attribute_information
@@ -727,9 +746,17 @@ namespace provallo
       const std::string &target,
       const std::vector<std::pair<std::string, std::string>> &attrs)
   {
+    //
     // New map for attributes (will add artificial attributes)
+    //
+    
     std::vector<std::pair<std::string, std::string>> attributes(
         _orig_attributes);
+    
+    for(auto  & it : attrs ) 
+    {
+	attributes.push_back(it);
+    }
 
     for (std::vector<std::pair<std::string, std::string>>::const_iterator it =
              _orig_attributes.begin();
@@ -737,7 +764,7 @@ namespace provallo
     {
       std::pair<std::string, std::string> pair_name(*it);
       // Create artificial attribute
-      if (pair_name.first != _target)
+      if (pair_name.first != target)
       {
         pair_name.first = "@metamon_artifical_" + pair_name.first;
         attributes.push_back(pair_name);
@@ -745,7 +772,7 @@ namespace provallo
     }
 
     // Return information
-    return attribute_information(_target, attributes);
+    return attribute_information(target, attributes);
   }
 
   attribute_information
@@ -1371,8 +1398,8 @@ namespace provallo
   }
 
   // static debug counters:
-  std::atomic_int dataset::id_counter = 0;
-  std::atomic_int dataset::dest_counter = 0;
-  std::atomic_uint64_t dataset::attribute_iterator::_instance_counter = 0;
+  std::atomic_int dataset::id_counter(0);
+  std::atomic_int dataset::dest_counter(0);
+  std::atomic_uint64_t dataset::attribute_iterator::_instance_counter(0);
 
 } /* namespace provallo */

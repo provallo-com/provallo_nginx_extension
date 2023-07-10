@@ -23,6 +23,10 @@
 #include <sstream>
 #include <atomic>
 #include "../glue/glueprocessinfo.h"
+
+
+
+
 namespace provallo
 {
 
@@ -199,25 +203,7 @@ namespace provallo
       _id_counter++;
       _value._cont = NA_VAL;
     }
-    attribute(const attribute_name &name, const attribute_value &value)
-    {
-      _id_counter++;
-      if (value == "NA")
-      {
-        _value._cont = NA_VAL;
-      }
-      else if (value == "?")
-      {
-        _value._disc = UNKNOWN;
-      }
-      else
-      {
-        std::stringstream ss(value);
-        cont_value c;
-        ss >> c;
-        _value._cont = c;
-      }
-    }
+
 
     attribute(const attribute &other)
     {
@@ -339,7 +325,9 @@ namespace provallo
     virtual bool
     _compare(const attribute_definition &other) const
     {
-      return true;
+      return other.getTag() == getTag() && other.getName() == getName()
+             && other.getIndex() == getIndex();
+
     }
     // Friendly printer
     friend std::ostream &
@@ -457,9 +445,13 @@ namespace provallo
     }
     // return index from const attribute_value &value
     virtual size_t getValueIndex(const attribute_value &value) const
-    {
+    { 
+      //ignore value
+       if ( value.size() == 0)
+        return 0;
 
-      return this->_index;
+       return this->_index;
+
     }
 
     // Get attribute definition from a string
@@ -541,13 +533,13 @@ namespace provallo
     attribute
     _getAttribute(const attribute_value &value) const
     {
-      return attribute();
+      return attribute(value);
     }
 
     attribute_value
     _getValue(const attribute &value) const
     {
-      return "0";
+      return std::to_string(value.discrete()) + " (ignored)"  ;
     }
 
   public:
@@ -694,7 +686,7 @@ namespace provallo
     virtual bool
     compare(const attribute_descriptor &other)
     {
-      return false;
+      return other._tag == _tag&& other._name == _name; 
     }
 
     friend std::ostream &

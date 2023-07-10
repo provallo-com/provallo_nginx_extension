@@ -355,7 +355,9 @@ namespace provallo
 			   size_t &npresent, bool &unsplittable) noexcept
 	{
 		std::fill(categs, categs + ncat, -1);
-		npresent = 0;
+
+		npresent = (missing_action == MissingAction::Fail) ? 0 : 1;
+
 		for (size_t row = st; row <= end; row++)
 			if (likely(x[ix_arr[row]] >= 0))
 				categs[x[ix_arr[row]]] = 1;
@@ -422,6 +424,10 @@ namespace provallo
 					 hashed_set<size_t> &col_is_taken_s,
 					 InputData &input_data, size_t col_num)
 	{
+		UNDEF_REFERENCE(input_data)
+
+		UNDEF_REFERENCE2(input_data)
+
 		if (!col_is_taken.empty())
 			col_is_taken[col_num] = true;
 		else
@@ -453,7 +459,8 @@ namespace provallo
 		xmin = HUGE_VAL;
 		xmax = -HUGE_VAL;
 		double xval;
-
+		
+		
 		if (missing_action == Fail)
 		{
 			for (size_t row = st; row <= end; row++)
@@ -614,6 +621,10 @@ namespace provallo
 			  sparse_ix_ *Xc_indptr, MissingAction missing_action,
 			  double &xmin, double &xmax, bool &unsplittable) noexcept
 	{
+		UNDEF_REFERENCE(Xc_ind)
+		UNDEF_REFERENCE2(Xc_indptr)
+		UNDEF_REFERENCE2(missing_action)
+	
 		xmin = HUGE_VAL;
 		xmax = -HUGE_VAL;
 
@@ -2666,6 +2677,8 @@ namespace provallo
 									  sparse_ix_ *Xc_ind, real_t_ *Xc,
 									  MissingAction missing_action)
 	{
+		UNDEF_REFERENCE(missing_action)
+		UNDEF_REFERENCE2(missing_action)
 		if (end - st <= 1)
 			return false;
 		if (Xc_indptr[col + 1] == Xc_indptr[col])
@@ -2770,6 +2783,8 @@ namespace provallo
 									  sparse_ix_ *Xc_ind, real_t_ *Xc,
 									  MissingAction missing_action)
 	{
+		UNDEF_REFERENCE (missing_action);
+		UNDEF_REFERENCE2(Xc_ind)
 
 		if (nrows <= 1)
 			return false;
@@ -3513,7 +3528,10 @@ namespace provallo
 	apply_imputation_results(imp_arr &impute_vec, Imputer &imputer,
 							 InputData &input_data, int nthreads)
 	{
+		
 		size_t col;
+		UNDEF_REFERENCE(nthreads);
+		UNDEF_REFERENCE2(nthreads);
 
 		if (input_data.Xc_indptr != NULL)
 		{
@@ -3826,6 +3844,10 @@ namespace provallo
 	allocate_imp_vec(std::vector<ImputedData> &impute_vec,
 					 InputData &input_data, int nthreads)
 	{
+
+		UNDEF_REFERENCE(nthreads)
+		UNDEF_REFERENCE2(nthreads)
+
 		impute_vec.resize(input_data.nrows);
 #ifdef OPENMP_
 #pragma omp parallel for schedule(dynamic) num_threads(nthreads) shared(impute_vec, input_data)
@@ -3870,6 +3892,8 @@ namespace provallo
 	check_for_missing(PredictionData &prediction_data, Imputer &imputer,
 					  size_t ix_arr[], int nthreads)
 	{
+		UNDEF_REFERENCE(nthreads);
+
 		std::vector<char> has_missing(prediction_data.nrows, false);
 #ifdef OPENMP_
 #pragma omp parallel for schedule(static) num_threads(nthreads) shared(has_missing, prediction_data, imputer)
@@ -4275,6 +4299,9 @@ namespace provallo
 	initialize_imputer(Imputer &imputer, InputData &input_data, size_t ntrees,
 					   int nthreads)
 	{
+		UNDEF_REFERENCE(nthreads);
+		UNDEF_REFERENCE2(nthreads);
+
 		imputer.ncols_numeric = input_data.ncols_numeric;
 		imputer.ncols_categ = input_data.ncols_categ;
 		imputer.ncat.assign(input_data.ncat,
@@ -4436,6 +4463,17 @@ namespace provallo
 					(xval <= tree[curr_lev].num_split) ? tree[curr_lev].tree_left : tree[curr_lev].tree_right;
 			}
 		}
+		if (model_outputs.cat_split_type == SubSet && model_outputs.new_cat_action == Weighted && model_outputs.missing_action == Divide)
+		{
+			output_depth /= model_outputs.orig_sample_size;
+		}
+		else
+		if ( model_outputs.new_cat_action == Weighted && model_outputs.missing_action == Divide)
+		{
+			output_depth /= model_outputs.orig_sample_size;
+		}
+		 
+		
 	}
 
 	void
@@ -4569,7 +4607,7 @@ namespace provallo
 				   sparse_ix *tree_num,
 				   double *tree_depth, size_t curr_lev) noexcept
 	{
-		double xval=0.;
+		double xval = 0.;
 		int cval;
 		double range_penalty = 0;
 
@@ -4875,6 +4913,7 @@ namespace provallo
 		}
 	}
 
+	
 	void
 	traverse_hplane_fast_colmajor(std::vector<IsoHPlane> &hplane,
 								  ExtIsoForest &model_outputs,
@@ -4885,6 +4924,20 @@ namespace provallo
 		size_t curr_lev = 0;
 		double hval;
 
+		UNDEF_REFERENCE(model_outputs)
+		UNDEF_REFERENCE2(data)
+		
+
+		if( unlikely(hplane[curr_lev].score == 0) )
+		{
+			output_depth = 0.;
+			if (unlikely(tree_num != NULL))
+				tree_num[row] = curr_lev;
+			if (unlikely(tree_depth != NULL))
+				*tree_depth = 0.;
+			return;
+		}
+		
 		while (true)
 		{
 			// if (hplane[curr_lev].score > 0)
@@ -4921,6 +4974,8 @@ namespace provallo
 		size_t curr_lev = 0;
 		double hval;
 
+	UNDEF_REFERENCE(model_outputs)
+	UNDEF_REFERENCE2(row_numeric_data)
 		while (true)
 		{
 			// if (hplane[curr_lev].score > 0)
@@ -4959,7 +5014,7 @@ namespace provallo
 		int cval = 0;
 		double hval = 0.;
 
-		size_t ncols_numeric=0, ncols_categ=0;
+		size_t ncols_numeric = 0, ncols_categ = 0;
 
 		NumericConfig numeric_config;
 		if (data.Xr_indptr != NULL)
@@ -4972,7 +5027,7 @@ namespace provallo
 			numeric_config = DenseRowMajor;
 
 		sparse_ix *row_st = NULL, *row_end = NULL;
-		size_t lb=0, ub=0;
+		size_t lb = 0, ub = 0;
 		if (numeric_config == SparseCSR)
 		{
 			row_st = data.Xr_ind + data.Xr_indptr[row];
@@ -5159,7 +5214,7 @@ namespace provallo
 
 	/* for sparse numerical */
 
-	isolation_forest::isolation_forest(size_t ndim, size_t ntry,	   provallo::CoefType coef_type,
+	isolation_forest::isolation_forest(size_t ndim, size_t ntry, provallo::CoefType coef_type,
 									   bool coef_by_prop, bool with_replacement,
 									   bool weight_as_sample, size_t sample_size,
 									   size_t ntrees, size_t max_depth,
@@ -5183,7 +5238,7 @@ namespace provallo
 									   size_t min_imp_obs,
 									   provallo::UseDepthImp depth_imp,
 									   provallo::WeighImpRows weigh_imp_rows,
-									   uint64_t random_seed, int nthreads) : ndim(ndim), ntry(ntry), coef_type(coef_type), coef_by_prop(coef_by_prop), with_replacement(with_replacement), weight_as_sample(weight_as_sample), sample_size(sample_size), ntrees(ntrees), max_depth(max_depth), ncols_per_tree(ncols_per_tree), limit_depth(limit_depth), penalize_range(penalize_range), standardize_data(standardize_data), scoring_metric(scoring_metric), fast_bratio(fast_bratio), weigh_by_kurt(weigh_by_kurt), prob_pick_by_gain_pl(prob_pick_by_gain_pl), prob_pick_by_gain_avg(prob_pick_by_gain_avg), prob_pick_by_full_gain(prob_pick_by_full_gain), prob_pick_by_dens(prob_pick_by_dens), prob_pick_col_by_range(prob_pick_col_by_range), prob_pick_col_by_var(prob_pick_col_by_var), prob_pick_col_by_kurt(prob_pick_col_by_kurt), min_gain(min_gain), missing_action(missing_action), cat_split_type(cat_split_type), new_cat_action(new_cat_action), all_perm(all_perm), build_imputer(build_imputer), min_imp_obs(min_imp_obs), depth_imp(depth_imp), weigh_imp_rows(weigh_imp_rows), random_seed(random_seed)
+									   uint64_t random_seed, int nthreads) : ndim(ndim), ntry(ntry), coef_type(coef_type), coef_by_prop(coef_by_prop), with_replacement(with_replacement), weight_as_sample(weight_as_sample), sample_size(sample_size), ntrees(ntrees), max_depth(max_depth), ncols_per_tree(ncols_per_tree), limit_depth(limit_depth), penalize_range(penalize_range), standardize_data(standardize_data), scoring_metric(scoring_metric), fast_bratio(fast_bratio), weigh_by_kurt(weigh_by_kurt), prob_pick_by_gain_pl(prob_pick_by_gain_pl), prob_pick_by_gain_avg(prob_pick_by_gain_avg), prob_pick_by_full_gain(prob_pick_by_full_gain), prob_pick_by_dens(prob_pick_by_dens), prob_pick_col_by_range(prob_pick_col_by_range), prob_pick_col_by_var(prob_pick_col_by_var), prob_pick_col_by_kurt(prob_pick_col_by_kurt), min_gain(min_gain), missing_action(missing_action), cat_split_type(cat_split_type), new_cat_action(new_cat_action), all_perm(all_perm), build_imputer(build_imputer), min_imp_obs(min_imp_obs), depth_imp(depth_imp), weigh_imp_rows(weigh_imp_rows), random_seed(random_seed),nthreads(nthreads)
 	{
 	}
 
@@ -5409,7 +5464,7 @@ namespace provallo
 		std::vector<double> dmat(triangular ? square(nrows) : 0);
 
 		calc_similarity(
-			X, (int *)nullptr, (double *)nullptr, (int *)nullptr, (int *)nullptr,
+			X, (int *)nullptr, (double *)nullptr, (sparse_ix *)nullptr, (sparse_ix *)nullptr,
 			nrows, false, this->nthreads, assume_full_distr, standardize, as_kernel,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
@@ -5450,8 +5505,8 @@ namespace provallo
 		std::vector<double> tmat(triangular ? 0 : calc_ncomb(nrows));
 
 		calc_similarity(
-			numeric_data, categ_data, (double *)nullptr, (int *)nullptr,
-			(int *)nullptr, nrows, false, this->nthreads, assume_full_distr,
+			numeric_data, categ_data, (double *)nullptr, (sparse_ix *)nullptr,
+			(sparse_ix *)nullptr, nrows, false, this->nthreads, assume_full_distr,
 			standardize, as_kernel,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
@@ -5481,15 +5536,20 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::predict_distance(double Xc[], int Xc_ind[],
-									   int Xc_indptr[], int categ_data[],
+	isolation_forest::predict_distance(double Xc[], sparse_ix Xc_ind[],
+									   sparse_ix Xc_indptr[], int categ_data[],
 									   size_t nrows, bool as_kernel,
 									   bool assume_full_distr, bool standardize,
 									   bool triangular, double dist_matrix[])
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
-		std::vector<double> tmat(triangular ? 0 : calc_ncomb(nrows));
+
+		//avoid pedantic errors : 
+		UNDEF_REFERENCE(categ_data);
+		UNDEF_REFERENCE2(categ_data);
+			
+ 		std::vector<double> tmat(triangular ? 0 : calc_ncomb(nrows));
 
 		calc_similarity(
 			(double *)nullptr, (int *)nullptr, Xc, Xc_ind, Xc_indptr, nrows, false,
@@ -5519,6 +5579,7 @@ namespace provallo
 			}
 
 			tmat_to_dense(tmat.data(), dist_matrix, nrows, diag_filler);
+
 		}
 	}
 
@@ -5544,16 +5605,20 @@ namespace provallo
 							 bool is_col_major, size_t nrows)
 	{
 		this->check_is_fitted();
+		
 		if (this->imputer.imputer_tree.empty())
 			throw std::runtime_error(
 				"Model was built without imputation capabilities.\n");
 
 		//
 		this->check_nthreads();
+
+
 		// call impute missing values
 		///
 		///
 		///
+	        	
 		provallo::impute_missing_values(
 			numeric_data, categ_data, is_col_major, (double *)nullptr,
 			(long int *)nullptr, (long int *)nullptr, nrows, false, this->nthreads,
@@ -5635,6 +5700,10 @@ namespace provallo
 											  int categ_data[], size_t nrows,
 											  const bool with_distances)
 	{
+		UNDEF_REFERENCE(categ_data);
+		UNDEF_REFERENCE2(categ_data);
+		UNDEF_REFERENCE2(Xc_indptr);
+
 		this->check_is_fitted();
 		if (!this->model.trees.empty())
 
@@ -5660,8 +5729,8 @@ namespace provallo
 	void
 	isolation_forest::predict_distance_to_ref_points(double numeric_data[],
 													 int categ_data[],
-													 double Xc[], int Xc_ind[],
-													 int Xc_indptr[],
+													 double Xc[], sparse_ix Xc_ind[],
+													 sparse_ix Xc_indptr[],
 													 size_t nrows,
 													 bool is_col_major,
 													 size_t ld_numeric,
@@ -5840,20 +5909,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
 		if (this->is_fitted)
 		{
-		 
-				this->model.trees.clear();
-		 
-				this->model_ext.hplanes.clear();
-		 
-				this->imputer.imputer_tree.clear();
-				this->imputer.col_means.clear();
-				this->imputer.col_modes.clear();
- 				indexer.indices.clear(); /* reset indices */
 
+			this->model.trees.clear();
 
-				this->is_fitted = false; /* reset flag */
+			this->model_ext.hplanes.clear();
 
+			this->imputer.imputer_tree.clear();
+			this->imputer.col_means.clear();
+			this->imputer.col_modes.clear();
+			indexer.indices.clear(); /* reset indices */
 
+			this->is_fitted = false; /* reset flag */
 		}
 	}
 
@@ -6238,10 +6304,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	isolation_forest::isolation_forest(size_t ndim, size_t ntrees,
-									   bool build_imputer,int nthreads_) : ndim(ndim), ntrees(ntrees), build_imputer(build_imputer),nthreads(nthreads_)
+									   bool build_imputer, int nthreads_) : ndim(ndim), ntrees(ntrees), build_imputer(build_imputer), nthreads(nthreads_)
 	{
 		this->is_fitted = true;
- 
 	}
 
 	template <class itype>
@@ -6251,13 +6316,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		bool is_isotree_model = false;
 		bool is_compatible = false;
 		bool has_combined_objects = false;
-		//bool has_IsoForest = false;
-		//bool has_ExtIsoForest = false;
-		//bool has_Imputer = false;
-		//bool has_Indexer = false;
-		//bool has_metadata = false;
-		//size_t size_metadata = 0;
-		// TODO:Fix inspect serialized, replace with auto.
+		// bool has_IsoForest = false;
+		// bool has_ExtIsoForest = false;
+		// bool has_Imputer = false;
+		// bool has_Indexer = false;
+		// bool has_metadata = false;
+		// size_t size_metadata = 0;
+		//  TODO:Fix inspect serialized, replace with auto.
 		/*inspect_serialized_object(
 		 inp,
 		 is_isotree_model,
@@ -6705,12 +6770,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
 		ldouble_safe m = 0;
 		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta, delta_s, delta_div;
+		ldouble_safe delta=0., delta_s=0., delta_div=0.;
 		ldouble_safe diff;
 		ldouble_safe n = 0;
-		ldouble_safe out;
+		ldouble_safe out =0.;
 		ldouble_safe n_prev = 0.;
 		ldouble_safe w_this;
+		UNDEF_REFERENCE(missing_action);
+		UNDEF_REFERENCE2(missing_action );
+		UNDEF_REFERENCE2(w);
 
 		for (size_t row = 0; row < n_; row++)
 		{
@@ -6926,6 +6994,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	calc_kurtosis_weighted(xreal *x, size_t n_, MissingAction missing_action,
 						   xreal *w)
 	{
+ 		UNDEF_REFERENCE(missing_action)
+ 		UNDEF_REFERENCE2(missing_action)
+	
 		ldouble_safe m = 0;
 		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
 		ldouble_safe delta, delta_s, delta_div;
@@ -6933,7 +7004,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		ldouble_safe n = 0;
 		ldouble_safe out;
 		ldouble_safe n_prev = 0.;
-		ldouble_safe w_this;
+		ldouble_safe w_this =(ldouble_safe) w[0];
 
 		for (size_t row = 0; row < n_; row++)
 		{
@@ -7433,6 +7504,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		 level has equal probability of being picked.
 		 (Note that both are misleading heuristics, but might be better than random)
 		 */
+		UNDEF_REFERENCE(x)	
+		UNDEF_REFERENCE2(missing_action)
+		
+
 		double sum_kurt = 0;
 
 		cnt -= buffer_cnt[ncat];
@@ -7595,6 +7670,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 									RNG_engine &rnd_generator,
 									mapping &w)
 	{
+		UNDEF_REFERENCE(x)
+		UNDEF_REFERENCE2(missing_action)
+		UNDEF_REFERENCE2(w)
+
 		double sum_kurt = 0;
 
 		ldouble_safe cnt = std::accumulate(buffer_cnt.begin(),
@@ -7670,6 +7749,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				return std::fmax(sum_kurt, 0.) / (double)ncat_present;
 		}
 		}
+
 
 		return -1; /* this will never be reached, but CRAN complains otherwise */
 	}
@@ -10493,11 +10573,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 				if (all_perm)
 				{
-					size_t cnt_left=0, cnt_right=0;
-					double s_left=0., s_right=0.;
+					size_t cnt_left = 0, cnt_right = 0;
+					double s_left = 0., s_right = 0.;
 					size_t ncat_present = (size_t)ncat - st_pos;
 					size_t ncomb = pow2(ncat_present) - 1;
-					size_t best_combin =0 ;
+					size_t best_combin = 0;
 
 					for (size_t combin = 1; combin < ncomb; combin++)
 					{
@@ -10857,7 +10937,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					double s_left, s_right;
 					size_t ncat_present = (size_t)ncat - st_pos;
 					size_t ncomb = pow2(ncat_present) - 1;
-					size_t best_combin=0;
+					size_t best_combin = 0;
 
 					for (size_t combin = 1; combin < ncomb; combin++)
 					{
@@ -10962,6 +11042,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t n_from, size_t ntrees, bool assume_full_distr,
 		bool standardize_dist, bool as_kernel, int nthreads)
 	{
+		UNDEF_REFERENCE(nthreads)
+		UNDEF_REFERENCE2(nthreads)
+
 		if (interrupt_switch)
 			return;
 
@@ -12001,11 +12084,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						 sparse_ix *tree_num,
 						 int nthreads)
 	{
-		size_t ntrees =
-			(model_outputs != NULL) ? model_outputs->trees.size() : model_outputs_ext->hplanes.size();
+
+
+		UNDEF_REFERENCE(nthreads)
+		UNDEF_REFERENCE2(nthreads)
+		UNDEF_REFERENCE2(nthreads)
+		
+		
+		size_t ntrees =(model_outputs != NULL) ? model_outputs->trees.size() : model_outputs_ext->hplanes.size();
 		size_t max_tree, curr_term;
 		std::vector<sparse_ix> tree_mapping;
-		if (model_outputs != NULL)
+ 		if (model_outputs != NULL)
+
 		{
 			max_tree = std::accumulate(
 				model_outputs->trees.begin(), model_outputs->trees.end(),
@@ -12763,7 +12853,35 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		TreesIndexer *indexer, bool is_col_major,
 		size_t ld_numeric, size_t ld_categ)
 	{
+		UNDEF_REFERENCE(numeric_data)
+		UNDEF_REFERENCE2(categ_data)
+		UNDEF_REFERENCE2(Xc)
+		UNDEF_REFERENCE2(Xc_indptr)
+		UNDEF_REFERENCE2(nrows)
+		UNDEF_REFERENCE2(nthreads)
+
+		UNDEF_REFERENCE2(model_outputs)
+		UNDEF_REFERENCE2(n_from)
+		UNDEF_REFERENCE2(is_col_major)
+		UNDEF_REFERENCE2(ld_categ)
+		UNDEF_REFERENCE2(standardize_dist)
+		UNDEF_REFERENCE2(assume_full_distr)
+		UNDEF_REFERENCE2(Xc_ind)
+
+		UNDEF_REFERENCE2(model_outputs_ext)
+		UNDEF_REFERENCE2(indexer)
+		UNDEF_REFERENCE2(ld_numeric)
+		UNDEF_REFERENCE2(rmat)
+		UNDEF_REFERENCE2(tmat)
+		
 		signal_switcher ss;
+		//start:
+		if(indexer!=nullptr)
+		{
+			//
+
+		}
+
 	}
 
 	template <class PredictionData, class ldouble_safe>
@@ -12773,6 +12891,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					  IsoForest &model_outputs, std::vector<IsoTree> &trees,
 					  size_t curr_tree, const bool as_kernel)
 	{
+		
+		UNDEF_REFERENCE(prediction_data)
+		UNDEF_REFERENCE2(model_outputs)
+		UNDEF_REFERENCE2(trees)
+		UNDEF_REFERENCE2(curr_tree)
+		UNDEF_REFERENCE2(as_kernel)
+	
+		
 		if (interrupt_switch)
 			return;
 
@@ -13234,7 +13360,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			throw std::runtime_error("Cannot build indexed for unfitted model.\n");
 		build_tree_indices<ExtIsoForest>(indexer, model, nthreads, with_distances);
 	}
-
+	/* comment out similarity
 	inline void
 	calc_similarity(double numeric_data[], int categ_data[], double Xc[],
 					int Xc_ind[], int Xc_indptr[], size_t nrows,
@@ -13245,8 +13371,61 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					bool use_indexed_references, TreesIndexer *indexer,
 					bool is_col_major, size_t ld_numeric, size_t ld_categ)
 	{
-	}
 
+		if( model_outputs == NULL && model_outputs_ext == NULL )
+			throw std::runtime_error("Must pass at least one model.\n");
+		
+		sparse_ix *Xc_indptr_ = (sparse_ix *)Xc_indptr; 
+		sparse_ix *Xc_ind_ = (sparse_ix *)Xc_ind;
+
+
+		if( model_outputs != NULL )
+			{
+
+				if( as_kernel )
+				{
+					if( standardize_dist )
+						throw std::runtime_error("Cannot standardize kernel distances.\n");
+					if( assume_full_distr )
+						throw std::runtime_error("Cannot assume full distribution for kernel distances.\n");
+				}
+			}	
+		if( model_outputs_ext != NULL )
+			{
+				if( as_kernel )
+					throw std::runtime_error("Cannot use kernel distances with extended model.\n");
+				if( standardize_dist )
+					throw std::runtime_error("Cannot standardize extended model distances.\n");
+				if( assume_full_distr )
+					throw std::runtime_error("Cannot assume full distribution for extended model distances.\n");
+			}
+		
+		if( use_indexed_references && indexer == NULL )
+			throw std::runtime_error("Must pass a reference to a TreesIndexer object.\n");
+		
+		if(use_long_double)
+		//instantiate similarity template parameters 
+ 		calc_similarity_internal<long double>(numeric_data, categ_data, Xc, Xc_ind_,
+											 Xc_indptr_, nrows, nthreads,
+											 assume_full_distr, standardize_dist,
+											 as_kernel, model_outputs,
+											 model_outputs_ext, tmat, rmat, n_from,
+											 use_indexed_references, indexer,
+											 is_col_major, ld_numeric, ld_categ);
+ 		else
+ 		calc_similarity_internal<double>(numeric_data, categ_data, Xc, Xc_ind_,
+											 Xc_indptr_, nrows, nthreads,
+											 assume_full_distr, standardize_dist,
+											 as_kernel, model_outputs,
+											 model_outputs_ext, tmat, rmat, n_from,
+											 use_indexed_references, indexer,
+											 is_col_major, ld_numeric, ld_categ);
+
+
+
+ 	}// calc_similarity
+	comment out similarity*/
+	
 	size_t
 	get_number_of_reference_points(const TreesIndexer &indexer) noexcept
 	{
@@ -13778,22 +13957,26 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						  ExtIsoForest *model_outputs_ext, Imputer &imputer)
 	{
 
-#ifndef NO_LONG_DOUBLE
 
+		if( use_long_double)
+		{
 		impute_missing_values_internal<long double>(numeric_data, categ_data,
 													is_col_major, Xr, Xr_ind,
 													Xr_indptr, nrows, nthreads,
 													model_outputs,
 													model_outputs_ext, imputer);
-#else
 
+		}
+		else
+		{
 		impute_missing_values_internal<double>(
 				numeric_data, categ_data, is_col_major,
 				Xr, Xr_ind, Xr_indptr,
 				nrows, nthreads,
 				model_outputs, model_outputs_ext,
-				imputer
-#endif
+				imputer);
+		}
+		
 	}
 
 	signal_switcher::signal_switcher() : is_active(false)
@@ -13845,6 +14028,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		{
 			interrupt_switch = true;
 		}
+		UNDEF_REFERENCE(s);
+		UNDEF_REFERENCE2(s);
+
 	}
 	bool signal_switcher::interrupt_switch = false;
 	bool signal_switcher::handle_is_locked = false;
@@ -13976,6 +14162,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 										   sparse_ix *tree_num,
 										   int nthreads)
 	{
+		UNDEF_REFERENCE(nthreads)
+		UNDEF_REFERENCE2(nthreads)
 
 		size_t ntrees =
 			(model_outputs != NULL) ? model_outputs->trees.size() : model_outputs_ext->hplanes.size();
@@ -16322,6 +16510,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							  size_t ncols, double *Xr, size_t *Xr_ind,
 							  size_t *Xr_indptr)
 	{
+		UNDEF_REFERENCE(as_relative_gain)
+		UNDEF_REFERENCE2(as_relative_gain)
+
 		/* Note: the input 'x' is supposed to be a linear combination of standardized variables, so
 		 all numbers are assumed to be small and in the same scale */
 		double gain = 0;
@@ -17677,6 +17868,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	ensemble_classifier::serialize(classifier *serial) const
 	{
 
+		if (serial->get_type() != this->get_type())
+			throw std::runtime_error("Trying to serialize a classifier with the wrong type");
+		if (serial == this)
+			return;
 #if 0
       // Get ensemble classifier buffer
       ensemble_classifier* ensemble_buffer(serial->MutableExtension(ensemble_classifier::child));
@@ -17710,25 +17905,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		for (uint32_t i = 0; i < _classifiers.size(); ++i)
 			delete _classifiers[i];
 	}
-	
-	//bayesian constructor :
+
+	// bayesian constructor :
 	//
- 
 
-    // No parameters for now provallo::bayesian::bayesian(provallo::dataset&, const provallo::parameter_base&, std::random_device&, const provallo::split_method_factory&)
+	// No parameters for now provallo::bayesian::bayesian(provallo::dataset&, const provallo::parameter_base&, std::random_device&, const provallo::split_method_factory&)
 
-    bayesian::bayesian(const dataset &data, const parameter_base &parameters,
-             const std::random_device &random ,const std::ostream& out ,split_method_factory *factory ):bayesian(data,parameters,random,factory)
+	bayesian::bayesian(const dataset &data, const parameter_base &parameters,
+					   const std::random_device &random, const std::ostream &out, split_method_factory *factory) : bayesian(data, parameters, random, factory)
 	{
-		
-	
-	}     
 
-	    // No parameters for now
-    bayesian::bayesian(const dataset &data, const parameter_base &parameters ,
-             const std::random_device &random ,split_method_factory *factory )
-			 :classifier(data,parameters,random,factory)
-     	{
+		// check if ostream is good
+		if (!out.good())
+			throw std::runtime_error("Output stream is not good");
+		init();
+		// check split was initialized
+	}
+	void
+	bayesian::init()
+	{
 		// Split method for target tag
 		const split_method *target_split = splitFactory().getTargetMethod();
 		// Get some counts
@@ -17749,12 +17944,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				_likelihood[i][j].resize(splitFactory().getMethod(i)->size(), 0.0);
 
 		// Iterate over each instance
-		for (uint32_t i = 0; i < data.size(); ++i)
+		for (uint32_t i = 0; i < _data.size(); ++i)
 		{
 			// Get iterator to the attributes of this instance
 
 			// Get target
-			uint32_t target_branch = target_split->getBranch((data.begin(i)));
+			uint32_t target_branch = target_split->getBranch((_data.begin(i)));
 			// Contribute to prior probability
 			_prior[target_branch]++;
 
@@ -17763,14 +17958,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			{
 				// Get attribute value
 				uint32_t attr_branch = splitFactory().getMethod(j)->getBranch(
-					(data.begin(i)));
+					(_data.begin(i)));
 				// Finally, contribute on likelihood
 				_likelihood[j][target_branch][attr_branch]++;
 			}
 		}
 
 		// Normalize all the probabilities
-		float total_count = data.size();
+		float total_count = (float)_data.size();
 
 		// Likelihood normalization
 		for (uint32_t i = 0; i < attrs_number; ++i)
@@ -17805,7 +18000,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		for (uint32_t j = 0; j < class_number; ++j)
 			_prior[j] /= total_count;
 	}
- 
+	// No parameters for now
+	bayesian::bayesian(const dataset &data, const parameter_base &parameters,
+					   const std::random_device &random, split_method_factory *factory)
+		: classifier(data, parameters, random, factory)
+	{
+		init();
+	}
+
 	// Print classifier information
 	void
 	bayesian::print(std::ostream &out) const
@@ -17818,6 +18020,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	bayesian::serialize(classifier *serial) const
 	{
 		// Get ensemble classifier buffer
+		if (serial == this)
+			return;
+
+		if (serial->get_type() != this->get_type())
+			throw std::runtime_error("Cannot serialize into a different classifier type");
 	}
 
 	Float &
@@ -17832,7 +18039,6 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
 		return _likelihood[attr][class_value][branch];
 	}
-	
 
 	bayesian::bayesian(const classifier *deserial) : classifier(deserial)
 	{
@@ -17969,30 +18175,50 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	void
 	TreeLightLeaf::serialize(TreeNodeBase *node) const
 	{
+		if (node == this){
+			return;
+		}
+		if (node->get_type() != this->get_type())
+			return;
+	
 	}
 	void
 	TreeLightLeaf::deserialize(const TreeNodeBase *node)
 	{
-		// Get tree node
-		// Create class distribution
+		if (node == this)
+			return;
+		if (node->get_type() != this->get_type())
+			return;
+	
 	}
 
 	void
 	TreeNode::serialize(TreeNodeBase *node) const
 	{
 		// Get tree node buffer
+		if (node == this)
+			return;
+		if (node->get_type() != this->get_type())
+			return;
 	}
 
 	void
 	TreeNode::deserialize(const TreeNodeBase *node)
 	{
-		// Get tree node
-		// Create class distribution
+		if (!node || node->get_type() != this->get_type())
+			return;
 	}
 
 	void
 	TreeNodeBase::serialize(TreeNodeBase *node) const
 	{
+
+
+		if (!node || node == this)
+			return;
+		if (node->get_type() != this->get_type())
+			return;
+		// Get tree node buffer
 		// Serialize split methods
 		//      _split_method->serialize(split_method_buffer);
 		// Put type
@@ -18178,60 +18404,54 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	//  Constructor
 
 	//	Constructor
-	
-	iso_classifier::iso_classifier(const dataset &data) :
-	       	classifier(data),_data(data)
+
+	iso_classifier::iso_classifier(const dataset &data) : classifier(data), _data(data)
 	{
 
-		static uint64_t  _seed = std::chrono::system_clock::now().time_since_epoch().count();
+		static uint64_t _seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-		//size_t target_tag= data.getattributes().get_target_tag();
-		//std::cout << "target tag " << target_tag << std::endl;
+		// size_t target_tag= data.getattributes().get_target_tag();
+		// std::cout << "target tag " << target_tag << std::endl;
 
-
- 		_seed += std::chrono::system_clock::now().time_since_epoch().count();
+		_seed += std::chrono::system_clock::now().time_since_epoch().count();
 
 		//_trees = 100;
 		//_subsample_size = 256;
 		//_max_depth = 10;
-		validate_data(); 
+		validate_data();
 		// create isoforest and train it
 		_isoforest = new isolation_forest();
 		//_isoforest->set_max_depth(_max_depth);
 		//_isoforest->set_seed(_seed>>32&0xFFFFFFFF|_seed&0xFFFFFFFF );
 
- 		
-		matrix<double> training_data = transform_data( );
-		 _isoforest->fit(training_data.array(), training_data.rows(),training_data.cols());		//std::cout << "res size " << res.size() << std::endl;
+		matrix<double> training_data = transform_data();
+		_isoforest->fit(training_data.array(), training_data.rows(), training_data.cols()); // std::cout << "res size " << res.size() << std::endl;
 
-
-		//std::cout << "res " << res[0] << std::endl;
+		// std::cout << "res " << res[0] << std::endl;
 
 	} // Constructor
-	//Copy constructor
-	iso_classifier::iso_classifier(const	iso_classifier & rhs): classifier(rhs), _data(rhs._data),   _isoforest(rhs._isoforest)
+	// Copy constructor
+	iso_classifier::iso_classifier(const iso_classifier &rhs) : classifier(rhs), _data(rhs._data), _isoforest(rhs._isoforest)
 	{
 		validate_data();
 		// create isoforest and train it
-
-
 	}
 	// Move constructor
-	iso_classifier::iso_classifier(iso_classifier &&rhs) :classifier(std::move((classifier&&)rhs)),_data(std::move(rhs._data)),
-      	_isoforest(std::move(rhs._isoforest))
+	iso_classifier::iso_classifier(iso_classifier &&rhs) : classifier(std::move((classifier &&)rhs)), _data(std::move(rhs._data)),
+														   _isoforest(std::move(rhs._isoforest))
 
 	{
 
 		validate_data();
 		// create isoforest and train it
 	}
-	//transform dataset to matrix:
+	// transform dataset to matrix:
 	provallo::matrix<double> iso_classifier::transform_data() const
-	{	
+	{
 		provallo::matrix<double> samples(_data.size() / _data.getattributes().getSize(), _data.getattributes().getSize());
 		for (uint32_t i = 0; i < _data.size(); ++i)
 			for (uint32_t j = 0; j < _data.getattributes().getSize(); ++j)
-				samples(i,j) = _data.getattribute(i/_data.getattributes().getSize(),j).continous();
+				samples(i, j) = _data.getattribute(i / _data.getattributes().getSize(), j).continous();
 		return samples;
 	}
 
@@ -18239,39 +18459,31 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	// classify sample
 	class_dist iso_classifier::classify(const std::vector<attribute> &data) const
 	{
-		
+
 		// check data
 		size_t cnt = _data.getattributes().getSize();
-		
+
 		if (data.size() < cnt)
 			throw std::runtime_error("isoforest_classifier::classify(): Data size does not match number of attributes");
-		// classify	
+		// classify
 
-		provallo::matrix<double> samples(data.size()/cnt, cnt);
+		provallo::matrix<double> samples(data.size() / cnt, cnt);
 
 		for (uint32_t i = 0; i < data.size(); ++i)
-				for(uint32_t j =0; j<classifier::_attributes_info.getSize();j++)
-			samples(i/cnt,j) = data[(i*cnt)+j].continous();
+			for (uint32_t j = 0; j < classifier::_attributes_info.getSize(); j++)
+				samples(i / cnt, j) = data[(i * cnt) + j].continous();
 
-
-		
 		size_t nclasses = classifier::_attributes_info.getCount(classifier::_attributes_info.get_target_tag());
 
-
-		 std::vector<double> result_probabilities = _isoforest->predict(samples);	 
+		std::vector<double> result_probabilities = _isoforest->predict(samples);
 		class_dist result(nclasses);
-		class_dist return_result(result_probabilities.size());	
+		class_dist return_result(result_probabilities.size());
 
-
-		 for (uint32_t i = 0; i < result_probabilities.size(); ++i)
-		 {
-				 return_result.set(i, result_probabilities[i] ) ;
-
-		 }	
-		 return result;
-
-
-
+		for (uint32_t i = 0; i < result_probabilities.size(); ++i)
+		{
+			return_result.set(i, result_probabilities[i]);
+		}
+		return result;
 	}
 
 	// Destructor
@@ -18286,8 +18498,6 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	// Validate data
 	void iso_classifier::validate_data()
 	{
- 
-		
 
 		// Get target tag
 		attribute_tag target_tag = classifier::_attributes_info.get_target_tag();
@@ -18296,7 +18506,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// Check number of target attributes
 		if (target_count != 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): Only one target attribute is allowed");
- 
+
 		// Get number of attributes
 		uint32_t attributes_count = classifier::_attributes_info.getSize();
 		// Check number of attributes
@@ -18308,7 +18518,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (samples_count < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one sample is required");
 		// Get number of samples
-		uint32_t samples_size =  _data.size()/attributes_count;
+		uint32_t samples_size = _data.size() / attributes_count;
 		// Check number of samples
 		if (samples_size < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one sample size is required");
@@ -18335,16 +18545,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// Check number of attributes per sample
 		if (attributes_per_sample < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one attribute per sample is required");
-
 	}
-	//assignment operator 
+	// assignment operator
 	iso_classifier &iso_classifier::operator=(const iso_classifier &rhs)
 	{
 		if (this != &rhs)
 		{
 			// _data( std::move(rhs._data));
- 			_isoforest = rhs._isoforest;
-			
+			_isoforest = rhs._isoforest;
 		}
 		return *this;
 	}
@@ -18353,33 +18561,43 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	std::ostream &operator<<(std::ostream &os, const iso_classifier &rhs)
 	{
 		os << "isoforest_classifier: " << std::endl;
- 		
-		//os << "  Number of trees = " << rhs.get_trees() << std::endl;
-		//os << "  Number of samples per tree = " << rhs.get_samples() << std::endl;
- 
-		//	os << " Fitted: " << std::string(rhs.fitted()?"TRUE":"FALSE")<< std::endl;	
+		rhs.print(os);
+		// os << "  Number of trees = " << rhs.get_trees() << std::endl;
+		// os << "  Number of samples per tree = " << rhs.get_samples() << std::endl;
+
+		//	os << " Fitted: " << std::string(rhs.fitted()?"TRUE":"FALSE")<< std::endl;
 		//
- 		return os;
+		return os;
 	}
 	void iso_classifier::print(std::ostream &os) const
 	{
 		os << *this;
-	}	
+	}
 
 	// Print iso_classifier
 	void iso_classifier::print() const
 	{
 		print(std::cout);
-	}	
-	//
-	void  iso_classifier::print(std::ostream &out, const dataset &data, const std::vector<attribute> &predictions) const
-	{
-		print(std::cout);
 	}
-    void  iso_classifier::print(std::ostream &out, const dataset &data) const
+	//
+	void iso_classifier::print(std::ostream &out, const dataset &data, const std::vector<attribute> &predictions) const
 	{
-		print(std::cout);
-	}	
+		print(out);
+		data.print(out);
+		out << std::string("Predictions: ") << std::endl;
+		for (uint32_t i = 0; i < predictions.size(); ++i)
+		{
+			out <<std::string("  ") << predictions[i].continous() << std::endl;
+		}	
+
+	}
+	void iso_classifier::print(std::ostream &out, const dataset &data) const
+	{
+
+		print(out);
+		data.print(out);
+
+	}
 
 	void
 	print_classifier_summary(const std::string &data_set_name,
@@ -18419,6 +18637,85 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		std::cout<<"[#] dataset quartile deviation = "<<data.quartile_deviation()<<std::endl;
 		std::cout<<"[#] dataset coefficient of variation = "<<data.coefficient_of_variation()<<std::endl;
 		*/
-	} 
-}
+	}
+
+	void serialize_ExtIsoForest(	const ext_iso_forest& forest ,FILE* cstyle)
+	{
+		UNDEF_REFERENCE(forest)
+		UNDEF_REFERENCE2(cstyle)
+
+	}
+	void serialize_ExtIsoForest(	const ext_iso_forest& forest ,std::ostream& cppstyle)
+	{
+		UNDEF_REFERENCE(forest)
+		UNDEF_REFERENCE2(cppstyle)
+
+	}
+	void serialize_IsoForest(	const iso_forest& forest ,FILE* cstyle)
+	{
+		UNDEF_REFERENCE(forest)
+		UNDEF_REFERENCE2(cstyle)
+
+	}	
+	void serialize_IsoForest(	const iso_forest& forest ,std::ostream& cppstyle)
+	{
+		UNDEF_REFERENCE(forest)
+		UNDEF_REFERENCE2(cppstyle)
+
+	}	
+	void serialize_Indexer(	const TreesIndexer& indexer ,FILE* cstyle)
+	{
+		UNDEF_REFERENCE(indexer)
+		UNDEF_REFERENCE2(cstyle)
+
+	}
+	//serialization / deserialization missing implementations: 
+	//1)inspect_serialized_object
+	//2)serialize_IsoForest(provallo::iso_forest const&, _IO_FILE*) - c/style
+	//3)serialize_ExtIsoForest
+	//4)serialize_Imputer
+	//5)serialize_Indexer
+	//6)serialize_IsoForest(provallo::iso_forest const&, std::ostream&)' cpp style
+	//deserialize: 
+	//1)deserialize_IsoForest
+	//2)deserialize_ExtIsoForest
+	//3)deserialize_Imputer
+	//4)deserialize_Indexer
+	
+
+	//deserialize_IsoForest (cstyle) 
+	void deserialize_IsoForest( iso_forest& forest, FILE* cstyle)
+	{
+		UNDEF_REFERENCE(cstyle)
+		UNDEF_REFERENCE2(forest);
+	}	
+	//deserialize_Imputer (cstyle)
+	void deserialize_Imputer(Imputer& imputer ,FILE* cstyle)
+	{
+		UNDEF_REFERENCE(cstyle)
+		UNDEF_REFERENCE2(imputer)
+
+	}	
+	//deserialize_Indexer (cstyle)
+	void deserialize_Indexer(TreesIndexer& indexer ,FILE* cstyle)
+	{
+		UNDEF_REFERENCE(cstyle)
+		UNDEF_REFERENCE2(indexer)
+
+	}	
+
+	void deserialize_Indexer(TreesIndexer& indexer ,const char* cstyle)
+	{
+		UNDEF_REFERENCE(cstyle)
+		UNDEF_REFERENCE2(indexer)
+
+	}	
+	
+	void deserialize_ExtIsoForest(ext_iso_forest& indexer ,FILE* cstyle)
+	{
+		UNDEF_REFERENCE(cstyle)
+		UNDEF_REFERENCE2(indexer)
+
+	}	
+ }
 /* namespace provallo */

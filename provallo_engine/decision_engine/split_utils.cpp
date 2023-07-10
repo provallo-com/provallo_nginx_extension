@@ -625,7 +625,7 @@ namespace provallo
 	std::cout<<"[+] creating interval split ["<<std::to_string(factory_tag)<< "," <<std::to_string(tag)<<" ]"<<std::endl;
 
 	// Return continuous split method
-	ret = new continous_multi_interval(factory_tag, tag, data_set);
+	ret = new continous_multi_interval(factory_tag, tag, std::ref(data_set));
 	  _split_cache.insert(std::make_pair(lookup,ret));
 	}
       }
@@ -641,12 +641,15 @@ namespace provallo
 
 	std::cout<<"[+] creating mdlp split ["<<std::to_string(factory_tag)<< "," <<std::to_string(tag)<<" ]"<<std::endl;
  	// Return continuous split method
-	ret = new continous_mdlp(factory_tag, tag, data_set);
+	ret = new continous_mdlp(factory_tag, tag, std::ref(data_set));
 	  _split_cache.insert(std::make_pair(lookup,ret));
 	}
       }
     else if (type == CONE_RANDOM)
       {
+		//test random_dev 
+		std::cout<<"[+] random_dev: "<<ptrdiff_t(&random_)<<std::endl;
+
 			if(_split_cache.size() && _split_cache.find(lookup)!=_split_cache.end() )
 			{
 				std::cout<<"[+] returning cached ["<<std::to_string(factory_tag)<< "," <<std::to_string(tag)<<" ]"<<std::endl;;
@@ -657,7 +660,8 @@ namespace provallo
 
 					std::cout<<"[+] creating random split ["<<std::to_string(factory_tag)<< "," <<std::to_string(tag)<<" ]"<<std::endl;
 					// Return continuous split method (random split need the random number engine)
-					ret = new continous_random (factory_tag, tag, data_set,std::random_device ());
+ 
+ 					ret = new continous_random (factory_tag, tag, data_set, random_	);
 					_split_cache.insert(std::make_pair(lookup,ret));
 			}
       }
@@ -734,15 +738,25 @@ override_split_method(false),	override_split_type(CONE_RANDOM)
   void
   split_method_factory::serialize (split_method_factory *serial) const
   {
-    
-	//not implemented
-  }
+    if(serial==nullptr)
+	  throw(std::runtime_error("split_method_factory::serialize: null pointer"));
+
+	serial->override_split_method = override_split_method;
+	serial->override_split_type = override_split_type;
+	serial->r_dataset = r_dataset;
+	serial->_split_methods = _split_methods;
+	serial->_target_method = _target_method;
+	}
 
   // Get data from buffer
   void
   split_method_factory::deserialize (const split_method_factory *serial)
   {
-    //not implemented
+	if(serial==nullptr)
+	  throw(std::runtime_error("split_method_factory::deserialize: null pointer"));	
+	//not implemented
+
+	
   }
 
   Float

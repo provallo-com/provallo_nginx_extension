@@ -62,19 +62,32 @@ namespace provallo
     }
     parameter_base(const parameter_base &other)
     {
+      if (this == &other)
+      {
+        throw std::runtime_error(" parameter_base - Self assignment");  
+      } 
     }
-    parameter_base(parameter_base &&other)
-    {
-    }
+    parameter_base(parameter_base &&other)=default; 
     const parameter_base &
-    operator=(const parameter_base &other)
+    operator=(const parameter_base &other) 
     {
+      if (this == &other)
+      {
+        throw std::runtime_error(" parameter_base - Self assignment");  
+      } 
       return *this;
-    }
+    } 
+
     const parameter_base &
     operator=(parameter_base &&other)
     {
-      return *this;
+      //nothing to move from other  
+     
+       if(this==&other)
+        {
+          throw std::runtime_error(" parameter_base - Self assignment");  
+        } 
+       return *this;
     }
 
     // Virtual function to print parameters

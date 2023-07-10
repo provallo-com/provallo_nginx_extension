@@ -97,7 +97,7 @@ namespace provallo
 
       size_t size (0);
       for (auto packet : _packets)
-	size += packet.size ();
+	      size += packet.size ();
       return size;
     }
 

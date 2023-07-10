@@ -431,10 +431,11 @@ namespace provallo
       return 0;
     while (*p)
     {
-      int tmp;
-      if (p[1] == 0)
+      unsigned tmp;
+      if (p[1] == 0){
         return 0;
-      if (sscanf(p, "%02x", &tmp) != 1)
+      }
+     if (sscanf(p, "%02x",&tmp) != 1)
         return 0;
       p_inet[len] = tmp;
       len++;

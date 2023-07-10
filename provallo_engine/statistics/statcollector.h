@@ -242,6 +242,10 @@ namespace provallo
     const std::string &
     operator()(const field_base &l, const field_base &r) const
     {
+      //always return the last value, reference new value for pedantic reasons
+      if(r.getValue()!=l.getValue() && r.getValue()!="0")
+            return l.getValue();
+
       return l.getValue();
     }
   };
@@ -252,8 +256,12 @@ namespace provallo
     const std::string &
     operator()(const field_base &l, const field_base &r) const
     {
+      
       static const std::string zero = "0";
+      if(r.getValue()==l.getValue())  
+            return zero;
       return zero;
+
     }
   };
 
@@ -644,7 +652,7 @@ namespace provallo
     getLastValue(size_t idx) const
     {
       size_t last_instance = _instances.size() - 1;
-      return (*_instances[last_instance])[last_instance]->getValue();
+      return (*_instances[last_instance])[idx]->getValue();
     }
 
     void

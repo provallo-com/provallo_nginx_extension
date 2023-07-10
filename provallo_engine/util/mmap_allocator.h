@@ -75,8 +75,13 @@ namespace provallo
         {
             if (n > std::numeric_limits<size_type>::max() / sizeof(T))
                 throw std::bad_alloc();
+            
+            if( hint != 0 )
+                return static_cast<pointer>(mmap(const_cast<void*>(hint), n * sizeof(T), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0));
+
             if (auto p = static_cast<pointer>(mmap(0, n * sizeof(T), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)))
                 return p;
+            
             throw std::bad_alloc();
         }
 
@@ -110,7 +115,11 @@ namespace provallo
 
         bool operator==(const mmap_allocator& other) const noexcept
         {
-            return true;
+	      if (this == &other)
+        	        return true;
+        
+	      return std::memcmp(this, &other, sizeof(*this)) == 0;    
+
         }   
 
         bool operator!=(const mmap_allocator& other) const noexcept

@@ -96,8 +96,13 @@ namespace provallo
     void
     accum (uint32_t tag, Float weight = 1.0)
     {
-      _histogram[tag] += weight;
-      _sum += weight;
+      if(tag<_histogram.size()  ) {
+        _histogram[tag] += weight;
+        _sum += weight;
+      }
+      else {
+        std::cout<<"tag "<<tag<<" is out of range "<<_histogram.size()<<std::endl;
+      }
     }
 
     // Accumulate a specific tag
@@ -210,7 +215,7 @@ namespace provallo
     probability (uint32_t i, Float sum, Float weight) const
     {
       if (sum != 0.0)
-        return _histogram[i] / sum;
+        return  ( _histogram[i] / sum ) * weight;
       return 0.0;
     } 
     // Get the probability of a histogram bin
@@ -226,7 +231,7 @@ namespace provallo
     probability (uint32_t i, const std::vector<Float> &sum, Float weight) const
     {
       if (sum[i] != 0.0)
-        return _histogram[i] / sum[i];
+        return  ( _histogram[i] / sum[i] ) * weight;
       return 0.0;
     }   
 
@@ -236,8 +241,8 @@ namespace provallo
     probability (uint32_t i, const std::vector<Float> &sum, const std::vector<Float> &weight) const
     {
       if (sum[i] != 0.0)
-        return _histogram[i] / sum[i];
-      return 0.0;
+        return  ( _histogram[i] / sum[i] ) * weight[i];
+      return 0.0;   
     }   
     // Get the probability of a histogram bin
     Float
@@ -245,8 +250,8 @@ namespace provallo
     probability (uint32_t i, const std::vector<Float> &sum, const std::vector<Float> &weight, Float weight_sum) const
     {
       if (sum[i] != 0.0)
-        return _histogram[i] / sum[i];
-      return 0.0;
+        return  ( _histogram[i] / sum[i] ) * weight[i] * weight_sum;
+      return 0.0;   
     }   
 
     void update(uint32_t tag, Float weight) {
@@ -254,21 +259,10 @@ namespace provallo
       _sum += weight;
     } 
     void update(uint32_t tag, Float weight, Float old_weight) {
-      _histogram[tag] += weight;
-      _sum += weight;
+      _histogram[tag] += weight- old_weight;
+      _sum += weight - old_weight; 
     } 
-    void update(uint32_t tag, Float weight, Float old_weight, Float weight_sum) {
-      _histogram[tag] += weight;
-      _sum += weight;
-    }   
-    void update(uint32_t tag, Float weight, Float old_weight, Float weight_sum, Float old_weight_sum) {
-      _histogram[tag] += weight;
-      _sum += weight;
-    } 
-    void update(uint32_t tag, Float weight, Float old_weight, Float weight_sum, Float old_weight_sum, Float weight_sum2) {
-      _histogram[tag] += weight;
-      _sum += weight;
-    }   
+ 
 
     void setup(uint32_t nbins)
     {

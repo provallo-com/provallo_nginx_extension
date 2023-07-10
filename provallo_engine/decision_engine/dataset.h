@@ -904,6 +904,11 @@ namespace provallo
       return _sorted_indices[tag];
     } 
 
+    attribute_tag get_target_tag() const
+    {
+      return _attributes_info.get_target_tag();
+    } 
+
     // Return new pointer with a reference data set
 
     virtual dataset *
@@ -1328,7 +1333,7 @@ namespace provallo
     pushattribute(uint32_t n, const attribute &att)
     {
       throw std::runtime_error(
-          "Can't push an attribute on a data set reference");
+          std::string("Can't push an attribute on a data set reference") + std::to_string(n) + std::to_string(att.continous()) );
     }
 
     dataset *
@@ -1423,7 +1428,7 @@ namespace provallo
     void
     setattribute(uint32_t i, attribute_tag tag, const attribute &value)
     {
-      throw std::runtime_error("Can't modify a data set through a reference");
+      throw std::runtime_error(std::string("Can't modify a data set through a reference") + std::to_string(i) + std::to_string(tag) + std::to_string(value.continous())  );
     }
     inline const  std::vector<mmap_vector<attribute, safe_mmap_allocator<attribute> > > &get_samples() const
     {
@@ -1465,6 +1470,8 @@ namespace provallo
     pushattribute(uint32_t n, const attribute &att)
     {
       // Ignore n, attributes are pushed sequentially
+
+      ++n;//avoid warning
       _samples.push_back(att);
     }
 
@@ -1571,7 +1578,7 @@ namespace provallo
     pushattribute(uint32_t n, const attribute &att)
     {
       throw std::runtime_error(
-          "Can't push an attribute on a data set reference");
+          std::string("Can't push an attribute on a data set reference") + std::to_string(n) + std::to_string(att.continous())     );
     }
 
     dataset *
@@ -1698,7 +1705,7 @@ namespace provallo
     void
     setattribute(uint32_t i, attribute_tag tag, const attribute &value)
     {
-      throw std::runtime_error("Can't modify a data set through a reference");
+      throw std::runtime_error( std::string("Can't modify a data set through a reference ")  + std::to_string(i) +  std::to_string(tag) +std::to_string(value.continous()) +std::string(   __FILE__ ) +  std::string(":") + std::to_string(__LINE__));  
     }
     inline const  mmap_vector<attribute> &get_samples() const
     {

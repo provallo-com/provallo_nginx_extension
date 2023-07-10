@@ -264,12 +264,15 @@ namespace provallo
     bool
     glue_process_info::snapshot_thread_list (std::vector<pid_t> *output)
       {
-	char buff[2048] =
-	  {};
-	snprintf (buff, 2048, "/proc/%d/task", this->_pid);
-
-	return true;
-      }
+		char buff[2048] =
+	  	{};
+		snprintf (buff, 2048, "/proc/%d/task", this->_pid);
+		//parse tids from buffer and add to output
+		output->clear();
+		
+		return true;
+	  }
+ 
 
     bool
     glue_process_info::attach_all ()
@@ -319,19 +322,21 @@ namespace provallo
     {
 
       if (allocator1)
-	{
-	  for (pid_t p : allocator)
-	    {
-	      if (m_thread_list.find (p) == m_thread_list.end ())
 		{
-		  allocator1->push_back (p);
-		}
-	    }
+			for (pid_t p : allocator)
+				{
+				if (m_thread_list.find (p) == m_thread_list.end ())
+					{
+					allocator1->push_back (p);
+					}
+				}
 
-	  return allocator1->empty ();
-	}
+		return allocator1->empty ();
+		}
+
       return false;
-    }
+
+   }
 
   void
   glue_process_info::sync_thread_status (const std::vector<pid_t> &allocator)

@@ -24,11 +24,16 @@ namespace provallo
   attribute_definition::serialize (attribute_definition *serial) const
   {
 
+    if(serial == NULL)
+      return;
+      else
+      {
+          serial->_index = this->_index;
+          serial->_name = this->_name;
+          serial->_tag = this->_tag;
 
-    //serial->set_name(_name);
-    //serial->set_tag(_tag);
-    //serial->set_type(getType());
-    //serialize(serial);
+      }   
+    
   }
 
   attribute_definition::attribute_definition (
@@ -37,6 +42,15 @@ namespace provallo
     // Set internal data
     //_name = deserial->name();
     //_tag = deserial->tag();
+    if(deserial == NULL)
+      return;
+      else
+      {
+          this->_index = deserial->_index;
+          this->_name = deserial->_name;
+          this->_tag = deserial->_tag;
+
+      }
   }
 
   discrete_attribute::discrete_attribute (
@@ -85,13 +99,23 @@ namespace provallo
   discrete_attribute::serialize (attribute_definition *serial) const
   {
 
+
+    if(serial == NULL)
+      return;
+      else
+      {
+
+       if( serial==this) return;
+
+      } 
+
     //discrete_attribute* ensemble_buffer(serial->MutableExtension(discrete_attribute::child));
     //for(map<attribute_value, DiscValue>::const_iterator it = _name_map.begin() ; it != _name_map.end() ; ++it) {
     //    ensemble_buffer->add_names((*it).first);
     //ensemble_buffer->add_values((*it).second);
     //}
   }
-
+  
   void
   discrete_attribute::print (ostream &out) const
   {
@@ -149,11 +173,18 @@ namespace provallo
      for(int i = 0 ; i < deserial->type_size() ; ++i)
      _type.push_back(deserial->type(i));
      */
+     if(!deserial || !deserial->size())
+	     return;
+
+
   }
 
   void
   attribute_groups::serialize (attribute_groups *serial) const
   {
+    if(!serial)
+	    return;
+
     // Set groups of attributes
     /*
      for(uint32_t i = 0 ; i < _groups.size() ; ++i) {
@@ -354,6 +385,8 @@ namespace provallo
   void
   attribute_information::serialize (attribute_information *serial) const
   {
+	 if(!serial || serial==this) 
+		 return;
     // Put information on buffer
 #if 0
   for(uint32_t i = 0 ; i < _tag_map.size() ; ++i) {

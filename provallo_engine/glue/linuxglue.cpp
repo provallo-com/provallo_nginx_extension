@@ -101,14 +101,14 @@ namespace provallo
     std::string m_hook;
   };
 
-  linux_glue::linux_glue (const std::string &process_name)
+  linux_glue::linux_glue (const std::string &process_name) : _process_name (process_name)
   {
-    // TODO Auto-generated constructor stub
+    
   }
-
+  
   linux_glue::~linux_glue ()
   {
-    // TODO Auto-generated destructor stub
+    
   }
   bool
   linux_glue::hook ()
@@ -453,28 +453,29 @@ namespace provallo
     void
     set (int reg, uintptr_t val)
     {
-#if 0
-	   switch(reg) {
-       case R8:
-         m_new_regs.r8 = val;
-         break;
-       case R9:
-         m_new_regs.r9 = val;
-         break;
-       case RIP:
-         m_new_regs.rip = val;
-         break;
-       case RAX:
-         m_new_regs.rax = val;
-         break;
-       default:
-#else
-      //assert(0);//
-      return;
-      //}}
-#endif
-    }
+      switch(reg) {
+      case R8:
 
+        m_new_regs.r8 = val;
+        break;
+      case R9:
+
+        m_new_regs.r9 = val;
+        break;  
+      case RIP:
+        
+          m_new_regs.rip = val;
+          break;
+      case RAX:
+          
+            m_new_regs.rax = val;
+            break;  
+      default:
+        return; 
+
+      }
+
+    }
     bool
     perform ()
     {

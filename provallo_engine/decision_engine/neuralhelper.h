@@ -10,12 +10,13 @@
 #define DECISION_ENGINE_NEURALHELPER_H_
 #include <functional>
 #include <list>
-#include "matrix.h"
-#include "../util/csv_file.h"
-#include "../third_party/cifar10.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include "../util/csv_file.h"
+#include "../third_party/cifar10.h"
+#include "matrix.h"
+
 namespace provallo
 {
   using ActivationFun = std::function<float(float)>;
@@ -243,13 +244,25 @@ namespace provallo
     layer_backpropagation (const type_matrix & xnPartialDerivative, float step);
 
     type_matrix
-    layer_backdrop_invariant (const type_matrix & xnPartialDerivative){return xnPartialDerivative;}//FIXME:}
+    layer_backdrop_invariant (const type_matrix & xnPartialDerivative){return type_matrix::value_type(1.)-(xnPartialDerivative );}//FIXME:}
 
     type_matrix
-    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, float step){return xnPartialDerivative;}//FIXME:}
+    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, float step){return xnPartialDerivative*step;}//FIXME:}
 
     void
-    update_layer_weights (size_t minibatchSize = 1){}
+    update_layer_weights (size_t minibatchSize = 1)
+	{
+		if ( minibatchSize >0 ) {
+		 for (size_t i = 0; i < _weight_matrix.size (); ++i)
+		        {
+		          _weight_matrix[i] =_weight_matrix[i] + ( _sum_weight_variation[i] / type_matrix::value_type(minibatchSize)  );
+		          //_bias_matrix[i] = _bias_matrix[i] + _sum_bias_variation[i] / type_matrix::value_type(minibatchSize)  ;
+
+	
+		        }
+		}
+              
+	}
 
     void
     reset (){}
@@ -797,7 +810,7 @@ namespace provallo
 
               bool networkAreImported;
               bool useAverageForBatchlearning;
-
+              int descent;
               size_t _Experiments;
               size_t _LoopsPerExperiment;
               size_t _TeachingsPerLoop;

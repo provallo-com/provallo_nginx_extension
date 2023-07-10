@@ -184,6 +184,10 @@ namespace provallo
 		std::vector<size_t> &ix_arr,
 		column_sampler<ldouble_safe> &col_sampler, bool col_sampler_is_fresh)
 	{
+		//test full pass:
+		if (col_sampler_is_fresh)
+			col_sampler.prepare_full_pass();	
+		
 		this->vals_ext_box.reserve(model_params.max_depth + 3);
 		this->queue_ext_box.reserve(model_params.max_depth + 3);
 		this->vals_ext_box.push_back(0);

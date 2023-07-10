@@ -296,7 +296,7 @@ namespace provallo
 
   const std::string user_agent_srting = "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36)";
 
-  query_builder::query_builder(const std::string& url_path, const std::string& host_name) : _url_path(url_path),_user_agent(user_agent_srting) {}
+  query_builder::query_builder(const std::string& url_path, const std::string& host_name) : _url_path(url_path),_host_name(  host_name) ,_user_agent(user_agent_srting){}
 
   query_builder::query_builder(const std::string& url_path, const std::string& host_name, const std::string& auth_token) :
       _url_path(url_path), _host_name(host_name), _auth_token(auth_token),_user_agent(user_agent_srting) {}

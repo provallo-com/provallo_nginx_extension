@@ -273,7 +273,7 @@ namespace provallo
     
     // A classifier should be constructed from a data set and a parameter object
     classifier(const dataset &data, const parameter_base &parameters = none(),
-               const std::random_device &ra = std::random_device(), split_method_factory *factory = nullptr) : _attributes_info(data.getattributes()), _split_factory(factory == nullptr ? new split_method_factory(data, _rand) : factory), _rand(),_offsets(data.get_sorted_indices().size()), _name("classifier"), _data(data), _parameters(parameters)   
+               const std::random_device &ra = std::random_device(), split_method_factory *factory = nullptr) : _attributes_info(data.getattributes()), _split_factory(factory == nullptr ? new split_method_factory(data, ra) : factory), _rand(),_offsets(data.get_sorted_indices().size()), _name("classifier"), _data(data), _parameters(parameters)   
     {
       // Initialize the offsets
       _offsets.reserve(data.get_sorted_indices().size());
@@ -411,10 +411,18 @@ namespace provallo
                             bool &lacks_scoring_metric)
   {
    // auto saved_position = set_return_position(serialized_bytes);
+    //bool has_same_int_size = false;
+    //bool has_same_size_t_size = false;
+    //bool has_same_endianness = false;
+    //bool lacks_range_penalty = false;
+    if (sizeof (serialized_bytes)!=sizeof (itype))
+    {
+      is_compatible = false;
+      return;
+    }
 
-
-    is_isotree_model = false;
     is_compatible = false;
+    is_isotree_model = false;
     has_combined_objects = false;
     has_IsoForest = false;
     has_ExtIsoForest = false;
@@ -422,7 +430,14 @@ namespace provallo
     has_Indexer = false;
     has_metadata = false;
     size_metadata = 0;
+    has_same_int_size = false;
 
+    has_same_size_t_size = false;
+    has_same_endianness = false;
+    lacks_range_penalty = false;
+    lacks_scoring_metric = false;
+    //serialized_bytes  = serialized_bytes + 1; 
+    //bool has_same_int_size = false;
     //bool lacks_indexer = false;
 
     //bool has_same_double = false;
@@ -455,12 +470,22 @@ namespace provallo
                                             lacks_range_penalty,
                                             lacks_scoring_metric);
   }
-  void
+  inline void
   inspect_serialized_object(FILE *serialized_bytes, bool &is_isotree_model,
                             bool &is_compatible, bool &has_combined_objects,
                             bool &has_IsoForest, bool &has_ExtIsoForest,
                             bool &has_Imputer, bool &has_Indexer,
-                            bool &has_metadata, size_t &size_metadata);
+                            bool &has_metadata, size_t &size_metadata)
+                            {
+                                bool has_same_int_size, has_same_size_t_size, has_same_endianness,
+                                lacks_range_penalty, lacks_scoring_metric;
+                                inspect_serialized_object<FILE*>(serialized_bytes, is_isotree_model, is_compatible,
+                                has_combined_objects, has_IsoForest, has_ExtIsoForest, has_Imputer,
+                                has_Indexer, has_metadata, size_metadata, has_same_int_size,
+                                has_same_size_t_size, has_same_endianness, lacks_range_penalty,
+                                lacks_scoring_metric);
+
+                            }
   inline void
   inspect_serialized_object(std::istream &serialized_bytes,
                             bool &is_isotree_model, bool &is_compatible,
@@ -598,6 +623,36 @@ namespace provallo
                      const char *optional_metadata,
                      const size_t size_optional_metadata, char *out)
   {
+    //validate parameters and check if they are compatible
+    bool is_isotree_model, is_compatible, has_combined_objects, has_IsoForest,
+        has_ExtIsoForest, has_Imputer, has_Indexer, has_metadata;
+    size_t size_metadata;
+    inspect_serialized_object(out, is_isotree_model, is_compatible,
+                              has_combined_objects, has_IsoForest,
+                              has_ExtIsoForest, has_Imputer, has_Indexer,
+                              has_metadata, size_metadata);
+                              
+    if (is_isotree_model && is_compatible && has_combined_objects &&
+        has_IsoForest && has_ExtIsoForest && has_Imputer && has_Indexer)
+    {
+      serialize_IsoForest(*model, out);
+      serialize_ExtIsoForest(*model_ext, out);
+      serialize_Imputer(*imputer, out);
+      serialize_Indexer(*indexer, out);
+    }
+    else
+    {
+      throw std::runtime_error("Serialized object is not compatible with "
+                               "this version of IsoTree.");
+    }
+
+    if (has_metadata)
+    {
+      std::memcpy(out + size_metadata, optional_metadata,
+                  size_optional_metadata);
+    }
+
+    return;
   }
   inline void
   serialize_combined(const iso_forest *model, const ExtIsoForest *model_ext,
@@ -605,6 +660,36 @@ namespace provallo
                      const char *optional_metadata,
                      const size_t size_optional_metadata, FILE *out)
   {
+      //validate parameters and check if they are compatible
+    bool is_isotree_model, is_compatible, has_combined_objects, has_IsoForest,
+        has_ExtIsoForest, has_Imputer, has_Indexer, has_metadata; 
+    size_t size_metadata;
+    inspect_serialized_object(out, is_isotree_model, is_compatible,
+                              has_combined_objects, has_IsoForest,
+                              has_ExtIsoForest, has_Imputer, has_Indexer,
+                              has_metadata, size_metadata);
+    //validate parameters and check if they are compatible
+    if (is_isotree_model && is_compatible && has_combined_objects &&
+        has_IsoForest && has_ExtIsoForest && has_Imputer && has_Indexer)
+    {
+      serialize_IsoForest(*model, out);
+      serialize_ExtIsoForest(*model_ext, out);
+      serialize_Imputer(*imputer, out);
+      serialize_Indexer(*indexer, out);
+    }
+    else
+    {
+      throw std::runtime_error("Serialized object is not compatible with "
+                               "this version of IsoTree.");
+    }   
+    if (has_metadata)
+    {
+      std::memcpy(out + size_metadata, optional_metadata,
+                  size_optional_metadata);
+    }
+
+    return;
+    
   }
   inline void
   serialize_combined(const iso_forest *model, const ExtIsoForest *model_ext,
@@ -612,6 +697,27 @@ namespace provallo
                      const char *optional_metadata,
                      const size_t size_optional_metadata, std::ostream &out)
   {
+
+      if (model != nullptr && model_ext != nullptr && imputer != nullptr &&
+          indexer != nullptr)
+      {
+        serialize_IsoForest(*model, out);
+        serialize_ExtIsoForest(*model_ext, out);
+        serialize_Imputer(*imputer, out);
+        serialize_Indexer(*indexer, out);
+      }
+      else
+      {
+        throw std::runtime_error(
+            "Error: all four models must be non-null to serialize them "
+            "together.");
+      } 
+      if ( optional_metadata != nullptr && size_optional_metadata > 0)
+      {
+        out.write(optional_metadata, size_optional_metadata);
+      } 
+      return;
+
   }
   inline std::string
   serialize_combined(const iso_forest *model, const ExtIsoForest *model_ext,
@@ -619,9 +725,29 @@ namespace provallo
                      const char *optional_metadata,
                      const size_t size_optional_metadata)
   {
-    return "";
-  }
+    std::string out;
+    if(model != nullptr && model_ext != nullptr && imputer != nullptr && indexer != nullptr)    
+    {
+      out+=serialize_IsoForest(*model);
+      out+=serialize_ExtIsoForest(*model_ext);
+      out+=serialize_Imputer(*imputer);
+      out+=serialize_Indexer(*indexer);
+    }
+    else
+    {
+      throw std::runtime_error("Error: all four models must be non-null to serialize them together.");
+    }
 
+    if(optional_metadata != nullptr && size_optional_metadata > 0)
+    {
+      out.append(optional_metadata, size_optional_metadata);
+    }
+    return out;
+
+  } 
+
+  
+  //c-style
   inline void
   serialize_combined(const char *serialized_model,
                      const char *serialized_model_ext,
@@ -630,6 +756,16 @@ namespace provallo
                      const char *optional_metadata,
                      const size_t size_optional_metadata, FILE *out)
   {
+
+      fwrite(serialized_model, sizeof(char), strlen(serialized_model), out);    
+      fwrite(serialized_model_ext, sizeof(char), strlen(serialized_model_ext), out);
+      fwrite(serialized_imputer, sizeof(char), strlen(serialized_imputer), out);
+      fwrite(serialized_indexer, sizeof(char), strlen(serialized_indexer), out);
+      if (optional_metadata != nullptr && size_optional_metadata > 0)
+      {
+        fwrite(optional_metadata, sizeof(char), size_optional_metadata, out);
+      }
+      return;
   }
   inline void
   serialize_combined(const char *serialized_model,
@@ -639,6 +775,16 @@ namespace provallo
                      const char *optional_metadata,
                      const size_t size_optional_metadata, std::ostream &out)
   {
+      
+        out.write(serialized_model, strlen(serialized_model));
+        out.write(serialized_model_ext, strlen(serialized_model_ext));
+        out.write(serialized_imputer, strlen(serialized_imputer));
+        out.write(serialized_indexer, strlen(serialized_indexer));
+        if (optional_metadata != nullptr && size_optional_metadata > 0)
+        {
+          out.write(optional_metadata, size_optional_metadata);
+        }
+        return; 
   }
   inline std::string
   serialize_combined(const char *serialized_model = nullptr,
@@ -650,6 +796,21 @@ namespace provallo
   {
 
     std::string ret = "";
+
+    if(serialized_model != nullptr)
+      ret += std::string(serialized_model);
+    if(serialized_model_ext != nullptr)
+      ret += std::string(serialized_model_ext);
+    if(serialized_imputer != nullptr)
+      ret += std::string(serialized_imputer);
+    if(serialized_indexer != nullptr)
+      ret += std::string(serialized_indexer);
+    if(optional_metadata != nullptr && size_optional_metadata > 0   )
+      ret += std::string(optional_metadata);
+
+
+    
+
     return ret;
   }
 
@@ -658,6 +819,30 @@ namespace provallo
                        ExtIsoForest *model_ext, Imputer *imputer,
                        TreesIndexer *indexer, char *optional_metadata)
   {
+    signal_switcher ss;
+    //read the watermark
+    //auto pos_watermark = get_return_position(in); 
+
+    //read the model
+    if ( model != nullptr && model_ext != nullptr && imputer != nullptr &&
+         indexer != nullptr )
+      { 
+        
+
+        //read the optional metadata
+        if ( optional_metadata != nullptr  && in.good()  )
+        {
+          in.read(optional_metadata, sizeof(char) * 4);
+        }
+         
+        
+
+      }
+    else
+      throw std::runtime_error(
+          "One of the model, model_ext, imputer or indexer is null" +         
+          std::string(__FILE__) + ":" + std::to_string(__LINE__));    
+
   }
 
   inline void
@@ -665,6 +850,46 @@ namespace provallo
                        Imputer *imputer, TreesIndexer *indexer,
                        char *optional_metadata)
   {
+
+    //    std::cout << "deserializing combined" << std::endl;
+    if ( in == nullptr )
+      throw std::runtime_error("Input stream is null");
+    if ( model == nullptr )
+      throw std::runtime_error("Model pointer is null");  
+    if ( model_ext == nullptr )
+      throw std::runtime_error("Model ext pointer is null");  
+    if ( imputer == nullptr )
+      throw std::runtime_error("Imputer pointer is null");
+    if ( indexer == nullptr )
+      throw std::runtime_error("Indexer pointer is null");
+      
+    signal_switcher ss;
+    //read the watermark
+    //auto pos_watermark = get_return_position(in);
+    //std::cout << "pos watermark: " << pos_watermark << std::endl;
+    //read the model
+    deserialize_IsoForest(*model, in);
+    //std::cout << "pos watermark: " << pos_watermark << std::endl;
+    //read the model ext
+    deserialize_ExtIsoForest(*model_ext, in);
+    //std::cout << "pos watermark: " << pos_watermark << std::endl;
+    //read the imputer
+    deserialize_Imputer(*imputer, in);
+    //std::cout << "pos watermark: " << pos_watermark << std::endl;
+    //read the indexer
+    deserialize_Indexer(*indexer, "");
+    //std::cout << "pos watermark: " << pos_watermark << std::endl;
+    //read the optional metadata
+    if ( optional_metadata != nullptr )
+      {
+        //std::cout << "reading optional metadata" << std::endl;
+        //std::cout << "pos watermark: " << pos_watermark << std::endl;
+        //std::cout << "pos: " << pos << std::endl;
+        //std::cout << "size: " << size << std::endl;
+
+
+        }
+
   }
 
   inline void
@@ -673,6 +898,125 @@ namespace provallo
                        TreesIndexer *indexer = nullptr,
                        char *optional_metadata = nullptr);
 
+
+
+  
+  //serialize_Imputer
+  inline void serialize_Imputer(const Imputer &imputer, std::ostream &out)
+  {
+    signal_switcher ss;
+    //write the watermark
+    //auto pos_watermark = get_return_position(out);
+    //write the model
+
+    out<<"Imputer tree" <<std::to_string(imputer.imputer_tree.size())<<std::endl;
+
+    for ( auto it = imputer.imputer_tree.begin(); it != imputer.imputer_tree.end();
+          ++it )
+      {
+          for(auto  it2=it->begin();it2!=it->end();++it2)
+            {
+              for ( auto it3 = it2->cat_sum.begin(); it3 != it2->cat_sum.end(); ++it3 )
+                out<<(*it3) <<std::endl;  
+              for ( auto it3 = it2->cat_weight.begin(); it3 != it2->cat_weight.end(); ++it3 )
+                out<<(*it3) <<std::endl;
+              for ( auto it3 = it2->num_sum.begin(); it3 != it2->num_sum.end(); ++it3 )
+                out<<(*it3) <<std::endl;
+              for ( auto it3 = it2->num_weight.begin(); it3 != it2->num_weight.end(); ++it3 )
+                out<<(*it3) <<std::endl;
+            }//it2
+       }//it
+  }//serialize_Imputer
+
+  //serialize Indexer
+
+  inline void serialize_Indexer(const TreesIndexer &indexer, std::ostream &out)
+  {
+    signal_switcher ss;
+    //write the watermark
+    //auto pos_watermark = get_return_position(out);
+    //write the model
+    out<<"indices"<<" : " <<indexer.indices.size() << std::endl;
+    size_t index=0,index2=0;
+    for ( auto it =  indexer.indices.begin(); it != indexer.indices.end(); it++)
+    {
+          out <<std::string("indexer : ") + std::to_string(index++) << std::endl;
+          //terminal nodes
+          out <<std::string("n_terminal_nodes : ") + std::to_string((*it).n_terminal) << std::endl;
+
+          //node_distances
+          out <<std::string("node_distances : ")<< std::endl; ;
+
+          for ( auto itt = (*it).node_distances.begin(); itt != (*it).node_distances.end(); itt++)
+          {
+              out << std::to_string(++index2) << ":" << std::to_string(*itt) << std::endl;
+          } 
+
+          out<<std::string("node_depths : ")<<std::endl;
+          index2=0;
+          //node_depths
+          for ( auto itt = (*it).node_depths.begin(); itt != (*it).node_depths.end(); itt++)
+          {
+             out << std::to_string(++index2) << ":" << std::to_string(*itt) << std::endl;
+          } 
+          //reference_points
+          out<<std::string("reference_points : ")<<std::endl ;
+
+          for (  auto itt = (*it).reference_points.begin(); itt != (*it).reference_points.end(); ++itt)
+          {
+            out << std::to_string(++index2) << ":" << std::to_string(*itt) << std::endl;          
+          }
+    
+          //reference_indptr:
+          for ( auto itt = (*it).reference_indptr.begin(); itt != (*it).reference_indptr.end(); ++itt)
+          {
+            out <<std::string("reference_indptr : ") + std::to_string(*itt) << std::endl;
+          }
+          //reference_mapping
+          for ( auto itt = (*it).reference_mapping.begin(); itt != (*it).reference_mapping.end(); ++itt)
+          {
+            out <<std::string("reference_mapping : ") + std::to_string(*itt) << std::endl;
+          }
+          //terminal_node_mappings
+          for ( auto itt = (*it).terminal_node_mappings.begin(); itt != (*it).terminal_node_mappings.end(); ++itt)
+          {
+            out <<std::string("terminal_node_mappings : ") + std::to_string(*itt) << std::endl;
+          }
+
+    }
+    out<<std::endl;
+    //write the optional metadata
+    //write the watermark
+
+    //write the optional metadata
+    //write the watermark
+    //auto pos = get_return_position(out);
+    //auto size = pos - pos_watermark;
+    //out.seekp(pos_watermark);
+    //out.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    //out.seekp(pos);
+    return;
+  }
+
+  inline void serialize_Imputer(const Imputer &imputer, FILE *out)
+  {
+    signal_switcher ss;
+    //write the watermark
+    //auto pos_watermark = get_return_position(out);
+    //write the model
+ 
+    fwrite(&imputer, sizeof(Imputer), 1, out);
+
+     //write the optional metadata
+    //write the watermark
+    //auto pos = get_return_position(out);
+    //auto size = pos - pos_watermark;
+    //out.seekp(pos_watermark);
+    //out.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    //out.seekp(pos);
+    return;
+  } 
+  
   class isolation_forest /*: public classifier*/
   {
   public:
@@ -835,7 +1179,15 @@ namespace provallo
           //return predict( X.data(), X.rows(), X.cols(), cat.data(), cat.rows(), cat.cols());    }
         
         //for now ignore:
-          return predict(X);
+        matrix<double> y(cat.rows(), cat.cols());
+
+        for ( size_t i = 0; i < cat.rows(); i++) {
+          for ( size_t j = 0; j < cat.cols(); j++)
+            y(i,j) = (double) cat(i,j);
+        }
+        y =  X+y;
+
+        return predict(y.array(), y.rows(),true );
     }
 
     std::vector<double>
@@ -847,9 +1199,10 @@ namespace provallo
     predict_distance(double numeric_data[], int categ_data[], size_t nrows,
                      bool as_kernel, bool assume_full_distr, bool standardize,
                      bool triangular, double dist_matrix[]);
-
+    //sparse_ix version. 
+    //TODO: check if it works insead of int Xc_indptr[] and Xc_ind[]
     void
-    predict_distance(double Xc[], int Xc_ind[], int Xc_indptr[],
+    predict_distance(double Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
                      int categ_data[], size_t nrows, bool as_kernel,
                      bool assume_full_distr, bool standardize, bool triangular,
                      double dist_matrix[]);
@@ -884,7 +1237,7 @@ namespace provallo
 
     void
     predict_distance_to_ref_points(double numeric_data[], int categ_data[],
-                                   double Xc[], int Xc_ind[], int Xc_indptr[],
+                                   double Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
                                    size_t nrows, bool is_col_major,
                                    size_t ld_numeric, size_t ld_categ,
                                    bool as_kernel, bool standardize,
@@ -2180,12 +2533,12 @@ namespace provallo
     std::vector<TreeNodeBase *> _children;
     // Attribute tag
     const split_method *_split_method;
-
+    class_dist _distribution;
     friend class Tree;
 
   public:
     // Construct from parent
-    TreeNodeBase(const TreeNodeBase *parent) : _parent(parent), _split_method(0)
+    TreeNodeBase(const TreeNodeBase *parent) : _parent(parent), _split_method(0) 
     {
     }
     // Node constructor (from a data set)
@@ -2193,7 +2546,9 @@ namespace provallo
                                                        0) : _parent(parent), _children(0), _split_method(split_method->clone())
     {
     }
-
+    TreeNodeBase(const split_method *split_method, const TreeNodeBase *parent , const class_dist& dist) : _parent(parent), _children(0), _split_method(split_method->clone()),_distribution(dist)
+    {
+    } 
     // Function to print node information
     void
     print(std::ostream &out, const attribute_information &information,
@@ -2258,6 +2613,47 @@ namespace provallo
           return false;
       return _compare(other);
     }
+    const class_dist&  get_distribution() const
+    {
+      return _distribution;
+    } 
+    void set_distribution(const class_dist& dist)
+    {
+      _distribution = dist;
+    } 
+    void set_parent(const TreeNodeBase* parent)
+    {
+      _parent = parent;
+    } 
+    const TreeNodeBase* get_parent() const
+    {
+      return _parent;
+    } 
+    // Get number of children
+    size_t
+    getNumChildren() const
+    {
+      return _children.size();
+    }
+
+    void set_children(const std::vector<TreeNodeBase*>& children)
+    {
+      _children = children;
+    } 
+
+    const std::vector<TreeNodeBase*>& get_children() const
+    {
+      return _children;
+    } 
+    // Get child
+    const TreeNodeBase *
+    getChild(size_t index) const
+    {
+      if(index < _children.size()  )
+         return _children[index];
+      
+      return nullptr;
+    } 
 
     // Node builder
     static TreeNodeBase *
@@ -2278,6 +2674,7 @@ namespace provallo
   class TreeLightNode : public TreeNodeBase
   {
     friend class Tree;
+    friend class TreeNodeBase;
 
   public:
     // Construct from parent
@@ -2286,40 +2683,56 @@ namespace provallo
     }
     // Node constructor (from a data set)
     TreeLightNode(const split_method *split_method,
-                  const class_dist &distribution, const TreeNodeBase *parent = 0) : TreeNodeBase(split_method, parent)
+                  const class_dist &distribution, const TreeNodeBase *parent = 0) : 
+	    TreeNodeBase(split_method, parent,distribution)
     {
-    }
-    const class_dist &get_distribution() const
-    {
-      return get_distribution();
     }
     NodeType
     get_type() const
     {
       return LIGHT_NODE;
     }
+    virtual ~TreeLightNode(){}
 
   protected:
     void
     _print(std::ostream &out, const attribute_information &information) const;
 
-    bool
+     bool
     _compare(const TreeNodeBase &other) const
     {
-      return true;
+      return (other.getType() == LIGHT_NODE &&
+             get_distribution() == other.get_distribution()&& this->get_split_method().get_type() == other.get_split_method().get_type() );
     }
 
     void
     serialize(TreeNodeBase *node) const
     {
+      if(node->getType() == LIGHT_NODE && _split_method->get_type() == node->get_split_method().get_type()   )  
+        {
+          //no need to change split method if it's the same.
+
+          node->set_distribution(this->_distribution);
+          node->set_parent(this->_parent);
+          node->set_children(_children) ;
+
+        }
     }
 
     void
     deserialize(const TreeNodeBase *node)
     {
+      if(node->getType() == LIGHT_NODE && _split_method->get_type() == node->get_split_method().get_type() )
+        {
+          this->_children = node->get_children();
+          this->_parent = node->get_parent();
+          this->_distribution = node->get_distribution();
+       
+
+        } 
+        
     }
 
-    virtual ~TreeLightNode(){};
   };
 
   // A leaf in the tree
@@ -2588,7 +3001,12 @@ namespace provallo
     serialize(classifier *serial) const
     {
       // Serialize tree
-
+      if(serial->get_type()==get_type())
+      {
+        tree_classifier *tree_serial = static_cast<tree_classifier *>(serial);
+        tree_serial->_tree= _tree;
+        
+      }
       //_tree.serialize (serial->_tree._root);
 
       // Serialize classifier
@@ -2603,7 +3021,7 @@ namespace provallo
     tree_classifier(const dataset &data, const parameter_base &parameters,
                     const std::random_device &random, std::ostream& out, split_method_factory *factory) : classifier(data, parameters, random, factory)
     {
-
+	out.flush();
     }
     tree_classifier(const classifier *deserial);
     Tree &get_tree()
@@ -3087,6 +3505,8 @@ namespace provallo
     const Float &
     getLikelihood(uint32_t attr, uint32_t class_value, uint32_t branch) const;
 
+    void init();// called from constructor. 
+
   public:
     // No parameters for now
     bayesian(const dataset &data, const parameter_base &parameters = none(),
@@ -3152,7 +3572,12 @@ namespace provallo
     uint32_t attrs_number(splitFactory().getSize());
     // Create container of class votes
     class_dist votes(class_number);
+    ssize_t distance = std::distance(begin, end);
+    if( distance ==0 ) 
+        {
+		return votes;
 
+	}
     // Loop over each class value
     for (uint32_t i = 0; i < class_number; ++i)
     {
@@ -4321,7 +4746,7 @@ namespace provallo
     classify(InputIterator begin, InputIterator end) const
     {
       return ensemble_classifier::classify(begin, end);
-    };
+    }
 
 
     const adaboost_param& get_parameters() const
@@ -4508,7 +4933,7 @@ namespace provallo
     classify(InputIterator begin, InputIterator end) const
     {
       return tree_classifier::classify(begin, end);
-    };
+    }
 
     // Get distribution of outcomes
     template <class InputIterator>
@@ -4747,7 +5172,7 @@ namespace provallo
     classify(InputIterator begin, InputIterator end) const
     {
       return ensemble_classifier::classify(begin, end);
-    };
+    }
 
     // Get importance map
     std::map<std::string, Float>
@@ -4867,6 +5292,8 @@ namespace provallo
     error_copy = &_error;
     last_raw = &_raw_importance;
     _last_oob = &_oob_error;
+    static std::ostream &out2 = out;
+
     for (uint32_t i = 0; i < n; ++i)
     {
 
@@ -4874,7 +5301,7 @@ namespace provallo
       // MathUtils::Random local_random(getRandom());
       // classifier* local_classifier = new RandomClassifier(local_data, local_parameters->getClassifierParameters(), local_random, out, _split_factory);
       train_loadthreads.push_back(
-          std::thread([i](attribute_tag target_tag = last_target)
+          std::thread([i]()
                       {
                   		  std::vector<uint32_t> oob_indices;
 		                    const split_method_factory& _split_factory = *_last_factory;
@@ -4886,9 +5313,10 @@ namespace provallo
 		                    std::vector<Float>& _raw_importance = std::ref(*last_raw);
 		                    std::vector<class_dist>& global_oob_predictions= std::ref(*gdist);
 		                    Float& _oob_error = *_last_oob;
-		                    std::ostream& out=std::cout;
+		                    std::ostream& out=out2;
 		                    clock_t c =clock();
 		                    std::random_device d;
+				    attribute_tag target_tag = last_target;
                         const size_t ratio =  ((Float)data.size () * (Float)_classifiers.size ());
 
 
@@ -4906,7 +5334,7 @@ namespace provallo
 		  out << "[+] threaded load "<<::gettid()<<std::endl;
 		  classifier* new_classifier = new RandomClassifier (
 	  	      *random_set.first, local_parameters->getParameters (),
-		      std::random_device(),  (split_method_factory*)_split_factory);
+		      std::random_device(),  (split_method_factory*)_last_factory);
 
 	  	  clock_t vla = clock();
 	  	  out << "[+] Total Tree construction CPU time elapsed in s: "
@@ -4962,7 +5390,7 @@ namespace provallo
    			  std::lock_guard<std::recursive_mutex> guard(_mutex);
 
 		      size_t im_size=_raw_importance.size();
-		      for (uint32_t j = 0; j < _raw_importance.size (); j++)
+		      for (uint32_t j = 0; j < im_size ; j++)
 		    {
 
 		      _raw_importance[j] += class_importance[j] / (Float)_classifiers.size ();
@@ -5261,7 +5689,6 @@ namespace provallo
       //classifiers
 
 
-
 // utility: print classifier summary()
   void
   print_classifier_summary(const std::string &data_set_name,
@@ -5271,7 +5698,7 @@ namespace provallo
   template <class Classifier>
   inline void
   train_and_test(const std::string &class_name, dataset &train_data,
-                 const dataset &test_data , parameter_base &params  = provallo::none())
+                 const dataset &test_data , const parameter_base &params  = provallo::none() )
   {
     // measure :
     auto c_start = clock();

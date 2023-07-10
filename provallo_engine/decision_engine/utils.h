@@ -50,8 +50,19 @@
 #define hashed_set std::unordered_set
 #define hashed_map std::unordered_map
 #define is_na_or_inf(x) (std::isnan(x) || std::isinf(x))
+
+
+//pendantic mode
+#define UNDEF_REFERENCE(x)   ptrdiff_t var_unreference  = (ptrdiff_t) (&(x)) ; var_unreference++;
+#define UNDEF_REFERENCE2(x)  var_unreference = (ptrdiff_t) (&(x)); var_unreference++;
+
+
 #define set_return_position(x)  NULL
 #define return_to_position(x,y)
+
+
+
+
 namespace provallo
 {
 #if SIZE_MAX == UINT32_MAX /* 32-bit systems */
@@ -159,15 +170,75 @@ namespace provallo
     ImputeNode () :
 	parent (0)
     {
-    }
-    ;
-
+    } // default constructor
     explicit
-    ImputeNode (const size_t &parent_) :
+    ImputeNode (const size_t &parent_) : num_sum(), num_weight(), cat_sum(),cat_weight(),
 	parent (parent_)
     {
     }
-    ;
+    // copy constructor
+	ImputeNode (const ImputeNode &other) :
+	num_sum (other.num_sum),
+	num_weight (other.num_weight),
+	cat_sum (other.cat_sum),
+	cat_weight (other.cat_weight),
+		parent (other.parent)
+
+	{
+	}
+	// move constructor
+	ImputeNode (ImputeNode &&other) :
+	num_sum (std::move (other.num_sum)),
+	num_weight (std::move (other.num_weight)),
+	cat_sum (std::move (other.cat_sum)),
+
+	cat_weight (std::move (other.cat_weight)),
+		parent (other.parent)
+	{
+	}
+	// copy assignment
+	ImputeNode &
+	operator= (const ImputeNode &other)
+	{
+	  if (this != &other)
+	    {
+	      parent = other.parent;
+	      num_sum = other.num_sum;
+	      num_weight = other.num_weight;
+	      cat_sum = other.cat_sum;
+	      cat_weight = other.cat_weight;
+	    }
+	  return *this;
+	}
+	// move assignment
+	ImputeNode &
+	operator= (ImputeNode &&other)
+	{
+	  if (this != &other)
+	    {
+	      parent = other.parent;
+	      num_sum = std::move (other.num_sum);
+	      num_weight = std::move (other.num_weight);
+	      cat_sum = std::move (other.cat_sum);
+	      cat_weight = std::move (other.cat_weight);
+	    }
+	  return *this;
+	}
+	// destructor
+	~ImputeNode ()
+	{
+	}
+	// swap
+	friend void
+	swap (ImputeNode &lhs, ImputeNode &rhs)
+	{
+	  std::swap (lhs.parent, rhs.parent);
+	  std::swap (lhs.num_sum, rhs.num_sum);
+	  std::swap (lhs.num_weight, rhs.num_weight);
+	  std::swap (lhs.cat_sum, rhs.cat_sum);
+	  std::swap (lhs.cat_weight, rhs.cat_weight);
+	}
+
 
   } ImputeNode; /* this is for each tree node */
 
@@ -565,7 +636,7 @@ namespace provallo
 	      m += (xval - m) / (double) cnt;
 	    }
 	}
-
+		
       return m;
     }
 
@@ -598,11 +669,25 @@ namespace provallo
 	      s = std::fma (w_this, (xval - m) * (xval - m_prev), s);
 	      m_prev = m;
 	    }
-	}
+		//just reference missing_action.
+		//
+	
 
-      x_mean = m;
-      x_sd = std::sqrt ((ldouble_safe) s / (ldouble_safe) cnt);
-    }
+		} // end of for loop
+
+		if (missing_action == Fail	)
+		{
+		  x_mean = m;
+		  x_sd = std::sqrt (s / cnt);
+		
+		}
+		else
+		{
+		  x_mean = m;
+		  x_sd = std::sqrt (s / cnt);
+		}		
+
+	}
 
   template<class real_t_, class mapping>
     double
@@ -771,6 +856,13 @@ namespace provallo
 		       std::vector<ImputeNode> &imputer_tree, size_t curr_depth,
 		       size_t min_imp_obs)
     {
+		  
+	  UNDEF_REFERENCE(model_params)
+	  UNDEF_REFERENCE2(model_params)
+	  UNDEF_REFERENCE2(min_imp_obs)
+
+	  
+
       double wsum = 0.;
       bool has_weights = workspace.weights_arr.size ()
 	  || workspace.weights_map.size ();
@@ -782,6 +874,11 @@ namespace provallo
 						    curr_depth,
 						    workspace.weights_arr,
 						    workspace.weights_map);
+
+      
+      
+
+      imputer_tree.shrink_to_fit();
 
       imputer.num_sum.resize (input_data.ncols_numeric, wsum );
       imputer.num_weight.resize (input_data.ncols_numeric, wsum);
@@ -1000,6 +1097,10 @@ namespace provallo
 			  ModelParams &model_params, double *ranges,
 			  double *saved_xmin, double *saved_xmax)
     {
+	  
+	  UNDEF_REFERENCE(model_params)
+	  UNDEF_REFERENCE2(model_params)
+
       workspace.col_sampler.prepare_full_pass ();
       while (workspace.col_sampler.sample_col (workspace.col_chosen))
 	{

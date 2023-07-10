@@ -183,32 +183,32 @@ namespace provallo
     std::vector<struct route> result;
     for (std::string line, temp; getline (file, line);)
       {
-	std::stringstream iss (line);
-	getline (iss, temp, '\t');
-	if (temp == "Iface")
-	  {
-	    continue;
-	  }
-	struct route rt;
-	rt.iface = temp;
-	getline (iss, rt.destination, '\t');
-	getline (iss, rt.gateway, '\t');
-	getline (iss, rt.flag, '\t');
+	    std::stringstream iss (line);
+	    getline (iss, temp, '\t');
+	    if (temp == "Iface")
+	    {
+    	    continue;
+  	  }
+	    struct route rt;
+	    rt.iface = temp;
+	    getline (iss, rt.destination, '\t');
+	    getline (iss, rt.gateway, '\t');
+	    getline (iss, rt.flag, '\t');
 
-	getline (iss, rt.refcnt, '\t');
-	getline (iss, rt.use, '\t');
-	getline (iss, rt.metric, '\t');
-	getline (iss, rt.mask, '\t');
-	getline (iss, rt.mtu, '\t');
-	getline (iss, rt.window, '\t');
-	getline (iss, rt.irtt, '\t');
+    	getline (iss, rt.refcnt, '\t');
+	    getline (iss, rt.use, '\t');
+	    getline (iss, rt.metric, '\t');
+    	getline (iss, rt.mask, '\t');
+	    getline (iss, rt.mtu, '\t');
+	    getline (iss, rt.window, '\t');
+	    getline (iss, rt.irtt, '\t');
 
 	// convertToHumanReadableIp(rt.destination);
 	// convertToHumanReadableIp(rt.gateway);
 	// convertToHumanReadableIp(rt.mask);
 
-	result.push_back (rt);
-      }
+	    result.push_back (rt);
+    }
 
     file.open ("/proc/net/arp");
 
@@ -219,15 +219,19 @@ namespace provallo
 	std::stringstream iss (line);
 	iss << ip_addr_arp << hw_type_arp << flags_arp << hw_addr_arp
 	    << mask_arp << device_arp;
-	for (auto data : result)
+	for (auto& data : result)
 	  {
 	    std::cout << ip_addr_arp << hw_type_arp << flags_arp << hw_addr_arp
 		<< mask_arp << device_arp;
 	    std::cout << data.iface << data.destination << data.gateway;
-
-	  }
+      if (device_arp==dev ) {
+         std::cout << "found" << std::endl;
       }
+	  }// for line in arp 
+      }// for line in route
+
     return ret;
+    
   }
   interface_info::interface_info ()
   {

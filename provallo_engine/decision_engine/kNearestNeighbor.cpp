@@ -41,13 +41,15 @@ namespace provallo
     for (size_t currentExample = 0; currentExample < results->rows;
 	currentExample++)
       {
-	pair<double, int> resultsForExample[results->cols];
+	      std::vector<std::pair<double, int>> resultsForExample;
+	      resultsForExample.resize(results->cols);
+
 
 	for (size_t j = 0; j < results->cols; j++)
 	  resultsForExample[j] = make_pair (results->pos (currentExample, j),
 					    j);
 
-	std::sort (resultsForExample, resultsForExample + results->cols,
+	std::sort (resultsForExample.begin(), resultsForExample.end(),
 		   greater<pair<double, int> > ());
 
 	for (size_t j = 0; j < n; j++)

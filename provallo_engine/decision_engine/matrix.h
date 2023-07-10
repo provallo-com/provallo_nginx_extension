@@ -7,6 +7,8 @@
 
 #ifndef DECISION_ENGINE_MATRIX_H_
 #define DECISION_ENGINE_MATRIX_H_
+
+#include <iostream>
 #include <memory>
 #include <numeric>
 #include <algorithm>
@@ -17,6 +19,14 @@
 #include <random>
 #include <cstdlib>
 #include <complex>
+#include <cmath>
+#include <functional>
+#include <type_traits>
+#include <iterator>
+#include <initializer_list>
+#include <utility>
+#include <string>
+#include <sstream>
 // simple matrix and NRC/NRCPP/eigen compat matrix.
   
 namespace provallo
@@ -1205,6 +1215,20 @@ namespace provallo
                    std::minus<T>());
     return result;
   }
+
+  //for x-matrix  x = 1-x
+
+  template <class T>
+    const matrix<T> operator-(const T &lval,const matrix<T>& rval) 
+    {
+      const size_t size1 = rval.size1(), size2 = rval.size2();
+      matrix<T> ret(rval);
+      for (size_t i = 0; i < size1; i++)
+        for (size_t j = 0; j <  size2 ; ++j)
+          ret(i, j) = lval - ret(i, j) ;
+
+      return ret;
+    }
 
   template <class T>
   std::ostream &
@@ -2551,7 +2575,5 @@ namespace provallo
     return ret;
   } // end operator/    
  
-
-} /* namespace provallo */
-
+} /* namespace provallo */ ;
 #endif /* DECISION_ENGINE_MATRIX_H_ */

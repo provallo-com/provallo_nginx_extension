@@ -9,7 +9,7 @@
 #include <strstream>
 #include <iomanip>
 #include <sys/sysinfo.h>
-
+#include <sstream>
 namespace provallo
 {
 
@@ -144,7 +144,13 @@ namespace provallo
   mini_dal::alternate_ip (const ip_address &src)
   {
 
-    std::vector<ip_address> ret_Cpy;
+    std::vector<ip_address> ret_Cpy ;
+    //select all other mapped ip addresses from the database . 
+    //only relevant for turn service 
+    //
+
+    ret_Cpy.push_back(src);
+   
     return ret_Cpy;
 
   }

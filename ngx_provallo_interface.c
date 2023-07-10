@@ -14,179 +14,284 @@
 
 #include "provallo_engine/helpers/nginx_helper.h"
 
+static ngx_int_t ngx_http_provallo_nginx_handler(ngx_http_request_t *r);
 
+typedef struct {
 
-//taken from hello world module sample as a stub:
+    ngx_int_t                  status;
 
-static char *ngx_provallo_interface(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static ngx_int_t ngx_provallo_interface_handler(ngx_http_request_t *r);
+    ngx_http_complex_value_t  *text;
 
-//since we're running on the process context, we can use the global variables and struct instances.
-//we can also use the ngx_log_error function to log to the error log.
-//we can also use the ngx_cycle->log to log to the error log.
-#ifdef ANALYZE_VARS
-
-extern  ngx_cycle_t *ngx_cycle;
-extern  ngx_module_t ngx_provallo_interface_module;
-extern  ngx_http_request_t *ngx_http_request;
-extern  ngx_http_core_main_conf_t *ngx_http_core_main_conf;
-extern  ngx_http_connection_t *ngx_http_connection;
-extern  ngx_http_core_srv_conf_t *ngx_http_core_srv_conf;
-extern  ngx_http_core_loc_conf_t *ngx_http_core_loc_conf;
-extern  ngx_http_upstream_srv_conf_t *ngx_http_upstream_srv_conf;
-extern  ngx_http_upstream_main_conf_t *ngx_http_upstream_main_conf;
-extern  ngx_http_upstream_t *ngx_http_upstream;
-
-extern  ngx_http_upstream_conf_t *ngx_http_upstream_conf;
-extern  ngx_http_upstream_server_t *ngx_http_upstream_server;
-extern  ngx_http_upstream_loc_conf_t *ngx_http_upstream_loc_conf;
-extern  ngx_http_upstream_rr_peer_t *ngx_http_upstream_rr_peer;
-extern  ngx_http_upstream_rr_peers_t *ngx_http_upstream_rr_peers;
-extern  ngx_http_upstream_rr_peer_data_t *ngx_http_upstream_rr_peer_data;
-extern  ngx_http_upstream_rr_peer_t *ngx_http_upstream_rr_peer;
-
-#endif
-extern ngx_module_t ngx_provallo_interface_module;
+} ngx_http_provallo_nginx_loc_conf_t;
 
 
 
-void start_provallo_interface()
-{
-     //init detection engine    
 
-     ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0, "start_provallo_interface");
-}
+static void *ngx_http_provallo_nginx_create_loc_conf(ngx_conf_t *cf);
 
-void reload_provallo_interface()
-{
-    ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0, "reload_provallo_interface");   
-}
+static char *ngx_http_provallo_nginx_merge_loc_conf(ngx_conf_t *cf, void *parent,
 
-void stop_provallo_interface()
-{
-    ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0, "stop_provallo_interface");
-}   
+    void *child);
+
+static char *ngx_http_provallo_nginx(ngx_conf_t *cf, ngx_command_t *cmd,
+
+    void *conf);
 
 
-/**
- * This module provided directive: hello world.
- *
- */
-static ngx_command_t ngx_provallo_interface_commands[] = {
 
-    {ngx_string("provallo_nginx"),           /* directive */
-     NGX_HTTP_LOC_CONF | NGX_CONF_NOARGS, /* location context and takes
-                                             no arguments*/
-     ngx_provallo_interface,              /* configuration setup function */
-     0,                                   /* No offset. Only one context is supported. */
-     0,                                   /* No offset when storing the module configuration on struct. */
-     NULL},
+static ngx_command_t  ngx_http_provallo_nginx_commands[] = {
 
-    ngx_null_command /* command termination */
+
+    { ngx_string("provallo_nginx"),
+
+      NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS,
+
+      ngx_http_provallo_nginx,
+
+      0,
+
+      0,
+
+      NULL },
+
+
+    { ngx_string("provallo_nginx_status"),
+
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+
+      ngx_conf_set_num_slot,
+
+      NGX_HTTP_LOC_CONF_OFFSET,
+
+      offsetof(ngx_http_provallo_nginx_loc_conf_t, status),
+
+      NULL },
+
+
+    { ngx_string("provallo_nginx_text"),
+
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+
+      ngx_http_set_complex_value_slot,
+
+      NGX_HTTP_LOC_CONF_OFFSET,
+
+      offsetof(ngx_http_provallo_nginx_loc_conf_t, text),
+
+      NULL },
+
+
+      ngx_null_command
+
 };
 
-/* The hello world string. */
-static u_char ngx_provallo[] = PROVALLO_HELLO;
 
-/* The module context. */
-static ngx_http_module_t ngx_provallo_interface_module_ctx = {
-    NULL, /* preconfiguration */
-    NULL, /* postconfiguration */
 
-    NULL, /* create main configuration */
-    NULL, /* init main configuration */
+static ngx_http_module_t  ngx_http_provallo_nginx_module_ctx = {
 
-    NULL, /* create server configuration */
-    NULL, /* merge server configuration */
+    NULL,                                  /* preconfiguration */
 
-    NULL, /* create location configuration */
-    NULL  /* merge location configuration */
+    NULL,                                  /* postconfiguration */
+
+
+    NULL,                                  /* create main configuration */
+
+    NULL,                                  /* init main configuration */
+
+
+    NULL,                                  /* create server configuration */
+
+    NULL,                                  /* merge server configuration */
+
+
+    ngx_http_provallo_nginx_create_loc_conf,  /* create location configuration */
+
+    ngx_http_provallo_nginx_merge_loc_conf    /* merge location configuration */
+
 };
 
-/* Module definition. */
-ngx_module_t ngx_provallo_interface_module = {
+
+
+ngx_module_t  ngx_http_provallo_nginx_module = {
+
     NGX_MODULE_V1,
-    &ngx_provallo_interface_module_ctx, /* module context */
-    ngx_provallo_interface_commands,    /* module directives */
-    NGX_HTTP_MODULE,                    /* module type */
-    NULL,                               /* init master */
-    NULL,                               /* init module */
-    NULL,                               /* init process */
-    NULL,                               /* init thread */
-    NULL,                               /* exit thread */
-    NULL,                               /* exit process */
-    NULL,                               /* exit master */
-    NGX_MODULE_V1_PADDING};
 
-/**
- * Content handler.
- *
- * @param r
- *   Pointer to the request structure. See http_request.h.
- * @return
- *   The status of the response generation.
- */
-static ngx_int_t ngx_provallo_interface_handler(ngx_http_request_t *r)
+    &ngx_http_provallo_nginx_module_ctx,      /* module context */
+
+    ngx_http_provallo_nginx_commands,         /* module directives */
+
+    NGX_HTTP_MODULE,                       /* module type */
+
+    NULL,                                  /* init master */
+
+    NULL,                                  /* init module */
+
+    NULL,                                  /* init process */
+
+    NULL,                                  /* init thread */
+
+    NULL,                                  /* exit thread */
+
+    NULL,                                  /* exit process */
+
+    NULL,                                  /* exit master */
+
+    NGX_MODULE_V1_PADDING
+
+};
+
+static ngx_int_t
+
+ngx_http_provallo_nginx_handler(ngx_http_request_t *r)
+
 {
-    ngx_buf_t *b;
-    ngx_chain_t out;
+    ngx_buf_t                        *b = NULL;
+    ngx_int_t                         rc =0;
+    ngx_str_t                         text;
+    ngx_chain_t                       out;
 
-    /* Set the Content-Type header. */
-    r->headers_out.content_type.len = sizeof("text/plain") - 1;
-    r->headers_out.content_type.data = (u_char *) "text/plain";
+    ngx_http_provallo_nginx_loc_conf_t  *hlcf;
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http provallo_nginx handler");
 
-    /* Allocate a new buffer for sending out the reply. */
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    /* ignore client request body if any */
 
-    /* Insertion in the buffer chain. */
+    if (ngx_http_discard_request_body(r) != NGX_OK) {
+
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+     }
+
+
+    hlcf = ngx_http_get_module_loc_conf(r, ngx_http_provallo_nginx_module);
+
+
+    /* make up output text */
+
+
+    if (hlcf&& hlcf->text) {
+
+        if (ngx_http_complex_value(r, hlcf->text, &text) != NGX_OK) {
+
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+
+        }
+
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+
+                       "http provallo_nginx text: \"%V\"", &text);
+
+
+    } else {
+
+        ngx_str_set(&text, "Engine is running!\n");
+
+    }
+
+    /* send header */
+
+    r->headers_out.status = hlcf->status;
+
+    r->headers_out.content_length_n = text.len;
+
+
+    rc = ngx_http_send_header(r);
+
+
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+
+        return rc;
+
+    }
+
+    /* send body */
+
+    b = ngx_calloc_buf(r->pool);
+
+    if (b == NULL) {
+
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+
+    }
+    b->pos = text.data;
+
+    b->last = text.data + text.len;
+
+    b->memory = text.len ? 1 : 0;
+
+    b->last_buf = (r == r->main) ? 1 : 0;
+
+    b->last_in_chain = 1;
     out.buf = b;
-    out.next = NULL; /* just one buffer */
-
-    b->pos = ngx_provallo; /* first position in memory of the data */
-    b->last = ngx_provallo + sizeof(ngx_provallo) - 1; /* last position in memory of the data */
-    b->memory = 1; /* content is in read-only memory */
-    b->last_buf = 1; /* there will be no more buffers in the request */
-
-    /* Sending the headers for the reply. */
-    r->headers_out.status = NGX_HTTP_OK; /* 200 status code */
-    /* Get the content length of the body. */
-    r->headers_out.content_length_n = sizeof(ngx_provallo) - 1;
-
-    ngx_http_send_header(r); /* Send the headers */
-
-    /* Send the body, and return the status code of the output filter chain. */
+    out.next = NULL;
     return ngx_http_output_filter(r, &out);
+}
 
-} /* ngx_provallo_interface_handler */
-ngx_int_t provallo_nginx  ( ngx_http_request_t *r ) 
+
+
+static void *
+
+ngx_http_provallo_nginx_create_loc_conf(ngx_conf_t *cf)
+
 {
-	return ngx_provallo_interface_handler(r);
+
+    ngx_http_provallo_nginx_loc_conf_t  *conf;
+
+
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_provallo_nginx_loc_conf_t));
+
+    if (conf == NULL) {
+
+        return NULL;
+
+    }
+
+
+    /*
+
+     * set by ngx_pcalloc():
+
+     *
+
+     *     conf->text = NULL;
+
+     */
+
+
+    conf->status = NGX_CONF_UNSET;
+
+
+    return conf;
 
 }
 
 
-/**
- * Configuration setup function that installs the content handler.
- *
- * @param cf
- *   Module configuration structure pointer.
- * @param cmd
- *   Module directives structure pointer.
- * @param conf
- *   Module configuration structure pointer.
- * @return string
- *   Status of the configuration setup.
- */
-static char *ngx_provallo_interface(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+
+static char *
+
+ngx_http_provallo_nginx_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
+
 {
-    ngx_http_core_loc_conf_t *clcf; /* pointer to core location configuration */
 
-    /* Install the hello world handler. */
-    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    if(clcf == NULL)
-        return NGX_CONF_ERROR;
-    else
-    clcf->handler = ngx_provallo_interface_handler;
-
+    ngx_http_provallo_nginx_loc_conf_t *prev = parent;
+    ngx_http_provallo_nginx_loc_conf_t *conf = child;
+    ngx_conf_merge_ptr_value(conf->text, prev->text, NULL);
+    ngx_conf_merge_value(conf->status, prev->status, NGX_HTTP_OK);
     return NGX_CONF_OK;
-} /* ngx_provallo_interface */
+
+}
+
+
+
+static char *
+
+ngx_http_provallo_nginx(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+
+{
+    ngx_http_core_loc_conf_t  *clcf;
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+    //install the handler
+    clcf->handler = ngx_http_provallo_nginx_handler;
+    return NGX_CONF_OK;
+
+}

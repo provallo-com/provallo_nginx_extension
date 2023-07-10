@@ -1566,6 +1566,7 @@ namespace provallo
 
 	struct continous_base
 	{
+		
 	public:
 		continous_base()
 		{
@@ -1588,6 +1589,7 @@ namespace provallo
 			  std::vector<Float> &interval) const;
 
 
+		void seed(const std::random_device& seed) { _seed = (std::random_device*)( ptrdiff_t( &seed)) ;}
 	protected:
 		// Accept or reject splitting
 		virtual bool
@@ -1602,6 +1604,9 @@ namespace provallo
 		splitInterval(const dataset &data, uint32_t begin, uint32_t end,
 					  const attribute_tag &tag,
 					  std::vector<Float> &interval) const;
+
+		std::random_device * _seed;
+
 	};
 
 	struct binary_split : public continous_base
@@ -1619,18 +1624,25 @@ namespace provallo
 
 			// Never split halfways
 
-			// return double(end-begin/double(cut_point+1))>0.;
-			return false;
-		}
-		
+				if	(cut_point==0 || begin==end)
+					return false;
+				if	(cut_point==end)
+					return false;
+
+				if (cut_point == end-1)
+					return true;
+				if(data.get_target_tag()==tag )
+					return true;					
+
+ 			return false;
+		}		
 		split_type
 		get_type() const
 		{
 			return CONE_BINARY;
 		}
-
 		//serialize and deserialize
-	 
+	
 
 	};
 
@@ -1647,11 +1659,17 @@ namespace provallo
 		checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
 					   uint32_t cut_point, const attribute_tag &tag) const
 		{
-			// Always split
-
+			// Always return true
+			if (   begin==end)
+				return false;	
+			if (cut_point == end-1)	
+				return true;	
+			if(data.get_target_tag()==tag )	
+				return true;
+			
 			return true;
 		}
-
+		
 		split_type
 		get_type() const
 		{
@@ -1697,8 +1715,19 @@ namespace provallo
 			std::random_device dev;
 			std::mt19937 gen(dev());
 			std::uniform_int_distribution<> uniform(0, RAND_MAX);
-
+			
+			if(data.get_target_tag()==tag )	
+				return true;	
+			if (cut_point == end-1)
+				return true;
+			if (cut_point == 0)
+				return false;
+			if (begin == end)
+				return false;
+			
 			return (uniform(gen) % 2 == 1);
+
+
 		}
 		bool binarySplit (const dataset &data, uint32_t begin,
 			       uint32_t end, const attribute_tag &tag,
@@ -1790,17 +1819,37 @@ namespace provallo
 		{
 
 		}
-
+	 
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
 			   const dataset &data_set) : split_method(factory_tag, std::vector<attribute_tag>(1, tag))
 		{
 			// Set interval
 			SplittingPolicy::split(data_set, get_tag(0), _interval);
 		}
+
+		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
+			   const dataset &data_set,const std::random_device& random_) : split_method(factory_tag, std::vector<attribute_tag>(1, tag))
+		{
+			// Set interval
+			//
+
+			//feed seed to splitting policy. 
+			//
+			SplittingPolicy::seed(random_);
+				
+
+			SplittingPolicy::split(data_set, get_tag(0), _interval);
+			//auto x = random_();
+			//x/=x++;
+			
+
+		}
+
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
 			   const dataset &data_set, std::vector<Float> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
 		{
 			SplittingPolicy::set_interval(interval);	
+			
 
 		}
 		// Extra constructor to use on splitting policy
@@ -1811,12 +1860,42 @@ namespace provallo
 			// Set interval
 			SplittingPolicy::split(data_set, get_tag(0), _interval);
 		}
+		// Extra constructor to use on splitting policy
 		template <class SplittingArg>
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
 			   const dataset &data_set, SplittingArg split_arg, std::vector<Float> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), SplittingPolicy(split_arg), _interval(interval)
 		{
 			SplittingPolicy::set_interval(interval);	
 		}	
+		// Extran constructor with random_device 
+		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
+			   const dataset &data_set, std::random_device &dev) : split_method(factory_tag, std::vector<attribute_tag>(1, tag))
+		{
+			// Set interval
+			auto x= dev();
+			x/=++x;
+
+
+			SplittingPolicy::split(data_set, get_tag(0), _interval/*, dev*/);
+		}	
+		// Extran constructor with random_device
+		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
+			   const dataset &data_set, std::random_device &dev, std::vector<Float> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
+		{
+			SplittingPolicy::set_interval(interval);	
+		}	
+		// Extran constructor with random_device and splitting policy
+		template <class SplittingArg>
+		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
+			   const dataset &data_set, SplittingArg split_arg, std::random_device &dev) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), SplittingPolicy(split_arg)
+		{
+			// Set interval
+			auto x= dev();
+			x/=++x;
+
+			SplittingPolicy::split(data_set, get_tag(0), _interval);
+		}	
+
 
 
 
@@ -1905,8 +1984,11 @@ namespace provallo
 					uint32_t nbranch) const
 		{
 			// Print branch description
+
 			out << "(" << std::fixed << _interval[nbranch] << ","
-				<< _interval[nbranch + 1] << "] ";
+				<< _interval[nbranch + 1] << ") ";
+			out<< "attribute info : [ " << attributes_info.getName(get_tag(0)) << " ]";
+
 		}
 		virtual size_t
 		print(std::ostream &out,

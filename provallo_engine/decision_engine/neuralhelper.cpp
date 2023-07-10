@@ -193,7 +193,7 @@ namespace provallo
 
     type_matrix zero_pad_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, float step)
     {
-        return xnPartialDerivative * _backprop_matrix;
+        return xnPartialDerivative * (_propagation_matrix/(1.-step)) ;
     }
 
     type_matrix zero_pad_layer::layer_backdrop_invariant(const type_matrix &xnPartialDerivative)
@@ -204,7 +204,7 @@ namespace provallo
 
     type_matrix zero_pad_layer::mini_batch_layer_backdrop(const type_matrix &xnPartialDerivative, float step)
     {
-        return xnPartialDerivative * _backprop_matrix;
+        return xnPartialDerivative * _backprop_matrix /(1.+step) ;
     }
 
     //****************AUTRES****************
@@ -212,7 +212,8 @@ namespace provallo
 
     void zero_pad_layer::update_layer_weights(size_t minibatchSize)
     {
-        std::cout << "[=] WARNING, useless function being used " << std::endl;
+      
+	    std::cout << "[=] WARNING, useless function being used " <<std::to_string( minibatchSize) << std::endl;
     }
 
     type_matrix zero_pad_layer::fnDerivativeMatrix() const
@@ -410,7 +411,7 @@ namespace provallo
     void fully_connected_layer::updateFirstMomentStep(const type_matrix &wnPartialDerivative, const type_matrix &ynPartialDerivative, float step)
     {
         _adaptive_weight_step = (step * _adaptive_weight_step) + (1 - step) * wnPartialDerivative;
-        _adaptive_bias_step = (step * _adaptive_weight_step) + (1 - step) * wnPartialDerivative;
+        _adaptive_bias_step = (step * _adaptive_weight_step) + (1 - step) * ynPartialDerivative;
 
         // mAdaptativeWeightStep = step*mAdaptativeWeightStep + (1-step)*fabs(wnPartialDerivative);
         // mAdaptativeBiasStep = step*mAdaptativeBiasStep + (1-step)*fabs(ynPartialDerivative);
@@ -419,10 +420,11 @@ namespace provallo
     void fully_connected_layer::updateSecondMomentStep(const type_matrix &wnPartialDerivative, const type_matrix &ynPartialDerivative, float step)
     {
 
-        _adaptive_weight_second_step = real_type(.99) * _adaptive_weight_step + (real_type(.01) * (wnPartialDerivative * wnPartialDerivative));
+        _adaptive_weight_second_step = real_type(.99) * _adaptive_weight_step + (real_type(.01 *step ) * (wnPartialDerivative * wnPartialDerivative)) ;
         // mAdaptativeWeightSecondStep = 0.99*mAdaptativeWeightStep + (1-0.99)*(wnPartialDerivative.array()*wnPartialDerivative.array());
         // mAdaptativeBiasSecondStep = 0.99*mAdaptativeBiasStep + (1-0.99)*(ynPartialDerivative.array()*ynPartialDerivative.array());
-        _adaptive_bias_second_step = real_type(.99) * _adaptive_bias_step + (real_type(.01) * (ynPartialDerivative * ynPartialDerivative));
+        _adaptive_bias_second_step = real_type(.99) * _adaptive_bias_step + (real_type(.01 *step  ) * (ynPartialDerivative * ynPartialDerivative)) ;
+        
     }
 
     void fully_connected_layer::reset()
@@ -900,8 +902,24 @@ namespace provallo
         return &mCSVRes;
     }
 
-    std::ofstream &operator<<(std::ofstream &stream, const learning_task::task_configuration &_configuration)
+    std::ofstream &operator<<(std::ofstream &stream_, const learning_task::task_configuration &configuration_)
     {
+
+        const std::string separator = " : ";
+        stream_ << "step" << separator << configuration_.step << std::endl;
+        stream_ << "dx" << separator << configuration_.dx << std::endl;
+        stream_ << "Experiments" << separator << configuration_._Experiments << std::endl;
+        stream_ << "LoopsPerExperiment" << separator << configuration_._LoopsPerExperiment << std::endl;
+        stream_ << "TeachingsPerLoop" << separator << configuration_._TeachingsPerLoop << std::endl;
+        stream_ << "DisTeach" << separator << configuration_._DisTeach << std::endl;
+        stream_ << "GenTeach" << separator << configuration_._GenTeach << std::endl;
+        stream_ << "DisTest" << separator << configuration_._DisTest << std::endl;
+        stream_ << "GenTest" << separator << configuration_._GenTest << std::endl;
+        stream_ << "labelTrainSize" << separator << configuration_.labelTrainSize << std::endl;
+        stream_ << "labelTestSize" << separator << configuration_.labelTestSize << std::endl;
+         
+         
+        return stream_;
         /*
         const std::string separator = " : ";
         stream << "step" << separator << _configuration.step << endrow;
@@ -927,38 +945,41 @@ namespace provallo
         stream << "databaseToUse" << separator << _configuration.databaseToUse << endrow;
             */
 
-        return stream;
-    }
-    std::ifstream &operator>>(std::ifstream &stream, learning_task::task_configuration &_configuration)
+     }
+    std::ifstream &operator>>(std::ifstream &stream_, learning_task::task_configuration &_configuration)
     {
-        /*                const std::string separator = " : ";
+                const std::string separator = " : ";
 
-                 //load source processor configuration
-                stream >>std::string("step") >> separator >> _configuration.step >> endrow;
-                stream >>std::string("dx") >> separator >> _configuration.dx>> endrow;
-                stream >> "Experiments" >> separator >> _configuration._Experiments >> endrow;
-                stream >> "LoopsPerExperiment" >> separator >> _configuration._LoopsPerExperiment >> endrow;
-                stream >> "TeachingsPerLoop" >> separator >> _configuration._TeachingsPerLoop >> endrow;
-                stream >> "DisTeach" >> separator >> _DisTeach >> endrow;
-                stream >> "GenTeach" >> separator >> _GenTeach >> endrow;
-                stream >> "DisTest" >> separator >> _DisTest >> endrow;
-                stream >> "GenTest" >> separator >> _GenTest >> endrow;
-                stream >> "labelTrainSize" >> separator >> _configuration.labelTrainSize >> endrow;
-                stream >> "labelTestSize" >> separator >> _configuration.labelTestSize >> endrow;
-                stream >> "intervalleImg" >> separator >> _configuration.intervalleImg >> endrow;
-                stream >> "ImgParIntervalleImg" >> separator >> _configuration._ImgParIntervalleImg >> endrow;
-                stream >> "minibatchSize" >> separator >> _configuration.minibatchSize >> endrow;
-                stream >> "genFunction" >> separator >> _configuration.genFunction >> endrow;
-                stream >> "descent" >> separator >> _configuration.descent >> endrow;
-                stream >> "descentTypeGen" >> separator >> _configuration.descentTypeGen >> endrow;
-                stream >> "descentTypeDis" >> separator >> _configuration.descentTypeDis >> endrow;
-                stream >> "descentType" >> separator >> _configuration.descentType >> endrow;
-                stream >>std::string( "sigmoidParameter" )>> separator >> _configuration.sigmoidParameter >> endrow;
-                stream >> std::string("databaseToUse") >> separator >> _configuration.databaseToUse >> endrow;
-
-         */
-
-        return stream;
+                while (stream_.good() && !stream_.eof() ) 
+                {
+                    
+                    std::string line; 
+		            std::getline(stream_,line);
+	       	        std::string key (line.substr(0, line.find(separator)));
+                    std::string value(line.substr(line.find(separator) + separator.length()));
+                    if (key == "step") _configuration.step = std::stof(value);
+                    if (key == "dx") _configuration.dx = std::stof(value);
+                    if (key == "Experiments") _configuration._Experiments = std::stoi(value);
+                    if (key == "LoopsPerExperiment") _configuration._LoopsPerExperiment = std::stoi(value);
+                    if (key == "TeachingsPerLoop") _configuration._TeachingsPerLoop = std::stoi(value);
+                    if (key == "DisTeach") _configuration._DisTeach = std::stoi(value);
+                    if (key == "GenTeach") _configuration._GenTeach = std::stoi(value);
+                    if (key == "DisTest") _configuration._DisTest = std::stoi(value);
+                    if (key == "GenTest") _configuration._GenTest = std::stoi(value);
+                    if (key == "labelTrainSize") _configuration.labelTrainSize = std::stoi(value);
+                    if (key == "labelTestSize") _configuration.labelTestSize = std::stoi(value);
+                    //if (key == "ImgParIntervalleImg") _configuration.ImgParIntervalleImg = std::stoi(value);
+                    if (key == "minibatchSize") _configuration.minibatchSize = std::stoi(value);
+                    if (key == "genFunction") _configuration.genFunction = std::stoi(value);
+                    if (key == "descent") _configuration.descent = std::stoi(value);
+                    if (key == "descentTypeGen") _configuration.descentTypeGen = std::stoi(value);
+                    if (key == "descentTypeDis") _configuration.descentTypeDis = std::stoi(value);
+                    //if (key == "descentType") _configuration.descentType = std::stoi(value);
+                    if (key == "sigmoidParameter") _configuration.sigmoidParameter = std::stof(value);
+                    if (key == "databaseToUse") _configuration.databaseToUse = std::stoi(value);
+                }
+                              
+                return stream_;
     }
 
     learning_task::learning_task() : _configuration()
