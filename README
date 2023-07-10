@@ -16,9 +16,9 @@ graph TD;
 
 
 +  download your current nginx version source code 
-+  configure the project with the path to the extension addons, for example:
-**
-  `./configure --add-dynamic-module=/opt/nginx/provallo-nginx-module  --add-module=/opt/nginx/provallo-nginx-module`
++  run nginx -V to copy configure parameters. 
++  add configure params to variables and dynamic shared object path:
+  `./configure  --add-dynamic-module=/opt/nginx/provallo-nginx-module  --add-module=/opt/nginx/provallo-nginx-module`
 
 
    if everything is successful, you should see : 
@@ -79,3 +79,7 @@ graph TD;
     provallo_nginx_extension-->provallo_engine-->util; 
 ```
  
+
+ =================================================================
+ =================================================================
+ =================================================================
