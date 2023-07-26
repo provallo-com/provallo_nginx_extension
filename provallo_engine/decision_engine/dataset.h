@@ -26,7 +26,7 @@
 //
 namespace provallo
 {
-
+  // fwd declr for dataset functors
   //
   class dataset_base;
   //
@@ -47,12 +47,23 @@ namespace provallo
     {
       return _labels[row];
     }
-
+    int
+    label(size_t row) const
+    {
+      return _labels[row];
+    }
+    //
+    
+    double get(const size_t row,const size_t col) const
+    {
+      return matrix_base::pos(row,col);
+    }
     dataset_base(size_t rows, size_t cols, size_t numLabels);
     virtual ~dataset_base();
     // use splitters from
     void
     splitdataset(dataset_ptr &train, dataset_ptr &valid, double train_percent);
+    
   };
   // fwd declr for dataset functors
 
@@ -97,9 +108,12 @@ namespace provallo
 
 
 
+    //fix mmap_vector<> 
 
-    typedef std::vector<uint32_t, mmap_allocator<uint32_t>> sorted_index;
-    typedef std::vector<sorted_index, mmap_allocator<sorted_index>> sorted_indices;
+    //typedef mmap_vector<uint32_t> sorted_index;
+    //typedef mmap_vector<sorted_index> sorted_indices;
+    typedef std::vector<uint32_t> sorted_index;
+    typedef std::vector<sorted_index> sorted_indices;
 
 
     sorted_indices   _sorted_indices;
@@ -116,10 +130,23 @@ namespace provallo
     {
       this->_filters.push_back(filter);
     }
-
+    
     // Push the n-th attribute of an instance
     virtual void
     pushattribute(uint32_t n, const attribute &att) = 0;
+    
+    inline  void
+    pushattribute(uint32_t n,const discrete_value& r) 
+    {
+      pushattribute(n, attribute(r));
+    }
+    inline  void
+    pushattribute(uint32_t n,const cont_value& r) 
+    { 
+      pushattribute(n, (attribute(r)));
+    }
+    
+    
     // Return new pointer
     virtual dataset *
     getNew() const = 0;
@@ -693,26 +720,33 @@ namespace provallo
       {
         return attribute_iterator(_data, _instance, _tag - n);
       }
-
+      bool operator==(const attribute_iterator &other) const
+      {
+        return _tag == other._tag && _instance == other._instance;
+      }
+      bool operator!=(const attribute_iterator &other) const
+      {
+        return _tag != other._tag || _instance != other._instance;
+      } 
+      bool operator > (const attribute_iterator &other) const
+      {
+        return  _instance > other._instance || _tag > other._tag;
+      } 
       bool
       operator<(const attribute_iterator &other) const
       {
-        return _tag < other._tag;
+        return  _instance < other._instance || _tag < other._tag;
       }
-      bool
-      operator>(const attribute_iterator &other) const
-      {
-        return _tag > other._tag;
-      }
-      difference_type
+ 
+       difference_type
       operator-(const attribute_iterator &other) const
       {
-        return _tag - other._tag;
+        return _tag - other._tag - _instance + other._instance;
       }
 
       difference_type operator+(const attribute_iterator &other) const
       {
-        return _tag + other._tag;
+        return _tag + other._tag + _instance + other._instance;
       }
 
       const attribute &operator*() const
@@ -740,6 +774,7 @@ namespace provallo
         if (!bfound)
         {
           std::cout << "attribute_iterator::operator->() attribute not found" << std::endl;
+          
           // throw std::runtime_error("attribute_iterator::operator->() attribute not found");
           return nullptr;
         }
@@ -920,6 +955,9 @@ namespace provallo
     void
     pushData(InputIterator begin, InputIterator end);
 
+    //push data as a vector of tokens
+    void pushData(const std::vector<std::string> &tokens);
+
     // Get attributes information
     const attribute_information &
     getattributes() const
@@ -1001,7 +1039,7 @@ namespace provallo
 
     inline void setupclassdist()
     {
-      _distribution.setup(_attributes_info.get_target_tag());
+      _distribution.setup(_attributes_info.getCount(_attributes_info.get_target_tag()));
     }
     inline void update_classdist(const class_dist &distribution)
     {
@@ -1095,18 +1133,42 @@ namespace provallo
   {
     // Get target tag
     uint32_t target_tag(_attributes_info.get_target_tag());
-    for (uint32_t i = 0; i < getattributesNumber(); ++i)
-    {
-      assert(begin != end);
-      //  attribute value);
-      attribute value = (_attributes_info.getAttribute(i, (*begin++)));
-      // Push attribute into the set
-      pushattribute(i, value);
-      // Sum contribution into the distribution
-      if (i %target_tag ==0 )
-              _distribution.accum(value.discrete());
-    }
+    // Loop over each sample
+    while ( begin!=end && end-begin > 0 ) {
+      // Loop over each attribute
+      
 
+      for (uint32_t i = 0; i < getattributesNumber(); ++i)
+      {
+        // Get attribute value
+         assert(begin != end);
+        
+        //  attribute value);
+        attribute_type att_type = _attributes_info.getType(i);
+
+        attribute_value value_string = *begin;
+
+        attribute   value ( value_string, att_type);
+        // Push attribute into the set
+
+        if (i==target_tag) {
+                  //make sure the target value is less than the number of classes
+                if(value.discrete() < _attributes_info.getTargetClassCount())
+                {
+                  _distribution.accum(value.discrete());
+                }
+                else {
+                            std::cout<< "[!] target tag : " << std::to_string(target_tag) << std::string(" number of classes ")<< std::to_string(_attributes_info.getTargetClassCount()) <<" target value discrete : " << std::to_string(value.discrete()) << " , continous : "<<value.continous() << std::endl;
+                            //normalize to 0
+                            value = attribute(discrete_value(0));
+                 }
+        }
+        
+          pushattribute(i, value);
+          begin++;
+      }
+    }
+    
     
      
   }
@@ -1138,7 +1200,7 @@ namespace provallo
             new_set->_distribution.accum(value.discrete());
         } // end for
         // Sanity check
-        assert(new_set->size() == i + 1);
+        //assert(new_set->size() == i + 1);
         //
       } // end if
 
@@ -1154,6 +1216,8 @@ namespace provallo
   // memory. training_set memory access is optimized for training a classifier and TestingTest
   // to test a classifier. But since both classes are a dataset is possible to test a
   // classifier with training_set or train a classifier with TestingData
+    typedef mmap_vector<attribute, safe_mmap_allocator<attribute> > safe_mmap_vector ; 
+    typedef std::vector<std::vector<attribute> > samples_container;
 
   // Class to hold the training data
   class training_set : public dataset
@@ -1163,11 +1227,11 @@ namespace provallo
     // for training
     
   public:
-    typedef mmap_vector<attribute, safe_mmap_allocator<attribute> > safe_mmap_vector ; 
     // typedef std::vector<attribute> safe_mmap_vector ;         
   protected:
     // Container of samples. The access is done using attributes as rows and
-    std::vector<safe_mmap_vector > _samples;
+    
+    samples_container  _samples;
 
     // Container of samples. The access is done using attributes as rows and
   
@@ -1179,8 +1243,11 @@ namespace provallo
     {
       static std::atomic_uint64_t counter(0); 
       ++counter;
-      // Push sample into the set
-      _samples.at(n).push_back(att); 
+      // Push sample into the set of samples
+      // if n==target_tag then verify the value is discrete.
+      if(_samples.size() <= n)  
+        _samples.resize(n+1);
+      _samples[n].push_back(att); 
 
       if(counter % 1000000 == 0 && counter/1000000 > 0)
           std::cout << "[+] " << std::to_string(counter) << " samples pushed, for  " << std::to_string(id_counter)<< "datasets"<< std::endl;
@@ -1203,6 +1270,11 @@ namespace provallo
   public:
     training_set(const attribute_information &attributes_info) : dataset(attributes_info), _samples(attributes_info.getSize())
     {
+      const size_t n = attributes_info.getSize();
+      for ( uint32_t i = 0; i <n; ++i)
+      {   
+          _samples[i].reserve(n);
+      }
     }
     training_set(training_set &&right) : dataset(std::move(right)), _samples(std::move(right._samples))
     {
@@ -1222,19 +1294,20 @@ namespace provallo
 
 
     dataset * 
-    getNewReference(std::vector<size_t,safe_mmap_allocator<size_t>> &indices) const;
+    getNewReference(std::vector<size_t,safe_mmap_allocator<size_t>> &indices) const; 
     uint32_t
     size() const
     {
-      assert(_samples.size() != 0);
-      return _samples[0].size();
+      assert(_samples.size() != 0&&_attributes_info.get_target_tag() < _samples.size()) ;
+      return _samples[0].size(); //return number of samples 
     }
 
     unsigned int
     getattributesNumber() const
     {
-      return _samples.size();
-    }
+      return _attributes_info.getSize();
+    } 
+    
 
     const attribute &
     getattribute(uint32_t i, attribute_tag tag) const
@@ -1253,11 +1326,12 @@ namespace provallo
     }
     const attribute *getattributeptr(uint32_t i, attribute_tag tag, bool *found) const
     {
-      static const attribute empty;
-      if (_samples.size() > tag && _samples[tag].size() > i)
+      static const attribute empty(NA_VAL);
+
+      if (  _samples[tag].size() > i )
       {
         *found = true;
-        return &_samples[tag][i];
+        return &_samples.at(tag).at(i);
       }
       *found = false;
       return &empty;
@@ -1266,7 +1340,7 @@ namespace provallo
     {
       static attribute empty;
       //size_t index = tag;
-      if (_samples.size() > tag && _samples[tag].size() > i)
+      if (_samples[tag].size() > i)
       {
         *found = true;
         return &_samples[tag][i];
@@ -1282,10 +1356,11 @@ namespace provallo
       if (_samples.size() > tag)
       {
         // mark dirty
-        _dirty = true;
 
-        if (i > _samples[tag].size())
+        if (i < _samples[tag].size())
         {
+          _dirty = true;
+
           // set value
           _samples[tag][i] = value;
         }
@@ -1294,6 +1369,7 @@ namespace provallo
         {
 
           // resize
+          _dirty = true;
 
           size_t size = _samples[tag].size();
           size_t delta = abs(int(i) - int(size));
@@ -1303,7 +1379,7 @@ namespace provallo
         }
       }
     }
-    inline const std::vector<safe_mmap_vector >& get_samples() const
+    inline const samples_container & get_samples() const
     {
 
       return _samples;
@@ -1313,11 +1389,25 @@ namespace provallo
 
     //   return _samples; 
     // }
-
-
-    virtual ~training_set()
+    matrix<attribute> get_matrix() const 
     {
-      _samples.clear();
+      matrix<attribute> ret(_samples.size(), _samples[0].size());
+      for (size_t i = 0; i < _samples.size(); ++i)
+      {
+        for (size_t j = 0; j < _samples[i].size(); ++j)
+        {
+          ret[i][j] = _samples[i][j];
+        }
+      }
+      return ret;
+    }
+
+
+
+     virtual ~training_set()
+    {
+      //_samples.clear();
+      
     }
   };
 
@@ -1327,7 +1417,7 @@ namespace provallo
     // Internal reference to the parent data set
     const training_set *_dataset;
     // Indices of original data set
-    std::vector<size_t ,safe_mmap_allocator<size_t> > _indices;
+    std::vector<size_t  > _indices;
 
     void
     pushattribute(uint32_t n, const attribute &att)
@@ -1351,6 +1441,14 @@ namespace provallo
       for (size_t i = 0; i < _indices.size(); ++i)
         _indices[i] = indices[i];
     }
+        training_setReference(const training_set &dataset,
+                          const std::vector<size_t> &indices) : dataset::dataset(dataset.getattributes()), _dataset(&dataset), _indices(indices.size()) 
+    {
+      //_indices.resize(dataset.size());
+      for (size_t i = 0; i < _indices.size(); ++i)
+        _indices[i] = indices[i];
+    }
+
 
     //  Copy constructor
     training_setReference(const training_set &dataset) : dataset::dataset(dataset.getattributes()), _dataset(&dataset)
@@ -1382,27 +1480,19 @@ namespace provallo
     {
       _dataset = &dataset;
       
-      
-      _indices.resize(dataset.size());
-
-      for (size_t i = 0; i < _indices.size(); ++i)
-        _indices[i] = i;
-      return *this;
+       return *this;
     }
     // Move assignment
     training_setReference &operator=(training_set &&dataset)
     {
       _dataset = &dataset;
-      _indices.resize(dataset.size());
-      for (size_t i = 0; i < _indices.size(); ++i)
-        _indices[i] = i;
-      return *this;
+       return *this;
     }
 
     dataset *
     getNewReference(std::vector<size_t> &indices) const
     {
-      std::vector<size_t,safe_mmap_allocator<size_t> > orig_indices(indices.size());
+     std::vector<size_t> orig_indices(indices.size());
       for (size_t i = 0; i < orig_indices.size(); ++i)
         orig_indices[i] = _indices[indices[i]];
       return new training_setReference(*this->_dataset, orig_indices);
@@ -1417,27 +1507,33 @@ namespace provallo
     unsigned int
     getattributesNumber() const
     {
-      return _dataset->_samples.size();
+      return _dataset->getattributesNumber();
     }
 
     const attribute &
     getattribute(uint32_t i, attribute_tag tag) const
     {
-      return _dataset->_samples[tag][_indices[i]];
+      if( _indices.size() < i && tag<_dataset->_samples[0].size()  )
+      return _dataset->getattribute(_indices[i],tag);
+      else
+      return _dataset->getattribute(i,tag);
+
     }
     void
     setattribute(uint32_t i, attribute_tag tag, const attribute &value)
     {
       throw std::runtime_error(std::string("Can't modify a data set through a reference") + std::to_string(i) + std::to_string(tag) + std::to_string(value.continous())  );
     }
-    inline const  std::vector<mmap_vector<attribute, safe_mmap_allocator<attribute> > > &get_samples() const
+    inline const  samples_container &get_samples() const
     {
-
       return _dataset->_samples;
     }
     const attribute *getattributeptr(uint32_t i, attribute_tag tag, bool *found) const
-    {
+    { 
+      if(_indices.size() >= i)
       return _dataset->getattributeptr(_indices[i], tag, found);
+      else
+      return _dataset->getattributeptr(i, tag, found);
     }
 
     virtual ~training_setReference()
@@ -1445,13 +1541,13 @@ namespace provallo
       // Do nothing, we don't own the data
     }
     // Return the indices of the original data set
-    const std::vector<size_t,safe_mmap_allocator<size_t>> &
+    const std::vector<size_t> &
     getindices() const
     {
       return _indices;
     }
   };
-
+  typedef std::vector<attribute> testing_samples;
   // Class to hold the test data
   class testing_set : public dataset
   {
@@ -1460,10 +1556,11 @@ namespace provallo
 
 
     
-    mmap_vector<attribute> _samples;
-    // Number of attributes
+    testing_samples  _samples;
+    // Number of attributes to break, should be equal to the number of attributes on attribute_information
+
     uint32_t _nattr;
-    mmap_allocator<dataset> _allocator;
+    //mmap_allocator<dataset> _allocator;
 
 
     void
@@ -1532,24 +1629,23 @@ namespace provallo
     const attribute &
     getattribute(uint32_t i, attribute_tag tag) const
     {
-      return _samples[tag + i * _nattr];
+      return _samples[tag + ( i * _nattr)];
     }
 
     void
     setattribute(uint32_t i, attribute_tag tag, const attribute &value)
     {
-      _samples[tag + i * _nattr] = value;
+      _samples[tag + (i * _nattr) ] = value;
     }
-    inline const mmap_vector<attribute> &get_samples() const
+    inline const testing_samples &get_samples() const
     {
-
       // cache copying
        return   this->_samples;
     }
     const attribute *getattributeptr(uint32_t i, attribute_tag tag, bool *found) const
     {
       static attribute empty;
-      size_t index = tag + i * _nattr;
+      size_t index = tag + (i * _nattr);
 
       if (index < _samples.size())
       {
@@ -1691,7 +1787,8 @@ namespace provallo
     getattributeptr(uint32_t i, attribute_tag tag, bool *found) const
     {
       static attribute empty;
-      size_t index = tag + _indices[i] * _dataset->_nattr;
+
+      size_t index = ( i<_indices.size() )? (  tag + _indices[i] * _dataset->_nattr ) : (tag + (i*_dataset->_nattr) ) ; 
 
       if (index < _dataset->_samples.size())
       {
@@ -1707,7 +1804,7 @@ namespace provallo
     {
       throw std::runtime_error( std::string("Can't modify a data set through a reference ")  + std::to_string(i) +  std::to_string(tag) +std::to_string(value.continous()) +std::string(   __FILE__ ) +  std::string(":") + std::to_string(__LINE__));  
     }
-    inline const  mmap_vector<attribute> &get_samples() const
+    inline const  testing_samples &get_samples() const
     {
 
       return std::ref(_dataset->get_samples());
@@ -1785,6 +1882,7 @@ namespace provallo
     {
     }
   };
+
   class afiles_collector : public data_collector
   {
     // File steam
@@ -1862,54 +1960,8 @@ namespace provallo
     {
     }
   };
-
-
-  class memory_mapped_dataset : public  dataset 
-  {
-    std::string _filestem;
-    std::string _target;
-    std::vector<std::pair<std::string, std::string>> _orig_attributes;
-    attribute_information _attributes_info;
-    std::random_device _random;
-    mmap_vector <uint32_t> _indices;
-    std::vector<uint32_t> _test_indices;
-    std::vector<uint32_t> _train_indices;
-    std::vector<uint32_t> _validation_indices;
-    std::vector<uint32_t> _test_validation_indices;
-    std::vector<uint32_t> _test_train_indices;
-    std::vector<uint32_t> _validation_train_indices;
-    std::vector<uint32_t> _test_validation_train_indices;
-      
-
-    // Parse the name file and return the attributes information
-    attribute_information
-    parseNames(const std::string &names_file);
-
-
-
-    // Add artificial attributes (no need to parse any file)
-    attribute_information
-
-    addArtificial(
-        const std::string &target,
-        const std::vector<std::pair<std::string, std::string>> &attrs);
-
-
-    void
-    pushFileData(const std::string &filename, dataset *data) const;
-
-    void
-    pushFileData(const std::string &filename, dataset *data, const std::vector<uint32_t> &indices) const;
-
-
-
-  public: 
-    memory_mapped_dataset(const std::string &filestem,
-                     const std::random_device &random); 
-
-    
-    };
-
+ 
+  
   // Read importance / weight map from a file (and also check if the attributes are defined on the Attribute information
   // class)
   std::map<std::string, Float>

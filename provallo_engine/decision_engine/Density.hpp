@@ -243,8 +243,7 @@ namespace provallo
 				}
 			}
 		}
-
-		// else if (data.ncols_numeric)
+ 		// else if (data.ncols_numeric)
 		// {
 		//     size_t n_unsplittable = 0;
 		//     std::vector<size_t> unsplittable_cols;

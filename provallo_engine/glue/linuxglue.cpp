@@ -103,12 +103,12 @@ namespace provallo
 
   linux_glue::linux_glue (const std::string &process_name) : _process_name (process_name)
   {
-    
+      
   }
   
   linux_glue::~linux_glue ()
   {
-    
+
   }
   bool
   linux_glue::hook ()

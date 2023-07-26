@@ -14,6 +14,9 @@
 #include <map>
 #include <thread>
 #include <mutex>
+#include <chrono>
+#include <iostream>
+
 namespace provallo
 {
  //decision engine uses collector/sampler and statistics

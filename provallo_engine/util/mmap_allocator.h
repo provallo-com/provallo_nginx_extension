@@ -37,24 +37,30 @@
 
 
 
+namespace {
+void* default_allocator;
+};
+
 namespace provallo  
 {
 
+
+    //add file descriptor to mmap_allocator
+    //add 
     template<typename T>
     class mmap_allocator : public std::allocator<T>
     {   
         public:
-        mmap_allocator() = default;
+        mmap_allocator() 
+      : fd_(static_cast<mmap_allocator*>(default_allocator)->fd_),
+        sizes_(static_cast<mmap_allocator*>(default_allocator)->sizes_),
+        free_blocks_(static_cast<mmap_allocator*>(default_allocator)->free_blocks_) {
+        }
         mmap_allocator(const mmap_allocator&) = default;
         mmap_allocator(mmap_allocator&&) = default;
         mmap_allocator& operator=(const mmap_allocator&) = default;
         mmap_allocator& operator=(mmap_allocator&&) = default;
         ~mmap_allocator() = default;
-
-        
-
- 
- 
         typedef T value_type;
         typedef T* pointer;
         typedef const T* const_pointer;
@@ -62,13 +68,15 @@ namespace provallo
         typedef const T& const_reference;
         typedef std::size_t size_type;
         typedef std::ptrdiff_t difference_type;
-        
+        using size_map = std::map<void*, size_type>;
+        using dealloc_map= std::map<size_type, std::vector<void*>>;
 
         template<typename U>
         struct rebind
         {
             typedef mmap_allocator<U> other;
         };
+        
 
 
         pointer allocate(size_type n, const void* hint = 0)
@@ -81,13 +89,23 @@ namespace provallo
 
             if (auto p = static_cast<pointer>(mmap(0, n * sizeof(T), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)))
                 return p;
-            
-            throw std::bad_alloc();
-        }
 
+          //  std::cout << "mmap_allocator::allocate: mmap failed" <<std::hex<<uint64_t(hint)<<std::dec<<", allocation request(b):"<< n <<std::endl;
+
+            throw std::bad_alloc(); 
+                        //debug:
+
+        }
+    
         void deallocate(pointer p, size_type n)
         {
-            munmap(p, n * sizeof(T));
+
+            std::cout << "[+]::"<< std::hex<<uint64_t(this) <<"--> deallocating -->" <<std::hex<<uint64_t(p)<<std::dec<<", deallocation size(b):"<<n<<std::endl;
+            int res = munmap(p, n * sizeof(T));
+            if (res == -1)
+                throw std::runtime_error("mmap_allocator::deallocate: munmap failed");
+
+
         }
         
         template<typename U, typename... Args>
@@ -100,7 +118,6 @@ namespace provallo
         {
             p->~T();
         }   
-
         size_type max_size() const noexcept
         {
             return std::numeric_limits<size_type>::max() / sizeof(T);
@@ -126,9 +143,27 @@ namespace provallo
         {
             return !(*this == other);
         }   
+         static mmap_allocator* New(std::string filename) {
+         int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, (mode_t)0777);
+         if (fd == -1) {
+            return NULL;
+         }
 
+            return new mmap_allocator(fd, new size_map(), new dealloc_map());
+        }
+
+        inline void SetDefault(std::string filename) {
+        default_allocator = static_cast<void*>(mmap_allocator<char>::New(filename));
+        }
+
+        inline void FreeDefault() {
+            delete static_cast<mmap_allocator<char>*>(default_allocator);
+        }
         
-
+        private:
+          int fd_;
+          std::shared_ptr<size_map> sizes_;
+          std::shared_ptr<dealloc_map> free_blocks_;
     };// class mmap_allocator
 
 
@@ -202,7 +237,7 @@ namespace provallo
 
         // constructors
 
-        mmap_vector() : base_type(reserve_block) {}
+        mmap_vector() : base_type() {}
 
         mmap_vector(const mmap_vector& rhs) : base_type(rhs) {}
         
@@ -260,6 +295,7 @@ namespace provallo
             return *this;
 
         }
+
         ~mmap_vector() = default;
         
         mmap_vector(std::size_t n) : base_type(n) {}
@@ -292,7 +328,7 @@ namespace provallo
 
 
         bool empty() const noexcept { return base_type::empty(); }
-        size_type size() const noexcept { return base_type::size(); }
+        size_type size() const noexcept {  return base_type::size(); }
         size_type max_size() const noexcept { return base_type::max_size(); }
         size_type capacity() const noexcept { return base_type::capacity(); }
 
@@ -304,7 +340,8 @@ namespace provallo
 
         void reserve(std::size_t n)
         {
-            base_type::reserve(n);
+            if(n > base_type::size())
+                base_type::reserve(n);
         }
 
 
@@ -316,13 +353,13 @@ namespace provallo
 
  
         void resize(std::size_t n)
-        {
-            base_type::resize(n);
+        {   
+               base_type::resize(n);
         }
 
         void resize(std::size_t n, const T& value)
         {
-            base_type::resize(n, value);
+                 base_type::resize(n, value);
         }
 
         void shrink_to_fit()
@@ -337,7 +374,7 @@ namespace provallo
 
         void push_back(const T& value)
         {
-            base_type::push_back(value);
+            base_type::push_back(value); 
         }
 
         void push_back(T&& value)
@@ -420,9 +457,7 @@ namespace provallo
         const T& at(std::size_t pos) const
         {
             return base_type::at(pos);
-        }   
-
-
+        }    
         T& front()
         {
             return base_type::front();
@@ -475,8 +510,12 @@ namespace provallo
             return base_type::erase(first, last);
         }
 
-  
+        const std::vector<T,allocator_type>& to_std_vector() const{  
+
+            return std::vector<T,allocator_type>(this->begin(), this->end());            
+        }       
         protected:
+        
         //  _M_get_Tp_allocator() const noexcept
  
         ///usr/include/c++/11/bits/stl_vector.h:555:68: error: no matching function for call to ‘std::_Vector_base<provallo::attribute, provallo::safe_mmap_allocator<provallo::attribute> >::_Vector_base(std::vector<provallo::attribute, provallo::safe_mmap_allocator<provallo::attribute> >::size_type, provallo::mmap_allocator<provallo::attribute>)’
@@ -506,7 +545,7 @@ namespace provallo
  
 
         private:
-
+        //debug
     };// class mmap_vector
 
    

@@ -40,7 +40,8 @@ namespace provallo
   	}
    	// Get plain text
   	_data = (const char *)(aes_decrypt(de_(), (unsigned char *)(ciphertext), &size));
-  	// Setup the stream pointers
+  	// Setup the stream pointers 
+
   	_begin = _data;
   	_end = _data + size;
   	_current = _data;

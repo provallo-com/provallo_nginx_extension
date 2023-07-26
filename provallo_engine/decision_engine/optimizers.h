@@ -1,5 +1,4 @@
 /*
- * optimizers.h
  *
  *  Created on: May 31, 2023
  *      Author: kardon
@@ -80,6 +79,7 @@ namespace provallo
 			}
 		};
 		// SR1
+		
 		struct sr1_hessian
 		{
 			template <typename Array, typename Matrix>
@@ -143,6 +143,10 @@ namespace provallo
 		{
 		};
 
+		
+		
+		
+		
 		// Quasi-Newton algorithm. Line search and hessian estimation are policies of the algorithm
 		template <typename Array, typename Function,
 				  typename LinearSearchSetter = default_operator_args,
@@ -1096,9 +1100,7 @@ namespace provallo
 							break;
 					}
 
-					// We don't want to pass NaN genes to our offspring. If an individual goes NaN we use
-					// the inborn genes (Darwin theory). We can think of a NaN individual as someone who
-					// really fuck up on his life.
+					//avoid nan	
 					if (not isNan(nm.best()))
 						*values = nm.centroid();
 

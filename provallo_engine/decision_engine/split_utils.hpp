@@ -41,7 +41,6 @@ namespace provallo
 		double range_high = HUGE_VAL;
 		double remainder; /* only used for distance/similarity */
 
-		iso_hplane() = default;
 	} IsoHPlane;
 
 	size_t
@@ -1397,8 +1396,9 @@ namespace provallo
 					uint32_t nbranch) const
 		{
 			// Print branch description
+			attribute branch(nbranch);
 
-			out << attributes_info.getValue(get_tag(0), nbranch);
+			out << attributes_info.getValue(get_tag(0), branch);
 		}
 
 		virtual ~split_method()
@@ -1482,9 +1482,9 @@ namespace provallo
 		 bool
 		 isInBranch (const InputIterator& b, uint32_t nbranch) const
 		 {
-		size_t n = get_tag(0);
+			size_t n = get_tag(0);
 
-		return ((b+n)->discrete () == nbranch );
+			return ((b+n)->discrete () == nbranch );
 		  return false;
 
 		 }
@@ -1498,39 +1498,47 @@ namespace provallo
 		   return  ((b.operator + (n) )->discrete());
 		 }
 		 */
+		template < class InputIterator >
+		bool
+		isInBranch(const InputIterator &b, uint32_t nbranch) const
+		{
+			size_t n = get_tag(0);
+
+			return ((b + n)->discrete() == nbranch);
+			//  return isInBranch<std::vector<attribute>::const_iterator> (b, nbranch);
+		}
+		template < class InputIterator >
+		uint32_t
+		getBranch(const InputIterator &b) const
+		{
+			size_t n = get_tag(0);
+			return ((b + n)->discrete());
+		}	
 
 		virtual bool
 		isInBranch(const attribute_iterator &b, uint32_t nbranch) const
 		{
-			size_t n = get_tag(0);
-			const attribute_iterator &p_attr = b + int(n);
+			return isInBranch<attribute_iterator>(b, nbranch);
 
-			return p_attr->discrete() == nbranch;
-			return false;
-		}
+ 		}
 		virtual bool
 		isInBranch(const std::vector<attribute>::const_iterator &b,
 				   uint32_t nbranch) const
 		{
-			return ((b + get_tag(0))->discrete() == nbranch);
+			return isInBranch<const std::vector<attribute>::const_iterator>(b, nbranch);
 			//  return isInBranch<std::vector<attribute>::const_iterator> (b, nbranch);
 		}
 
 		virtual uint32_t
 		getBranch(const attribute_iterator &b) const
 		{
-			size_t n = get_tag(0);
-			const attribute_iterator &p_attr = b + int(n);
-			return p_attr->discrete();
+			return getBranch<attribute_iterator>(b);
 		}
 
 		virtual uint32_t
 		getBranch(const std::vector<attribute>::const_iterator &b) const
 		{
-			const attribute *p_attr = &(*(b + get_tag(0)));
-			if (p_attr)
-				return p_attr->discrete();
-			return 0;
+			return getBranch<const std::vector<attribute>::const_iterator>(b);
 		}
 
 		split_method *
@@ -1547,8 +1555,6 @@ namespace provallo
 				out <<std::to_string(get_tag(i))<< std::string((i==_size-1)? " ":"," ) ;
 
 			out << std::endl;
-
-
 		}
 		virtual split_method *
 		deserialize(std::istream &in)
@@ -1839,8 +1845,8 @@ namespace provallo
 				
 
 			SplittingPolicy::split(data_set, get_tag(0), _interval);
-			//auto x = random_();
-			//x/=x++;
+			//std::cout<<"interval size "<<_interval.size()<<std::endl;
+
 			
 
 		}
@@ -2126,7 +2132,7 @@ namespace provallo
 		static split_method *
 		createMethod(const std::random_device &, split_type type,
 					 const provallo::dataset &data_set, const attribute_tag &tag,
-					 const attribute_tag &factory_tag);
+					 const attribute_tag &factory_tag ,split_method_factory &factory);
 
 	public:
 		split_method_factory(const provallo::dataset &ds,
@@ -2136,6 +2142,7 @@ namespace provallo
 																  _target_method(other._target_method ? other._target_method->clone() : nullptr),
 																  r_dataset(other.r_dataset),override_split_method(false),override_split_type(CONE_RANDOM)
 		{
+
 		}
 		split_method_factory(split_method_factory &&other) : _split_methods(std::move(other._split_methods)),
 															 _target_method(other._target_method),
@@ -2155,7 +2162,7 @@ namespace provallo
 			}
 			this->_split_methods = std::move(other._split_methods);
 			this->r_dataset = *(&other.r_dataset);
-
+			this->override_split_type = other.override_split_type;
 			return *this;
 		}
 
@@ -2223,6 +2230,8 @@ namespace provallo
 		deserialize(const split_method_factory *serial);
 
 		virtual ~split_method_factory();
+		private:
+		std::map<std::pair<size_t, size_t>, split_method *> _split_cache;
 	};
 
 	// Split by entropy,gain ratio,chi-square  :
@@ -2257,7 +2266,13 @@ namespace provallo
 		distance(const attribute &a, const attribute &b) const
 		{
 			// Return square distance
+			if(a.is_continous()){
 			return (a.continous() - b.continous()) * (a.continous() - b.continous());
+			}
+			else
+			{
+				return (a.discrete() - b.discrete()) * (a.discrete() - b.discrete());
+			}	
 		}
 	};
 
@@ -2268,9 +2283,15 @@ namespace provallo
 		distance(const attribute &a, const attribute &b) const
 		{
 			//return overlap condition
-
+			if(a.is_discrete()) {
 			if (a.discrete() != b.discrete())
 				return (a.discrete()-b.discrete())*(a.discrete()-b.discrete())	;
+			}
+			else
+			{
+				if (a.continous() != b.continous())
+					return (a.continous()-b.continous())*(a.continous()-b.continous())	;
+			}
 			return 1.0;
 		}
 	};
@@ -2289,38 +2310,47 @@ namespace provallo
 				 DataRightIterator b_begin, DataRightIterator b_end,
 				 TypeIterator t_begin, WeightIterator w_begin) const
 		{
-			// Sanity check
-			assert(
-				std::distance(a_begin, a_end) == std::distance(b_begin, b_end));
 
-			clock_t clock_end = clock(), clock_start = clock();
 
 			Float dist(0.0);
-			attribute a, b;
-			// same sample, no distance ?
-			if (a_begin == b_begin)
+ 			// same sample, no distance ?
+			if (a_begin == b_begin ||b_begin == b_end)
 				return dist;
-
+			// Iterate over all attributes
 			while (a_begin != a_end && b_begin != b_end)
 			{
-				a = (*a_begin);
-				b = (*b_begin);
-				attribute_type t = (*t_begin);
-				Float w = (*w_begin);
-				// Sanity check
-				assert(
-					t == continous_attribute::_type() || t == discrete_attribute::_type());
-				if (t == continous_attribute::_type())
-					dist += w * ContinuousDistancePolicy::distance(a, b);
-				else if (t == discrete_attribute::_type())
-					dist += w * DiscreteDistancePolicy::distance(a, b);
+				attribute a (*a_begin);
+				attribute b (*b_begin);
+				attribute_type t (*t_begin);
+				Float w (*w_begin);
 
-				a_begin = a_begin++;
-				b_begin = b_begin++;
-				t_begin = t_begin++;
-				w_begin = w_begin++;
-			}
-			clock_end = clock();
+				// skip ignored attributes.
+
+				if(t==ignored_attribute::_type())
+				{
+					a_begin++;
+					b_begin++;
+					t_begin++;
+					w_begin++;
+					continue;
+				}
+
+				if(t == continous_attribute::_type() || t == discrete_attribute::_type())
+					{
+							if (t == continous_attribute::_type())
+								dist += w * ContinuousDistancePolicy::distance(a, b);
+							else if (t == discrete_attribute::_type())
+								dist += w * DiscreteDistancePolicy::distance(a, b);
+					}
+					else
+					{
+						return dist;
+					}
+				a_begin++;
+				b_begin++;
+				t_begin++;
+				w_begin++;
+			} //while
 			assert(b_begin == b_end);
 			// std::cout<<"[+] metric distance CPU time (s) "<< std::to_string( double((double(end-start)/CLOCKS_PER_SEC) ))<<std::endl;
 			// Return distance

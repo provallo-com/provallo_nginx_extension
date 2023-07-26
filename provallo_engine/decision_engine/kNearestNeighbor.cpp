@@ -80,20 +80,22 @@ namespace provallo
 	    double currentProbability = results->pos (currentExample, j);
 	    if (currentProbability > maxProbability)
 	      {
-		maxIndex = j;
-		maxProbability = currentProbability;
-		rejecting = false;
+			maxIndex = j;
+			maxProbability = currentProbability;
+			rejecting = false;
 	      }
 	    else if (currentProbability == maxProbability)
 	      {
-		rejecting = true;
+				rejecting = true;
 	      }
 	  }
 
 	if (rejecting)
 	  maxIndex = -1;
 
-	predictions->pos (currentExample, 0) = maxIndex;
+		predictions->pos (currentExample, 0) = maxIndex;
+
+		
       }
     return predictions;
   }

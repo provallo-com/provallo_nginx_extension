@@ -37,7 +37,7 @@ namespace provallo
     }
 
     class_dist (uint32_t nbins, Float weight) :
-	_histogram (nbins, weight / nbins), _sum (weight)
+	_histogram (nbins, (weight / double(nbins))), _sum (weight)
     {
     }
     class_dist ( const class_dist& other) : _histogram(other._histogram),_sum(other._sum)
@@ -98,11 +98,16 @@ namespace provallo
     {
       if(tag<_histogram.size()  ) {
         _histogram[tag] += weight;
-        _sum += weight;
       }
       else {
-        std::cout<<"tag "<<tag<<" is out of range "<<_histogram.size()<<std::endl;
+        std::cout<<"tag "<<tag<<" is out of range, resizing to support  "<<_histogram.size()<<std::endl;
+        _histogram.resize(tag+1,0.0);
+        _histogram[tag] = weight;
+  
+       // assert(0);
       }
+        _sum += weight;
+      
     }
 
     // Accumulate a specific tag
@@ -134,6 +139,12 @@ namespace provallo
       _histogram[tag] = weight;
       _sum += weight;
     }
+  
+    std::vector<Float>::iterator begin() { return _histogram.begin(); } 
+    std::vector<Float>::iterator end() { return _histogram.end(); } 
+    std::vector<Float>::const_iterator begin() const { return _histogram.begin(); } 
+    std::vector<Float>::const_iterator end() const { return _histogram.end(); } 
+
     // Get a specific tag
     Float
     get (uint32_t tag) const
@@ -152,6 +163,13 @@ namespace provallo
       if(tag<_histogram.size()) {
         _histogram[tag] += weight;
         _sum += weight;
+      }else
+      {
+        //resize and add  
+        _histogram.resize(tag+1,0.0);
+        _histogram[tag] = weight;
+        _sum += weight;
+
       }
       
    }
@@ -282,7 +300,7 @@ namespace provallo
     Float
     gini () const;
 
-
+    
     
     virtual
     ~class_dist ()

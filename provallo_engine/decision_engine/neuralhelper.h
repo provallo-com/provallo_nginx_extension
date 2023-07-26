@@ -510,7 +510,7 @@ namespace provallo
     reset ()
     {
       for (auto itr = begin (); itr != end (); ++itr)
-	(*itr)->reset ();
+          	(*itr)->reset ();
 
     }
     size_t
@@ -865,8 +865,7 @@ namespace provallo
            * Ce constructeur supervise le projet par rapport au réseau de neurones donné et aux batchs de tests et d'apprentissages donnés en paramètre
            */
           learning_task();
-
-          /// Constructeur par fonction modèle
+          learning_task( const learning_task::task_configuration& config );           /// Constructeur par fonction modèle
           learning_task(neural_net::ptr network,
                         std::function<matrix<float>(matrix<float>)> modelFunction,
                         std::vector<matrix<float>> teachingInputs,

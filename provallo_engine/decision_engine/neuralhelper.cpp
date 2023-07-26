@@ -76,7 +76,7 @@ namespace provallo
             {
                 for (size_t j = 0; j < v2.size2(); j++)
 
-                    res += -log(0.0000001 + fabs(v1(i, j) - (1 - v2(i, j)))); // Permet d'inverser le desiredOutput -> donc ajout du signe -
+                    res += -1. * std::log<double>( fabs(v1(i, j) - (1 - v2(i, j)))).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
             }
             return res;
         };
@@ -92,7 +92,7 @@ namespace provallo
             {
                 for (size_t j = 0; j < v2.size2(); j++)
 
-                    res += -log(0.0000001 + v1(i, j)); // Permet d'inverser le desiredOutput -> donc ajout du signe -
+                    res += -1. * std::log<double>(0.0000001 + v1(i, j)).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
             }
             return res;
         };
@@ -111,7 +111,7 @@ namespace provallo
                 for (size_t j = 0; j < v2.size2(); j++)
                 {
 
-                    res += log(1 - v1(i, j) + 0.0000001);
+                    res += -1 * std::log<double>(1.0 - v1(i, j) + 0.0000001).real();
                 }
             }
             return res;
@@ -127,7 +127,7 @@ namespace provallo
             float res = 0;
             for (size_t i = 0; i < v1.size1(); i++)
                 for (size_t j = 0; j < v2.size2(); j++)
-                    res += -exp(-(1 / 1.0f) * log((1 / v1(i, j)) - 1));
+                    res += -exp(-(1 / 1.0f) * std::log<double>((1.0 / v1(i, j)) - 1.).real()); 
 
             return res;
         };
@@ -864,7 +864,7 @@ namespace provallo
     error_processor &source_processor::operator[](size_t teachIndex)
     {
         if (teachIndex > mErrorStats.size())
-            throw std::logic_error("StatsCollector::operator[] - Erreur : Indice d'apprentissage trop grand");
+            throw std::logic_error("source_processor::operator[] - Erreur : Indice d'apprentissage trop grand");
 
         if (teachIndex == mErrorStats.size())
             mErrorStats.push_back(error_processor());
@@ -1084,6 +1084,12 @@ namespace provallo
         file.close();
         // run experiments
 
+        runExperiments();
+    }
+
+    learning_task::learning_task(const learning_task::task_configuration &config)
+        : _configuration(config)
+    {
         runExperiments();
     }
     //**************EXPERIENCES*************

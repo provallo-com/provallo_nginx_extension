@@ -218,7 +218,7 @@ namespace provallo
 
     split_method_factory *_split_factory;
     std::random_device _rand;
-    mmap_vector<size_t> _offsets;
+    std::vector<size_t> _offsets;
     // classifier types :
     // semi auto-labeled, fully-supervised,generative, sparse/binary/multi-class
     std::string _name;
@@ -252,11 +252,14 @@ namespace provallo
     const split_method_factory &
     splitFactory() const
     {
+      if(!_split_factory)
+      {
+        throw std::runtime_error("split factory is null");
+      }
       return *_split_factory;
     }
 
-  public:
-  public:
+   public:
     
     //order    : 
     //1. attribute_information _attributes_info;
@@ -352,7 +355,6 @@ namespace provallo
       {
         ret = _split_factory->getTargetMethod()->size();
       }
-
       return ret;
     }
 
@@ -1085,6 +1087,8 @@ namespace provallo
                 provallo::UseDepthImp depth_imp,
                 provallo::WeighImpRows weigh_imp_rows, bool impute_at_fit,
                 uint64_t random_seed, bool use_long_double, int nthreads);
+    
+    
     isolation_forest(size_t ndim =3, size_t ntrees = 100,
                      bool build_imputer = true ,int nthreads=-1);
 
@@ -1092,14 +1096,18 @@ namespace provallo
     bool fitted() const{
       return is_fitted;
     }
+    
     void
     fit(double X[], size_t nrows, size_t ncols);
 
 
     inline void fit ( matrix<double> &X  )
     {
-      fit(X.data(), X.rows(), X.cols());
+      fit(X.data(), X.size1(), X.size2());
     }
+
+     
+
     // set numeric and categorical data and weights for fitting the model
     // using attribute_information and attribute_weights:
     // attribute_information: 0 for numeric, 1 for categorical
@@ -1743,9 +1751,7 @@ namespace provallo
 
     /* for non-depth scoring metric */
     density_estimator<ldouble_safe, real_t> density_calculator;
-
-    
-    
+  
   };
   void
   check_interrupt_switch(signal_switcher &ss);
@@ -3015,14 +3021,17 @@ namespace provallo
     tree_classifier(const dataset &data, const parameter_base &parameters,
                     const std::random_device &random, split_method_factory *factory) : classifier(data, parameters, random, factory)
     {
+      _name = "Tree";
     }
 
 
     tree_classifier(const dataset &data, const parameter_base &parameters,
                     const std::random_device &random, std::ostream& out, split_method_factory *factory) : classifier(data, parameters, random, factory)
     {
-	out.flush();
+      _name = "Tree";
+        out.flush();
     }
+	
     tree_classifier(const classifier *deserial);
     Tree &get_tree()
     {
@@ -3134,6 +3143,8 @@ namespace provallo
                             std::random_device(),
                         split_method_factory *factory = nullptr) : classifier(data, parameters, random, factory)
     {
+
+      _name = "Ensemble";
     }
     ensemble_classifier(const classifier *deserial);
 
@@ -3270,7 +3281,7 @@ namespace provallo
     attribute
     classify(InputIterator begin, InputIterator end) const
     {
-      return tree_classifier::classify(begin, end);
+      return tree_classifier::classify(begin, end).mode();
     }
 
     ~random_tree()
@@ -3283,11 +3294,13 @@ namespace provallo
                                        const parameter_base &parameters,
                                        const std::random_device &rm, split_method_factory *factory) : tree_classifier(data, parameters, rm, factory), _rho(0), _level(0), _min_gain(0)
   {
+    _name = "Random Tree";
+
     // Sanity check
     if (parameters.getType() != random_tree_param::_type())
       throw(std::runtime_error(
           "Bad parameter type " + std::to_string(parameters.getType()) + " in random forest"));
-
+      
     // Cast to correct type
     const random_tree_param *local_parameters =
         static_cast<const random_tree_param *>(&parameters);
@@ -3312,6 +3325,8 @@ namespace provallo
   random_tree<GainPolicy>::random_tree ( const dataset& data,const parameter_base& parameters,const std::random_device& rm ,std::ostream& os,split_method_factory* factory) : 
   tree_classifier(data, parameters, rm, factory), _rho(0), _level(0), _min_gain(0)
   {
+    _name = "Random Tree";
+
     // Sanity check
     if (parameters.getType() != random_tree_param::_type())
       throw(std::runtime_error(
@@ -3394,6 +3409,7 @@ namespace provallo
 
     // Split method for target tag
     const split_method *target_split = _split_factory->getTargetMethod();
+    assert(target_split);
 
     // Check if there are attributes to split the data
     if (attributes.size() == 0 || (_level && level == _level))
@@ -3413,7 +3429,12 @@ namespace provallo
         // Get tag
         attribute_tag tag(attributes[i]);
         // Calculate the gain
-        gain_values[i] = gain(data, *_split_factory->getMethod(tag));
+        const split_method* m=_split_factory->getMethod(tag);
+        if(m)    
+          gain_values[i] = gain(data, std::ref(*m) );
+
+        //skip if no split.
+
       }
 
       // Get the higher gain
@@ -3487,7 +3508,6 @@ namespace provallo
   class bayesian : public classifier
   {
     // ---- Probability matrix and arrays
-
     std::vector<Float> _prior;
 
     std::vector<std::vector<std::vector<Float>>> _likelihood;
@@ -3589,10 +3609,13 @@ namespace provallo
       {
         // Get split method for this attribute
         const split_method *attr_split = splitFactory().getMethod(j);
+        if ( attr_split == nullptr ) continue;
         uint32_t attr_branch(
             attr_split->getBranch(begin));
 
         // Probability that Aj attribute takes branch <attr_branch> in a sample with class Ci
+        if( attr_branch>_likelihood[j][i].size() ) continue;
+
         likelihood *= _likelihood[j][i][attr_branch];
       }
 
@@ -3682,6 +3705,13 @@ namespace provallo
     void
     pushSample(std::vector<attribute> *sample, InputIterator begin,
                InputIterator end) const;
+    
+  // Push samples from data set iterator to memory mapped file vector
+  template <class InputIterator>
+    void
+    pushSample(mmap_vector<attribute> *sample, InputIterator begin,
+               InputIterator end) const;
+
 
     // Get closest point index
     template <class InputIterator>
@@ -3851,9 +3881,9 @@ namespace provallo
     {
       // Only standardize continuous attributes
       dataset::attribute_iterator it = data.begin(i);
-      for (uint32_t j = 0; j < _offsets.size(); ++j)
+      for (uint32_t j = 0; j < _offsets.size() && j<_types.size(); ++j)
       {
-        if (info.getType(_offsets[j]) == continous_attribute::_type())
+        if (_types[j] == continous_attribute::_type())
         {
           Float value = (*(it + _offsets[j])).continous();
           // Increment mean
@@ -3921,9 +3951,40 @@ namespace provallo
   template <class InputIterator>
   void
   metric_classifier<MetricPolicy>::pushSample(
+      mmap_vector<attribute> *sample, InputIterator begin,
+      InputIterator end) const
+  {
+    if(begin == end)
+      return;
+    // Loop over attributes and check the not ignored ones
+    for (uint32_t j = 0; j < _offsets.size(); ++j)
+    {
+      if (_types[j] == continous_attribute::_type())
+      {
+        Float value = (*(begin + _offsets[j])).continous();
+        Float standard = (value - _mean[j]);
+        // Check for NULL standard deviation (in case all values are equal)
+        if (_stdev[j] > _tolerance)
+          standard /= _stdev[j];
+        sample->push_back(attribute(standard));
+      }
+      else
+      {
+        // Just push attribute
+        sample->push_back(*(begin + _offsets[j]));
+      }
+    }
+  }
+
+  template <class MetricPolicy>
+  template <class InputIterator>
+  void
+  metric_classifier<MetricPolicy>::pushSample(
       std::vector<attribute> *sample, InputIterator begin,
       InputIterator end) const
   {
+    if(begin == end)
+      return;
     // Loop over attributes and check the not ignored ones
     for (uint32_t j = 0; j < _offsets.size(); ++j)
     {
@@ -4024,7 +4085,7 @@ namespace provallo
 
     // PUsh random sample
     std::vector<attribute> sample;
-    pushSample(&sample, dataset.begin(idx), dataset.end(idx));
+    pushSample(&sample, dataset.begin(idx), (dataset.begin(idx) + dataset.getattributes().get_target_tag()));
 
     // Push class of this sample
     size_t target_class = (*(dataset.begin(idx) + dataset.getattributes().get_target_tag())).discrete();
@@ -4067,6 +4128,7 @@ namespace provallo
       }
     }
     // Sort values
+    std::cout<<"[+] Sorting distances"<<std::endl;
     sort(sorted.begin(), sorted.end());
 
     // Split method for target tag
@@ -4075,6 +4137,7 @@ namespace provallo
     uint32_t class_number(target_split->size());
     // Create container of class votes
     class_dist votes(class_number);
+    std::cout<<"[+] searching concensus..."<<std::endl;
 
     // Check if the test point is the same one that a training point
     if (sorted[0].first < 10e-10)
@@ -4082,7 +4145,7 @@ namespace provallo
       votes.accum(_class[sorted[0].second]);
       return votes;
     }
-
+    std::cout<<"[+] Nearest neighbor distance: "<<sorted[0].first<<std::endl;
     // Weight each neighbor with the inverse of the distance to the testing point
     for (uint32_t i = 0; i < sorted.size() && i < _neighbors; ++i)
     {
@@ -4323,7 +4386,9 @@ namespace provallo
   template <class MetricPolicy>
   void
   metric_classifier<MetricPolicy>::serialize(classifier *serial) const
-  {
+  { 
+	 UNDEF_REFERENCE(serial)
+         UNDEF_REFERENCE2(serial)
     // Get buffer for metric classifier
     // metric_classifier* buffer(serial->MutableExtension(metric_classifier::child));
 #if 0
@@ -4408,6 +4473,8 @@ namespace provallo
       bool
       test(Iterator begin, Iterator end) const
       {
+        if ((Iterator(begin + _target_tag ) > (end)) || (Iterator(begin + _target_tag ) ==end)  )  
+          return false;
         return ((*(begin + _target_tag)).discrete() == _target_class);
       }
 
@@ -4523,7 +4590,7 @@ namespace provallo
   public:
     // Constructor
     Kmeans(const dataset &data, const parameter_base &parameters,
-           const std::random_device &random = std::random_device());
+           const std::random_device &random = std::random_device(),split_method_factory* fac=nullptr) ;
     // Construct from buffer
     Kmeans(const classifier *deserial);
 
@@ -4539,9 +4606,9 @@ namespace provallo
   template <class MetricPolicy>
   Kmeans<MetricPolicy>::Kmeans(const dataset &data,
                                const parameter_base &parameters,
-                               const std::random_device &random) : metric_classifier<MetricPolicy>(data,
+                               const std::random_device &rnd,split_method_factory* fac) : metric_classifier<MetricPolicy>(data,
                                                                                                    metric_classifier_param(1, castParams(parameters)->getWeights()),
-                                                                                                   random)
+                                                                                                   rnd,fac)   
   {
 
     // Number of point for k-means
@@ -4572,7 +4639,7 @@ namespace provallo
       if (data_size <= points)
         throw(std::runtime_error(
             "Not enough points in data set for k-means"));
-
+  
       for (size_t k = 0; k < points; ++k)
       {
         // Get random sample
@@ -4583,21 +4650,21 @@ namespace provallo
         size_t max_count(0);
         while (checkPoint(random_sample.first.begin(),
                           random_sample.first.end()) &&
-               max_count < 20)
+               max_count < attrs.getSize()*attrs.getSize()*attrs.getSize()  ) 
         {
           random_sample = getRandomSample(*sets[i]);
+          setData(i * points + k, random_sample.first.begin(),
+                random_sample.first.end());
+          // Push class of this sample
+          setClass(i * points + k, random_sample.second);
+
           ++max_count;
         }
 
-        if (max_count == 20)
-          throw(std::runtime_error(
-              "Random sampling efficiency is too low for for k-means"));
-
+        //throw(std::runtime_error(
+        //      "Not enough points in data set for k-means"));
         // Create vector
-        setData(i * points + k, random_sample.first.begin(),
-                random_sample.first.end());
-        // Push class of this sample
-        setClass(i * points + k, random_sample.second);
+        
       }
     }
 
@@ -4620,15 +4687,20 @@ namespace provallo
         {
           // Get standardized samples
           std::vector<attribute> sample;
-          pushSample(&sample, sets[i]->begin(j), sets[i]->end(j));
+          pushSample(&sample, sets[i]->begin(j), sets[i]->begin(j)+accums[i].size() );
+
+
 
           // Get closest point index
           size_t idx = getClosestPoint(i, sample.begin(),
                                        sample.end());
 
           // Accumulate
-          for (size_t k = 0; k < sample.size(); ++k)
-            accums[idx][k]->accum(sample[k]);
+
+            for (size_t k = 0; k < sample.size(); ++k)
+              accums[idx%accums.size()][k%accums[idx].size()]->accum(sample[k]);
+             
+
         }
       }
 
@@ -4907,7 +4979,7 @@ namespace provallo
    }
 
   template <typename GainPolicy>
-  class DecisionTree : public tree_classifier, public GainPolicy
+  class decision_tree : public tree_classifier, public GainPolicy
   {
     // Use gain function from the Gain policy
     using GainPolicy::gain;
@@ -4919,7 +4991,7 @@ namespace provallo
                const std::vector<attribute_tag> &attributes);
 
   public:
-    DecisionTree(const dataset &data, const parameter_base &parameters = none(),
+    decision_tree(const dataset &data, const parameter_base &parameters = none(),
                  const std::random_device &random = std::random_device(), split_method_factory *factory = nullptr);
 
     classifier_type
@@ -4943,17 +5015,18 @@ namespace provallo
       return tree_classifier::posterior(begin, end);
     }
 
-    ~DecisionTree()
+    ~decision_tree()
     {
     }
   };
 
   template <typename GainPolicy>
-  DecisionTree<GainPolicy>::DecisionTree(const dataset &data,
+  decision_tree<GainPolicy>::decision_tree(const dataset &data,
                                          const parameter_base &parameters,
                                          const std::random_device &random, split_method_factory *factory) : tree_classifier(data, parameters, random, factory)
   {
-
+    if(_split_factory == nullptr)
+      _split_factory = new split_method_factory(data, getRandom() );
     // Push all attributes tags
     std::vector<attribute_tag> attributes;
     // Push each attribute
@@ -4966,16 +5039,19 @@ namespace provallo
 
   template <typename GainPolicy>
   void
-  DecisionTree<GainPolicy>::createTree(Tree::iterator parent,
+  decision_tree<GainPolicy>::createTree(Tree::iterator parent,
                                        const dataset &data,
                                        const std::vector<attribute_tag> &attributes)
   {
     // Create split factory
 
+
     // split_method_factory local_factory (data, getRandom ());
-    std::vector<attribute_tag> att;
+    std::vector<attribute_tag> att(data.getattributesNumber());
     // Split method for target tag
-    const split_method *target_split = this->_split_factory->getTargetMethod();
+    const split_method *target_split = splitFactory().getTargetMethod();
+    assert (target_split != nullptr);
+    
     // local_factory.getTargetMethod ();
 
     // Check if there are attributes to split the data and the number of samples at this node
@@ -4996,11 +5072,15 @@ namespace provallo
         // Get tag
         attribute_tag tag(attributes[i]);
         // Calculate the gain
-        gain_values[i] = gain(data, *_split_factory->getMethod(tag));
+        const split_method *xsplit_method = splitFactory().getMethod(tag);
+        if(xsplit_method != nullptr)
+          gain_values[i] = gain(data, std::ref(*xsplit_method ));
+        else
+          gain_values[i] = 0.0;
       }
 
       // Get the higher gain
-      uint32_t idx = max_element(gain_values.begin(), gain_values.end()) - gain_values.begin();
+      uint32_t idx = max_element(gain_values.begin(), gain_values.end()) -  gain_values.begin();
 
       // Check if the gain is null (splitting won't gain any information, so
       // this should be a leaf node)
@@ -5017,8 +5097,8 @@ namespace provallo
 
         // Get split method
         const split_method *split_method(
-            _split_factory->getMethod(split_tag));
-
+            splitFactory().getMethod(split_tag));
+        
         // Add node to the tree
         uint32_t split_count = split_method->size();
         parent = _tree.insert<TreeNode>(split_method,
@@ -5027,14 +5107,18 @@ namespace provallo
         // Remove the current attribute from the list
         if (split_method->get_type() == DISC)
         {
-          att.resize(attributes.size() - idx);
-          std::copy(attributes.begin() + idx, attributes.end(), att.begin());
-          //  attributes.erase (attributes.begin () + idx);
+          
+          att.resize(attributes.size() );
+          std::copy(attributes.begin() , attributes.end(), att.begin());
+          att.erase(att.begin() + idx);
+          // Remove the current attribute from the list
+
         }
         else
         {
           att.resize(attributes.size());
           std::copy(attributes.begin(), attributes.end(), att.begin());
+
         }
 
         // Apply the same process on child nodes
@@ -5046,7 +5130,7 @@ namespace provallo
                                                        i);
           if (subset)
           {
-            if (subset->size() == 0)
+            if (subset->size() == 0 && target_split)
             {
               // Uniform distribution
               class_dist uniform(data.getDistribution().size(),
@@ -5125,7 +5209,9 @@ namespace provallo
       // Push class of this sample
       setClass(i, (*(it + info.get_target_tag())).discrete());
     }
-  }
+    UNDEF_REFERENCE(out)
+    UNDEF_REFERENCE2(out)
+   }
 
   template <class MetricPolicy>
   nearest_neighbor<MetricPolicy>::nearest_neighbor(const classifier *deserial) : metric_classifier<MetricPolicy>(deserial) {}
@@ -5309,14 +5395,15 @@ namespace provallo
 		                    const dataset& data =std::ref(*_last_dataset);
 		                    std::vector<classifier*>& _classifiers =std::ref(*gclassifiers );
 		                    class_dist distribution (*distibution_ptr);
-		                    std::vector<Float> _error = *error_copy;
+		                    std::vector<Float>& _error = std::ref(*error_copy);
 		                    std::vector<Float>& _raw_importance = std::ref(*last_raw);
 		                    std::vector<class_dist>& global_oob_predictions= std::ref(*gdist);
 		                    Float& _oob_error = *_last_oob;
-		                    std::ostream& out=out2;
+                        //Float oob_error = 0.0;//local Out of bag error
+                        std::ostream& out=out2;
 		                    clock_t c =clock();
 		                    std::random_device d;
-				    attribute_tag target_tag = last_target;
+				               attribute_tag target_tag = last_target;
                         const size_t ratio =  ((Float)data.size () * (Float)_classifiers.size ());
 
 
@@ -5346,7 +5433,7 @@ namespace provallo
 	  	    std::lock_guard<std::recursive_mutex> guard(_mutex);
 
 	  	     _classifiers[i] = new_classifier;
-	  	    _error[i] = 0.1 / 1.1;
+	  	    _error[i] = 0.0000001;
 
 	  	  }
 		  std::vector<Float> class_importance (_split_factory.getSize (), 0); // The "variable" is actually a split method
@@ -5354,7 +5441,7 @@ namespace provallo
 		  // OOB set
 		  dataset &oob_set (*random_set.second);
 		  // Get OOB error
-		  size_t oob_error (0);
+		  size_t oob_error (0); //local thread error
 		  size_t n(oob_set.size());
 		  // Test OOB data
 		  for (uint32_t k = 0; k < n; k++){
@@ -5365,20 +5452,23 @@ namespace provallo
 		      attribute test_attr (* (it+ target_tag));
 		      // Classify the data
 		      attribute class_attr (
-			  _classifiers[i]->classify ((attribute_iterator)oob_set.begin (k),
-						     (attribute_iterator)oob_set.end (k)));
+			  _classifiers[i]->classify (it,
+						     it + target_tag));
 		      // Get prediction
 		      discrete_value prediction (class_attr.discrete ());
 		      // Check value
 		      if (test_attr.discrete () != prediction) {
 			    // Accumulate OOB error (for importance estimation)
 		      	++oob_error;
-		      // Set the result in OBB distribution
+            out<<"[+] misclassification : "<<pthread_self()<<" expected : "<<std::to_string(test_attr.discrete()) << ", got "<<std::to_string(prediction)<< std::endl; 
+		      // Set the result in OOB distribution
           }
-           out << "[+] Classified: ["<<k <<"/"<<n<<"]"<< std::endl;
-		        uint32_t index (oob_indices[k]); {
+          out <<  "[+] classifier running on thread : "<<pthread_self()<<" Classified: ["<<k <<"/"<<n<<"], with :"<<std::to_string(oob_error) +std::string(" errors.")<< std::endl;
+		      {
+
       			std::lock_guard<std::recursive_mutex> guard(_mutex);
-      			global_oob_predictions[index].accum (prediction);
+      			uint32_t index (oob_indices[k]); 
+            global_oob_predictions[index].accum (prediction);
  
 		      }
  		    }
@@ -5417,16 +5507,16 @@ namespace provallo
             // Check against the OOB prediction
             if (test_attr.discrete ()
                 != global_oob_predictions[i].mode ().discrete ())
-              ++_oob_error;
+              ++oob_error;
           }
-      _oob_error /= Float(ratio);
+      _oob_error += oob_error/Float(ratio);
       std::cout << "[+]Global OOB error = % " << 100.0 * _oob_error << std::endl; 
           
 
 		  // Print some feedback to the caller
 			  out << "[#] Classifier number " << i << " finished." << std::endl;
 			  out << "[#]   OOB samples =  " << oob_set.size () << " / "
-			      << data.size () << " (%" << 100 * double(oob_set.size ()) /double( data.size ())
+			      << data.size () << " (%" << 100 * double(oob_set.size ()-data.size()) /double( data.size ())
 			      << ")" << std::endl;
 			  out << "[#]   OOB error = % "
 			      <<( 100.0 * (double) oob_error / (double) oob_set.size ())
@@ -5509,9 +5599,11 @@ namespace provallo
   class confusion_matrix
   {
     // Confusion matrix data
-    std::vector<std::vector<uint32_t>> _matrix;
+    std::vector<std::vector< uint32_t>> _matrix;
+
+    //mmap_vector<mmap_vector<uint32_t>> _matrix;
     // Information about attributes
-    attribute_information _attributes;
+    const attribute_information& _attributes; //we don't want to copy the attribute information
     // Friendly printer
     friend std::ostream &
     operator<<(std::ostream &out, const confusion_matrix &q);
@@ -5529,8 +5621,8 @@ namespace provallo
     {
       if (_matrix.size() != other._matrix.size())
         return false;
-      for (uint32_t i = 0; i < _matrix.size(); ++i)
-        for (uint32_t j = 0; j < _matrix[i].size(); ++j)
+      for (size_t i = 0; i < _matrix.size(); ++i)
+        for (size_t j = 0; j < _matrix[i].size(); ++j)
           if (_matrix[i][j] != other._matrix[i][j])
             return false;
       return true;
@@ -5538,6 +5630,7 @@ namespace provallo
 
     ~confusion_matrix()
     {
+
     }
   };
   class lightgbm_classifier: public ensemble_classifier 
@@ -5607,7 +5700,9 @@ namespace provallo
       virtual ~xgboost_classifier();
       
       virtual class_dist  classify(const std::vector<attribute> &sample) const;
-      
+      //posteriors
+
+
 
       virtual void
       print(std::ostream &out) const;     
@@ -5617,10 +5712,6 @@ namespace provallo
       virtual void  print(std::ostream &out, const dataset &data, const std::vector<attribute> &predictions) const;
   };  
 
-  
-
-
-
 
 
   class iso_classifier : public classifier 
@@ -5628,13 +5719,41 @@ namespace provallo
     
 
     const dataset &_data;
+    isoforest_param _params;
+    
     //iso_forest_params :
     // Number of classes
     isolation_forest* _isoforest = nullptr;
     //class distribution
     class_dist _class_dist; // Class distribution
-    //dataset reference :
+    
     public:
+
+      iso_classifier(const dataset &data,
+      const parameter_base& isoforest_params ,
+      std::random_device& rd  ,
+      split_method_factory* factory ):classifier(data,isoforest_params, rd, factory ),
+
+      _data(data),
+      _params(static_cast<const isoforest_param&>(isoforest_params)),
+      _isoforest(nullptr),
+      _class_dist(2)
+      {
+        //resize class dist to number of classes .
+        const attribute_information& attributes = data.getattributes();
+        attribute_tag target = attributes.get_target_tag();
+        _class_dist.setup(attributes.getCount(target));
+ 
+        //create isolation forest 
+        _isoforest = new isolation_forest();
+        //set parameters
+        matrix<double> data_matrix = transform_data(); 
+        _isoforest->fit(data_matrix) ; 
+
+      }
+
+      //constructor
+
       iso_classifier(const dataset &data);
       //copy constructor
       iso_classifier(const iso_classifier &other);
@@ -5650,7 +5769,6 @@ namespace provallo
       virtual ~iso_classifier();
       //classify
 
-      virtual class_dist  classify(const std::vector<attribute> &sample) const;
       //validate data
       void validate_data();
       //print
@@ -5684,8 +5802,82 @@ namespace provallo
            }
           _isoforest = isoforest; 
          }       
+         //implement pure virtual function : classify
+
+  
+      //override classify
+      virtual class_dist classify (const std::vector<attribute> &sample) const ;
+      //posterior probabilities
+      virtual class_dist posterior (const std::vector<attribute> &sample) const ; 
+
+      //override pure virtual function : classify
+      virtual class_dist classify (dataset::attribute_iterator begin, dataset::attribute_iterator end )
+      {
+        std::vector<attribute> sample_copy; 
+        for (auto it = begin; it != end; ++it)
+        {
+          sample_copy.push_back(*it);
+          
+        }
+        return classify(sample_copy);
+      }
+      //override attribute classify 
+      virtual attribute classify (dataset::attribute_iterator begin,dataset::attribute_iterator end) const 
+      {
+        std::vector<attribute> sample_copy; 
+        for (auto it = begin; it != end; ++it)
+        {
+          sample_copy.push_back(*it);
+          
+        }
+        return classify(sample_copy).mode();
+      }
+      //override pure virtual function : get_type
+      virtual classifier_type
+      get_type() const{
+        return classifier_type::ISO_FOREST;
+      }
+
+
+
+      //override pure virtual function : serialize  
+      virtual void serialize( classifier* serial) const
+      {
+          UNDEF_REFERENCE(serial);
+          UNDEF_REFERENCE2(serial);
+      }
+      // Classify a case
+     virtual attribute
+    classify(std::vector<attribute>::const_iterator begin,
+             std::vector<attribute>::const_iterator end) const
+             {
+
+              std::vector<attribute> sample(begin, end);
+
+              return classify(sample).mode();
+             }
+
+    // Get distribution of outcomes
+    virtual class_dist
+    posterior(dataset::attribute_iterator begin,
+              dataset::attribute_iterator end) const
+              {
+                std::vector<attribute> copy;
+                for (auto it = begin; it != end; ++it)
+                {
+                  copy.push_back(*it);
+                }
+                return posterior(copy);
+              }
+    virtual class_dist
+    posterior(std::vector<attribute>::const_iterator begin,
+              std::vector<attribute>::const_iterator end) const
+              {
+                return posterior(std::vector<attribute>(begin, end)); 
+              }
 
       };
+
       //classifiers
 
 
@@ -5703,9 +5895,9 @@ namespace provallo
     // measure :
     auto c_start = clock();
     auto t_start = std::chrono::high_resolution_clock::now();
-
-    // create classifier and train it
-    Classifier _classifier(train_data, params);
+  
+     // create classifier and train it
+    Classifier _classifier(train_data, params );
     // print classifier output
     std::cout << " -- Classifier " << class_name << " : " << std::endl;
     std::cout << train_data.size() << " samples, " << train_data.getattributesNumber()
@@ -5765,10 +5957,10 @@ namespace provallo
               << std::chrono::duration<double>(t_end - t_start).count()
               << std::endl;
 
-    std::cout << "Number of errors = " << error << std::endl;
-    std::cout << "Number of test samples = " << test_data.size()
+    std::cout << "[+]Number of errors = " << error << std::endl;
+    std::cout << "[+]Number of test samples = " << test_data.size()
               << std::endl;
-    std::cout << "Error rate = " << 100 * error / test_data.size()  
+    std::cout << "[+]Error rate = " << 100 * error / test_data.size()  
               << " %" << std::endl; 
   }
     

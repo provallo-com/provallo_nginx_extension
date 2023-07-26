@@ -27,6 +27,8 @@
 #include <utility>
 #include <string>
 #include <sstream>
+#include <fstream>
+#include "utils.h" //real_t
 // simple matrix and NRC/NRCPP/eigen compat matrix.
   
 namespace provallo
@@ -497,6 +499,8 @@ namespace provallo
   class matrix_base;
 
   typedef std::shared_ptr<matrix_base> matrix_ptr;
+
+  
   class matrix_base
   {
   private:
@@ -510,12 +514,27 @@ namespace provallo
     {
       return data[row * cols + col];
     }
-    matrix_base(size_t rows, size_t cols);
+    const double & pos(size_t row,size_t col)const 
+    {
+      return data[row * cols + col];
+    }
+
+    inline double & operator()(size_t row, size_t col)
+    {
+      return data[row * cols + col];
+    }
+
+    inline double & operator()(size_t row, size_t col)const
+    {
+      return data[row * cols + col];
+    }
+     matrix_base(size_t rows, size_t cols);
     virtual ~matrix_base();
     virtual void
     clear();
   };
-
+  //note : matrix is not derived from matrix_base, since matrix_base is  dataset oriented and matrix<T>is comutation oriented.
+  // 
   template <class T>
   class matrix
   {
@@ -538,14 +557,19 @@ namespace provallo
 
       data_ = new T[size1 * size2];
     }
+    matrix(matrix_base &m) : size1_(m.rows), size2_(m.cols), data_(nullptr)
+    {
+      data_ = new T[size1_ * size2_];
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          element(i, j) = m(i, j);
+    }
 
     matrix(const matrix &m) : size1_(m.size1_), size2_(m.size2_), data_(nullptr)
     {
       size_t a_size = size1_ * size2_;
       data_ = new T[a_size];
       std::copy(m.data_, m.data_ + a_size, data_);
-      // for ( size_t i=0;i<a_size;++i)
-      //                 data_[i] = m.data_[i];
     }
     matrix(const matrix &&move_matrix) noexcept :
 
@@ -660,9 +684,8 @@ namespace provallo
 
     const matrix<T> operator+(const T &value) const
     {
-      matrix<T> ret = *this;
-
-      for (size_t i = 0; i < ret.size1_; i++)
+       matrix<T> ret = *this;
+       for (size_t i = 0; i < ret.size1_; i++)
         for (size_t j = 0; j < ret.size2_; j++)
           ret(i, j) = ret(i, j) + value;
 
@@ -865,13 +888,22 @@ namespace provallo
     {
       return size2_;
     }
+
     array_type row(size_t i)
+    {
+      array_type ret  = reinterpret_cast<array_type>( data_ + (i * cols()));    
+      return ret;
+      
+    }
+
+     array_type row(size_t i) const
     {
       array_type ret  = reinterpret_cast<array_type>(
           data() + (i * cols()));
 
       return ret;
     }
+
     size_type
     rows() const
     {
@@ -889,6 +921,233 @@ namespace provallo
       return data_;
     }
 
+
+    const array_type &
+    data()const
+    {
+
+      return data_;
+    }
+
+    
+    inline matrix<real_t> covariance()  const
+    { 
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+          ret(i,j) = covariance(i,j); 
+      return ret;
+    }
+    real_t covariance(size_t i,size_t j) const
+    {
+      return covariance(row(i),row(j));
+    }
+    real_t covariance(array_type a,array_type b) const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += (a[i]-mean(a))*(b[i]-mean(b));
+      return ret/(size1()-1);
+    }
+    real_t mean(const array_type &a) const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += a[i];
+      return ret/size1();
+    } 
+    T mean() const
+    {
+      T ret = 0;
+      for(size_t i=0;i<size1();i++)
+        for(size_t j=0;j<size2();j++)
+          ret += data_[i*size2()+j];
+      
+      return ret/(size1()*size2()); 
+
+    }
+    T median()const 
+    {
+      std::vector<T> tmp(size1()*size2());
+      for(size_t i=0;i<size1();i++)
+        for(size_t j=0;j<size2();j++)
+          tmp[i*size2()+j] = data_[i*size2()+j];
+      std::sort(tmp.begin(),tmp.end());
+      return tmp[tmp.size()/2]; 
+
+    }
+    inline matrix<real_t> correlation() const
+    {
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+          ret(i,j) = correlation(i,j); 
+      return ret;
+    } 
+    real_t correlation(size_t i,size_t j) const
+    {
+      return correlation(row(i),row(j));
+    }
+    real_t correlation(array_type &a,array_type &b) const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += (a[i]-mean(a))*(b[i]-mean(b));
+      return ret/(size1()-1);
+    }
+    //correlation_coefficient (x(i)-mean(x))*(y(i)-mean(y)) / ((x(i)-mean(x))2 * (y(i)-mean(y))2.
+    inline
+     matrix<real_t> correlation_coefficient()const
+    {
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+         {
+            ret(i,j) =std::sqrt( variance(i,j)/variance(i,i)*variance(j,j));  
+
+         } 
+
+      return ret;
+    }
+ 
+    inline matrix<real_t> variance()const 
+    {
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+          ret(i,j) = variance(i,j); 
+      return ret;
+    }
+    real_t variance(size_t i,size_t j)
+    {
+      return variance(row(i),row(j));
+    }
+    real_t variance(array_type &a,array_type &b) const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += (a[i]-mean(a))*(b[i]-mean(b));
+      return ret/(size1()-1);
+    } 
+    inline matrix<real_t> std()   const
+    {
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+          ret(i,j) = std(i,j); 
+      return ret;
+    } 
+    real_t std(size_t i,size_t j) const
+    {
+      return std(row(i),row(j));
+    } 
+
+    real_t std(const array_type &a,const array_type &b) const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += (a[i]-mean(a))*(b[i]-mean(b));
+      return ret/(size1()-1);
+    }
+    real_t col_mean(size_t i) const
+    {
+      real_t ret = 0.;
+      for(size_t j=0;j<size1();j++)
+        ret += data_[j*size2()+i ]; // (j,i);
+      return ret/size1();
+    }
+    real_t col_std(size_t i) const
+    {
+      real_t ret = 0.;
+      real_t mean = col_mean(i);
+      for(size_t j=0;j<size1();j++)
+        ret += (data_[j * size2_ + i]-mean)*(data_[j * size2_ + i]-mean);   // element(j,i)--> data_[j*size2()+i ] data_[j * size2_ + i]
+      return std::sqrt(ret/(size1()-1));
+    } 
+    real_t col_variance(size_t col) const
+    {
+      real_t ret = 0.;
+      real_t mean = col_mean(col);
+      for(size_t i=0;i<size1();i++)
+        ret += (data_[i * size2_ + col]-mean)*(data_[i * size2_ + col]-mean); // element(i,col)--> data_[i*size2()+col ] data_[i * size2_ + col]
+      return ret/(size1()-1);
+    }
+ 
+
+    inline matrix<real_t> eigenvalues() const
+    {
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+          ret(i,j) = eigen_values(i,j); 
+      return ret;
+    }
+    real_t eigen_values(size_t i,size_t j) const
+    {
+      return eigen_values(row(i),row(j));
+    }
+    real_t eigen_values(const array_type &a,const array_type &b)  const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += (a[i]-mean(a))*(b[i]-mean(b));
+      return ret/(size1()-1);
+    }
+
+
+
+    inline matrix<real_t> eigenvectors() const 
+    {
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+          ret(i,j) = eigen_vectors(i,j); 
+      return ret;
+    }
+    real_t eigen_vectors(size_t i,size_t j) const
+    {
+      return eigen_vectors(row(i),row(j));
+    }
+    real_t eigen_vectors(const array_type &a,const array_type &b) const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += (a[i]-mean(a))*(b[i]-mean(b));
+      return ret/(size1()-1);
+    }
+    inline matrix<real_t> eigen_values_and_vectors() const
+    {
+      matrix<real_t> ret(size2(), size2());
+      for(size_t i=0;i<size2();i++)
+        for(size_t j=0;j<size2();j++)
+          ret(i,j) = eigen_values_and_vectors(i,j); 
+      return ret;
+    } 
+    real_t eigen_values_and_vectors(size_t i,size_t j) const
+    {
+      return eigen_values_and_vectors(row(i),row(j));
+    }
+    real_t eigen_values_and_vectors(array_type &a,array_type &b)  const
+    {
+      real_t ret = 0;
+      for(size_t i=0;i<size1();i++)
+        ret += (a[i]-mean(a))*(b[i]-mean(b));
+      return ret/(size1()-1);
+    }
+ 
+    void get_eigen_values_and_vectors(std::vector<T> &eigen_values, matrix<T> &eigen_vectors) const
+    {
+      eigen_values.resize(size2());
+      eigen_vectors.resize(size1(), size2());
+      for (size_t i = 0; i < size2(); i++)
+      {
+        eigen_values[i] = eigen_values(i, i);
+        for (size_t j = 0; j < size1(); j++)
+          eigen_vectors(j, i) = eigen_vectors(j, i);
+      }
+
+    }      
+    
     const array_type &
     as_diagonal()
     {
@@ -989,7 +1248,8 @@ namespace provallo
       T ret(0.);
       for (typename matrix<T>::size_type i = 0; i < size1(); ++i)
         for (typename matrix<T>::size_type j = 0; j < size2(); ++j)
-          ret += element(i, j);
+          ret += this->operator() (i, j);
+
       return ret;
     }
 

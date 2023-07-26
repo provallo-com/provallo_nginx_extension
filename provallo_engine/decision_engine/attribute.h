@@ -134,7 +134,7 @@ namespace provallo
       accum::print(out);
     }
 
-    ~histogram()
+    virtual ~histogram()
     { /* */
     }
   };
@@ -158,6 +158,7 @@ namespace provallo
       discrete_value _disc;
       cont_value _cont;
     } _value;
+    attribute_type _type;
 
   public:
     bool operator==(const attribute &other) const
@@ -168,16 +169,36 @@ namespace provallo
       return discrete() == other.discrete() || continous() == other.continous();
     }
 
-    attribute(const discrete_value &v)
+    explicit attribute(const discrete_value &v): _type(DISCRETE)
     {
-      _value._disc = v;
+      _value._disc = v; 
       _id_counter++;
     }
-    explicit attribute(const cont_value &v)
+    explicit attribute(const cont_value &v) : _type(CONTINUOUS)
+    {
+       _value._cont = v;
+      _id_counter++;
+     
+    }
+    explicit attribute(const attribute_value &v , attribute_type t):_type(t)
     {
       _id_counter++;
-      _value._cont = v;
+      if(_type==DISCRETE)
+      {
+        std::stringstream ss(v);
+        discrete_value c;
+        ss >> c;
+        _value._disc = c;
+      }
+      else
+      {
+        std::stringstream ss(v);
+        cont_value c;
+        ss >> c;
+        _value._cont = c;
+      }
     }
+
     explicit attribute(const attribute_value &v)
     {
       _id_counter++;
@@ -191,10 +212,22 @@ namespace provallo
       }
       else
       {
-        std::stringstream ss(v);
-        cont_value c;
-        ss >> c;
-        _value._cont = c;
+        if(v.find(".") != std::string::npos)
+        {
+          std::stringstream ss(v);
+          cont_value c;
+          ss >> c;
+          _value._cont = c;
+          _type = CONTINUOUS;
+        }
+        else
+        {
+          std::stringstream ss(v);
+          discrete_value c;
+          ss >> c;
+          _value._disc = c;
+          _type = DISCRETE;
+        }
       }
     }
 
@@ -205,45 +238,53 @@ namespace provallo
     }
 
 
-    attribute(const attribute &other)
+    attribute(const attribute &other) : _value(other._value), _type(other._type)
     {
       _id_counter++;
-      _value = other._value;
-    }
-    attribute(const attribute &&other)
+     }
+    attribute(const attribute &&other) : _value(other._value), _type(other._type)
     {
-      // counting moves
       _id_counter++;
-      _value = std::move(other._value);
-    }
+    } 
 
     attribute &operator=(const attribute &&other)
     {
       _value = other._value;
+      _type = other._type;
       return *this;
     }
     attribute &operator=(const attribute &other)
     {
       _value = other._value;
+      _type = other._type;
       return *this;
     }
     attribute &operator=(const discrete_value &other)
     {
       _value._disc = other;
+      _type = DISCRETE;
       return *this;
     }
     attribute &operator=(const cont_value &other)
     {
       _value._cont = other;
+      _type = CONTINUOUS;
       return *this;
     }
     operator discrete_value() const
-    {
-      return _value._disc;
+    { 
+      if( _type == DISCRETE)
+          return _value._disc;
+      else
+      return (discrete_value)_value._cont;
+
     }
     operator cont_value() const
     {
-      return _value._cont;
+      if( _type == CONTINUOUS)
+          return _value._cont;
+      else 
+      return (cont_value) _value._disc;
     }
     attribute &operator=(const attribute_value &other)
     {
@@ -256,11 +297,23 @@ namespace provallo
         _value._disc = UNKNOWN;
       }
       else
-      {
-        std::stringstream ss(other);
-        cont_value c;
-        ss >> c;
-        _value._cont = c;
+      { 
+        if(other.find(".") != std::string::npos)
+        {
+          std::stringstream ss(other);
+          cont_value c;
+          ss >> c;
+          _value._cont = c;
+          _type = CONTINUOUS;
+        }
+        else
+        {
+          std::stringstream ss(other);
+          discrete_value c;
+          ss >> c;
+          _value._disc = c;
+          _type = DISCRETE;
+        }  
       }
       return *this;
     }
@@ -284,6 +337,31 @@ namespace provallo
     {
       return (_value._cont == NA_VAL);
     }
+    bool is_discrete() const
+    {
+      return _type == DISCRETE;
+    }
+    bool is_continous() const
+    {
+      return _type == CONTINUOUS;
+    }
+    attribute_type type() const
+    {
+      return _type;
+    }
+    std::string 
+    to_string() const
+    {
+      if(is_discrete())
+      {
+        return std::to_string(_value._disc);
+      }
+      else
+      {
+        return std::to_string(_value._cont);
+      }
+    } 
+
     virtual ~attribute()
     {
 // debug attributes allocation
@@ -376,9 +454,9 @@ namespace provallo
     attribute
     getAttribute(const float &value) const
     {
-      if (get_type() == CONTINUOUS)
-        return attribute((cont_value)value);
-      return attribute((discrete_value)value);
+      if (value == NA_VAL)
+        return attribute(NA_VAL);
+         return attribute((cont_value)value);
     }
 
     attribute
@@ -397,7 +475,7 @@ namespace provallo
       s >> t;
       return t;
     }
-
+    
     // Comparison operator
     bool
     operator==(const attribute_definition &other) const
@@ -458,7 +536,29 @@ namespace provallo
     static attribute_definition *
     getDefinition(const std::string &str);
   };
-
+  //specialize it
+  template <>
+       inline float attribute_definition::fromString<float>(const std::string &str)
+    {
+      if (str == "NA")
+        return NA_VAL;
+      else
+        return std::stof(str);
+    }
+    template <>   inline double  attribute_definition::fromString<double>(const std::string &str)
+    {
+      if (str == "NA")
+        return NA_VAL;
+      else
+        return std::stod(str);
+    } 
+    template <>   inline size_t  attribute_definition::fromString<size_t>(const std::string &str)
+    {
+      if (str == "NA")
+        return NA_VAL;
+      else
+        return std::stoul(str);
+    } 
   // Continuous attributes
   class continous_attribute : public attribute_definition
   {
@@ -475,7 +575,18 @@ namespace provallo
     attribute_value
     _getValue(const attribute &value) const
     {
-      return std::to_string(value.continous());
+      if(value.is_discrete()  ) 
+        return std::to_string(value.discrete());
+      else
+      {
+        if(value.unknown())
+        return "?";
+      else if (value.continous() == NA_VAL)
+        return "NA";
+      else 
+        return std::to_string(value.continous());
+      }
+            
     }
 
   public:
@@ -613,7 +724,11 @@ namespace provallo
     virtual attribute_value
     _getValue(const attribute &value) const
     {
-      return _values_map[value.discrete()];
+      if ( value.discrete() < _values_map.size()  ) 
+        return _values_map[value.discrete()];
+      else
+      throw std::runtime_error("discrete_attribute::_getValue: value out of range");  
+
     }
 
     bool
@@ -913,6 +1028,15 @@ namespace provallo
     std::vector<std::pair<attribute_name, std::string>>
     getDefinitionMap() const;
 
+
+    //get the number of classes in the target attribute
+    uint32_t
+    getTargetClassCount() const
+    {
+      return _count[_target_pos];
+    } 
+    
+
     // Get number of attributes (including the target attribute)
     uint32_t
     getSize() const
@@ -947,6 +1071,17 @@ namespace provallo
     {
       std::map<attribute_name, attribute_tag>::const_iterator it =
           _name_map.find(name);
+      if (it == _name_map.end())
+      {
+        
+        std::cout << "Available attributes: ";
+        for(auto &i : _name_map)
+        {
+          std::cout << i.first << " ";
+        }
+        std::cout << std::endl;
+        throw std::runtime_error(std::string("Attribute name ")+name+" not found");
+      }
       return (*it).second;
     }
 

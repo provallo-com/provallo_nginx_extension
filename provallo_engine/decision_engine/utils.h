@@ -157,7 +157,7 @@ namespace provallo
       NoCrit = 0, Averaged = 1, Pooled = 2, FullGain = 3, DensityCrit = 4
     } Criterion; /* For guided splits */
 
-  }
+  } // extern "C"
   ;
 
   typedef struct ImputeNode
@@ -282,11 +282,13 @@ namespace provallo
     size_t min_imp_obs; /* only when building NA imputer */
   } ModelParams;
 
+  // for imputation
   void
   todense (size_t *ix_arr, size_t st, size_t end, size_t col_num, real_t *Xc,
   sparse_ix *Xc_ind,
 	   sparse_ix *Xc_indptr, double *buffer_arr);
 
+  // for imputation
   inline double
   harmonic_recursive (double a, double b)
   {

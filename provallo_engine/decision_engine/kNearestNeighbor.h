@@ -73,12 +73,29 @@ namespace provallo
     {
       this->data = train;
     }
+    template<typename T,typename U>
+    kNN(matrix<T>& train ,std::vector<U>& labels) :data(train.rows(),train.cols()+1 ,labels.size())
+    {
+      for(size_t i=0;i<train.rows();i++)  
+      {
+        for(size_t j=0;j<train.cols();j++)
+        {
+          data->pos(i,j)=train(i,j);
+        }
+        data->label(i)=labels[i];
+
+      }
+     }
     kNN_result
     run (size_t k, dataset_ptr target);
 
   private:
     dataset_ptr data;
   };
+
+
+
+
 
 } /* namespace provallo */
 

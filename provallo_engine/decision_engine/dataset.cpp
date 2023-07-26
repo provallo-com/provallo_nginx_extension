@@ -126,8 +126,9 @@ namespace provallo
       // Get class value
       attribute_value class_value = std::to_string(class_att.discrete());
       // Get attribute value
-      attribute_value value = std::to_string(att.discrete());
-      // Get class index
+      attribute_value value = std::to_string(att.is_discrete()?att.discrete():att.continous() );
+
+      // Get class index  
       uint32_t class_index = _attributes_info.getValueIndex(target_tag, class_value);
       // Get attribute index
       uint32_t index = _attributes_info.getValueIndex(i, value);
@@ -169,20 +170,22 @@ namespace provallo
   dataset::sortattribute(const attribute_tag &tag)
   {
     // make sure tag is in range
-    if (_sorted_indices.size() < tag)
-      _sorted_indices.resize(tag + 1);
+    if (tag >= getattributesNumber())
+      throw std::runtime_error("tag is out of range");
     // make sure sorted indices array is allocated
     if (_sorted_indices[tag].size() != size())
       _sorted_indices[tag].resize(size());
-
-    std::vector<std::pair<const attribute *, uint32_t>> pairs(size());
     // Create pairs
-
+    
+    std::vector<std::pair<const attribute *, uint32_t>> pairs(size());
+ 
     for (uint32_t i = 0; i < size(); ++i)
     {
       bool bfound = false;
-      const attribute *attr_ptr = getattributeptr(i, tag, &bfound);
-      pairs[i] = std::pair<const attribute *, uint32_t>(attr_ptr, i);
+      const attribute *attr_ptr = getattributeptr(i,tag, &bfound  ); 
+      if(!bfound)
+        throw std::runtime_error("attribute not found : " + std::to_string(tag) + " in sample " + std::to_string(i) + " in dataset " + std::to_string(_id)    + " size " + std::to_string(size())   + " attribute size " + std::to_string(getattributesNumber())    + " attribute type " + std::string(_attributes_info.getType(tag)==attribute_type::CONTINUOUS?"CONTINOUS":_attributes_info.getType(tag)==attribute_type::DISCRETE?"DISCRETE":"IGNORED" ) )  ;
+      pairs[i] = std::make_pair(attr_ptr, i);
     }
     // Sort pairs
     std::sort(pairs.begin(), pairs.end(),
@@ -208,10 +211,12 @@ namespace provallo
     static std::map<dataset *, size_t> sort_count;
 
     // Sort each attribute
-    for (uint32_t j = 0; j < getattributesNumber(); ++j)
-      if (!isSorted(j) || _dirty)
+    for (uint32_t j = 0; j < getattributesNumber(); ++j){
+      if (!isSorted(j) ||  _dirty)
         sortattribute(j);
-
+    }
+    _dirty = false;
+    
     auto c_end = clock();
 
     // guard sort count
@@ -228,7 +233,9 @@ namespace provallo
       {
         sort_count.insert(std::make_pair(this, 1));
       }
+
       std::cout << "[+] dataset  " << std::hex << ptrdiff_t(this) << std::dec << " ( " << std::to_string(_id) << " ) sorted " << getattributesNumber() << " attributes ( " << sort_count[this] << " ) times " << std::endl;
+      std::cout << "[+] dataset  " << std::hex << ptrdiff_t(this) << std::dec << " ( " << std::to_string(_id) << " ) sample size : " << size() << std::endl;
 
       std::cout << "[+]dataset::sortattributes  CPU time elapsed in s: "
                 << (double)(c_end - c_start) / CLOCKS_PER_SEC << "started after last sort :"
@@ -345,10 +352,10 @@ namespace provallo
                            std::vector<uint32_t> *oob_indices) const
   {
     // Sanity check
-    assert(distribution.size() == size());
-
+     
+ 
     // Create cumulative probabilities
-    std::vector<Float> cumulative(distribution.cumulative());
+    std::vector<Float> cumulative( distribution.size()==size()?distribution.cumulative():_distribution.cumulative());
 
     // Get target tag
     uint32_t target_tag(_attributes_info.get_target_tag());
@@ -395,22 +402,14 @@ namespace provallo
         
           if (j == target_tag) {
           //make sure it's discrete 
-            if ( value.discrete() > _distribution.size() ){
-                if(discrete_value(value.continous() < _distribution.size()))
-                    value = attribute(discrete_value(value.continous()));
-                else
-                    value = attribute(discrete_value(0)); 
-	    }
-
-           
-
+          if(value.is_continous())                    
+                value =discrete_value(value.continous());
           }
-            
 
         
           // Push back attribute
           new_set->pushattribute(j, value);
-        // Sum contribution into the distribution
+         // Sum contribution into the distribution
 
          if (j == target_tag)
           new_set->_distribution.accum(value.discrete());
@@ -527,10 +526,10 @@ namespace provallo
                              const attribute_information &attributes_info) : dataset(right, attributes_info), _samples(right.getattributes().getSize())
   {
     // Copy the data
-    for (uint32_t i = 0; i < right.size(); ++i)
+    for (size_t i = 0; i < right.size(); ++i)
     {
       // Push this sample into the new set
-      for (uint32_t j = 0; j < right.getattributesNumber(); ++j)
+      for (size_t j = 0; j < right.getattributesNumber(); ++j)
         // pushattribute (j, right.getattribute (i, j));
         _samples[j].push_back(right.getattribute(i, j));
     }
@@ -540,27 +539,27 @@ namespace provallo
   training_set::getNewReference(std::vector<size_t> &indices) const
   {
     // const  &indice
-     std::vector<size_t, safe_mmap_allocator<size_t>> in;
+     //std::vector<size_t, safe_mmap_allocator<size_t>> in;
+     std::vector<size_t> in;
      std::copy(indices.begin(), indices.end(), std::back_inserter(in));
-
-    return getNewReference(in);
+     return new training_setReference(*this,in);
   }
 
   dataset *
   training_set::getNewReference(std::vector<size_t, safe_mmap_allocator<size_t>> &indices) const
   {
     // const  &indices 
-     return new training_setReference(*this, indices);
+     return new training_setReference(*this,  indices);
   }
 
   testing_set::testing_set(const dataset &right) : dataset(right), _nattr(right.getattributes().getSize())
   {
     // Copy the data
-    for (uint32_t i = 0; i < right.size(); i++)
+    for (size_t i = 0; i < right.size(); i++)
     {
       // Push this sample into the new set
 
-      for (uint32_t j = 0; j < right.getattributesNumber(); ++j)
+      for (size_t j = 0; j < right.getattributesNumber(); ++j)
 
         _samples.push_back(right.getattribute(i, j));
     }
@@ -576,10 +575,10 @@ namespace provallo
                            const attribute_information &attributes_info) : dataset(right, attributes_info), _samples(right.getattributes().getSize())
   {
     // Copy the data
-    for (uint32_t i = 0; i < right.size(); ++i)
+    for (size_t i = 0; i < right.size(); ++i)
     {
       // Push this sample into the new set
-      for (uint32_t j = 0; j < right.getattributesNumber(); ++j)
+      for (size_t j = 0; j < right.getattributesNumber(); ++j)
         _samples.push_back(right.getattribute(i, j));
     }
   }
@@ -692,13 +691,16 @@ namespace provallo
           // Check number of samples
           if (sample.size() != data->getattributes().getSize())
           {
-
             throw(std::runtime_error(
                 std::string("Bad number of attributes in line ") + std::to_string(nline) + " in file " + filename));
           }
           else
-
-            data->pushData(sample.begin(), sample.end());
+          {
+              //data->pushData(sample.begin(), sample.end());
+              
+              data->pushData(sample);
+          }
+          
 
           // Increment line
           ++nline;
@@ -861,7 +863,7 @@ namespace provallo
       {
         std::getline(file, line);
         // Check line
-        if (line.length() > 0 && line.find(",") != std::string::npos)
+        if (line.length() > 1 && line.find(",") != std::string::npos)
         {
           // Sample is defined on this line
           std::vector<std::string> sample;
@@ -883,8 +885,8 @@ namespace provallo
                 "Bad number of attributes in line " + std::to_string(nline) + " in file " + filename));
           }
 
-          data->pushData(sample.begin(), sample.end());
-        }
+          data->pushData(sample );
+        }   
         // Increment line
         ++nline;
       }
@@ -908,7 +910,49 @@ namespace provallo
       throw(std::runtime_error("Can't open the file : " + filename));
     }
   }
+  //dataset push tokenized data
+    void dataset::pushData(const std::vector<std::string> &tokens)
+    {
+      // Check number of tokens
+      if (tokens.size() != this->_attributes_info.getSize())
+      {
+        throw(std::runtime_error(
+            "Bad number of attributes in line " + std::to_string(tokens.size()) + " in file"));
+      }
 
+      //target tag  
+      attribute_tag target = this->_attributes_info.get_target_tag();
+      // Push back data
+      size_t i=0;
+      for ( auto& token : tokens)
+      { 
+         
+        //check if discrete of continuous
+        if (this->_attributes_info.getType(i)==attribute_type::DISCRETE)
+        {
+          // Push back discrete value
+          attribute discrete(token,attribute_type::DISCRETE);
+
+           pushattribute(i,discrete);
+           if(i==target)
+           {
+              //update class distribution
+              _distribution.accum (discrete.discrete());
+
+           }
+        }
+        else
+        {
+
+          // Create continuous attribute
+          attribute continous(token,attribute_type::CONTINUOUS);
+          // Push back continuous value
+           pushattribute(i, continous);
+        }
+        i++;
+        
+      } 
+    }
   // Get most frequent class (target attribute) on the data set
   attribute
   getBestClass(const dataset &data)
@@ -964,6 +1008,7 @@ namespace provallo
   Float gini(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
+    //initialize weight vector
     std::vector<Float> probs(data.getattributes().getCount(tag), 0.0);
     for (uint32_t i = 0; i < data.size(); ++i)
     {
@@ -996,11 +1041,14 @@ namespace provallo
     // Return gini
     return gini;
   }
+
+
+  // Variance
   Float variance(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
       cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
@@ -1027,7 +1075,7 @@ namespace provallo
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
       cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
@@ -1051,7 +1099,7 @@ namespace provallo
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
       cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
@@ -1072,7 +1120,7 @@ namespace provallo
                   { accum += (d - mean) * (d - mean); });
 
     stddev = sqrt(accum / (Float(probs.size())));
-
+    
     // Return stddev
     return stddev;
   }
@@ -1080,7 +1128,7 @@ namespace provallo
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
       cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
@@ -1102,7 +1150,7 @@ namespace provallo
     Float M1, M2, M3, M4;
     M1 = M2 = M3 = M4 = 0.0;
     Float skewn = 0.0, skewness = 0.0;
-    for (uint32_t i = 0; i < probs.size(); ++i)
+    for (size_t i = 0; i < probs.size(); ++i)
     {
 
       Float prob = probs[i] / (Float)data.size();
@@ -1126,7 +1174,7 @@ namespace provallo
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
 
     {
 
@@ -1148,7 +1196,7 @@ namespace provallo
     size_t n = 0;
     Float M1, M2, M3, M4;
     M1 = M2 = M3 = M4 = 0.0;
-    for (uint32_t i = 0; i < probs.size(); ++i)
+    for (size_t i = 0; i < probs.size(); ++i)
     {
 
       Float prob = probs[i] / (Float)data.size();
@@ -1172,7 +1220,7 @@ namespace provallo
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
       // fix mislabeling discrete and continous target labels
       discrete_value d(data.getattribute(i, tag).discrete());
@@ -1203,7 +1251,7 @@ namespace provallo
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
 
       // fix mislabeling discrete and continous target labels
@@ -1223,7 +1271,7 @@ namespace provallo
     }
     // mode
     Float mode = 0.0;
-    for (uint32_t i = 0; i < probs.size(); ++i)
+    for (size_t i = 0; i < probs.size(); ++i)
     {
 
       Float prob = probs[i] / (Float)data.size();
@@ -1236,12 +1284,12 @@ namespace provallo
   Float min(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<Float> probs(data.getattributes().getCount(tag), 0.0);
     Float min = 0.0;
     for (uint32_t i = 0; i < data.size(); ++i)
       probs[data.getattribute(tag, i).discrete()]++;
     // min
-    for (uint32_t i = 0; i < probs.size(); ++i)
+    for (size_t i = 0; i < probs.size(); ++i)
     {
 
       Float prob = probs[i] / (Float)data.size();
@@ -1255,9 +1303,9 @@ namespace provallo
   {
 
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<Float> probs(data.getattributes().getCount(tag), 0.0);
     Float max = 0.0;
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
       cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
@@ -1287,7 +1335,7 @@ namespace provallo
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
     Float sum_of_squares = 0.0;
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
       cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
@@ -1318,8 +1366,9 @@ namespace provallo
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<Float> probs(data.getattributes().getCount(tag), 0);
     Float median_absolute_deviation = 0.0;
-    for (uint32_t i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
+      
       cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
 
@@ -1391,10 +1440,11 @@ namespace provallo
   printImportanceMap(std::ostream &out,
                      const std::vector<std::pair<std::string, Float>> &imps)
   {
-    for (std::vector<std::pair<std::string, Float>>::const_iterator it =
-             imps.begin();
-         it != imps.end(); ++it)
-      out << (*it).first << " " << (*it).second << std::endl;
+    
+      for (auto& it : imps )
+      {
+        out << it.first << " " << it.second << std::endl;
+      }
   }
 
   // static debug counters:

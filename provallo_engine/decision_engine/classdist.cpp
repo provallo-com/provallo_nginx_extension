@@ -4,9 +4,16 @@
  *  Created on: May 29, 2023
  *      Author: kardon
  */
-
-#include "classdist.h"
+#include <iostream>
 #include <algorithm>
+#include <iterator>
+#include <numeric>
+#include <cmath>
+#include <limits>
+
+#include "attribute.h"
+#include "classdist.h"
+
 namespace provallo
 {
 
@@ -23,11 +30,9 @@ namespace provallo
   attribute
   class_dist::mode () const
   {
-    // Get max occurrence
-    //    discrete_value max = (discrete_value)  std::max_element (_histogram.begin (),
-    //					   _histogram.end ()) ;// - _histogram.begin();
-    discrete_value distance  = (discrete_value)  std::distance(_histogram.begin(),std::max_element (_histogram.begin (),_histogram.end ()));// - _histogram.begin();
-
-    return attribute( distance );
+ 
+      discrete_value distance  = (discrete_value)std::distance (_histogram.begin(),  std::max_element (_histogram.begin (),_histogram.end () ));
+      return attribute(distance);
+         //return attribute( distance );
   }
 } /* namespace provallo */

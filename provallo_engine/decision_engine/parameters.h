@@ -140,7 +140,7 @@ namespace provallo
     }
 
     void
-    print(std::ostream &out) const
+    print(std::ostream &out) const 
     {
 
       out << "Number of attributes to select on a split node: " << _rho << std::endl;
@@ -375,7 +375,7 @@ namespace provallo
   public:
     isoforest_param(uint32_t ntrees, uint32_t nsamples, uint32_t max_depth,
                     uint32_t subsample_size, uint32_t rho, uint32_t level,
-                    float min_gain, uint32_t nthreads, uint32_t seed) : _ntrees(ntrees), _nsamples(nsamples), _max_depth(max_depth),
+                    float min_gain, uint32_t nthreads, uint32_t seed ) : _ntrees(ntrees), _nsamples(nsamples), _max_depth(max_depth),
                                                                         _subsample_size(subsample_size), _rho(rho), _level(level),
                                                                         _min_gain(min_gain), _nthreads(nthreads), _seed(seed)
     {
@@ -519,7 +519,19 @@ namespace provallo
     {
       return _seed;
     }
-    
+    void print(std::ostream &out) const
+    {
+      out<<"Isolation Forest Parameters: "<<std::endl;
+      out<<"Number of Trees: "<<_ntrees<<std::endl;
+      out<<"Number of Samples: "<<_nsamples<<std::endl;
+      out<<"Maximum Depth: "<<_max_depth<<std::endl;
+      out<<"Subsample Size: "<<_subsample_size<<std::endl;
+      out<<"Number of Attributes to Select on a Split Node: "<<_rho<<std::endl;
+      out<<"Maximum Level of the Tree: "<<_level<<std::endl;
+      out<<"Minimum Gain: "<<_min_gain<<std::endl;
+      out<<"Number of Threads: "<<_nthreads<<std::endl;
+
+    }
 
   }; // end of class isoforest_param
   

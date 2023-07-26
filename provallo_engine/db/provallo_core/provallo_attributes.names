@@ -179,4 +179,4 @@ rcv_probes_ucast2:	continuous
 periodic_gc_runs2:	continuous
 forced_gc_runs2:	continuous
 unresolved_discards2:	continuous
-diagnosis:	0,1
+diagnosis:	0,1,2,3,4,5

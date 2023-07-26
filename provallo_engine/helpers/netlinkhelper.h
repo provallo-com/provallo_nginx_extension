@@ -29,6 +29,11 @@
 #include <cassert>
 #include <stdarg.h>
 
+
+//realtime collector for new provallo_attributes dataset. 
+
+
+
 //#include "../v1_handlers/sharkstun.h"
 namespace provallo
 {
@@ -827,8 +832,16 @@ namespace provallo
 	}
 #endif //comment
 
-  };
+  }; // class NetlinkHelper
+// ======================================================================		
 
-} /* namespace provallo */
+} 
+/* namespace provallo */
+
+
+// ======================================================================
+// ======================================================================
+
+
 
 #endif /* HELPERS_NETLINKHELPER_H_ */

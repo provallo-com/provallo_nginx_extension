@@ -245,7 +245,6 @@ namespace provallo
       //always return the last value, reference new value for pedantic reasons
       if(r.getValue()!=l.getValue() && r.getValue()!="0")
             return l.getValue();
-
       return l.getValue();
     }
   };

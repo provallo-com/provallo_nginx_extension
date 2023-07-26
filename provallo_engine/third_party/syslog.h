@@ -13,10 +13,13 @@
 #include <string>
 #include<memory.h>
 #include <cstring>
-
+#include <syncstream>
 #include <syslog.h>
 #include <iomanip>
 #include <mutex>
+
+
+
 namespace syslogger
 {
   struct level
@@ -87,7 +90,7 @@ namespace syslogger
     streambuf _logbuf;
   public:
     ostream () :
-	std::ostream (&_logbuf)
+	  std::ostream (&_logbuf)
     {
     }   
     ostream&
@@ -100,7 +103,14 @@ namespace syslogger
 
   class redirect
   {
+    
+    //c++23 support syncstream. 
+    #if __cplusplus >= 201703L || defined(__cpp_lib_syncbuf)
+    std::osyncstream dst;
+    #else
     ostream dst;
+    #endif
+
     std::ostream &src;
     std::streambuf *const sbuf;
 

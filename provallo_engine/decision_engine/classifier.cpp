@@ -5,14 +5,18 @@
  *      Author: kardon
  */
 
-#include "Density.hpp"
+
 #include "utils.h"
+
+#include "Density.hpp"
+#include "classifier.h"
 #include <cmath>
 #include <memory.h>
 #include <signal.h>
 #include "crit.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 namespace provallo
 {
 
@@ -5241,7 +5245,7 @@ namespace provallo
 									   uint64_t random_seed, int nthreads) : ndim(ndim), ntry(ntry), coef_type(coef_type), coef_by_prop(coef_by_prop), with_replacement(with_replacement), weight_as_sample(weight_as_sample), sample_size(sample_size), ntrees(ntrees), max_depth(max_depth), ncols_per_tree(ncols_per_tree), limit_depth(limit_depth), penalize_range(penalize_range), standardize_data(standardize_data), scoring_metric(scoring_metric), fast_bratio(fast_bratio), weigh_by_kurt(weigh_by_kurt), prob_pick_by_gain_pl(prob_pick_by_gain_pl), prob_pick_by_gain_avg(prob_pick_by_gain_avg), prob_pick_by_full_gain(prob_pick_by_full_gain), prob_pick_by_dens(prob_pick_by_dens), prob_pick_col_by_range(prob_pick_col_by_range), prob_pick_col_by_var(prob_pick_col_by_var), prob_pick_col_by_kurt(prob_pick_col_by_kurt), min_gain(min_gain), missing_action(missing_action), cat_split_type(cat_split_type), new_cat_action(new_cat_action), all_perm(all_perm), build_imputer(build_imputer), min_imp_obs(min_imp_obs), depth_imp(depth_imp), weigh_imp_rows(weigh_imp_rows), random_seed(random_seed),nthreads(nthreads)
 	{
 	}
-
+	
 	void
 	isolation_forest::fit(double X[], size_t nrows, size_t ncols)
 	{
@@ -11452,8 +11456,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			model_outputs->has_range_penalty = penalize_range;
 		}
 
-		else
+		else if( model_outputs_ext != NULL )
+			
 		{
+				
 			model_outputs_ext->hplanes.resize(ntrees);
 			model_outputs_ext->hplanes.shrink_to_fit();
 			model_outputs_ext->new_cat_action = new_cat_action;
@@ -17924,6 +17930,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	void
 	bayesian::init()
 	{
+		_name = "bayesian";
+
 		// Split method for target tag
 		const split_method *target_split = splitFactory().getTargetMethod();
 		// Get some counts
@@ -17941,7 +17949,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// For each class + attribute, resize the probability array
 		for (uint32_t i = 0; i < _likelihood.size(); ++i)		 // loop over attributes
 			for (uint32_t j = 0; j < _likelihood[i].size(); ++j) // loop over classes
-				_likelihood[i][j].resize(splitFactory().getMethod(i)->size(), 0.0);
+				{
+					const split_method* method = splitFactory().getMethod(i);
+					if(method!=nullptr)
+						_likelihood[i][j].resize(splitFactory().getMethod(i)->size(), 0.0);
+					else
+						_likelihood[i][j].resize(1, 0.0);
+				}
 
 		// Iterate over each instance
 		for (uint32_t i = 0; i < _data.size(); ++i)
@@ -17956,11 +17970,30 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			// Loop over each attribute
 			for (uint32_t j = 0; j < attrs_number; ++j)
 			{
-				// Get attribute value
-				uint32_t attr_branch = splitFactory().getMethod(j)->getBranch(
+				// Get attribute value and branch
+				//skip unspilttable or ignored attributes
+				const split_method* method = splitFactory().getMethod(j);
+				if(method==nullptr)
+					continue;
+				
+				uint32_t attr_branch = method->getBranch(
 					(_data.begin(i)));
+				
+				if ( attr_branch > method->size() )
+				{
+					//branch out of range, continue
+					continue;
+				}
 				// Finally, contribute on likelihood
-				_likelihood[j][target_branch][attr_branch]++;
+				if(_likelihood[j].size()<target_branch || _likelihood[j][target_branch].size() < method->size()) // resize the likelihood 
+				{
+					_likelihood[j].resize(target_branch+1);
+					_likelihood[j][target_branch].resize(attr_branch+1, 0.0);
+				}
+				
+				if(j<_likelihood.size() && target_branch<_likelihood[j].size() && attr_branch<_likelihood[j][target_branch].size() )
+					_likelihood[j][target_branch][attr_branch]++;
+
 			}
 		}
 
@@ -18083,6 +18116,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	bayesian::~bayesian()
 	{
+		// Nothing to do
+		_likelihood.clear();
 	}
 
 	std::ostream &
@@ -18098,9 +18133,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		for (TreeNodeBase *child : _children)
 			delete child;
 		_children.clear();
+		//don't delete split method. it may be reused.
 		// Delete split method, since this is an unique instance
-		if (_split_method != NULL)
-			delete _split_method;
+		//if (_split_method != NULL)
+		//	delete _split_method;
 	}
 	void
 	TreeLightLeaf::_print(std::ostream &out,
@@ -18317,11 +18353,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// Target tag
 		attribute_tag target_tag = _attributes.get_target_tag();
 		// Get number of target attributes
-		uint32_t target_count = _attributes.getCount(target_tag);
+		uint32_t target_count = _attributes.getCount(target_tag)+1;
 
 		// Allocate matrix
-		_matrix = std::vector<std::vector<uint32_t>>(
-			target_count, std::vector<uint32_t>(target_count, 0));
+		//_matrix = mmap_vector<mmap_vector<uint32_t>>(
+		//			target_count, mmap_vector<uint32_t>(target_count, 0));
+		_matrix = std::vector<std::vector<uint32_t>>(target_count, std::vector<uint32_t>(target_count, 0));		
+
 
 #ifdef HAVE_OPENMP
 #pragma omp parallel
@@ -18354,11 +18392,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		{
 			// Get target value on the test data
 			attribute test_attr(*(data.begin(i) + target_tag));
+			
 			// Classify the data
 			attribute class_attr(
-				classifier_.classify(data.begin(i), data.end(i)).discrete());
+				classifier_.classify(data.begin(i) , data.end(i))); 
 			// Accumulate confusion matrix
-			_matrix[test_attr.discrete()][class_attr.discrete()]++;
+			if( class_attr.discrete() < _matrix[0].size() && test_attr.discrete() < _matrix.size()	)
+				_matrix[test_attr.discrete()][class_attr.discrete()]++;
+			else
+			{
+				std::cout << "Error: confusion matrix index out of range" << std::endl;
+				std::cout << "test_attr.discrete() = " << test_attr.discrete() << std::endl;
+				std::cout << "class_attr.discrete() = " << class_attr.discrete() << std::endl;
+			}	
 		}
 #endif
 	}
@@ -18405,7 +18451,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	//	Constructor
 
-	iso_classifier::iso_classifier(const dataset &data) : classifier(data), _data(data)
+	iso_classifier::iso_classifier(const dataset &data) : classifier(data), _data(data) , 
+
+      _params(	100, // trees	
+	  			1000 ,10,
+                    256,129,10,
+                    0.,50, std::chrono::system_clock::now().time_since_epoch().count()  ),
+	
+      _isoforest(nullptr),
+      _class_dist(2)
 	{
 
 		static uint64_t _seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -18431,14 +18485,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	} // Constructor
 	// Copy constructor
-	iso_classifier::iso_classifier(const iso_classifier &rhs) : classifier(rhs), _data(rhs._data), _isoforest(rhs._isoforest)
+	iso_classifier::iso_classifier(const iso_classifier &rhs) : classifier(rhs), _data(rhs._data)
+	 ,_params(rhs._params), _isoforest(rhs._isoforest),_class_dist(rhs._class_dist)		
 	{
 		validate_data();
 		// create isoforest and train it
 	}
 	// Move constructor
 	iso_classifier::iso_classifier(iso_classifier &&rhs) : classifier(std::move((classifier &&)rhs)), _data(std::move(rhs._data)),
-														   _isoforest(std::move(rhs._isoforest))
+														   _params(rhs._params),  _isoforest(std::move(rhs._isoforest)),_class_dist(std::move(rhs._class_dist))
 
 	{
 
@@ -18485,6 +18540,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 		return result;
 	}
+
+	class_dist iso_classifier::posterior(const std::vector<attribute> &data) const
+	{
+		return classify(data);
+	}	
 
 	// Destructor
 

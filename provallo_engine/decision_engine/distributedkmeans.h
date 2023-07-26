@@ -44,22 +44,22 @@ namespace provallo
       void
       set_max_iteration (uint64_t max_iter)
       {
-	_max_iter = max_iter;
-	_has_max_iter = true;
+        _max_iter = max_iter;
+        _has_max_iter = true;
       }
 
       void
       set_min_delta (T min_delta)
       {
-	_min_delta = min_delta;
-	_has_min_delta = true;
+        _min_delta = min_delta;
+        _has_min_delta = true;
       }
 
       void
       set_random_seed (uint64_t rand_seed)
       {
-	_rand_seed = rand_seed;
-	_has_rand_seed = true;
+        _rand_seed = rand_seed;
+        _has_rand_seed = true;
       }
 
       bool
@@ -81,9 +81,9 @@ namespace provallo
       uint32_t
       get_k () const
       {
-	return _k;
+      	return _k;
       }
-      ;
+ 
       uint64_t
       get_max_iteration () const
       {
@@ -425,6 +425,9 @@ namespace provallo
 	    std::transform (split.begin (), split.end (), row.begin (), []
 	    (const std::string &in) -> T 
 	      {
+          if(in.find('.')!=std::string::npos)
+            return static_cast<T>(std::stof(in));
+          else
 		      return static_cast<T>(std::stod(in));
 	      });
 	    data.push_back (row);

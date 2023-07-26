@@ -9,5 +9,4 @@
 
 namespace provallo
 {
-
 } /* namespace provallo */
