@@ -13,11 +13,10 @@ namespace provallo
 {
 
   matrix_base::matrix_base (size_t rows, size_t cols) :
-      data (NULL)
+      data (NULL),_rows(rows),_cols(cols)
   {
-    data = new double[rows * cols];
-    this->rows = rows;
-    this->cols = cols;
+    data = new double[_rows * _cols];
+	
   }
 
   matrix_base::~matrix_base ()
@@ -29,8 +28,8 @@ namespace provallo
   void
   matrix_base::clear ()
   {
-    for (size_t i = 0; i < rows; i++)
-      for (size_t j = 0; j < cols; j++)
+    for (size_t i = 0; i < _rows; i++)
+      for (size_t j = 0; j < _cols; j++)
 	pos (i, j) = 0.;
   }
  

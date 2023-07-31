@@ -1103,7 +1103,7 @@ namespace provallo
             if (!_configuration.networkAreImported)
             {
                 resetExperiment();
-                std::cout << "Réseau réinitialisé !" << std::endl;
+                std::cout << "reset experiment !" << std::endl;
             }
 
             if (_configuration.typeOfExperiment == "stochastic")
@@ -1116,11 +1116,11 @@ namespace provallo
             }
             else
             {
-                std::cout << "Application::runExperiments error : typeOfExperiment is unknown (" << stderr << ")" << std::endl;
+                std::cout << "learning_task::runExperiments error : typeOfExperiment is unknown (" << stderr << ")" << std::endl;
                 exit(EXIT_FAILURE);
             }
             export_weights();
-            std::cout << "Exp num. " << (index + 1) << " finie !" << std::endl;
+            std::cout << "Exp num. " << (index + 1) << " Finished !" << std::endl;
         }
 
         mSourceProcessor.exportData(true);

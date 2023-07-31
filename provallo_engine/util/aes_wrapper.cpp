@@ -45,8 +45,7 @@ namespace provallo
   	_begin = _data;
   	_end = _data + size;
   	_current = _data;
-
-  	// Close the file
+   	// Close the file
   	close(fd);
   	// Delete cipher text
   	delete [] ciphertext;

@@ -1215,7 +1215,6 @@ provallo::vectorizer<std::string, real_t>::predict ( const std::vector<std::stri
       for(size_t j = 0; j < transformed_data[i].size() ; ++j)
           transformed_ret[i] += transformed_data[i][j] / real_t( transformed_data[i].size() );
 
-      
     }
 
     //flatten the data

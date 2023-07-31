@@ -17,6 +17,8 @@
 #include <regex>
 #include <variant>
 #include <assert.h>
+
+//patch to_string for std::string to avoid if  
 namespace std
 {
   inline const std::string &to_string(const std::string &s)

@@ -237,6 +237,7 @@ class tfidf
 
 //transform
     std::vector<std::vector<real_t> >  transform(const std::vector<std::string>& document);
+    
 
    //get_tf
     std::vector<real_t> get_tf( )const;

@@ -216,7 +216,7 @@ namespace provallo
       return new ignored_attribute(name, tag);
     }
     // Not defined
-    return 0;
+    return nullptr;
   }
 
   attribute_definition *
@@ -261,7 +261,7 @@ namespace provallo
 
     // Resize containers
     _tag_map.resize(attributes.size());
-    _definition_map.resize(attributes.size());
+    _definition_map.resize(attributes.size(),nullptr);
 
     // Definition of the target attribute
     attribute_name target_str("");
@@ -282,6 +282,7 @@ namespace provallo
       }
 
       // Create definition object
+
       _definition_map[tag] = attribute_definition::getDefinition(
           att_name, tag, (*att).second);
       // Get count
@@ -356,10 +357,10 @@ namespace provallo
     return ret;
   }
 
-  vector<pair<attribute_name, string>>
+  vector<pair<attribute_name, std::string>>
   attribute_information::getDefinitionMap() const
   {
-    vector<pair<attribute_name, string>> def_map;
+    vector<pair<attribute_name, std::string>> def_map;
     for (uint32_t i = 0; i < _definition_map.size(); ++i)
       def_map.push_back(make_pair(_tag_map[i], getDefinition(i)));
     return def_map;
@@ -398,10 +399,15 @@ namespace provallo
   attribute_information::~attribute_information()
   {
     // Delete definitions
+
     for (vector<attribute_definition *>::const_iterator it =
              _definition_map.begin();
-         it != _definition_map.end(); ++it)
-      delete (*it);
+         it != _definition_map.end(); ++it){
+          attribute_definition* def =  *it;
+          if(def!=nullptr )
+            delete def;
+      }
+
     _definition_map.clear();
     _groups.clear();
   }
@@ -416,7 +422,12 @@ namespace provallo
         delete (*it);
 
       // Clone definitions
-      _definition_map.resize(right._definition_map.size());
+      if(_definition_map.size()>0) 
+        for(auto it = _definition_map.begin();it!=_definition_map.end();++it)
+            delete (*it);
+      _definition_map.clear();
+
+      _definition_map.resize(right._definition_map.size(),nullptr);
       for (uint32_t i = 0; i < _definition_map.size(); ++i)
         _definition_map[i] = right._definition_map[i]->clone();
 

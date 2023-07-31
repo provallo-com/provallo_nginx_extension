@@ -46,7 +46,7 @@ namespace provallo
     class_dist (  class_dist&& other) : _histogram(std::move(other._histogram)),_sum(std::move(other._sum))
     {
     }
- 
+    
     const class_dist& operator = (const class_dist& other)
     {
       this->_histogram=other._histogram;
@@ -85,7 +85,7 @@ namespace provallo
       
       return true;
     }
-
+    
     // Get size
     uint32_t
     size () const
@@ -100,15 +100,12 @@ namespace provallo
         _histogram[tag] += weight;
       }
       else {
-        std::cout<<"tag "<<tag<<" is out of range, resizing to support  "<<_histogram.size()<<std::endl;
-        _histogram.resize(tag+1,0.0);
-        _histogram[tag] = weight;
-  
-       // assert(0);
+        //resize and add  
+          throw std::runtime_error("class_dist::accum tag out of range"); 
+        // assert(0);
       }
         _sum += weight;
-      
-    }
+     }
 
     // Accumulate a specific tag
     void accum (const class_dist& other)  { 
@@ -284,7 +281,8 @@ namespace provallo
 
     void setup(uint32_t nbins)
     {
-      _histogram.resize(nbins);
+      _histogram.clear();
+      _histogram.resize(nbins,0.0);
       _sum=0.0; 
     } 
     // Get the mode of the distribution

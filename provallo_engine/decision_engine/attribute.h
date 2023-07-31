@@ -726,10 +726,22 @@ namespace provallo
     {
       if ( value.discrete() < _values_map.size()  ) 
         return _values_map[value.discrete()];
-      else
-      throw std::runtime_error("discrete_attribute::_getValue: value out of range");  
-
-    }
+      else if (value.discrete()==_values_map.size())
+      {
+        return  _values_map[value.discrete() -1];
+      } 
+      else{
+        std::cerr<<"[-]"<<"discrete_attribute::_getValue: value out of range : "<<value.discrete()<<" "<<_values_map.size()<<std::endl; 
+        std::cerr<<"[-] values map : "<<std::endl;
+        for(auto v : _values_map)
+        {
+          std::cerr<<v<<std::endl;
+        }
+        std::cerr<<"[-] "<<std::endl;
+        return "0";
+        //throw std::runtime_error(std::string("discrete_attribute::_getValue: value out of range : ")+std::to_string(value.discrete())+" "+std::to_string(_values_map.size()))  ;  
+      }
+     }
 
     bool
     _compare(const attribute_definition &other) const;
@@ -1141,12 +1153,18 @@ namespace provallo
     // get value index
     uint32_t getValueIndex(const attribute_tag &tag, const attribute &value) const
     {
-      return _definition_map[tag]->getValueIndex(std::to_string(value.discrete()));
+      if ( tag < _definition_map.size())
+        return _definition_map[tag]->getValueIndex(value.to_string());
+      else
+        return value.discrete();
     }
     // get value index
     uint32_t getValueIndex(const attribute_tag &tag, const attribute_value &value) const
     {
+      if ( tag < _definition_map.size())
       return _definition_map[tag]->getValueIndex(value);
+      else
+      return attribute(value).discrete();
     }
 
     attribute_information &operator=(const attribute_information &right);

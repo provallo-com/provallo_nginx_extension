@@ -38,34 +38,34 @@ namespace provallo
   {
     
     std::vector<int> randomIndices;
-    randomIndices.resize(rows);
+    randomIndices.resize(_rows);
 
 
-    for (size_t i = 0; i < rows; i++)
+    for (size_t i = 0; i < _rows; i++)
       randomIndices[i] = i;
 
     std::random_shuffle(randomIndices.begin(), randomIndices.end());
 
-    size_t threshold = (size_t)(train_percent * rows);
+    size_t threshold = (size_t)(train_percent * _rows);
 
-    train = dataset_ptr(new dataset_base(threshold, cols, _num_of_labels));
+    train = dataset_ptr(new dataset_base(threshold, _cols, _num_of_labels));
     valid = dataset_ptr(
-        new dataset_base(rows - threshold, cols, _num_of_labels));
+        new dataset_base(_rows- threshold, _cols, _num_of_labels));
 
     size_t row_train = 0;
     size_t row_validate = 0;
-    for (size_t i = 0; i < rows; i++)
+    for (size_t i = 0; i < _rows; i++)
     {
       if (i < threshold)
       {
-        for (size_t j = 0; j < cols; j++)
+        for (size_t j = 0; j < _cols; j++)
           train->pos(row_train, j) = pos(randomIndices[i], j);
         train->label(row_train) = label(randomIndices[i]);
         row_train++;
       }
       else
       {
-        for (size_t j = 0; j < cols; j++)
+        for (size_t j = 0; j < _cols; j++)
           valid->pos(row_validate, j) = pos(randomIndices[i], j);
         valid->label(row_validate) = label(randomIndices[i]);
         row_validate++;
@@ -106,7 +106,8 @@ namespace provallo
   {
     auto c_start = clock();
     // First initialize sorted indices
-    sortattributes();
+ 
+        sortattributes();
 
     auto c_end = clock();
     std::cout << "[+]sorting dataset[ " << std::to_string(_id) << "] attributes CPU time elapsed in s: "
@@ -114,29 +115,11 @@ namespace provallo
 
     // Now setup class distribution
     c_start = c_end;
-    uint32_t target_tag(_attributes_info.get_target_tag());
-
-    _distribution.setup(getattributesNumber());
-    for (uint32_t i = 1; i < getattributesNumber(); ++i)
-    {
-      // Get attribute
-      attribute att = getattribute(0, i);
-      // Get class
-      attribute class_att = getattribute(0, target_tag);
-      // Get class value
-      attribute_value class_value = std::to_string(class_att.discrete());
-      // Get attribute value
-      attribute_value value = std::to_string(att.is_discrete()?att.discrete():att.continous() );
-
-      // Get class index  
-      uint32_t class_index = _attributes_info.getValueIndex(target_tag, class_value);
-      // Get attribute index
-      uint32_t index = _attributes_info.getValueIndex(i, value);
-      // Update distribution
-      _distribution.update(i, index, class_index);
-    }
+    //setup_distribution();
     c_end = clock();
     std::cout << "[+]setup attribute distribution CPU time elapsed in s: " << (double)(c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+    std::cout << "[+]training set class distribution:"<<_distribution<<std::endl;
+
   }
 
   void
@@ -195,10 +178,9 @@ namespace provallo
     {
       _sorted_indices[tag][i] = pairs[i].second;
     }
-    // Clear pairs
-    pairs.clear();
-  }
-
+  
+    pairs.clear(); 
+  }    
   void
   dataset::sortattributes()
   {
@@ -207,12 +189,11 @@ namespace provallo
     {
       last_sort = c_start;
     }
-
-    static std::map<dataset *, size_t> sort_count;
-
+    // Clear older distribution. 
+     static std::map<dataset *, size_t> sort_count;
     // Sort each attribute
     for (uint32_t j = 0; j < getattributesNumber(); ++j){
-      if (!isSorted(j) ||  _dirty)
+      if (_dirty&&!isSorted(j)   )
         sortattribute(j);
     }
     _dirty = false;
@@ -331,7 +312,7 @@ namespace provallo
       // Push this sample into the new set
       for (uint32_t j = 0; j < getattributesNumber(); ++j)
       {
-        attribute value(getattribute(idx, j));
+        attribute value(getattribute(idx, j)); // assume indices are already discrete 
         // Push back attribute
         new_set->pushattribute(j, value);
         // Sum contribution into the distribution
@@ -411,9 +392,15 @@ namespace provallo
           new_set->pushattribute(j, value);
          // Sum contribution into the distribution
 
-         if (j == target_tag)
-          new_set->_distribution.accum(value.discrete());
-        
+        if (j == target_tag) {
+          //get the value index 
+          attribute value_index(_attributes_info.getValueIndex(target_tag,value)); 
+          if(value_index.discrete()<new_set->_distribution.size())
+            new_set->_distribution.accum(value_index.discrete());
+          else if (value.discrete()<new_set->_distribution.size() )
+              new_set->_distribution.accum(value.discrete()); //assume attribute is already the index.        
+          
+        }
       }//end for
     }//end for
 
@@ -462,7 +449,7 @@ namespace provallo
           new_set->pushattribute(j, value);
           // Sum contribution  into the distribution
           if (j == target_tag)
-            new_set->_distribution.accum(value.discrete());
+            new_set->_distribution.accum(_attributes_info.getValueIndex(target_tag,value),1.0);
         }
       }
     }
@@ -489,8 +476,17 @@ namespace provallo
       // Check the value of the attribute
       if (s.isInBranch(this->begin(i), nbranch))
       {
-        attribute value(getattribute(i, target_tag));
-        distribution.accum(value.discrete());
+
+        attribute value(  getattribute(i, target_tag));
+        attribute value_index(_attributes_info.getValueIndex(target_tag,value));  
+        // Sum contribution into the distribution
+        if ( value_index.discrete()<distribution.size() )
+          distribution.accum(value_index.discrete());
+        else if (value.discrete() < distribution.size())
+          distribution.accum(value.discrete());
+        else //ignore this sample
+          continue;
+        
         indices.push_back(i);
       }
     }
@@ -862,7 +858,8 @@ namespace provallo
       while (file.good())
       {
         std::getline(file, line);
-        // Check line
+        // Check line 
+        
         if (line.length() > 1 && line.find(",") != std::string::npos)
         {
           // Sample is defined on this line
@@ -884,7 +881,7 @@ namespace provallo
             throw(std::runtime_error(
                 "Bad number of attributes in line " + std::to_string(nline) + " in file " + filename));
           }
-
+         
           data->pushData(sample );
         }   
         // Increment line
@@ -922,6 +919,8 @@ namespace provallo
 
       //target tag  
       attribute_tag target = this->_attributes_info.get_target_tag();
+      attribute_tag nclasses = this->_attributes_info.getCount(target); 
+
       // Push back data
       size_t i=0;
       for ( auto& token : tokens)
@@ -933,21 +932,37 @@ namespace provallo
           // Push back discrete value
           attribute discrete(token,attribute_type::DISCRETE);
 
-           pushattribute(i,discrete);
            if(i==target)
            {
+              attribute_tag value = _attributes_info.getValueIndex(target,discrete);  
+              if(value<nclasses)
+                discrete = discrete_value(value);
+           
               //update class distribution
-              _distribution.accum (discrete.discrete());
+              if( discrete.discrete() < nclasses)
+              {
+                _distribution.accum (discrete.discrete(),1.0 );
+              
+              } 
+              
+           } 
+           pushattribute(i,discrete);
 
-           }
         }
-        else
+        else if (this->_attributes_info.getType(i)==attribute_type::CONTINUOUS    )   
         {
 
           // Create continuous attribute
           attribute continous(token,attribute_type::CONTINUOUS);
           // Push back continuous value
            pushattribute(i, continous);
+        }
+        else
+        {
+          //ignored attribute
+          std::cout<<"[+] ignored attribute :"<<token<<std::endl;
+          attribute ignored_attribute(token,attribute_type::IGNORED); 
+          pushattribute(i, ignored_attribute);
         }
         i++;
         
@@ -1008,22 +1023,19 @@ namespace provallo
   Float gini(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
+    attribute_tag nclasses = data.getattributes().getCount(tag);
     //initialize weight vector
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0.0);
+    std::vector<Float> probs( nclasses, 0.0);
     for (uint32_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
+
       discrete_value d = data.getattribute(i, tag).discrete();
-
-      if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
+      //translate value to class : 
+      if ( d < probs.size())
         probs[d]++;
-
-      /// probs[data.getattribute (i,tag).discrete ()]++;
+      else
+      probs[0]++;
+       /// probs[data.getattribute (i,tag).discrete ()]++;
     }
     // gini
     Float gini = 1.0;

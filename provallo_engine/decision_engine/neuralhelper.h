@@ -856,8 +856,8 @@ namespace provallo
           using Sample = std::pair<matrix<float>,matrix<float>>;
           /// Un alias pour désigner un batch de données (Entrée, Sortie)
           using Batch = std::vector<Sample>;
-  		/// Un alias pour désigner un minibatch de données (Entrée, Sortie)
-  	using Minibatch = Batch;
+  		    /// Un alias pour désigner un minibatch de données (Entrée, Sortie)
+  	      using Minibatch = Batch;
 
       public:
           /// Constructeur par batchs

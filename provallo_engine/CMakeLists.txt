@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 
-
-
-
 #set the project 
 project(provallo_engine-${_system_name}_${_host_id})    
 

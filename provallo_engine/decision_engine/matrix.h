@@ -507,26 +507,28 @@ namespace provallo
     double *data;
 
   public:
-    size_t rows;
-    size_t cols;
+    size_t _rows;
+    size_t _cols;
     double &
     pos(size_t row, size_t col)
     {
-      return data[row * cols + col];
+      return data[row * _cols + col];
     }
     const double & pos(size_t row,size_t col)const 
     {
-      return data[row * cols + col];
+      return data[row * _cols + col];
     }
+    inline  size_t rows()const{return _rows;}
+    inline  size_t cols()const{return _cols;}
 
     inline double & operator()(size_t row, size_t col)
     {
-      return data[row * cols + col];
+      return data[row * _cols + col];
     }
 
     inline double & operator()(size_t row, size_t col)const
     {
-      return data[row * cols + col];
+      return data[row * _cols + col];
     }
      matrix_base(size_t rows, size_t cols);
     virtual ~matrix_base();
@@ -2705,6 +2707,7 @@ namespace provallo
     }
   }
 
+  // Jacobi method (return eigenvalues)
   template <typename T>
   matrix<T> jacobi(const matrix<T> &a, size_t &nrot)
   {

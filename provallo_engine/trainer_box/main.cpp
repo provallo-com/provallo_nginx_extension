@@ -6,6 +6,7 @@
 #include "../decision_engine/kdt.h"
 #include "../decision_engine/parameters.h"
 #include "../decision_engine/pipelinebuilder.h"
+#include "../decision_engine/autoencoder.h"
 #include <dirent.h>
 #include <filesystem>
 
@@ -241,8 +242,9 @@ bool test_fast_knn(const std::string benchmark_folder )
     */
 
 
-    bool ret = false;
-    //iterate all the files in the folder, if it's a descrition file, build dataset and classifiers for it
+    bool ret = false; 
+
+    
     std::vector<std::string> files = getFilesInFolder(benchmark_folder);
     std::vector<std::string> description_files;
     for (auto file : files)
@@ -296,15 +298,15 @@ bool test_fast_knn(const std::string benchmark_folder )
         collector.pushTrainData (&set);   
         std::cout<<"-- training set size : "<<std::to_string(set.size())<<std::endl;
         provallo::matrix<provallo::attribute> data = set.get_matrix();
-        
 
-        provallo::iso_hplane hplane ;
+
 
         std::cout<<"-- training set matrix size : "<<std::to_string(data.size1()*data.size2())<<std::endl; 
-       
+
         
-        if(attributes.getSize()==14)
+        if( false && attributes.getSize()==14)
         {
+          //will crash.
           //wine ?
           using  datarecord14 = std::vector<std::pair<provallo::point<14>, unsigned int>>; 
           datarecord14 record, testData;
@@ -696,13 +698,17 @@ bool test_vectorizers ( provallo::dataset& vectorize_set   )
   char x = std::getchar();
   
    UNDEF_REFERENCE2(x);
-   return ret;
+
+
+  return ret;
+
 }
 
 bool benchmark_classifiers (const std::string benchmark_folder )
 {
     bool ret = false;
     bool buse_random_forest = true;
+    bool test_ultra_fast_knn = false;
     //iterate all the files in the folder, if it's a descrition file, build dataset and classifiers for it
     std::vector<std::string> files = getFilesInFolder(benchmark_folder);
     std::vector<std::string> description_files;
@@ -722,15 +728,27 @@ bool benchmark_classifiers (const std::string benchmark_folder )
     for(auto description_file : description_files)
     { 
         std::string file_stem = description_file.substr(0,description_file.find(".names"));
+
+
+
+
         std::string data_file = benchmark_folder+"/"+file_stem+".data";
         std::string weights_file_name = benchmark_folder+"/"+file_stem+".weights";
         std::ifstream weights_ (weights_file_name);
         std::map<std::string,Float> weights;
         std::cout<<"-- building dataset for : "<<file_stem<<std::endl;
         std::vector<provallo::classifier*> classifiers ;
+ 
         provallo::files_collector collector = provallo::files_collector (benchmark_folder+"/"+file_stem);
+ 
         const provallo::attribute_information& attributes = collector.getAttributes ();
+        provallo::auto_encoder<double,double> encoder( collector.getAttributes().getSize(),collector.getAttributes().getSize()*collector.getAttributes().getSize(),collector.getAttributes().getTargetClassCount() );
+
+
+
         //checking zero knowledge distributed kmeans 
+
+
         std::cout<<"-- Attributes information : "<<std::endl<<std::endl;
         std::cout<< description_file<<std::endl;
         std::cout<<collector.getAttributes ()<<std::endl;
@@ -749,21 +767,51 @@ bool benchmark_classifiers (const std::string benchmark_folder )
           {
             std::cout<<"-- no weights found "<<std::endl<<std::endl;
           }
-         std::cout<<"attributes size : "<<std::to_string(attributes.getSize())<<std::endl; 
+
+
+
+        std::cout<<"attributes size : "<<std::to_string(attributes.getSize())<<std::endl; 
         /*std::cout<<"-- weights : "<<std::endl<<std::endl;
         for (const auto& weight : weights)
         {
           std::cout<<weight.first<<" : "<<std::to_string(weight.second)<<std::endl;
         } */
+        
         std::cout<<std::endl<<"------- attributes --------"<<std::endl<<std::endl;
         provallo::training_set set(attributes);
+        
+        
         // add default weight map  to dataset itself, not classifier 
         // params. 
+
         collector.pushTrainData (&set);   
-        std::cout<<"-- training set size : "<<std::to_string(set.size())<<std::endl;
-        provallo::matrix<provallo::attribute>  data = set.get_matrix();
+        std::cout<<"-- training set size : "<<std::to_string(set.size() )<<std::endl;
+        provallo::matrix<provallo::attribute> data = set.get_matrix();
         std::cout<<"-- training set matrix size : "<<std::to_string(data.size1()*data.size2())<<std::endl; 
         std::cout<<"-- training set matrix size1 : "<<std::to_string(data.size1())<<std::endl;
+        //train encoders 
+        provallo::class_dist ds(set.getattribute_info().getTargetClassCount());
+        provallo::matrix<double> mdata(data.size1(),data.size2());
+        for(size_t i=0;i<data.size1();i++)
+        {
+          for(size_t j=0;j<data.size2();j++)
+          {
+            mdata(i,j) = data(i,j).continous();
+          }
+        }
+
+        encoder.train(mdata,ds);
+
+        std::cout<<"-- encoder trained, classdist size : "<<std::to_string(ds.size())<<std::endl; 
+        std::cout<<"-- classdist: "<<ds<<std::endl;
+
+        encoder.save("encoder_"+file_stem+".json");
+        encoder.load("encoder_"+file_stem+".json");
+        std::cout<<"-- encoder loaded "<<std::endl;
+        std::cout<<"-- encoder input size : "<<std::to_string(encoder.getInputDim())<<std::endl;
+        std::cout<<"-- encoder output size : "<<std::to_string(encoder.getOutputDim())<<std::endl;
+        std::cout<<"-- encoder hidden size : "<<std::to_string(encoder.getHiddenDim())<<std::endl;  
+      
       if(!sanity_check )
       {
           std::cout<<"[+] sanity check for vectorizers"<<std::endl;
@@ -787,8 +835,8 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       provallo::random_tree_param egain_param(.5,10,0.0) ; //rho,level,min-gain
       provallo::random_forest_param rf_param(50,egain_param); //tree-count,tree-param
       provallo::nearest_neighbor_param km_param(sqrt(attributes.getSize()),weights); 
-       provallo::metric_classifier_param metric_param(sqrt(attributes.getSize()),weights); 
-
+      provallo::metric_classifier_param metric_param(sqrt(attributes.getSize()),weights); 
+       
       provallo::adaboost_param boost_param(attributes.getTargetClassCount(),provallo::none());
       std::random_device rd;
       //std::cout <<"-- allocating factory .... "<<std::endl<<std::endl;
@@ -796,66 +844,127 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       //factory->set_override_split_method(provallo::split_type::CONE_RANDOM);
       provallo::split_method_factory* random_factory = new provallo::split_method_factory(set,rd);    
       random_factory->set_override_split_method(provallo::split_type::CONE_RANDOM);
-
-
       provallo::isoforest_param isoparam(500/*ntrees*/,  1000 ,10,
                     256,129,10,
                     0.,50, std::chrono::system_clock::now().time_since_epoch().count()   );
  
-
       provallo::split_method_factory* factory = nullptr;
-      std::cout<<"-- building classifiers .... "<<std::endl<<std::endl; 
+      provallo::dataset_ptr dataset_ptr1(nullptr);
+
+      std::cout<<"-- training classifiers .... "<<std::endl<<std::endl; 
   
       if(buse_random_forest) 
       classifiers.push_back(new rf_classifier(set,rf_param,rd,std::cout,random_factory ));
       else
       classifiers.push_back(new provallo::iso_classifier(set,isoparam,rd,factory));   
-
-       
-      //push nullptr factories to initialize separately. 
+       //push nullptr factories to initialize separately. 
 
       classifiers.push_back(new provallo::decision_tree<provallo::GainRatio> (set,provallo::none(),rd,factory ));
       classifiers.push_back(new provallo::decision_tree<provallo::EntropyGain> (set,provallo::none(),rd,factory ));
       classifiers.push_back(new provallo::decision_tree<provallo::ChiSquare> (set,provallo::none(),rd,factory ));
- 
+
+
+      std::cout<<"-- training UF classifiers  .... "<<std::endl<<std::endl; 
+    
+
       for(auto & class_ : classifiers)
       { 
           print_classifier_summary(file_stem,set,*class_);
       }
+     
 
       std::cout<<"-- press enter to continue .... "<<std::endl<<std::endl;
       std::getchar();
- 
-     
+  
       std::cout<<"-- building neural network .... "<<std::endl<<std::endl;
-
-
       std::cout<<"-- training classifiers .... "<<std::endl<<std::endl;
       std::cout<<"-- testing classifiers .... "<<std::endl<<std::endl; 
       provallo::training_set test_set(attributes);
       collector.pushTestData (&test_set);
 
+
+      //test autoencoder
+      std::cout<<"-- testing autoencoder .... "<<std::endl<<std::endl;
+      //go over the testing set and test the autoencoder
+      mdata.resize(test_set.size(),test_set.getattributesNumber());
+      for(size_t i=0;i<test_set.size();i++)
+      {
+        for(size_t j=0;j<test_set.getattributesNumber();j++)
+        {
+          mdata(i,j) = test_set.getattribute(i,j).continous();
+        }
+      }
+      encoder.test(mdata,ds);
+      std::cout<<"-- autoencoder test finished "<<std::endl<<std::endl;
+      std::cout<<"-- autoencoder test results : "<<ds<<std::endl<<std::endl;
+      
+      //print confusion matrix of test data
+      
       for(auto & class_ : classifiers)
       {
            print_classifier_summary(file_stem,test_set,*class_);          
       }
+      //test ultra fast knn : 
+      if(test_ultra_fast_knn)  {
+        try 
+        {
+        provallo::dataset_ptr dataset_ptr1( new provallo::dataset_base( set.copy_to_base()));
+        provallo::kNN k(dataset_ptr1); 
+        provallo::dataset_ptr   dataset_ptr2(new provallo::dataset_base(test_set.copy_to_base()));
+        //normalize it :
+
+         provallo::kNN_result  res =k.run(sqrt(attributes.getSize()),  dataset_ptr2 );
+         std::cout<<"[+] ultra fast knn result : "<<std::endl;
+        provallo::matrix_ptr confusion = res.getConfusionMatrix();
+        //proint confusion matrix :
+        for(size_t i=0;i<confusion->rows();i++)
+        { 
+          for(size_t j=0;j<confusion->cols();j++)
+          {
+            if(i==j)
+              std::cout<<"["<<std::to_string((*confusion)(i,j))<<"] ";
+            else
+            std::cout<<std::to_string((*confusion)(i,j))<<" ";
+          }
+          std::cout<<std::endl;
+         }
+          
+        } //try
+        catch ( std::exception& e) 
+        {
+          std::cerr<<"[-] error "<<e.what()<<std::endl;
+        }
+        catch ( ... ) 
+        {
+          std::cerr<<"[-] error "<<std::endl;
+
+        }
+      }//if _test_ultra_fast_knn
+
       std::cout<<"-- deleting classifiers .... "<<std::endl<<std::endl;
-      for(auto & class_ : classifiers)
+      for( auto class_ =  classifiers.begin(); class_ != classifiers.end(); ++class_ )
       {
-        delete class_;
+        if(*class_)
+        delete *class_;
       }
-      std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
-      delete factory;
-      std::cout<<"-- deleting random factory .... "<<std::endl<<std::endl;
-      
-      std::cout<<"-- deleting weights .... "<<std::endl<<std::endl;
+      classifiers.clear();
+
+       std::cout<<"-- deleting weights .... "<<std::endl<<std::endl;
       weights.clear();
       std::cout<<"-- deleting weights file .... "<<std::endl<<std::endl;
       weights_.close();
       std::cout<<"-- deleting description file .... "<<std::endl<<std::endl;
       description_file.clear();
       ret = true;
-      
+
+      std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
+      if(factory)
+        delete factory;
+      std::cout<<"-- deleting random factory .... "<<std::endl<<std::endl;
+      if(random_factory)
+        delete random_factory;
+   
+
       //avoid double free 
       //if(random_factory)
       // delete random_factory;

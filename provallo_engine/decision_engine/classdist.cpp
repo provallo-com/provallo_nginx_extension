@@ -26,7 +26,7 @@ namespace provallo
     out << i << ":" << 100 * q.percentage (i);
     return out;
   }
-
+  
   attribute
   class_dist::mode () const
   {

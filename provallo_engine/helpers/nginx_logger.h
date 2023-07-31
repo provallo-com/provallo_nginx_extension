@@ -43,7 +43,7 @@ class NginxLogStream : public std::ostream
 {
 public:
     NginxLogStream(ngx_log_t *log, ngx_uint_t level);
-    ~NginxLogStream();
+    virtual ~NginxLogStream();
 
     void setLevel(ngx_uint_t level);
     void setLog(ngx_log_t *log);
@@ -77,7 +77,8 @@ inline NginxLogger::~NginxLogger()
 {
     sync(); 
 }
- 
+
+
 
 }// namespace provallo
 

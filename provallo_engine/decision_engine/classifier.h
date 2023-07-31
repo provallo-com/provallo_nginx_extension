@@ -3791,7 +3791,7 @@ namespace provallo
       return METRIC;
     }
 
-    // Get size of the train data
+    // Get size of the test data
     uint32_t
     size() const
     {
@@ -4427,10 +4427,8 @@ namespace provallo
   template <class MetricPolicy>
   metric_classifier<MetricPolicy>::~metric_classifier()
   {
-    for (std::vector<std::vector<attribute> *>::const_iterator it =
-             _data.begin();
-         it != _data.end(); ++it)
-        if(*it!=nullptr) delete (*it);
+    this->_data.clear();
+    //nothing to do
   }
 
   template <class MetricPolicy>
@@ -5271,8 +5269,9 @@ namespace provallo
       return _oob_error;
     }
 
-    virtual ~random_forest()
+    ~random_forest()
     {
+      _raw_importance.clear(); 
     }
     // for each template instantiation, initialize statics with defaults.
 
@@ -5333,7 +5332,7 @@ namespace provallo
     if (parameters.getType() != random_forest_param::_type())
       throw(std::runtime_error(
           "Bad parameter type " + std::to_string(parameters.getType()) + std::string(" in random forest")));
-
+    
     // Cast to correct type
     const random_forest_param *local_parameters =
         static_cast<const random_forest_param *>(&parameters);
@@ -5350,9 +5349,11 @@ namespace provallo
     // Resize container before the loop
     _classifiers.resize(nclass, 0);
     _error.resize(nclass, 0.0);
-
+    _last_oob =0 ;
     // Create uniform distribution
     static class_dist distribution(data.size(), 1.0);
+
+    distribution.setup( _attributes_info.getTargetClassCount());
 
     // Create OBB prediction distribution
     uint32_t nclasses(splitFactory().getTargetMethod()->size());
@@ -5403,7 +5404,7 @@ namespace provallo
                         std::ostream& out=out2;
 		                    clock_t c =clock();
 		                    std::random_device d;
-				               attribute_tag target_tag = last_target;
+				                attribute_tag target_tag = last_target;
                         const size_t ratio =  ((Float)data.size () * (Float)_classifiers.size ());
 
 
@@ -5448,31 +5449,62 @@ namespace provallo
 
 		      out << "[+] Testing : ["<<k <<"/"<<n<<"]"<< std::endl;
   	      // Get target value on the test data
-		      attribute_iterator it = oob_set.begin (k) ;
-		      attribute test_attr (* (it+ target_tag));
-		      // Classify the data
+
+		      dataset::attribute_iterator it = oob_set.begin(k);
+          attribute test(oob_set.getattribute (k, target_tag));
+
+		      attribute test_attr ( oob_set.getattribute_info().getValue (target_tag, test));  
+
+          if (test_attr.discrete ()>= oob_set.getattribute_info().getTargetClassCount()) 
+             {
+
+                if( test.discrete()< oob_set.getattribute_info().getTargetClassCount())
+                  test_attr = test;
+                else
+                out << "[!] Invalid test attribute index detected : "<<test_attr.discrete()<< " test = "<<test.discrete()<< std::endl;   
+
+             }
+
+          if (test_attr.discrete ()> oob_set.getattribute_info().getTargetClassCount()) 
+            throw std::runtime_error ("[!] Invalid target class value");  
+
+            // Classify the data
 		      attribute class_attr (
 			  _classifiers[i]->classify (it,
 						     it + target_tag));
 		      // Get prediction
-		      discrete_value prediction (class_attr.discrete ());
+          
+          attribute_value prediction = oob_set.getattribute_info().getValue (target_tag, class_attr) ;
 		      // Check value
-		      if (test_attr.discrete () != prediction) {
-			    // Accumulate OOB error (for importance estimation)
+          if (attribute(prediction).discrete ()>= oob_set.getattribute_info().getTargetClassCount() ) 
+          prediction = class_attr.to_string();
+          // Count error
+
+		      if (  test_attr.discrete() != attribute(prediction).discrete ()) {
+			    { // Accumulate OOB error (for importance estimation)
 		      	++oob_error;
-            out<<"[+] misclassification : "<<pthread_self()<<" expected : "<<std::to_string(test_attr.discrete()) << ", got "<<std::to_string(prediction)<< std::endl; 
-		      // Set the result in OOB distribution
+            out<<"[+] misclassification : "<<pthread_self()<<" expected : "<<std::to_string(test_attr.discrete()) << ", got "<<prediction<< std::endl; 
           }
-          out <<  "[+] classifier running on thread : "<<pthread_self()<<" Classified: ["<<k <<"/"<<n<<"], with :"<<std::to_string(oob_error) +std::string(" errors.")<< std::endl;
+		      // Set the result in OOB distribution
+           out <<  "[+] classifier running on thread : "<<pthread_self()<<" Classified: ["<<k <<"/"<<n<<"], with :"<<std::to_string(oob_error) +std::string(" errors.")<< std::endl;
 		      {
 
       			std::lock_guard<std::recursive_mutex> guard(_mutex);
-      			uint32_t index (oob_indices[k]); 
-            global_oob_predictions[index].accum (prediction);
- 
-		      }
- 		    }
+      			// uint32_t index (oob_indices[k]);  // Get index of sample
+             // Get the distribution of predictions for this sample
 
+            if ( global_oob_predictions[i].size()==0)
+              global_oob_predictions[i].setup (oob_set.getattribute_info().getTargetClassCount()); 
+
+            if (attribute(prediction).discrete () < global_oob_predictions[i].size()) 
+              global_oob_predictions[i].accum ( attribute(prediction).discrete (),  1.0f); 
+            else 
+              global_oob_predictions[i].accum ( 0,  1.0f);
+             
+		      }//lock
+ 		    }//if
+      }//for
+      // Get importance of each variable
 
 		  out << "[+] importance labels for classifier "<<i<< std::endl;
 
@@ -5499,10 +5531,7 @@ namespace provallo
 		    size_t gn = global_oob_predictions.size();
 		    for (uint32_t i = 0; i < gn; ++i)
           {
-
-              
-          
-          // Get target value on the test data
+            // Get target value on the test data
             attribute test_attr (*(data.begin (i) + target_tag));
             // Check against the OOB prediction
             if (test_attr.discrete ()
@@ -5628,7 +5657,7 @@ namespace provallo
       return true;
     }
 
-    ~confusion_matrix()
+    virtual ~confusion_matrix()
     {
 
     }

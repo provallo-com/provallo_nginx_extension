@@ -53,7 +53,11 @@ namespace provallo
       return _labels[row];
     }
     //
-    
+    dataset_base(const dataset_base &other):  
+    matrix_base(other), _labels(other._labels), _num_of_labels(other._num_of_labels)
+    {
+
+    } 
     double get(const size_t row,const size_t col) const
     {
       return matrix_base::pos(row,col);
@@ -146,8 +150,8 @@ namespace provallo
       pushattribute(n, (attribute(r)));
     }
     
-    
-    // Return new pointer
+    virtual   dataset_base copy_to_base()const=0;
+     // Return new pointer
     virtual dataset *
     getNew() const = 0;
     // Print attribute given the information
@@ -269,6 +273,9 @@ namespace provallo
         return _data->getattribute(_instance, _tag);
       }
       virtual ~iterator_base() {}
+
+
+     
 
     };
 
@@ -761,8 +768,17 @@ namespace provallo
 
       const attribute *operator->() const
       {
-        return &_data->getattribute(_instance, _tag);
-      }
+        bool bfound = false;
+        const attribute *ret = _data->getattributeptr(_instance, _tag, &bfound);
+
+        if (!bfound)
+        {
+          std::cout << "attribute_iterator::operator->() attribute not found" << std::endl;
+          
+          // throw std::runtime_error("attribute_iterator::operator->() attribute not found");
+          return nullptr;
+        }
+        return ret;      }
 
       const attribute *operator->()
       {
@@ -847,6 +863,11 @@ namespace provallo
     {
       return sorted_iterator(this, size(), tag);
     }
+ 
+    const attribute_information& getattribute_info() const
+    {
+        return  _attributes_info;
+    }
 
     // Construction
 
@@ -860,7 +881,7 @@ namespace provallo
     {
       id_counter += 1;
       _id = size_t(id_counter);
-      dest_counter += 1;
+      dest_counter ++;
     }
 
     // Copy constructor
@@ -870,7 +891,7 @@ namespace provallo
     {
 
       _id = size_t(++id_counter);
-      dest_counter += 1;
+      dest_counter ++;
     }
 
     // Copy constructor but replacing the attributes information class
@@ -880,7 +901,7 @@ namespace provallo
     {
 
       _id = size_t(++id_counter);
-      dest_counter += 1;
+      dest_counter ++;
     }
 
     dataset(dataset &&move) : last_sort(std::move(move.last_sort)),
@@ -891,7 +912,7 @@ namespace provallo
     {
 
       _id = size_t(++id_counter);
-      dest_counter += 1;
+      dest_counter++;
     }
 
     // Assignment operator
@@ -1047,9 +1068,18 @@ namespace provallo
     }
     virtual ~dataset()
     {
-      dest_counter -= 1;
-      size_t remaining = dest_counter;
-      std::cout << "[=] dataset" << std::to_string(_id) << " destroyed , remaining ( " << std::to_string(remaining) << ")" << std::endl;
+      if (dest_counter > 0)
+      {
+        dest_counter -= 1;
+        size_t remaining = dest_counter;
+        std::cout << "[=] dataset" << std::to_string(_id) << " destroyed , remaining ( " << std::to_string(remaining) << ")" << std::endl;
+      }
+      else
+      {
+        std::cout << "[=] dataset" << std::to_string(_id) << " destroyed , remaining ( " << std::to_string(dest_counter) << ")" << std::endl; 
+      }
+      //double free or corruption (out): 0x00007f9c4c000b20
+
 
     } 
 
@@ -1151,21 +1181,19 @@ namespace provallo
         attribute   value ( value_string, att_type);
         // Push attribute into the set
 
-        if (i==target_tag) {
+        if (i==target_tag) { 
+                size_t index = _attributes_info.getValueIndex(target_tag,value); 
+
+                _distribution.accum(index);
+                          pushattribute(i, attribute(index,att_type));
+
                   //make sure the target value is less than the number of classes
-                if(value.discrete() < _attributes_info.getTargetClassCount())
-                {
-                  _distribution.accum(value.discrete());
-                }
-                else {
-                            std::cout<< "[!] target tag : " << std::to_string(target_tag) << std::string(" number of classes ")<< std::to_string(_attributes_info.getTargetClassCount()) <<" target value discrete : " << std::to_string(value.discrete()) << " , continous : "<<value.continous() << std::endl;
-                            //normalize to 0
-                            value = attribute(discrete_value(0));
-                 }
-        }
-        
-          pushattribute(i, value);
-          begin++;
+         }
+        else
+        pushattribute(i, value);
+
+        begin++;
+
       }
     }
     
@@ -1197,7 +1225,7 @@ namespace provallo
           new_set->pushattribute(j, getattribute(i, j));
           // Sum contribution into the distribution
           if (j == target_tag)
-            new_set->_distribution.accum(value.discrete());
+            new_set->_distribution.accum(_attributes_info.getValueIndex(target_tag,value));
         } // end for
         // Sanity check
         //assert(new_set->size() == i + 1);
@@ -1246,7 +1274,7 @@ namespace provallo
       // Push sample into the set of samples
       // if n==target_tag then verify the value is discrete.
       if(_samples.size() <= n)  
-        _samples.resize(n+1);
+        _samples.resize(n+(.1*n));
       _samples[n].push_back(att); 
 
       if(counter % 1000000 == 0 && counter/1000000 > 0)
@@ -1298,7 +1326,7 @@ namespace provallo
     uint32_t
     size() const
     {
-      assert(_samples.size() != 0&&_attributes_info.get_target_tag() < _samples.size()) ;
+      assert(_samples.size() != 0 ) ;
       return _samples[0].size(); //return number of samples 
     }
 
@@ -1308,20 +1336,56 @@ namespace provallo
       return _attributes_info.getSize();
     } 
     
+    virtual dataset_base copy_to_base()const
+    {
+      size_t rows =  this->size();
+      size_t cols =  this->getattributesNumber();
+      size_t nclasses = _attributes_info.getTargetClassCount();
+
+      dataset_base ret(rows, cols,nclasses);
+      size_t target_tag = _attributes_info.get_target_tag();
+      
+      for (size_t i = 0; i < rows; ++i)
+      {
+        for (size_t j = 0; j < cols; ++j)
+        {
+          ret(i,j) = getattribute(i,j).continous();
+
+          if(j==target_tag)
+          {
+            ret.label(i) = getattribute(i,target_tag).discrete();
+          }
+        }
+        
+      }
+      return ret;
+    }
 
     const attribute &
     getattribute(uint32_t i, attribute_tag tag) const
     {
       static const attribute empty;
       if (_samples.size() > tag && _samples[tag].size() > i)
-        return _samples[tag][i];
+      {
+        if(_sorted_indices.size() > tag && _sorted_indices[tag].size() > i)
+          return _samples[tag][_sorted_indices[tag][i]];
+        else
+          return _samples[tag][i];
+
+
+      }
       return empty;
     }
     attribute &getattribute(uint32_t i, attribute_tag tag)
     {
       static attribute empty;
       if (_samples.size() > tag && _samples[tag].size() > i)
-        return _samples[tag][i];
+      {
+        if(_sorted_indices.size() > tag && _sorted_indices[tag].size() > i)
+          return _samples[tag][_sorted_indices[tag][i]];
+        else
+          return _samples[tag][i];
+      }
       return empty;
     }
     const attribute *getattributeptr(uint32_t i, attribute_tag tag, bool *found) const
@@ -1331,7 +1395,11 @@ namespace provallo
       if (  _samples[tag].size() > i )
       {
         *found = true;
-        return &_samples.at(tag).at(i);
+        if (_sorted_indices.size() > tag && _sorted_indices[tag].size() > i)
+          return &_samples[tag][_sorted_indices[tag][i]];
+        else
+          return &_samples[tag][i];
+
       }
       *found = false;
       return &empty;
@@ -1340,10 +1408,14 @@ namespace provallo
     {
       static attribute empty;
       //size_t index = tag;
-      if (_samples[tag].size() > i)
+      if (  _samples[tag].size() > i )
       {
         *found = true;
-        return &_samples[tag][i];
+        if (_sorted_indices.size() > tag && _sorted_indices[tag].size() > i)
+          return &_samples[tag][_sorted_indices[tag][i]];
+        else
+          return &_samples[tag][i];
+
       }
       *found = false;
       return &empty;
@@ -1362,7 +1434,11 @@ namespace provallo
           _dirty = true;
 
           // set value
-          _samples[tag][i] = value;
+          if(_sorted_indices.size() > tag && _sorted_indices[tag].size() > i)
+            _samples[tag][_sorted_indices[tag][i]] = value;
+          else
+            _samples[tag][i] = value;
+
         }
 
         else
@@ -1370,7 +1446,6 @@ namespace provallo
 
           // resize
           _dirty = true;
-
           size_t size = _samples[tag].size();
           size_t delta = abs(int(i) - int(size));
 
@@ -1391,12 +1466,15 @@ namespace provallo
     // }
     matrix<attribute> get_matrix() const 
     {
-      matrix<attribute> ret(_samples.size(), _samples[0].size());
-      for (size_t i = 0; i < _samples.size(); ++i)
+      size_t rows = this->size();
+      size_t cols = getattributesNumber();
+
+      matrix<attribute> ret(rows, cols);
+      for (size_t i = 0; i < rows; ++i)
       {
-        for (size_t j = 0; j < _samples[i].size(); ++j)
+        for (size_t j = 0; j < cols; ++j)
         {
-          ret[i][j] = _samples[i][j];
+          ret[i][j] = getattribute(i,j);
         }
       }
       return ret;
@@ -1406,8 +1484,9 @@ namespace provallo
 
      virtual ~training_set()
     {
-      //_samples.clear();
-      
+      dest_counter -= 1;
+      size_t remaining = dest_counter;
+      std::cout << "[=] training_set" << std::to_string(_id) << " destroyed , remaining ( " << std::to_string(remaining) << ")" << std::endl;
     }
   };
 
@@ -1535,10 +1614,14 @@ namespace provallo
       else
       return _dataset->getattributeptr(i, tag, found);
     }
+    virtual dataset_base copy_to_base()const 
+    {
+          return _dataset->copy_to_base();
+    }
 
     virtual ~training_setReference()
     {
-      // Do nothing, we don't own the data
+       
     }
     // Return the indices of the original data set
     const std::vector<size_t> &
@@ -1587,7 +1670,34 @@ namespace provallo
     {
       
     }
+    virtual dataset_base copy_to_base()const
+    {
+      size_t rows = _samples.size()/ _nattr;
+      size_t cols = _attributes_info.getSize();
 
+      size_t nclasses = _attributes_info.getTargetClassCount();
+
+      dataset_base ret(rows, cols,nclasses);
+      size_t target_tag = _attributes_info.get_target_tag();
+
+      for (size_t i = 0; i < rows; ++i)
+      {
+        for (size_t j = 0; j < cols; ++j)
+        {
+          //      _samples[tag + (i * _nattr) ] = value;
+          ret(i,j) = _samples[ (i*_nattr)+j].continous();
+
+          if(j==target_tag)
+          {
+            ret.label(i) = _samples[(i*_nattr)+j].discrete();
+          }
+        }
+        
+      } 
+      return ret;
+    }
+
+    
     testing_set(const dataset &right);
     testing_set(const dataset &right,
                 const attribute_information &attributes_info);
@@ -1780,7 +1890,10 @@ namespace provallo
     const attribute &
     getattribute(uint32_t i, attribute_tag tag) const
     {
-      return _dataset->_samples[tag + _indices[i] * _dataset->_nattr];
+      bool b=false;
+      const attribute* ret = getattributeptr(i,tag,&b);
+      //return the attribute if found, if not found, address to static local empty attribute 
+      return *ret;
     }
 
     const attribute *
@@ -1809,7 +1922,10 @@ namespace provallo
 
       return std::ref(_dataset->get_samples());
     }
-
+    virtual dataset_base copy_to_base()const 
+    {
+          return _dataset->copy_to_base();
+    }
     virtual ~testing_set_ref()
     {
     }

@@ -6600,9 +6600,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	classifier::~classifier()
-	{
-		// TODO Auto-generated destructor stub
-	}
+	{	
+
+ 	}
 	void
 	sample_random_rows(std::vector<size_t> &ix_arr, size_t nrows,
 					   bool with_replacement,
@@ -17909,7 +17909,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
 		// Delete classifiers
 		for (uint32_t i = 0; i < _classifiers.size(); ++i)
-			delete _classifiers[i];
+			if ( _classifiers[i] ) 
+				delete  _classifiers[i];
+		_classifiers.clear();
 	}
 
 	// bayesian constructor :
@@ -18332,7 +18334,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		for (uint32_t i = 0; i < data.size(); ++i)
 		{
 			// Get target value on the test data
-			attribute test_attr(*(data.begin(i) + target_tag));
+			attribute test_attr (data.getattribute(i,target_tag));
 			// Classify the data
 			attribute class_attr(
 				_classifier.classify(data.begin(i), data.end(i)));
@@ -18391,19 +18393,23 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		for (uint32_t i = 0; i < data.size(); ++i)
 		{
 			// Get target value on the test data
-			attribute test_attr(*(data.begin(i) + target_tag));
-			
+			attribute test (data.getattribute(i ,target_tag));
+			//translate the attribute : 
+			attribute_value v =_attributes.getValue(target_tag, test); 
+			attribute test_attr(v);
+
 			// Classify the data
-			attribute class_attr(
-				classifier_.classify(data.begin(i) , data.end(i))); 
+			attribute res(classifier_.classify(data.begin(i) , data.end(i)));
+
+			attribute class_attr(_attributes.getValue(target_tag, res)); 
 			// Accumulate confusion matrix
 			if( class_attr.discrete() < _matrix[0].size() && test_attr.discrete() < _matrix.size()	)
 				_matrix[test_attr.discrete()][class_attr.discrete()]++;
 			else
 			{
 				std::cout << "Error: confusion matrix index out of range" << std::endl;
-				std::cout << "test_attr.discrete() = " << test_attr.discrete() << std::endl;
-				std::cout << "class_attr.discrete() = " << class_attr.discrete() << std::endl;
+				std::cout << "test_attr.discrete() = " << test_attr.discrete() << ", test ="<<test.to_string()<< std::endl;
+				std::cout << "class_attr.discrete() = " << class_attr.discrete() <<", class = "<<res.to_string()<< std::endl;
 			}	
 		}
 #endif
