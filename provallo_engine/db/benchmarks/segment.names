@@ -1,0 +1,21 @@
+target:type
+region-centroid-col: continuous 
+region-centroid-row: continuous 
+region-pixel-count: continuous 
+short-line-density-5: continuous 
+short-line-density-2: continuous 
+vedge-mean: continuous 
+vegde-sd: continuous 
+hedge-mean: continuous 
+hedge-sd: continuous 
+intensity-mean: continuous 
+rawred-mean: continuous 
+rawblue-mean: continuous 
+rawgreen-mean: continuous 
+exred-mean: continuous 
+exblue-mean: continuous 
+exgreen-mean: continuous 
+value-mean: continuous 
+saturation-mean: continuous 
+hue-mean: continuous 
+type : 1,2,3,4,5,6,7 

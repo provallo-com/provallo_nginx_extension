@@ -1,0 +1,63 @@
+target:type
+A0: C, A, G, T, D.
+A1: C, G, A, T, D.
+A2: A, G, T, C.
+A3: G, C, A, T.
+A4: C, T, A, G.
+A5: T, C, G, A.
+A6: G, A, C, T.
+A7: C, A, G, T.
+A8: A, C, G, T.
+A9: T, G, C, A.
+A10: C, G, A, T.
+A11: A, G, C, T.
+A12: C, A, G, T.
+A13: A, G, T, C, N.
+A14: G, C, T, A.
+A15: G, C, T, A.
+A16: A, G, T, C.
+A17: G, T, A, C.
+A18: G, A, C, T, N.
+A19: C, G, A, T, N.
+A20: C, G, T, A, N.
+A21: A, C, T, G, N.
+A22: G, C, A, T, N.
+A23: C, G, A, T, N.
+A24: G, T, A, C, N.
+A25: A, G, C, T, N.
+A26: G, C, T, A, N.
+A27: C, A, G, T, N.
+A28: A, G, C, T, N.
+A29: G, C, A, T, N.
+A30: G, N, C, T, A.
+A31: T, N, C, G, A.
+A32: C, G, A, N, T.
+A33: T, A, C, G, N.
+A34: G, T, A, C, N, R.
+A35: T, C, A, G, N, S.
+A36: T, C, A, G, N.
+A37: C, G, T, A, N.
+A38: C, G, T, A, N.
+A39: A, G, C, T, N.
+A40: A, C, G, T, N.
+A41: G, C, A, T, N.
+A42: G, A, C, T, N.
+A43: G, C, T, A, N.
+A44: C, T, A, G, N.
+A45: C, G, T, A, N.
+A46: T, C, G, A, N.
+A47: T, G, C, A, N.
+A48: C, G, T, A, N.
+A49: G, C, A, T, N.
+A50: A, G, C, T, N.
+A51: G, T, A, C, N.
+A52: C, G, T, A, N.
+A53: C, G, T, A, N.
+A54: A, C, G, T, N.
+A55: G, C, T, A, N.
+A56: T, C, G, A, N.
+A57: C, A, G, T, N.
+A58: T, G, C, A, N.
+A59: G, C, T, A, N.
+type:EI, IE, N.
+

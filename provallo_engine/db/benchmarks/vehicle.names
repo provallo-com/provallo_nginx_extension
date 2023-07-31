@@ -1,0 +1,21 @@
+target : type
+COMPACTNESS: continuous.
+CIRCULARITY: continuous.
+DISTANCECIRCULARITY: continuous.
+RADIUSRATIO: continuous.
+PRAXISASPECTRATIO: continuous.
+MAXLENGTHASPECTRATIO: continuous.
+SCATTERRATIO: continuous.
+ELONGATEDNESS: continuous.
+PRAXISRECTANGULAR: continuous.
+LENGTHRECTANGULAR: continuous.
+MAJORVARIANCE: continuous.
+MINORVARIANCE: continuous.
+GYRATIONRADIUS: continuous.
+MAJORSKEWNESS: continuous.
+MINORSKEWNESS: continuous.
+MINORKURTOSIS: continuous.
+MAJORKURTOSIS: continuous.
+HOLLOWSRATIO: continuous.
+type: 1,2,3,4
+
