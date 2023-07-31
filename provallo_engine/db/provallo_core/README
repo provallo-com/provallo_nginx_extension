@@ -1,0 +1,13 @@
+
+
+** weak noise dataset used for transfer learning for the neural network to teach more accurate pipelines with more powerful and less cpu intensive collectors .
+=====================
+
+
+
+
+this dataset is a binary classifier for noise covering the noise aspects of networking interfaces .
+
+noise was generated with hping,nmap and similar generators, data is only used for inference. 
+
+ 
