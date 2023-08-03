@@ -1,11 +1,4 @@
-#
-#
-# 
-
-
-  Provallo's nginx extension 
-==================================
-
+ 
 ```mermaid
 graph TD;
   provallo_nginx_extension;
@@ -77,9 +70,4 @@ graph TD;
     provallo_nginx_extension-->provallo_engine-->statistics;
     provallo_nginx_extension-->provallo_engine-->third_party;
     provallo_nginx_extension-->provallo_engine-->util; 
-```
- 
-
- =================================================================
- =================================================================
- =================================================================
+``` 
