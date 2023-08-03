@@ -115,7 +115,6 @@ namespace provallo
 
     // Now setup class distribution
     c_start = c_end;
-    //setup_distribution();
     c_end = clock();
     std::cout << "[+]setup attribute distribution CPU time elapsed in s: " << (double)(c_end - c_start) / CLOCKS_PER_SEC << std::endl;
     std::cout << "[+]training set class distribution:"<<_distribution<<std::endl;
@@ -153,13 +152,17 @@ namespace provallo
   dataset::sortattribute(const attribute_tag &tag)
   {
     // make sure tag is in range
+    size_t target_tag = _attributes_info.get_target_tag();
+    size_t number_of_discrete_classes = _attributes_info.getTargetClassCount();
     if (tag >= getattributesNumber())
       throw std::runtime_error("tag is out of range");
     // make sure sorted indices array is allocated
     if (_sorted_indices[tag].size() != size())
       _sorted_indices[tag].resize(size());
     // Create pairs
-    
+    if(_distribution.size()!=number_of_discrete_classes)
+      _distribution.setup(number_of_discrete_classes);  
+
     std::vector<std::pair<const attribute *, uint32_t>> pairs(size());
  
     for (uint32_t i = 0; i < size(); ++i)
@@ -169,6 +172,18 @@ namespace provallo
       if(!bfound)
         throw std::runtime_error("attribute not found : " + std::to_string(tag) + " in sample " + std::to_string(i) + " in dataset " + std::to_string(_id)    + " size " + std::to_string(size())   + " attribute size " + std::to_string(getattributesNumber())    + " attribute type " + std::string(_attributes_info.getType(tag)==attribute_type::CONTINUOUS?"CONTINOUS":_attributes_info.getType(tag)==attribute_type::DISCRETE?"DISCRETE":"IGNORED" ) )  ;
       pairs[i] = std::make_pair(attr_ptr, i);
+      if (tag == target_tag)
+      {
+        //translate index to class label
+        attribute att(_attributes_info.getValue(tag, *attr_ptr)); 
+        if (att.discrete()>=number_of_discrete_classes ) 
+        att=*attr_ptr;
+
+        if (att.discrete()<number_of_discrete_classes )
+        _distribution.accum(att.discrete());
+  
+
+      }
     }
     // Sort pairs
     std::sort(pairs.begin(), pairs.end(),
@@ -177,6 +192,8 @@ namespace provallo
     for (uint32_t i = 0; i < pairs.size(); ++i)
     {
       _sorted_indices[tag][i] = pairs[i].second;
+
+      
     }
   
     pairs.clear(); 

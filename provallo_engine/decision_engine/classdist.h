@@ -46,7 +46,7 @@ namespace provallo
     class_dist (  class_dist&& other) : _histogram(std::move(other._histogram)),_sum(std::move(other._sum))
     {
     }
-    
+
     const class_dist& operator = (const class_dist& other)
     {
       this->_histogram=other._histogram;
@@ -123,8 +123,7 @@ namespace provallo
     void    
     accum (const std::vector<Float> &other)
     { 
-
-      for (uint32_t i = 0; i < _histogram.size (); ++i)
+       for (uint32_t i = 0; i < _histogram.size (); ++i)
   	      _histogram[i] += other[i];
       _sum += std::accumulate(other.begin(),other.end(),0.0);
     }
@@ -166,8 +165,7 @@ namespace provallo
         _histogram.resize(tag+1,0.0);
         _histogram[tag] = weight;
         _sum += weight;
-
-      }
+       }
       
    }
 

@@ -1,4 +1,4 @@
-target : type
+target: CLASS.
 COMPACTNESS: continuous.
 CIRCULARITY: continuous.
 DISTANCECIRCULARITY: continuous.
@@ -16,6 +16,6 @@ MAJORSKEWNESS: continuous.
 MINORSKEWNESS: continuous.
 MINORKURTOSIS: continuous.
 MAJORKURTOSIS: continuous.
-HOLLOWSRATIO: continuous.
-type: 1,2,3,4
+HOLLOWS RATIO: continuous.
+CLASS: 1,2,3,4.
 

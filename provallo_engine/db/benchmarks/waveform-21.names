@@ -1,4 +1,4 @@
-target:type
+target : type
 X00 : continuous
 X01 : continuous
 X02 : continuous

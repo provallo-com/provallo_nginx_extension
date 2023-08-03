@@ -223,26 +223,28 @@ namespace io
       {
 	std::lock_guard<std::recursive_mutex> l_ (_lock);
 
-	impl::check (
+		impl::check (
 	    sqlite3_create_function (_db, name.c_str (), nArg, eTextRep,
 				     context, fun.func, fun.step, fun.fin));
       }
       uint64_t
       last_row_id ()
       {
-	std::lock_guard<std::recursive_mutex> l_ (_lock);
+		std::lock_guard<std::recursive_mutex> l_ (_lock);
 
-	return ::sqlite3_last_insert_rowid (_db);
+		return ::sqlite3_last_insert_rowid (_db);
       }
+
     private:
       ::sqlite3 *_db;
       std::string _file;
       mutable std::recursive_mutex _lock;
     };
 
-// Statement
+	// Statement
     class stmt
     {
+		//
     public:
       stmt () :
 	  _stmt (nullptr)
@@ -504,7 +506,7 @@ namespace io
       reader
       row ()
       {
-	return reader (*this);
+		return reader (*this);
       }
 
     private:

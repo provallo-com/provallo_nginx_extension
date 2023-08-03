@@ -19,7 +19,17 @@
 #include "classdist.h"
 namespace provallo
 {
-    //simple shokoder 
+    //simple shokoder autoencoder
+    //
+    // see
+    //http://www.stanford.edu/class/cs294a/sparseAutoencoder_2011new.pdf
+    //http://www.stanford.edu/class/cs294a/sparseAutoencoder_notes.pdf
+    //vae : http://arxiv.org/pdf/1312.6114v10.pdf
+    //variational autoencoder : http://arxiv.org/pdf/1312.6114v10.pdf
+    //http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf
+    
+    
+
     template <typename T, typename real_x = real_t>
     class auto_encoder
     {
@@ -111,7 +121,7 @@ namespace provallo
         void initializeWeight(T *weight, size_t row, size_t col);
         void conjugateGradient();
 
-        void initializeWeightGrad()
+        virtual void initializeWeightGrad()
         {
             //initialize the gradients 
             initializeWeight1Grad();
@@ -290,6 +300,7 @@ namespace provallo
         void dump(  std::ostream &out = std::cout) const;  
         
         void save(std::string filename);
+        void save_as_pt(std::string filename);
 
         void load(std::string filename);
         void load(std::istream &in);
@@ -673,7 +684,720 @@ namespace provallo
 
          
      };
+    //variational auto encoder
+    template <typename T, typename real_x = real_t>
+    class variational_auto_encoder : public auto_encoder<T, real_x>
+    {
+        //variational auto encoder
+        //variational auto encoder is a type of auto encoder that uses a variational bayesian approach to learning
+        //additional variables for the variational auto encoder:
+        //latentDim : the dimension of the latent space
+        //latent : the latent space
+        //latentMean : the mean of the latent space
+        //latentLogVar : the log variance of the latent space
+        //latentMeanGrad : the gradient of the latent mean
+        //latentLogVarGrad : the gradient of the latent log variance
+
+        //variational auto encoder uses the reparameterization trick to sample from the latent space
+        //the reparameterization trick is used to sample from a distribution with a reparameterization of the distribution
+         //variational auto encoder uses the kullback leibler divergence to measure the difference between the latent space and the prior distribution   
+        protected:
+
+
+
+        size_t latentDim;
+        T *latent;
+        T *latentMean;
+        T *latentLogVar;
+        T *latentMeanGrad;
+        T *latentLogVarGrad;
+        T *latentMeanGradPrev;
+        T *latentLogVarGradPrev;
+        T *latentMeanMomentum;
+        T *latentLogVarMomentum;
+        T *latentMeanUpdate;
+        T *latentLogVarUpdate;
+        T *latentMeanDecay;
+        T *latentLogVarDecay;
+        T *latentMeanSparsity;
+        T *latentLogVarSparsity;
+        T *latentMeanSparsityHat;
+        T *latentLogVarSparsityHat;
+        T *latentMeanSparsityGrad;
+        T *latentLogVarSparsityGrad;
+        T *latentMeanSparsityGradHat;
+        T *latentLogVarSparsityGradHat;
+        T *latentMeanGradPrevPrev;
+        T *latentLogVarGradPrevPrev;
+        T *latentMeanInc;
+        T* latentMeanSparsityGradPrev;
+        T* latentLogVarSparsityGradPrev;
+        T* latentMeanSparsityGradHatPrev;
+        T* latentLogVarSparsityGradHatPrev;
+        T* latentMeanPrev;
+        T* latentMeanSparsityGradPrevPrev;
+        T* latentLogVarSparsityGradPrevPrev;
+        T* latentMeanSparsityGradHatPrevPrev;
+        //init helpers for the variational auto encoder
+        void initializeLatent()
+        {
+            //reallocate the latent with the desired size:
+            initialize(latent, latentDim);    
+
+            //initialize the latent mean
+            initializeLatentMean();
+            //initialize the latent log var
+            initializeLatentLogVar();
+            //initialize the latent mean grad
+            initializeLatentMeanGrad();
+            //initialize the latent log var grad
+            initializeLatentLogVarGrad();
+            //initialize the latent mean grad prev
+            initializeLatentMeanGradPrev();
+            //initialize the latent log var grad prev
+            initializeLatentLogVarGradPrev();
+            //initialize the latent mean momentum
+            initializeLatentMeanMomentum();
+            //initialize the latent log var momentum
+            initializeLatentLogVarMomentum();
+            //initialize the latent mean update
+            initializeLatentMeanUpdate();
+            //initialize the latent log var update
+            initializeLatentLogVarUpdate();
+            //initialize the latent mean decay
+            initializeLatentMeanDecay();
+            //initialize the latent log var decay
+            initializeLatentLogVarDecay();
+            //initialize the latent mean sparsity
+            initializeLatentMeanSparsity();
+            //initialize the latent log var sparsity
+            initializeLatentLogVarSparsity();
+            //initialize the latent mean sparsity hat
+            initializeLatentMeanSparsityHat();
+            //initialize the latent log var sparsity hat
+            initializeLatentLogVarSparsityHat();
+            //initialize the latent mean grad prev
+            initializeLatentMeanGradPrev();
+
+
+
+        }
+        void initializeLatentMean()
+        {
+            initialize(latentMean, latentDim, T(0));
+            //initialize the latent mean grad
+            initializeLatentMeanGrad();
+            //initialize the latent mean grad prev
+            initializeLatentMeanGradPrev();
+            //initialize the latent mean momentum
+            initializeLatentMeanMomentum();
+            //initialize the latent mean update
+            initializeLatentMeanUpdate();
+            //initialize the latent mean decay
+            initializeLatentMeanDecay();
+            //initialize the latent mean sparsity
+            initializeLatentMeanSparsity();
+            //initialize the latent mean sparsity hat
+            initializeLatentMeanSparsityHat();
+
+             //done
+
+        }
+        void initializeLatentLogVar()
+        {
+            //reallocate the latent log var with the desired size:
+            initialize(latentLogVar, latentDim, T(0));
+
+
+            //initialize the latent log var grad
+            initializeLatentLogVarGrad();
+            //initialize the latent log var grad prev
+            initializeLatentLogVarGradPrev();
+            //initialize the latent log var momentum
+            initializeLatentLogVarMomentum();
+            //initialize the latent log var update
+            initializeLatentLogVarUpdate();
+            //initialize the latent log var decay
+            initializeLatentLogVarDecay();
+            //initialize the latent log var sparsity
+            initializeLatentLogVarSparsity();
+            //initialize the latent log var sparsity hat
+            initializeLatentLogVarSparsityHat();
+
+            //done
+        }
+        void initializeLatentMeanGrad()
+        {
+            //reallocate the latent mean grad with the desired size:
+            initialize(latentMeanGrad, latentDim, T(0));    
+
+            //initialize the latent mean grad prev
+            initializeLatentMeanGradPrev();
+            //initialize the latent mean momentum
+            initializeLatentMeanMomentum();
+            //initialize the latent mean update
+            initializeLatentMeanUpdate();
+            //initialize the latent mean decay
+            initializeLatentMeanDecay();
+            //initialize the latent mean sparsity
+            initializeLatentMeanSparsity();
+            //initialize the latent mean sparsity hat
+            initializeLatentMeanSparsityHat();
+
+            //done
+        }
+        void initializeLatentLogVarGrad()
+        {
+            //reallocate the latent log var grad with the desired size:
+          
+            initialize(latentLogVarGrad, latentDim, T(0));
+            //initialize the latent log var grad prev
+            initializeLatentLogVarGradPrev();
+            //initialize the latent log var momentum
+            initializeLatentLogVarMomentum();
+            //initialize the latent log var update
+            initializeLatentLogVarUpdate();
+            //initialize the latent log var decay
+            initializeLatentLogVarDecay();
+            //initialize the latent log var sparsity
+            initializeLatentLogVarSparsity();
+            //initialize the latent log var sparsity hat
+            initializeLatentLogVarSparsityHat();
+
+            //done
+
+        }
+        void initializeLatentMeanGradPrev()
+        {
+            initialize(latentMeanGradPrev, latentDim, T(0));
+
+            //done
+        }
+        void initializeLatentLogVarGradPrev()
+        {
+            initialize(latentLogVarGradPrev, latentDim, T(0));
+
+            //done
+        }
+        void initializeLatentMeanMomentum()
+        {
+            initialize(latentMeanMomentum, latentDim, T(0));    
+            
+            //done      
+        }
+        void initializeLatentLogVarMomentum()
+        {
+            initialize(latentLogVarMomentum, latentDim, T(0));
+            //done
+        }
+        void initialize ( T* _init_member,size_t size, const T value_)
+        {
+            //reallocate the member with the desired size:
+            if(_init_member != nullptr)
+            {
+                delete [] _init_member;
+                _init_member=nullptr;
+
+            }
+            _init_member = new T[size];
+            //initialize the member
+            for (size_t i = 0; i < size; i++)
+            {
+                _init_member[i] = value_;
+            }
+        }
+        void initializeLatentMeanUpdate()
+        {
+            //reallocate the latent mean update with the desired size:
+            initialize(latentMeanUpdate, latentDim, T(0));  
+        }
+        void initializeLatentLogVarUpdate()
+        {
+            //reallocate the latent log var update with the desired size:
+            initialize(latentLogVarUpdate, latentDim, T(0));  
+        }
+        void initializeLatentMeanDecay()
+        {
+            //reallocate the latent mean decay with the desired size:
+            initialize(latentMeanDecay, latentDim, T(0));  
+        }
+        void initializeLatentLogVarDecay()
+        {
+            //reallocate the latent log var decay with the desired size:
+            initialize(latentLogVarDecay, latentDim, T(0));  
+        }
+        void initializeLatentMeanSparsity()
+        {
+            //reallocate the latent mean sparsity with the desired size:
+            initialize(latentMeanSparsity, latentDim, T(0));  
+        }
+        void initializeLatentLogVarSparsity()
+        {
+            //reallocate the latent log var sparsity with the desired size:
+            initialize(latentLogVarSparsity, latentDim, T(0));  
+        }
+        void initializeLatentMeanSparsityHat()
+        {
+            //reallocate the latent mean sparsity hat with the desired size:
+            initialize(latentMeanSparsityHat, latentDim, T(0));  
+        }
+        void initializeLatentLogVarSparsityHat()
+        {
+            //reallocate the latent log var sparsity hat with the desired size:
+            initialize(latentLogVarSparsityHat, latentDim, T(0));  
+        }
+        //update helpers for the variational auto encoder
+        void updateLatentMeanGrad()
+        {
+            //update the latent mean grad
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanGrad[i] = latentMeanGradPrev[i] + latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarGrad()
+        {
+            //update the latent log var grad
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarGrad[i] = latentLogVarGradPrev[i] + latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMeanGradPrev()
+        {
+            //update the latent mean grad prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanGradPrev[i] = latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarGradPrev()
+        {
+            //update the latent log var grad prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarGradPrev[i] = latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMeanMomentum()
+        {
+            //update the latent mean momentum
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanMomentum[i] = latentMeanMomentum[i] * this->momentum + this->learningRate * latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarMomentum()
+        {
+            //update the latent log var momentum
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarMomentum[i] = latentLogVarMomentum[i] * this->momentum + this->learningRate * latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMeanUpdate()
+        {
+            //update the latent mean update
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanUpdate[i] = latentMeanUpdate[i] * this->momentum + this->learningRate * latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarUpdate()
+        {
+            //update the latent log var update
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarUpdate[i] = latentLogVarUpdate[i] * this->momentum + this->learningRate * latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMeanDecay()
+        {
+            //update the latent mean decay
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanDecay[i] = latentMeanDecay[i] * this->weightDecay + this->learningRate * latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarDecay()
+        {
+            //update the latent log var decay
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarDecay[i] = latentLogVarDecay[i] * this->weightDecay + this->learningRate * latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMeanSparsity()
+        {
+            //update the latent mean sparsity
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsity[i] = latentMeanSparsity[i] * this->sparsityParam + this->learningRate * latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarSparsity()
+        {
+            //update the latent log var sparsity
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarSparsity[i] = latentLogVarSparsity[i] * this->sparsityParam + this->learningRate * latentLogVarGrad[i];
+            }
+        }   
+        void updateLatentMeanSparsityHat()
+        {
+            //update the latent mean sparsity hat
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsityHat[i] = latentMeanSparsityHat[i] * this->sparsityParamHat + this->learningRate * latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarSparsityHat()
+        {
+            //update the latent log var sparsity hat
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarSparsityHat[i] = latentLogVarSparsityHat[i] * this->sparsityParamHat + this->learningRate * latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMean()
+        {
+            //update the latent mean
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMean[i] = latentMean[i] + latentMeanUpdate[i] + latentMeanMomentum[i] + latentMeanDecay[i] + latentMeanSparsity[i] + latentMeanSparsityHat[i];
+            }
+        }
+        void updateLatentLogVar()
+        {
+            //update the latent log var
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVar[i] = latentLogVar[i] + latentLogVarUpdate[i] + latentLogVarMomentum[i] + latentLogVarDecay[i] + latentLogVarSparsity[i] + latentLogVarSparsityHat[i];
+            }
+        }
+        void updateLatentMeanGradPrevPrev()
+        {
+            //update the latent mean grad prev prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanGradPrevPrev[i] = latentMeanGradPrev[i];
+            }
+        }
+        void updateLatentLogVarGradPrevPrev()
+        {
+            //update the latent log var grad prev prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarGradPrevPrev[i] = latentLogVarGradPrev[i];
+            }
+        }
+        void updateLatentMeanSparsityGrad()
+        {
+            //update the latent mean sparsity grad
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsityGrad[i] = latentMeanSparsityGrad[i] * this->sparsityGradient + this->learningRate * latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarSparsityGrad()
+        {
+            //update the latent log var sparsity grad
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarSparsityGrad[i] = latentLogVarSparsityGrad[i] * this->sparsityGradient + this->learningRate * latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMeanSparsityGradHat()
+        {
+            //update the latent mean sparsity grad hat
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsityGradHat[i] = latentMeanSparsityGradHat[i] * this->sparsityGradientHat + this->learningRate * latentMeanGrad[i];
+            }
+        }
+        void updateLatentLogVarSparsityGradHat()
+        {
+            //update the latent log var sparsity grad hat
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarSparsityGradHat[i] = latentLogVarSparsityGradHat[i] * this->sparsityGradientHat + this->learningRate * latentLogVarGrad[i];
+            }
+        }
+        void updateLatentMeanSparsityGradPrev()
+        {
+            //update the latent mean sparsity grad prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsityGradPrev[i] = latentMeanSparsityGrad[i];
+            }
+        }
+        void updateLatentLogVarSparsityGradPrev()
+        {
+            //update the latent log var sparsity grad prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarSparsityGradPrev[i] = latentLogVarSparsityGrad[i];
+            }
+        }
+        void updateLatentMeanSparsityGradHatPrev()
+        {
+            //update the latent mean sparsity grad hat prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsityGradHatPrev[i] = latentMeanSparsityGradHat[i];
+            }
+        }   
+        void updateLatentLogVarSparsityGradHatPrev()
+        {
+            //update the latent log var sparsity grad hat prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarSparsityGradHatPrev[i] = latentLogVarSparsityGradHat[i];
+            }
+        }
+        void updateLatentMeanSparsityGradPrevPrev()
+        {
+            //update the latent mean sparsity grad prev prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsityGradPrevPrev[i] = latentMeanSparsityGradPrev[i];
+            }
+        }
+        void updateLatentLogVarSparsityGradPrevPrev()
+        {
+            //update the latent log var sparsity grad prev prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentLogVarSparsityGradPrevPrev[i] = latentLogVarSparsityGradPrev[i];
+            }
+        }
+        void updateLatentMeanSparsityGradHatPrevPrev()
+        {
+            //update the latent mean sparsity grad hat prev prev
+            for (size_t i = 0; i < latentDim; i++)
+            {
+                latentMeanSparsityGradHatPrevPrev[i] = latentMeanSparsityGradHatPrev[i];
+            }
+        }
+        //
+
+        public:
+
+        
+        variational_auto_encoder(size_t inputDim, size_t hiddenDim, size_t outputDim, size_t lDim) :
+        auto_encoder<T,real_x>(inputDim,hiddenDim,outputDim) , latentDim(lDim)
+        {
+            //initialize the latent dim
+            setLatentDim(latentDim);
+            //initialize the latent space
+            initializeLatent();
+            //initialize the latent mean
+            initializeLatentMean();
+            //initialize the latent log var
+            initializeLatentLogVar();
+            //initialize the latent mean grad
+            initializeLatentMeanGrad();
+            //initialize the latent log var grad
+            initializeLatentLogVarGrad();
+            //initialize the latent mean grad prev
+            initializeLatentMeanGradPrev();
+            //call the initialize weight grad function
+            initializeWeightGrad();
+
+        } 
+
+        //destructor
+        virtual ~variational_auto_encoder();
+        //copy constructor
+        variational_auto_encoder(const variational_auto_encoder &vae);
+        //copy assignment operator
+        variational_auto_encoder& operator=(const variational_auto_encoder &vae);
+        //move constructor
+        variational_auto_encoder(variational_auto_encoder &&vae);
+        //move assignment operator
+        variational_auto_encoder& operator=(variational_auto_encoder &&vae);
+
+
+        //get the latent dim
+        void setLatentDim(size_t latentDim);
+
+        size_t getLatentDim() const;
+        
+        //override auto encoder functions
+        void initializeWeightGrad() override
+        {
+            auto_encoder<T,real_x>::initializeWeightGrad();
+            //initialize the gradients
+            initializeWeight1Grad();
+            initializeWeight2Grad();
+            //initialize bias grads
+            initializeBias1Grad();
+            initializeBias2Grad();
+            //initialize latent mean grad
+            initializeLatentMeanGrad();
+            //initialize latent log var grad
+            initializeLatentLogVarGrad();
+            //initialize latent mean grad prev
+            initializeLatentMeanGradPrev();
+            //initialize latent log var grad prev
+            initializeLatentLogVarGradPrev();
+            //initialize latent mean momentum
+            initializeLatentMeanMomentum();
+            //initialize latent log var momentum
+            initializeLatentLogVarMomentum();
+            //initialize latent mean update
+            initializeLatentMeanUpdate();
+            //initialize latent log var update
+            initializeLatentLogVarUpdate();
+            //initialize latent mean decay
+            initializeLatentMeanDecay();
+            //initialize latent log var decay
+            initializeLatentLogVarDecay();
+            //initialize latent mean sparsity
+            initializeLatentMeanSparsity();
+            //initialize latent log var sparsity
+            initializeLatentLogVarSparsity();
+            //initialize latent mean sparsity hat
+
+            initializeLatentMeanSparsityHat();
+            //initialize latent log var sparsity hat
+            initializeLatentLogVarSparsityHat();
+
+            //initialize weight prev
+            auto_encoder<T,real_x>::initializeWeight1Prev();
+            auto_encoder<T,real_x>::initializeWeight2Prev();
+            //initialize bias prev
+            auto_encoder<T,real_x>::initializeBias1Prev();
+            auto_encoder<T,real_x>::initializeBias2Prev();
+            //initialize latent mean grad prev
+            initializeLatentMeanGradPrev();
+            //initialize latent log var grad prev
+            initializeLatentLogVarGradPrev();
+            //initialize latent mean momentum
+            initializeLatentMeanMomentum();
+            //initialize latent log var momentum
+            initializeLatentLogVarMomentum();
+
+
+            //initialize latent mean update
+            initializeLatentMeanUpdate();
+
+        }
+        void initializeWeightGrad(T *weightGrad, size_t size)
+        {
+                initialize(weightGrad, size, T(0));
+
+        }
+        void initializeWeightGrad(T *weightGrad, size_t row, size_t col)
+        {
+            initialize(weightGrad, row*col,T(0));
+
+        }
+        void initializeWeightGrad(T *weightGrad, size_t row, size_t col, size_t depth)
+        {
+            initialize(weightGrad, row*col*depth,T(0));
+
+        }
+        void initializeWeightGrad(T *weightGrad, size_t row, size_t col, size_t depth, size_t height)
+        {
+            initialize(weightGrad, row*col*depth*height,T(0));
+        }
+        void initializeWeightGrad(T *weightGrad, size_t row, size_t col, size_t depth, size_t height, size_t width)
+        {
+            initialize(weightGrad, row*col*depth*height*width,T(0));
+        }
+        void initializeWeightGrad(T *weightGrad, size_t row, size_t col, size_t depth, size_t height, size_t width, size_t length)
+        {
+            initialize(weightGrad, row*col*depth*height*width*length,T(0));
+        }
+        void initializeWeightGrad(T *weightGrad, size_t row, size_t col, size_t depth, size_t height, size_t width, size_t length, size_t dimension)
+        {
+            initialize(weightGrad, row*col*depth*height*width*length*dimension,T(0));
+        }
+        //fit with latent space
+
+        void fit(T *input, size_t inputSize, size_t batchSize, size_t epoch)
+        {
+            //fit the model
+            for (size_t i = 0; i < epoch; i++)
+            {
+                //train the model
+                train(input, inputSize, batchSize);
+            }
+        }
+        class_dist predict(T *input, size_t inputSize)
+        {
+            //predict the class distribution
+            class_dist dist;
+            //get the output
+            predict(input, inputSize, dist);
+            //return the class distribution
+            return dist;
+        }
+        void predict(T *input, size_t inputSize, T *output, size_t outputSize)
+        {
+            //predict the output
+            //get the output
+            predict(input, inputSize, output, outputSize);
+        }
+        virtual void train(T *input, size_t inputSize, size_t batchSize)
+        {
+            //train the model
+            //get the batch
+            T *batch = getBatch(input, inputSize, batchSize);
+            //train the model
+            train(batch, batchSize);
+            //delete the batch ?
+            delete [] batch;
+        }
+        virtual void train(T *input, size_t inputSize, size_t batchSize, size_t epoch)
+        {
+            //train the model
+            for (size_t i = 0; i < epoch; i++)
+            {
+                //train the model
+                train(input, inputSize, batchSize);
+            }
+        }
+        virtual class_dist test(T *input, size_t inputSize)
+        {
+            //test the model
+            class_dist dist;
+            dist.setup(this->outputDim);
+            //get the output
+            //test(input, inputSize, dist);
+            T* output = new T[this->outputDim]; 
+            if (output != nullptr) {
+            test(input, inputSize, output, this->outputDim);
+            //get the class distribution
+                for(size_t i = 0; i < dist.size(); i++)
+                {
+                    dist.accum(i,output[i]);
+                }
+                delete [] output;
+            }
+            //return the class distribution
+            return dist;
+        }
+
+        virtual void test(T *input, size_t inputSize, T *output, size_t outputSize)
+        {
+            //test the model
+            //get the output
+
+            
+        }
+        virtual void initializeWeight();
+        virtual void initializeBias();
+        virtual void initializeActivationFunction();
+        virtual void initializeWeight1Grad();
+        virtual void initializeWeight2Grad();
+        virtual void initializeBias1Grad();
+        virtual void initializeBias2Grad();
+
  
+    };   
+
 
     template <typename T, typename real_x>
     inline auto_encoder<T, real_x>::auto_encoder(size_t inputDim, size_t hiddenDim, size_t outputDim) : inputDim(inputDim), hiddenDim(hiddenDim), outputDim(outputDim), 
@@ -1416,9 +2140,7 @@ namespace provallo
         delete[] weight2Inc;
         delete[] bias1Inc;
         delete[] bias2Inc;
-
-
-
+ 
         //done
 
     }
@@ -2012,6 +2734,17 @@ namespace provallo
             out << bias2GradPrevPrev[i] << " ";
         }
         out << std::endl;
+
+        //SAVE PARAMETERS (learning rate, momentum, etc.)
+        out << "learningRate: " << learningRate << std::endl;
+        out << "momentum: " << momentum << std::endl;
+        out << "weightDecay: " << weightDecay << std::endl;
+        out << "sparsityParam: " << sparsityParam << std::endl;
+        out << "beta: " << beta << std::endl;
+         
+        
+        //all members are saved
+
         
     }
     //load & save 
@@ -2744,82 +3477,173 @@ namespace provallo
 
     }
 
-             
-    //update weight1GradPrev 
-    //update weight2GradPrev
- 
-    //update bias1GradPrevPrev 
-    //update bias2GradPrevPrev 
 
+    struct tf_auto_encoder
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.conjugateGradient();
+            ae.getOutput(output);
+        }
+    };  
 
-    //update weight1Inc 
-    //update weight2Inc 
+    struct  tf_auto_encoder_grad
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getWeight1Grad(output);
+        }
+    };  
 
-    //update bias1Inc 
-    //update bias2Inc 
+    struct  tf_auto_encoder_grad2
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getWeight2Grad(output);
+        }
+    };     
 
-    //update weight1 
-    //update weight2 
-    //update bias1 
-    //update bias2 
+    struct  tf_auto_encoder_grad3
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getBias1Grad(output);
+        }
+    };
 
-    //update weight1Grad 
-    //update weight2Grad 
-    //update bias1Grad 
-    //update bias2Grad 
+    struct  tf_auto_encoder_grad4
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getBias2Grad(output);
+        }
+    };
 
-    //update weight1 
-    //update weight2 
-    //update bias1 
-    //update bias2 
+    struct  tf_auto_encoder_grad5
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getWeight1(output);
+        }
+    };
 
-    //update weight1GradPrev
-   
+    struct  tf_auto_encoder_grad6
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getWeight2(output);
+        }
+    };
 
-    //update weight2GradPrev
-    
-    //update bias1GradPrev 
-    //update bias2GradPrev 
-
-    //update weight1GradPrevPrev 
-    //update weight2GradPrevPrev 
-
-    //update bias1GradPrevPrev 
-
-    //update bias2GradPrevPrev 
-
-    //update weight1Inc 
-
-    //update weight2Inc
- 
-    //update bias1Inc 
-    //update bias2Inc 
-    //update weight1 
-    //update weight2 
-
-    //update bias1 
-    //update bias2
-    
-
-    //update weight1Grad
-  
-    //update weight2Grad
+    struct  tf_auto_encoder_grad7
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getBias1(output);
+        }
+    };
      
-    //update bias1Grad redefinition 
-    //update bias2Grad 
+    struct  tf_auto_encoder_grad8
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            auto_encoder<T,real_x> ae;
+            ae.setInput(input);
+            ae.forward();
+            ae.backward();
+            ae.getBias2(output);
+        }
+    };
 
-    //update weight1 
-    //update weight2
-     //update bias1
-     //update bias2
-     //update weight1GradPrev 
-    //update weight2GradPrev 
-    //update bias1GradPrev 
-    //update bias2GradPrev 
+    struct  tf_auto_encoder_grad9
+    {
+        template <typename T, typename real_x >
+        void operator()(const T* const input, T* const output)
+        {
+            output[0] = 0;
+        }
+    };
 
-    //update weight1GradPrevPrev  
-    //update weight1Inc redefine
-  
+    //autoencoder<>::save_as_pt - save autoencoder as tensorflow pt file
+    
+    template <typename T, typename real_x >
+    void auto_encoder<T,real_x>::save_as_pt ( const std::string filename ) {
+
+        std::ofstream out(filename, std::ios::binary); 
+        if (!out.is_open()) {
+            std::cout << "Cannot open file to write: " << filename << std::endl;
+            return;
+        }
+        //dont use tensorflow namespace and dependencies, just save weights and biases as binary file,no python
+        //save weights and biases
+        out.write((char*)weight1, sizeof(real_x) * inputDim * hiddenDim);
+        out.write((char*)weight2, sizeof(real_x) * hiddenDim * outputDim);
+        out.write((char*)bias1, sizeof(real_x) * hiddenDim);
+        out.write((char*)bias2, sizeof(real_x) * outputDim);
+        out.close();
+
+        
+
+
+    }
+    //convert autoencoder json to tensorflow pt file:
+    //src: autoencoder json file
+    //dst: tensorflow pt file
+    template <typename T, typename real_x >
+    struct file_converter_pt 
+    {
+        void operator()(const std::string src,const std::string dst)
+        {
+
+            auto_encoder<T,real_x> ae;
+            ae.load(src);
+            ae.save_as_pt(dst); 
+
+        }
+    };
+
+
 
 } // namespace provallo
 

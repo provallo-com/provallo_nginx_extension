@@ -19,7 +19,7 @@ namespace provallo
 	// neural helpers//
 
 	// solvers for QN
-
+ 
 	namespace QN
 	{
 		// Quasi-Newton methods
@@ -353,6 +353,9 @@ namespace provallo
 								 public Discriminator<ComparatorSetter, 2>
 		{
 		};
+
+
+		
 
 		template <typename Array, typename Function,
 				  typename InitializerSetter = default_operator_args,
@@ -977,7 +980,7 @@ namespace provallo
 			// Time (i.e. iteration number)
 			size_t _time;
 
-		public:
+			public:
 			GaData() : _time(0)
 			{
 			}
@@ -1070,7 +1073,7 @@ namespace provallo
 					centroid = centroid + (*it);
 				return (1.0 / num) * centroid;
 			}
-
+		};
 			struct LifeMutator
 			{
 				template <class Function, class Array>
@@ -1094,7 +1097,7 @@ namespace provallo
 					for (size_t i = 0; i < global_params::max_life_steps; ++i)
 					{
 						nm.step();
-						Array centroid = calculateCentroid<Array, Function>(nm);
+						Array centroid = NelderMeadMutator::calculateCentroid<Array, Function>(nm);
 						Array diff = nm.best() - centroid;
 						if (sqrt(dot(diff, diff)) < global_params::tolerance)
 							break;
@@ -1130,7 +1133,7 @@ namespace provallo
 					for (size_t i = 0; i < global_params::max_iterations; ++i)
 					{
 						nm.step();
-						Array centroid = calculateCentroid<Array, Function>(nm);
+						Array centroid = NelderMeadMutator::calculateCentroid<Array, Function>(nm);
 						Array diff = nm.best() - centroid;
 						if (sqrt(dot(diff, diff)) < global_params::tolerance)
 							break;
@@ -1141,10 +1144,12 @@ namespace provallo
 
 					checkValues<Function>(function, values);
 				}
-			};
-		};
+			};//struct FinalMutator
+	
+			}//namespace global
 
-	}
-} /* namespace provallo */
+
+
+	}//namespace provallo
 
 #endif /* DECISION_ENGINE_OPTIMIZERS_H_ */

@@ -3595,9 +3595,9 @@ namespace provallo
     ssize_t distance = std::distance(begin, end);
     if( distance ==0 ) 
         {
-		return votes;
+		      return votes;
 
-	}
+  	    }
     // Loop over each class value
     for (uint32_t i = 0; i < class_number; ++i)
     {
@@ -5349,9 +5349,11 @@ namespace provallo
     // Resize container before the loop
     _classifiers.resize(nclass, 0);
     _error.resize(nclass, 0.0);
-    _last_oob =0 ;
+     _oob_error = 0.0;
+
+    _last_oob =&_oob_error;
     // Create uniform distribution
-    static class_dist distribution(data.size(), 1.0);
+    static class_dist distribution(_attributes_info.getTargetClassCount());
 
     distribution.setup( _attributes_info.getTargetClassCount());
 
@@ -5360,11 +5362,10 @@ namespace provallo
     // This container has the distribution of predictions of each sample
     // each time is OOB
     static std::vector<class_dist> global_oob_predictions;
-        
+    global_oob_predictions.clear();
     global_oob_predictions.resize(data.size(), class_dist(nclasses, 0.0));
 
     std::vector<std::thread> train_loadthreads;
-
     size_t n = local_parameters->getClassifiersNumber();
 
     // static std::recursive_mutex _mutex; 
@@ -5378,27 +5379,27 @@ namespace provallo
     distibution_ptr = &distribution;
     error_copy = &_error;
     last_raw = &_raw_importance;
-    _last_oob = &_oob_error;
+ 
     static std::ostream &out2 = out;
 
     for (uint32_t i = 0; i < n; ++i)
     {
-
-      // Get random number engine
+       // Get random number engine
       // MathUtils::Random local_random(getRandom());
       // classifier* local_classifier = new RandomClassifier(local_data, local_parameters->getClassifierParameters(), local_random, out, _split_factory);
       train_loadthreads.push_back(
           std::thread([i]()
                       {
                   		  std::vector<uint32_t> oob_indices;
-		                    const split_method_factory& _split_factory = *_last_factory;
-		                    random_forest_param* local_parameters = _last_parameters;
-		                    const dataset& data =std::ref(*_last_dataset);
-		                    std::vector<classifier*>& _classifiers =std::ref(*gclassifiers );
+		                    const split_method_factory& _split_factory (*_last_factory);
+		                    random_forest_param* local_parameters (_last_parameters);
+		                    const dataset& data (std::ref(*_last_dataset));
+		                    std::vector<classifier*>& _classifiers (std::ref(*gclassifiers ));
+
 		                    class_dist distribution (*distibution_ptr);
-		                    std::vector<Float>& _error = std::ref(*error_copy);
-		                    std::vector<Float>& _raw_importance = std::ref(*last_raw);
-		                    std::vector<class_dist>& global_oob_predictions= std::ref(*gdist);
+		                    std::vector<Float>& _error(std::ref(*error_copy));
+		                    std::vector<Float>& _raw_importance (std::ref(*last_raw));
+		                    std::vector<class_dist>& global_oob_predictions(std::ref(*gdist));
 		                    Float& _oob_error = *_last_oob;
                         //Float oob_error = 0.0;//local Out of bag error
                         std::ostream& out=out2;
@@ -5532,7 +5533,7 @@ namespace provallo
 		    for (uint32_t i = 0; i < gn; ++i)
           {
             // Get target value on the test data
-            attribute test_attr (*(data.begin (i) + target_tag));
+            attribute test_attr (data.getattribute(i,target_tag));
             // Check against the OOB prediction
             if (test_attr.discrete ()
                 != global_oob_predictions[i].mode ().discrete ())

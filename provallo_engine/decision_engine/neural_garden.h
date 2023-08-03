@@ -35,8 +35,8 @@ namespace decision_engine {
 
 
         virtual void setup(const matrix<double>& data) = 0; 
-      
-      
+        
+
         virtual void train() = 0;
         virtual void test(const matrix<double>& data) = 0;
 
@@ -56,19 +56,18 @@ namespace decision_engine {
             std::vector< provallo::neural_net::ptr>  neural_networks;   
             typedef std::vector<provallo::auto_encoder<double,double> > auto_encoders; 
             std::vector<std::pair<provallo::neural_net::ptr,provallo::auto_encoder<double,double> > > connections; 
-            void build_connections(const matrix<double>& data) {
-              //for each column build auto encoder
-                //for each auto neural network connect input to set of auto encoder outputs
-                for (size_t i = 0; i < data.cols(); i++)
-                {
-                    auto ae = provallo::auto_encoder<double,double>(data.cols(),data.cols());
-                    auto nn = provallo::neural_net::ptr(new provallo::neural_net(data.cols(),data.cols()));
-                    connect_auto_encoder(nn,ae);
-                }                
-            }   
-            
+            std::mutex connections_lock;
+            std::condition_variable connections_cv;
+            std::thread connections_thread;
+            bool connections_thread_running;
+            void connections_thread_loop();
+            void build_connections(const matrix<double>& data); 
+            void add_connection(provallo::neural_net::ptr nn, provallo::auto_encoder<double,double> ae);
+            void remove_connection(provallo::neural_net::ptr nn, provallo::auto_encoder<double,double> ae);
+            void clear_connections();
         
-    };
+    };      
+        
     //neural garden is the container for the neural urns
     //it is the main class of the decision engine
     class neural_garden {
@@ -97,7 +96,9 @@ namespace decision_engine {
     class neural_urn : public base_neural_urn {
         public:
             neural_urn() {}
-            ~neural_urn() {}
+            
+            virtual ~neural_urn() {}
+            
             void setup(const matrix<double>& data) override {
                 for(size_t i=0;i<data.rows();i++) {
                     auto& row = data.row(i);
@@ -161,7 +162,6 @@ namespace decision_engine {
         neural_networks.clear();
         auto_encoders.clear();
     }
-
 
 } // namespace decision_engine
 } // namespace provallo 
