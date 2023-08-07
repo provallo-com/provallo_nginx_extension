@@ -704,6 +704,9 @@ bool test_vectorizers ( provallo::dataset& vectorize_set   )
 
 }
 
+ 
+
+
 bool benchmark_classifiers (const std::string benchmark_folder )
 {
     bool ret = false;
@@ -886,8 +889,9 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       //test autoencoder
       std::cout<<"-- testing autoencoder .... "<<std::endl<<std::endl;
       //go over the testing set and test the autoencoder
-      mdata.resize(test_set.size(),test_set.getattributesNumber());
-      for(size_t i=0;i<test_set.size();i++)
+      size_t test_size = test_set.size()/test_set.getattributesNumber();
+      mdata.resize(test_size,test_set.getattributesNumber());
+      for(size_t i=0;i<test_size;i++)
       {
         for(size_t j=0;j<test_set.getattributesNumber();j++)
         {
@@ -912,11 +916,10 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         provallo::kNN k(dataset_ptr1); 
         provallo::dataset_ptr   dataset_ptr2(new provallo::dataset_base(test_set.copy_to_base()));
         //normalize it :
-
          provallo::kNN_result  res =k.run(sqrt(attributes.getSize()),  dataset_ptr2 );
          std::cout<<"[+] ultra fast knn result : "<<std::endl;
         provallo::matrix_ptr confusion = res.getConfusionMatrix();
-        //proint confusion matrix :
+        //print confusion matrix :
         for(size_t i=0;i<confusion->rows();i++)
         { 
           for(size_t j=0;j<confusion->cols();j++)

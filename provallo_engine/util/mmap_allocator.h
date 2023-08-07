@@ -76,8 +76,6 @@ namespace provallo
         {
             typedef mmap_allocator<U> other;
         };
-        
-
 
         pointer allocate(size_type n, const void* hint = 0)
         {
@@ -94,7 +92,7 @@ namespace provallo
 
             throw std::bad_alloc(); 
                         //debug:
-
+            
         }
     
         void deallocate(pointer p, size_type n)
@@ -105,8 +103,7 @@ namespace provallo
             if (res == -1)
                 throw std::runtime_error("mmap_allocator::deallocate: munmap failed");
 
-
-        }
+         }
         
         template<typename U, typename... Args>
         void construct(U* p, Args&&... args)

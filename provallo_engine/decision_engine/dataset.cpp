@@ -105,9 +105,11 @@ namespace provallo
   dataset::setup()
   {
     auto c_start = clock();
-    // First initialize sorted indices
- 
-        sortattributes();
+    
+    // First validate dataset
+    validate();
+    // Now sort attributes
+    sortattributes();
 
     auto c_end = clock();
     std::cout << "[+]sorting dataset[ " << std::to_string(_id) << "] attributes CPU time elapsed in s: "
@@ -116,6 +118,31 @@ namespace provallo
     // Now setup class distribution
     c_start = c_end;
     c_end = clock();
+    if(_distribution.size()!=_attributes_info.getTargetClassCount() )
+      {
+        _distribution.setup(_attributes_info.getTargetClassCount());
+        for (uint32_t i = 0; i < size(); ++i)
+        {
+          bool bfound = false;
+          const attribute *attr_ptr = getattributeptr(i,_attributes_info.get_target_tag(), &bfound  ); 
+          //get the value from the attribute
+          if (bfound)
+          {
+             attribute value (_attributes_info.getValue(_attributes_info.get_target_tag(), *attr_ptr)); 
+             std::cout<<"[+]accumulating index for value: "<<value.to_string()<<", index: "<<attr_ptr->to_string()<< std::endl;
+            if( attr_ptr && attr_ptr->discrete() < _distribution.size())
+              _distribution.accum(attr_ptr->discrete(),1.); 
+            else if (value.discrete() < _distribution.size())
+              _distribution.accum(value.discrete(),1.); 
+            else
+              _distribution.accum(0,1.);  
+
+          }
+          else 
+            _distribution.accum(0,1.);  
+        } 
+      }
+    
     std::cout << "[+]setup attribute distribution CPU time elapsed in s: " << (double)(c_end - c_start) / CLOCKS_PER_SEC << std::endl;
     std::cout << "[+]training set class distribution:"<<_distribution<<std::endl;
 
@@ -353,7 +380,7 @@ namespace provallo
      
  
     // Create cumulative probabilities
-    std::vector<Float> cumulative( distribution.size()==size()?distribution.cumulative():_distribution.cumulative());
+    std::vector<Float> cumulative( distribution.cumulative());
 
     // Get target tag
     uint32_t target_tag(_attributes_info.get_target_tag());

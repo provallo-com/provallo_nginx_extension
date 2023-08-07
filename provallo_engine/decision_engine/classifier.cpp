@@ -18760,8 +18760,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
 		UNDEF_REFERENCE(cstyle)
 		UNDEF_REFERENCE2(imputer)
-
-	}	
+ 	}	
 	//deserialize_Indexer (cstyle)
 	void deserialize_Indexer(TreesIndexer& indexer ,FILE* cstyle)
 	{

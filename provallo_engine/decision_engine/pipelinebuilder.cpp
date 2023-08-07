@@ -7,6 +7,11 @@
 
 #include "pipelinebuilder.h"
 
+#include "../util/singleton.h"
+
+#include <iostream>
+
+#include <algorithm>
 namespace provallo
 {
 
@@ -538,26 +543,7 @@ namespace provallo
       ret.push_back(doc.size());
     }
     return ret;
-  }
-
-  pipeline_builder &
-  pipeline_builder::operator=(const pipeline_builder &other)
-  {
-    if (this != &other)
-    {
-
-      // copy everything :
-      this->_estimators = other._estimators;
-      this->_transform_estimators = other._transform_estimators;
-      this->_encoders = other._encoders;
-      this->_decoders = other._decoders;
-      this->_vectorizers = other._vectorizers;
-      this->_transform_vectorizers = other._transform_vectorizers;
-      this->_classifiers = other._classifiers;
-      this->_iso_forests = other._iso_forests;
-    }
-    return *this;
-  }
+  } 
 
   pipeline_builder &
   pipeline_builder::operator=(pipeline_builder &&other)
@@ -566,49 +552,116 @@ namespace provallo
     if (this != &other)
     {
 
-      this->_estimators = std::move(other._estimators);
-      this->_transform_estimators = std::move(other._transform_estimators);
-      this->_encoders = std::move(other._encoders);
-      this->_decoders = std::move(other._decoders);
-      this->_vectorizers = std::move(other._vectorizers);
-      this->_transform_vectorizers = std::move(other._transform_vectorizers);
-      this->_classifiers = std::move(other._classifiers);
-      this->_iso_forests = std::move(other._iso_forests);
+      // copy everything :
+      this->_pipelines = std::move(other._pipelines);
     }
+
     return *this;
   }
 
-  pipeline_builder::pipeline_builder(const pipeline_builder &other) : _estimators(other._estimators), _transform_estimators(other._transform_estimators), _encoders(other._encoders), _decoders(other._decoders), _vectorizers(other._vectorizers), _transform_vectorizers(other._transform_vectorizers), _classifiers(other._classifiers), _iso_forests(other._iso_forests)
+  pipeline_builder::pipeline_builder(const pipeline_builder &other): _pipelines(other._pipelines) 
   {
     // copy everything :
-
-  }
-
+ 
+  } 
   pipeline_builder::~pipeline_builder()
   {
     // clear everything :
-    _estimators.clear();
-    _transform_estimators.clear();
-    _encoders.clear();
-    _decoders.clear();
-    _vectorizers.clear();
-    _transform_vectorizers.clear();
-    _classifiers.clear();
-    _iso_forests.clear();
+    
   }
 
-  pipeline_builder::pipeline_builder(): _estimators(), _transform_estimators(), _encoders(), _decoders(), _vectorizers(), _transform_vectorizers(), _classifiers(), _iso_forests()
+  pipeline_builder::pipeline_builder():_current_pipeline(nullptr){}; // default constructor
+
+  pipeline_builder::pipeline_builder(pipeline_builder &&other) : _pipelines(std::move(other._pipelines))
   {
-    // clear everything :
-    _estimators.clear();
-    _transform_estimators.clear();
-    _encoders.clear();
-    _decoders.clear();
-    _vectorizers.clear();
-    _transform_vectorizers.clear();
-    _classifiers.clear();
-    _iso_forests.clear();
+    // move everything :
+    // _pipelines = std::move(other._pipelines);
   }
+
+  //load /save pipelines
+  bool pipeline_builder::load_from_file(std::string filename)
+  {
+    bool ret = false;
+    std::ifstream ifs(filename);
+    // check if file exists :
+    if (ifs.good())
+    {
+      // clear everything :
+      _pipelines.clear();
+      while (ifs.is_open())
+      {
+        // read pipeline :
+        pipeline *p = new pipeline();
+        ifs >> *p;
+        _pipelines.push_back(p);
+      } // end while
+      ret = true;
+    }
+    return ret;
+  }
+   
+  bool pipeline_builder::save_to_file(std::string filename)
+  {
+    bool ret = false;
+    std::ofstream ofs(filename);
+    // check if file exists :
+    if (ofs.good())
+    {
+      for (auto &p : _pipelines)
+      {
+        ofs << p;
+      }
+      ret = true;
+    }
+    return ret;
+  }
+
+  // pipeline_builder::add_pipeline
+
+  void pipeline_builder::add_pipeline(const std::string & pipeline_name,bool load_from_file)
+  {
+    pipeline* p = new pipeline ;
+    if (load_from_file)
+    {
+      p->load_from_file(pipeline_name);
+    }
+    else
+     p->set_pipeline_name( pipeline_name ) ;
+
+      add_pipeline(p);
+  }
+ 
+  void pipeline_builder::set_current_pipeline(uint64_t index)
+  {
+     auto it = std::find_if(_pipelines.begin(),_pipelines.end(),[index](pipeline* p){return p->get_pipeline_id()==index;});
+    if(it!=_pipelines.end())
+    {
+      _current_pipeline =  *it;
+    }
+  }
+  void pipeline_builder::set_current_pipeline(const std::string& pipeline_name)
+  {
+    //find index in pipelines
+    auto it = std::find_if(_pipelines.begin(),_pipelines.end(),[pipeline_name](pipeline* p){return p->get_pipeline_name()==pipeline_name;});
+    if(it!=_pipelines.end())
+    {
+      _current_pipeline =  *it;
+    }
+  }
+
+  /*
+  void pipeline_builder::set_current_pipeline(pipeline* pipeline)
+  {
+    //find index in pipelines
+    auto it = std::find_if(_pipelines.begin(),_pipelines.end(),[pipeline](pipeline* p){return p==pipeline;});
+    if(it!=_pipelines.end())
+    {
+      _current_pipeline = std::distance(_pipelines.begin(),it);
+    }
+  }
+
+  */
+  
 
   /*  std::vector<real_t> _mean;
     std::vector<real_t> _variance;
@@ -1185,23 +1238,11 @@ provallo::vectorizer<std::string, real_t>::predict ( const std::vector<std::stri
   //return the transformed data
   return std::vector<real_t>(transformed_data.begin(), transformed_data.end());
 }
- 
-/*/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo16tfidf_vectorizerE[_ZTVN8provallo16tfidf_vectorizerE]+0x28): undefined reference to `provallo::tfidf_vectorizer::fit(provallo::matrix<double> const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo16tfidf_vectorizerE[_ZTVN8provallo16tfidf_vectorizerE]+0x30): undefined reference to `provallo::tfidf_vectorizer::transform(provallo::matrix<double> const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo16tfidf_vectorizerE[_ZTVN8provallo16tfidf_vectorizerE]+0x50): undefined reference to `provallo::tfidf_vectorizer::transform(std::vector<std::string, std::allocator<std::string> > const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x28): undefined reference to `provallo::vectorizer<std::string, double>::fit(provallo::matrix<double> const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x30): undefined reference to `provallo::vectorizer<std::string, double>::transform(provallo::matrix<double> const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x40): undefined reference to `provallo::vectorizer<std::string, double>::fit(std::vector<std::string, std::allocator<std::string> > const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x50): undefined reference to `provallo::vectorizer<std::string, double>::transform(std::vector<std::string, std::allocator<std::string> > const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x58): undefined reference to `provallo::vectorizer<std::string, double>::fit_transform(std::vector<std::string, std::allocator<std::string> > const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x60): undefined reference to `provallo::vectorizer<std::string, double>::predict(provallo::matrix<double> const&)'
-/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo19transform_estimatorIdEE[_ZTVN8provallo19transform_estimatorIdEE]+0x20): undefined reference to `provallo::transform_estimator<double>::get_type() const'
-*/
+  
 
 
-
-  std::vector<real_t> tfidf_vectorizer::transform(const  std::vector<std::string>& documents)
-  {
+std::vector<real_t> tfidf_vectorizer::transform(const  std::vector<std::string>& documents)
+{
     //use _fitted_data,mean and std to transform the data
     //get the number of rows and columns
     size_t rows = documents.size();
@@ -1276,16 +1317,408 @@ provallo::vectorizer<std::string, real_t>::predict ( const std::vector<std::stri
       return std::vector<real_t>(foot.begin(), foot.end());
   }
 
+// pipeline implementation :
+//initialize parent class with the given parameters
 
 
-  /*/usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x28): undefined reference to `provallo::vectorizer<std::string, double>::fit(provallo::matrix<double> const&)'
-  /usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x30): undefined reference to `provallo::vectorizer<std::string, double>::transform(provallo::matrix<double> const&)'
-  /usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x40): undefined reference to `provallo::vectorizer<std::string, double>::fit(std::vector<std::string, std::allocator<std::string> > const&)'
-  /usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x50): undefined reference to `provallo::vectorizer<std::string, double>::transform(std::vector<std::string, std::allocator<std::string> > const&)'
-  /usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x58): undefined reference to `provallo::vectorizer<std::string, double>::fit_transform(std::vector<std::string, std::allocator<std::string> > const&)'
-  /usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo10vectorizerISsdEE[_ZTVN8provallo10vectorizerISsdEE]+0x60): undefined reference to `provallo::vectorizer<std::string, double>::predict(provallo::matrix<double> const&)'
-  /usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo19transform_estimatorIdEE[_ZTVN8provallo19transform_estimatorIdEE]+0x20): undefined reference to `provallo::transform_estimator<double>::get_type() const'
-  */
+pipeline::pipeline()
+{
+  //don't do anything until we have some stages to add
+}
+
+//load the stages from the given file
+pipeline::pipeline(const std::string& filename)
+{
+  //load the stages from the given file
+  if(!load_from_file(filename))
+    throw std::runtime_error("could not load the pipeline from the given file");  
+
+}
+
+class stage_factory : public  singleton<stage_factory>
+{
+  std::mutex _mtx;
+  std::map<std::string,std::function<stage_descriptor* () > > _stage_map;  
+  
+   
+  public:
 
 
-} /* namespace provallo */
+   stage_descriptor*  build_stage(const stage_descriptor& stage)
+  {
+    //build the stage from the stage descriptor
+    stage_descriptor* new_stage = nullptr;
+    //create stage from the stage descriptor
+
+    auto THIS = stage_factory::get_instance() ;
+    //lock the mutex
+    std::lock_guard<std::mutex> lock(THIS->_mtx);
+
+    if(THIS->_stage_map.find(stage.name) != THIS->_stage_map.end())
+    {
+      new_stage = THIS->_stage_map[stage.name](); //returns new_stage
+      
+      //copy the stage descriptor
+      new_stage->set_descriptor(stage);
+
+    }
+    else
+      throw std::runtime_error("stage not found");
+
+     return new_stage;
+    
+  }
+
+    stage_factory() : singleton<stage_factory>(),  _mtx(),_stage_map()
+    {
+        //initialize the stage map
+        
+
+        _stage_map["dataset"] = &dataset_stage::build;
+        _stage_map["vectorizer"] = &vectorizer_stage::build;
+        _stage_map["classifier"] = &classifier_stage::build;  
+        _stage_map["regressor"] = &regressor_stage::build;
+        _stage_map["cluster"] = &cluster_stage::build;
+        _stage_map["dimensionality_reduction"] = &dimentionality_reduction_stage::build;
+        _stage_map["feature_stage"] = &feature_stage::build;
+        _stage_map["encoder"] = &encoder_stage::build;
+        _stage_map["decoder"] = &decoder_stage::build;
+        _stage_map["normalizer"] = &normalizer_stage::build;
+        
+    }
+  //create stage from the stage descriptor
+};
+ 
+    bool pipeline::load_stage(  std::ifstream& stage_file, const stage_descriptor& stage ) 
+    {
+        bool ret_val = false;
+        //find the additional data if any for the stage and load it
+        std::string line; 
+        //build object from the stage descriptor
+        stage_descriptor* new_stage = nullptr;
+         
+        //create stage from the stage descriptor
+        new_stage = stage_factory::get_instance()->build_stage(stage);
+        if (new_stage == nullptr)
+          throw std::runtime_error("stage not found");  
+        //load the additional data
+        
+        std::getline(stage_file, line);
+        new_stage->load_additional_data(line);
+        ret_val=  true;
+        return ret_val;
+
+    }
+     bool pipeline::load_from_file(const std::string& filename)
+    {
+      std::ifstream file(filename);
+      if(!file.is_open())
+        return false;
+      std::string line;
+      while(std::getline(file, line))
+      {
+        //parse the line and add the stage to the pipeline from each stage descriptor : 
+        //the stage descriptor is a string with the following format :
+        //    size_t stage_id;
+        //     std::string name;
+        // std::string type;
+        // std::string parameters;
+        // std::string input;
+        // std::string output;
+        // std::string input_type;
+        // std::string output_type;
+        // std::string input_parameters;
+        // std::string output_parameters;
+
+
+        //parse the line and create a stage descriptor
+        stage_descriptor stage(line);
+        //load the stage from the file
+        if(!load_stage(file,stage))
+          return false;
+      }
+      return true;
+    }
+    bool pipeline::save_to_file(const std::string& filename)
+    {
+      //not implemented
+      std::ofstream file(filename);
+      if(!file.is_open())
+        return false;
+      //save the stages to the file
+      for(auto stage : _stages)
+      {
+        file << *stage << std::endl;
+        file << stage->get_additional_data() << std::endl;
+        file << std::endl;
+
+      }
+      file.close();
+      return true;
+      
+    }
+
+
+    
+    //pipeline destructor
+    pipeline::~pipeline()
+    {
+      //delete all the stages
+      for(auto stage : _stages)
+        delete stage;
+    }
+    //add a stage to the pipeline
+    void pipeline::add_stage(stage_descriptor* stage)
+    {
+      _stages.push_back(stage);
+    }
+    //remove a stage from the pipeline
+    void pipeline::remove_stage(size_t stage_id)
+    {
+      //find the stage with the given id
+      auto it = std::find_if(_stages.begin(), _stages.end(), [stage_id](stage_descriptor* stage) { return stage->stage_id == stage_id; });
+      if(it != _stages.end())
+      {
+        //remove the stage from the vector
+        _stages.erase(it);
+        //delete the stage
+        if(*it != nullptr)
+          delete *it;
+      }
+    }
+    //get the stage with the given id   
+    stage_descriptor* pipeline::get_stage(size_t stage_id)
+    {
+      //find the stage with the given id
+      auto it = std::find_if(_stages.begin(), _stages.end(), [stage_id](stage_descriptor* stage) { return stage->stage_id == stage_id; });
+      if(it != _stages.end())
+      {
+        //return the stage
+        return *it;
+      }
+      return nullptr;
+    }
+    //get the stage with the given name
+    stage_descriptor* pipeline::get_stage(const std::string& stage_name)
+    {
+      //find the stage with the given name
+      auto it = std::find_if(_stages.begin(), _stages.end(), [stage_name](stage_descriptor* stage) { return stage->name == stage_name; });
+      if(it != _stages.end())
+      {
+        //return the stage
+        return *it;
+      }
+      return nullptr;
+    }
+    //get the next stage 
+    stage_descriptor* pipeline::get_next_stage(size_t stage_id)
+    {
+      //find the stage with the given id
+      auto it = std::find_if(_stages.begin(), _stages.end(), [stage_id](stage_descriptor* stage) { return stage->stage_id == stage_id; });
+      if(it != _stages.end())
+      {
+        //return the next stage
+        return *(++it);
+      }
+      return nullptr;
+    }
+    //get the previous stage
+    stage_descriptor* pipeline::get_previous_stage(size_t stage_id)
+    {
+      //find the stage with the given id
+      auto it = std::find_if(_stages.begin(), _stages.end(), [stage_id](stage_descriptor* stage) { return stage->stage_id == stage_id; });
+      if(it != _stages.end())
+      {
+        //return the previous stage
+        return *(--it);
+      }
+      return nullptr;
+    }
+    //get the first stage
+    stage_descriptor* pipeline::get_first_stage()
+    {
+      if(_stages.size() > 0)
+      {
+        //return the first stage
+        return _stages[0];
+      }
+      return nullptr;
+    }
+    //get the last stage
+    stage_descriptor* pipeline::get_last_stage()
+    {
+      if(_stages.size() > 0)
+      {
+        //return the last stage
+        return _stages[_stages.size() - 1];
+      }
+      return nullptr;
+    }
+    //get the number of stages
+
+    size_t pipeline::get_number_of_stages() const
+    {
+      return _stages.size();
+    }
+      std::ofstream& operator<<(std::ofstream& os, const stage_descriptor& stage)
+    {
+      //write the stage
+      std::string stage_id = "stage_id: ";
+      std::string name = "name : ";
+      std::string type = "type : ";
+      std::string parameters = "parameters : ";
+      std::string input = "input : ";
+      std::string output = "output : ";
+      std::string input_type = "input_type : ";
+      std::string output_type = "output_type : ";
+      std::string input_parameters = "input_parameters : ";
+      std::string output_parameters = "output_parameters : ";
+      //write the stage id
+      os << stage_id.c_str() << stage.stage_id<< std::endl;
+      os << name.c_str() << stage.name.c_str()<< std::endl;
+      os << type.c_str() << stage.type.c_str() << std::endl;
+      os << parameters.c_str() << stage.parameters.c_str() << std::endl;
+      os << input.c_str() << stage.input.c_str() << std::endl;
+      os << output.c_str() << stage.output.c_str() << std::endl;
+      os << input_type.c_str() << stage.input_type.c_str() << std::endl;
+      os << output_type.c_str() << stage.output_type.c_str() << std::endl;
+      os << input_parameters.c_str() << stage.input_parameters.c_str() << std::endl;
+      os << output_parameters.c_str() << stage.output_parameters.c_str() << std::endl;
+
+      return os;
+    }
+    //stage descriptor ifstream
+
+
+    std::ifstream& operator>>(std::ifstream& is, stage_descriptor& stage)
+    { 
+      std::string stage_id = "stage_id: ";
+      std::string name = "name : ";
+      std::string type = "type : ";
+      std::string parameters = "parameters : ";
+      std::string input = "input : ";
+      std::string output = "output : ";
+      std::string input_type = "input_type : ";
+      std::string output_type = "output_type : ";
+      std::string input_parameters = "input_parameters : ";
+      std::string output_parameters = "output_parameters : ";
+      //read the stage id
+      is  >> stage_id >> stage.stage_id ;
+      is >> name >> stage.name;
+      is >> type >> stage.type;
+      is >> parameters >> stage.parameters ;
+      is >> input >> stage.input;
+      is >> output >> stage.output;
+      is >> input_type >> stage.input_type;
+      is >> output_type >> stage.output_type;
+      is >> input_parameters >> stage.input_parameters;
+      is >> output_parameters >> stage.output_parameters;
+      
+      //make sure that the stage is valid
+      if(stage.stage_id == 0 || stage.name == "" || stage.type == "")
+        throw std::runtime_error("invalid stage");
+      
+
+
+      //read the stage additional data after construction of the object.
+      return is;
+      
+    }
+
+    //pipeline ifstream
+
+    std::ifstream& operator>>(std::ifstream& is, pipeline& p)
+    {
+      //read the number of stages
+      size_t number_of_stages;
+      is >> number_of_stages;
+      //read the stages
+      for(size_t i = 0; i < number_of_stages; i++)
+      {
+        //read the stage
+        stage_descriptor stage;
+        is >>stage;
+        stage_descriptor* new_stage = nullptr;
+        //create the stage
+        new_stage = stage_factory::get_instance()->build_stage(stage) ;
+        if(new_stage == nullptr)
+          throw std::runtime_error("stage not found");
+
+        //add the stage to the pipeline
+        p.add_stage(new_stage);
+
+      }
+      return is;
+    }
+    //pipeline ofstream
+    std::ofstream& operator<<(std::ofstream& os, const pipeline& p)
+    {
+      //write the number of stages
+      os << p.get_number_of_stages() << std::endl;
+      //write the stages
+      for(auto stage : p._stages)
+      {
+        os << *stage << std::endl;
+      }
+      return os;
+    } 
+    //set_pipeline_name
+    void pipeline::set_pipeline_name(const std::string& name_)
+    {
+      _pipe_name = name_;
+    }
+    //get_pipeline_name
+    std::string pipeline::get_pipeline_name() const
+    {
+      return _pipe_name;
+    }   
+    void pipeline_builder::add_pipeline(provallo::pipeline* pipe)
+    {
+      _pipelines.push_back(pipe);
+    }
+
+
+    std::ifstream& operator >> (std::ifstream& is, pipeline_builder& pb)
+    {
+      //read the number of pipelines
+      size_t number_of_pipelines;
+      is >> number_of_pipelines;
+      //read the pipelines
+      for(size_t i = 0; i < number_of_pipelines; i++)
+      {
+        //read the pipeline
+        pipeline* pipe = new pipeline();
+        is >> *pipe;
+        //add the pipeline to the builder
+        pb.add_pipeline(pipe);
+      }
+      return is;
+    } 
+    //stage descritor ifstream/ofstream 
+    
+    std::ostream& operator << (std::ostream& out ,const stage_descriptor& stage )
+    {
+      //write the stage
+      out<< "stage_id: " << stage.stage_id << std::endl;
+      out<< "name : " << stage.name << std::endl;
+      out<< "type : " << stage.type << std::endl;
+      out<< "parameters : " << stage.parameters << std::endl;
+      out<< "input : " << stage.input << std::endl;
+      out<< "output : " << stage.output << std::endl;
+      out<< "input_type : " << stage.input_type << std::endl;
+      out<< "output_type : " << stage.output_type << std::endl;
+      out<< "input_parameters : " << stage.input_parameters << std::endl;
+      out<< "output_parameters : " << stage.output_parameters << std::endl;
+
+        
+      return out;
+
+    }
+    //stage descriptor ofstream 
+    //    friend std::ostream& operator<<(std::ostream& os, const stage_descriptor& sd);
+  //    friend std::istream& operator>>(std::istream& is, stage_descriptor& sd);
+  
+
+    //stage descriptor ifstream/ofstream
+
+} // namespace provallo

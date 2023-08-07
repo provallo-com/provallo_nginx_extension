@@ -964,7 +964,10 @@ namespace provallo
     {
       return _attributes_info.get_target_tag();
     } 
-
+    bool validate() 
+    {
+      return _attributes_info.validate();
+    }
     // Return new pointer with a reference data set
 
     virtual dataset *

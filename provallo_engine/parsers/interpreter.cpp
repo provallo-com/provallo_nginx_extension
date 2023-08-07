@@ -13,7 +13,6 @@ namespace provallo
   interpreter::interpreter ()
   {
     // TODO Auto-generated constructor stub
-
   }
 
   interpreter::~interpreter ()

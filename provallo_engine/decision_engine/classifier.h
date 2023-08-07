@@ -395,10 +395,7 @@ namespace provallo
 
     virtual ~classifier();
   };
-
-  uint32_t
-  testClassifier(const classifier &_classifier, const dataset &data);
-
+  
   template <class itype>
   void
   inspect_serialized_object(itype &serialized_bytes, bool &is_isotree_model,
@@ -3262,7 +3259,8 @@ namespace provallo
                 const std::random_device &random, split_method_factory *factory = nullptr);
 
     random_tree(const dataset &data, const parameter_base &parameters,
-                const std::random_device &random, std::ostream& out = std::cout , split_method_factory *factory = nullptr);// :random_tree(data, parameters, random, factory){}
+                const std::random_device &random, std::ostream& out = std::cout , split_method_factory *factory = nullptr);
+                
     virtual classifier_type
     get_type() const
     {
@@ -3295,8 +3293,7 @@ namespace provallo
                                        const std::random_device &rm, split_method_factory *factory) : tree_classifier(data, parameters, rm, factory), _rho(0), _level(0), _min_gain(0)
   {
     _name = "Random Tree";
-
-    // Sanity check
+     // Sanity check
     if (parameters.getType() != random_tree_param::_type())
       throw(std::runtime_error(
           "Bad parameter type " + std::to_string(parameters.getType()) + " in random forest"));
@@ -3326,6 +3323,8 @@ namespace provallo
   tree_classifier(data, parameters, rm, factory), _rho(0), _level(0), _min_gain(0)
   {
     _name = "Random Tree";
+    UNDEF_REFERENCE(os);
+    UNDEF_REFERENCE2 (os);
 
     // Sanity check
     if (parameters.getType() != random_tree_param::_type())
@@ -5391,8 +5390,7 @@ namespace provallo
           std::thread([i]()
                       {
                   		  std::vector<uint32_t> oob_indices;
-		                    const split_method_factory& _split_factory (*_last_factory);
-		                    random_forest_param* local_parameters (_last_parameters);
+ 		                    random_forest_param* local_parameters (_last_parameters);
 		                    const dataset& data (std::ref(*_last_dataset));
 		                    std::vector<classifier*>& _classifiers (std::ref(*gclassifiers ));
 
@@ -5421,9 +5419,12 @@ namespace provallo
 		  out<<"[+] creating [" << std::to_string(i) <<"] classifier ["<<std::to_string(local_parameters->getClassifiersNumber())<<"]"<<std::endl;
 
 		  out << "[+] threaded load "<<::gettid()<<std::endl;
-		  classifier* new_classifier = new RandomClassifier (
+      //duplicate split method factory
+      split_method_factory* sf = new split_method_factory (*_last_factory);
+      
+      		  classifier* new_classifier = new RandomClassifier (
 	  	      *random_set.first, local_parameters->getParameters (),
-		      std::random_device(),  (split_method_factory*)_last_factory);
+		      std::random_device(),   out,sf);     
 
 	  	  clock_t vla = clock();
 	  	  out << "[+] Total Tree construction CPU time elapsed in s: "
@@ -5438,7 +5439,7 @@ namespace provallo
 	  	    _error[i] = 0.0000001;
 
 	  	  }
-		  std::vector<Float> class_importance (_split_factory.getSize (), 0); // The "variable" is actually a split method
+		  std::vector<Float> class_importance (sf->getSize (), 0); // The "variable" is actually a split method
       // Get OOB set
 		  // OOB set
 		  dataset &oob_set (*random_set.second);
@@ -5451,7 +5452,7 @@ namespace provallo
 		      out << "[+] Testing : ["<<k <<"/"<<n<<"]"<< std::endl;
   	      // Get target value on the test data
 
-		      dataset::attribute_iterator it = oob_set.begin(k);
+ 
           attribute test(oob_set.getattribute (k, target_tag));
 
 		      attribute test_attr ( oob_set.getattribute_info().getValue (target_tag, test));  
@@ -5459,20 +5460,21 @@ namespace provallo
           if (test_attr.discrete ()>= oob_set.getattribute_info().getTargetClassCount()) 
              {
 
-                if( test.discrete()< oob_set.getattribute_info().getTargetClassCount())
-                  test_attr = test;
-                else
-                out << "[!] Invalid test attribute index detected : "<<test_attr.discrete()<< " test = "<<test.discrete()<< std::endl;   
-
+                   test_attr = test;
+              
              }
 
           if (test_attr.discrete ()> oob_set.getattribute_info().getTargetClassCount()) 
-            throw std::runtime_error ("[!] Invalid target class value");  
-
+            throw std::runtime_error (
+              "[!] Invalid target class value"
+               + std::to_string(oob_set.getattribute_info().getTargetClassCount())
+               + " " +  test.to_string() + "<>" + test_attr.to_string()  
+                );  
+              
             // Classify the data
-		      attribute class_attr (
-			  _classifiers[i]->classify (it,
-						     it + target_tag));
+		     attribute class_attr (
+			  _classifiers[i]->classify (oob_set.begin(k), oob_set.end(k)));
+
 		      // Get prediction
           
           attribute_value prediction = oob_set.getattribute_info().getValue (target_tag, class_attr) ;
@@ -5958,7 +5960,11 @@ namespace provallo
 
       try{
       // Get target value on the test data
-      attribute test_attr(*(test_data.begin(i) + target_tag));
+      //attribute test_attr(*(test_data.begin(i) + target_tag));
+      attribute test_attr(test_data.getattribute(i,target_tag));
+
+      attribute test_value(test_data.getattributes().getValue(target_tag,test_attr) );
+
       // Classify the data
       attribute class_attr(
           _classifier.classify(test_data.begin(i), test_data.end(i)));
@@ -5986,8 +5992,7 @@ namespace provallo
     std::cout << "[+] Wall time elapsed in s: "
               << std::chrono::duration<double>(t_end - t_start).count()
               << std::endl;
-
-    std::cout << "[+]Number of errors = " << error << std::endl;
+     std::cout << "[+]Number of errors = " << error << std::endl;
     std::cout << "[+]Number of test samples = " << test_data.size()
               << std::endl;
     std::cout << "[+]Error rate = " << 100 * error / test_data.size()  

@@ -414,10 +414,8 @@ namespace provallo
   public:
     attribute_definition(const attribute_name &name, const attribute_tag &tag) : _name(name), _tag(tag), _index(0)
     {
-
-      static size_t definition_index = 0;
-      if (_index == 0)
-        _index = definition_index++;
+       static size_t definition_index = 0;
+         _index = definition_index++;
     }
     attribute_definition(const attribute_definition *deserial);
 
@@ -1045,10 +1043,14 @@ namespace provallo
     uint32_t
     getTargetClassCount() const
     {
+      const constexpr uint32_t MAX_INT32 = 0x7FFFFFFF;
+
+      if ( _target_pos > size_t(MAX_INT32) || _target_pos >= _count.size() )
+        return 1;
+
       return _count[_target_pos];
     } 
-    
-
+     
     // Get number of attributes (including the target attribute)
     uint32_t
     getSize() const
@@ -1095,6 +1097,57 @@ namespace provallo
         throw std::runtime_error(std::string("Attribute name ")+name+" not found");
       }
       return (*it).second;
+    }
+
+
+    bool validate() const
+    {
+        bool ret = true;
+        if (_target_pos >= _tag_map.size())
+        {
+          std::cout << "Target attribute position " << _target_pos << " is out of range" << std::endl;
+          ret = false;
+        }
+        if (ret && _definition_map.size() != _tag_map.size())
+        {
+          std::cout << "Definition map size " << _definition_map.size() << " does not match tag map size " << _tag_map.size() << std::endl;
+          ret = false;
+
+        }
+        if (ret &&  _count.size() != _tag_map.size())
+        {
+          std::cout << "Count map size " << _count.size() << " does not match tag map size " << _tag_map.size() << std::endl;
+          ret = false;
+        }
+        if (ret &&  _type.size() != _tag_map.size())
+        {
+          std::cout << "Type map size " << _type.size() << " does not match tag map size " << _tag_map.size() << std::endl;
+          ret = false;
+        }
+        
+        if(ret && getCount(_target_pos) == 0)
+        {
+          std::cout << "Target attribute has no values" << std::endl;
+          ret = false;
+        } 
+        if(ret && _groups.size() == 0)
+        {
+          std::cout << "No attribute groups defined" << std::endl;
+          ret = false;
+        }
+        
+        for (uint32_t i = 0; ret && i < _definition_map.size(); ++i)
+        {
+          if (_definition_map[i] == nullptr)
+          {
+            std::cout << "Attribute " << _tag_map[i] << " has no definition" << std::endl;
+            ret = false;
+          }
+        }
+        
+        
+        return ret;
+
     }
 
     // Get constant reference to the attribute groups

@@ -415,10 +415,7 @@ namespace provallo
     
     bool _collected;
     bool _parsed;
-
-
-
-
+    
     // normalize original data column name, type to collect,  db type to insert
     std::map<size_t, std::pair<uint16_t, std::string>> _type_exception_pair_map; // map indice to type :
     friend std::ostream &

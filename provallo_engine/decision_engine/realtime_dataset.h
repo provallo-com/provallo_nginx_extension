@@ -19,18 +19,16 @@ namespace provallo
 {
     class realtime_dataset : public dataset
     {
-        
-
+         
         enum mode
         {
             training,
             testing ,
             cross_validation
-        };
-
-
+        }; 
 
     private:
+
         mode _mode; //dataset mode : training , testing , cross_validation
        
         matrix<attribute> _attributes;
@@ -52,6 +50,7 @@ namespace provallo
         getNew() ; //return a new dataset of the same type
     
         virtual const attribute *getattributeptr(uint32_t i, attribute_tag tag, bool *found) const;
+        
         virtual  attribute *getattributeptr(uint32_t i, attribute_tag tag, bool *found) ;
 
         const attribute & getattribute(uint32_t i, attribute_tag tag) const override;
@@ -60,18 +59,12 @@ namespace provallo
         virtual const attribute *getattributeptr(uint32_t i, const std::string& name, bool *found) const;
 
         virtual attribute *getattributeptr(uint32_t i, const std::string& name, bool *found) ;
-
-
-        
-
-
+  
         virtual void
         addData(const std::string& data) ; //add data to the dataset
 
         virtual void
         addData(const std::string& data, const std::string& label) ; //add data to the dataset
- 
-        
 };
 
 

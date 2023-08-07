@@ -122,13 +122,7 @@ namespace decision_engine {
             std::vector< provallo::neural_net::ptr>  neural_networks;   
             std::vector<provallo::auto_encoder<double,double> > auto_encoders; 
     };
-
-    template<typename T>
-    void neural_urn<T>::init() {
-        for(auto& nn : neural_networks) {
-            nn->init();
-        }
-    }
+ 
     template<typename T>
     void neural_urn<T>::train() {
         for(auto& nn : neural_networks) {

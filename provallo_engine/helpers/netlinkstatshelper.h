@@ -301,14 +301,9 @@ namespace provallo
 		classify_stats()
 		{
 
-			// static const float rst_threshold = 40.0;
-			// static const float arp_lookups_0_threshold = 150.0;
-			// static const float arp_hits_0_threshold = 150.0;
-			// static const float in_unknown_protos_threshold = 0.50;
-			// static const float in6_unknown_protos_threshold = 0.50;
-			// static const float udpnoports_threshold = 7.00;
+
 			static std::string lastdecision = "normal";
-			//           float lastprob=0.;
+
 
 			std::cout << "[+] classify_stats thread started";
 
