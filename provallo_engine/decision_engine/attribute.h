@@ -22,9 +22,8 @@
 #include <strstream>
 #include <sstream>
 #include <atomic>
+#include "utils.h"
 #include "../glue/glueprocessinfo.h"
-
-
 
 
 namespace provallo
@@ -37,7 +36,7 @@ namespace provallo
   typedef std::string attribute_name;
   typedef std::string attribute_value;
   typedef attribute_tag discrete_value;
-  typedef float cont_value;
+  typedef real_t cont_value;
   enum attribute_type
   {
     DISCRETE = 0,
@@ -180,6 +179,7 @@ namespace provallo
       _id_counter++;
      
     }
+    
     explicit attribute(const attribute_value &v , attribute_type t):_type(t)
     {
       _id_counter++;
@@ -1145,7 +1145,7 @@ namespace provallo
           }
         }
         
-        
+
         return ret;
 
     }

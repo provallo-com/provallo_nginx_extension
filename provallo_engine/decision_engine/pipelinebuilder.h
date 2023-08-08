@@ -18,18 +18,21 @@
 namespace provallo
 {
 
+
+  
+
   //python style estimators (fit/predict)
   enum vectorizer_type  : uint8_t {
       TFIDF,
       STANDARD_SCALER,
       MIN_MAX_SCALER,
       PCA,
-      NeuralTransformer,
-      AeroNautics, // tensor operator pitch/yaw/roll matrices
-      SingularValueDecomposition,
-      HPlane,
-      Huffman,
-      Hmm,Regressor
+      NEURAL_TRANSFORMER,
+      AERONATIC_QARTERION, // tensor operator pitch/yaw/roll matrices
+      SVD_OPERATOR,
+      HPLANE_TRANSFORMER,
+      HUFFMAN_TRANSFORMER,
+      HMM_TRANSFORMER,REGRESSION_TRANSFORMER
   };
   //forward declaration
   template <typename vector_src, typename real_x>   class vectorizer;
@@ -79,7 +82,7 @@ namespace provallo
 
     //Apply the learned transformation to new data
     virtual std::vector<real_x> transform(const matrix<real_x>& test_data)=0;
-     //transform()	Apply the learned transformation to new data	transformed_data = estimator.transform(X)
+    //transform()	Apply the learned transformation to new data	transformed_data = estimator.transform(X)
 
     //transformed_data = estimator.transform()
 
@@ -416,9 +419,7 @@ class normalizer_vectorizer : public vectorizer<std::string, real_t>
   //for use with inverse transformation matrices 
   virtual ~normalizer_vectorizer();
 
-
-
-
+ 
 };
 
 class principal_component_analysis
@@ -547,7 +548,7 @@ class principal_component_analysis
   std::vector<real_t> _pca_n_features_;
   std::vector<real_t> _pca_n_samples_;
  
-
+  
 };
 
 
@@ -988,10 +989,11 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   };
 
 
-  class regressor : public vectorizer<std::string, real_t>
+  class regressor :   public model<std::string, real_t>
   {
   protected:
     regressor_type _regressor_type;
+    
 
     std::vector<real_t> _regressor_data;
     std::vector<real_t> _regressor_components;
@@ -1006,6 +1008,18 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::vector<real_t> _regressor_n_components_;
     std::vector<real_t> _regressor_n_features_;
     std::vector<real_t> _regressor_n_samples_;
+    std::vector<real_t> _regressor_coefficients;  
+    std::vector<real_t> _regressor_intercepts;
+    std::vector<real_t> _regressor_residuals;
+    std::vector<real_t> _regressor_r_squared;
+    std::vector<real_t> _regressor_score;
+    std::vector<real_t> _regressor_n_iter;
+    std::vector<real_t> _regressor_loss;
+    std::vector<real_t> _regressor_t;
+    std::vector<real_t> _regressor_p;
+    std::vector<real_t> _regressor_std_err;
+    std::vector<real_t> _regressor_confidence_intervals;
+
     //functions to apply to the data
     std::map<std::string,std::function<std::vector<real_t> regressor::*( const matrix<real_t>  & foot, const std::vector<real_t> & target )>> _regressor_functions; 
     //functions to apply to the data
@@ -1032,72 +1046,175 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual std::vector<real_t> predict(const provallo::matrix<real_t>& );
     virtual std::vector<real_t> transform(const provallo::matrix<real_t>& );
     regressor_type get_regressor_type()const;
-  
+    //build
+    virtual std::vector<real_t> build( const std::vector<std::string>&documents );
+    virtual std::vector<real_t> build( const provallo::matrix<real_t>& );
+    //get coefficients:
+    virtual std::vector<real_t> get_coefficients() const;
+    virtual std::vector<real_t> get_intercepts() const;
+    virtual std::vector<real_t> get_residuals() const;
+    virtual std::vector<real_t> get_r_squared() const;
+    virtual std::vector<real_t> get_score() const;
+    virtual std::vector<real_t> get_n_iter() const;
+    virtual std::vector<real_t> get_loss() const;
+    virtual std::vector<real_t> get_t() const;
+    virtual std::vector<real_t> get_p() const;
+    virtual std::vector<real_t> get_std_err() const;
+    virtual std::vector<real_t> get_confidence_intervals() const;
+    //get regressor data
+    virtual std::vector<real_t> get_regressor_data() const;
+
     virtual ~regressor();
     //private regressor functions :
     private:
+     
     //linear_regression functions
-    std::vector<real_t> *linear_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *linear_regression_predict( matrix<real_t>  foot );
-    std::vector<real_t> *linear_regression_transform( matrix<real_t>  foot );
-    std::vector<real_t> *linear_regression_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> linear_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> linear_regression_predict( matrix<real_t>  foot );
+    std::vector<real_t> linear_regression_transform( matrix<real_t>  foot );
+    std::vector<real_t> linear_regression_fit_transform( matrix<real_t>  foot );
     //ridge_regression functions
-    std::vector<real_t> *ridge_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *ridge_regression_predict( matrix<real_t>  foot );
-    std::vector<real_t> *ridge_regression_transform( matrix<real_t>  foot );
-    std::vector<real_t> *ridge_regression_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> ridge_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> ridge_regression_predict( matrix<real_t>  foot );
+    std::vector<real_t> ridge_regression_transform( matrix<real_t>  foot );
+    std::vector<real_t> ridge_regression_fit_transform( matrix<real_t>  foot );
     //lasso_regression functions
-    std::vector<real_t> *lasso_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *lasso_regression_predict( matrix<real_t>  foot );
-    std::vector<real_t> *lasso_regression_transform( matrix<real_t>  foot );
-    std::vector<real_t> *lasso_regression_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> lasso_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> lasso_regression_predict( matrix<real_t>  foot );
+    std::vector<real_t> lasso_regression_transform( matrix<real_t>  foot );
+    std::vector<real_t> lasso_regression_fit_transform( matrix<real_t>  foot );
     //elastic_net functions
-    std::vector<real_t> *elastic_net_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *elastic_net_predict( matrix<real_t>  foot );
-    std::vector<real_t> *elastic_net_transform( matrix<real_t>  foot );
-    std::vector<real_t> *elastic_net_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> elastic_net_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> elastic_net_predict( matrix<real_t>  foot );
+    std::vector<real_t> elastic_net_transform( matrix<real_t>  foot );
+    std::vector<real_t> elastic_net_fit_transform( matrix<real_t>  foot );
     //bayesian_ridge functions
-    std::vector<real_t> *bayesian_ridge_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *bayesian_ridge_predict( matrix<real_t>  foot );
-    std::vector<real_t> *bayesian_ridge_transform( matrix<real_t>  foot );
-    std::vector<real_t> *bayesian_ridge_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> bayesian_ridge_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> bayesian_ridge_predict( matrix<real_t>  foot );
+    std::vector<real_t> bayesian_ridge_transform( matrix<real_t>  foot );
+    std::vector<real_t> bayesian_ridge_fit_transform( matrix<real_t>  foot );
     //logistic_regression functions
 
-    std::vector<real_t> *logistic_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *logistic_regression_predict( matrix<real_t>  foot );
-    std::vector<real_t> *logistic_regression_transform( matrix<real_t>  foot );
-    std::vector<real_t> *logistic_regression_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> logistic_regression_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> logistic_regression_predict( matrix<real_t>  foot );
+    std::vector<real_t> logistic_regression_transform( matrix<real_t>  foot );
+    std::vector<real_t> logistic_regression_fit_transform( matrix<real_t>  foot );
 
     //svm functions
 
-    std::vector<real_t> *svm_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *svm_predict( matrix<real_t>  foot );
-    std::vector<real_t> *svm_transform( matrix<real_t>  foot );
-    std::vector<real_t> *svm_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> svm_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> svm_predict( matrix<real_t>  foot );
+    std::vector<real_t> svm_transform( matrix<real_t>  foot );
+    std::vector<real_t> svm_fit_transform( matrix<real_t>  foot );
     
     //decision_tree functions
     
-    std::vector<real_t> *decision_tree_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *decision_tree_predict( matrix<real_t>  foot );
-    std::vector<real_t> *decision_tree_transform( matrix<real_t>  foot );
-    std::vector<real_t> *decision_tree_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> decision_tree_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> decision_tree_predict( matrix<real_t>  foot );
+    std::vector<real_t> decision_tree_transform( matrix<real_t>  foot );
+    std::vector<real_t> decision_tree_fit_transform( matrix<real_t>  foot );
 
     //random_forest functions
 
-    std::vector<real_t> *random_forest_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
-    std::vector<real_t> *random_forest_predict( matrix<real_t>  foot );
-    std::vector<real_t> *random_forest_transform( matrix<real_t>  foot );
-    std::vector<real_t> *random_forest_fit_transform( matrix<real_t>  foot );
+    std::vector<real_t> random_forest_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> random_forest_predict( matrix<real_t>  foot );
+    std::vector<real_t> random_forest_transform( matrix<real_t>  foot );
+    std::vector<real_t> random_forest_fit_transform( matrix<real_t>  foot );
 
     //gradient_boosting functions
 
-     
+    std::vector<real_t> gradient_boosting_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> gradient_boosting_predict( matrix<real_t>  foot );
+    std::vector<real_t> gradient_boosting_transform( matrix<real_t>  foot );
+    std::vector<real_t> gradient_boosting_fit_transform( matrix<real_t>  foot );
+
+    //knn functions
+    
+    std::vector<real_t> knn_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> knn_predict( matrix<real_t>  foot );
+    std::vector<real_t> knn_transform( matrix<real_t>  foot );
+    std::vector<real_t> knn_fit_transform( matrix<real_t>  foot );
+
+    //gaussian_process functions
+
+    std::vector<real_t> gaussian_process_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> gaussian_process_predict( matrix<real_t>  foot );
+    std::vector<real_t> gaussian_process_transform( matrix<real_t>  foot );
+    std::vector<real_t> gaussian_process_fit_transform( matrix<real_t>  foot );
+
+    //ada_boost functions
+
+    std::vector<real_t> ada_boost_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> ada_boost_predict( matrix<real_t>  foot );
+    std::vector<real_t> ada_boost_transform( matrix<real_t>  foot );
+    std::vector<real_t> ada_boost_fit_transform( matrix<real_t>  foot );
+    
+    //mlp functions
+
+    std::vector<real_t> mlp_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> mlp_predict( matrix<real_t>  foot );
+    std::vector<real_t> mlp_transform( matrix<real_t>  foot );
+    std::vector<real_t> mlp_fit_transform( matrix<real_t>  foot );
+
+    //kmeans functions
+
+    std::vector<real_t> kmeans_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> kmeans_predict( matrix<real_t>  foot );
+    std::vector<real_t> kmeans_transform( matrix<real_t>  foot );
+    std::vector<real_t> kmeans_fit_transform( matrix<real_t>  foot );
+
+
+    //pca functions uses vectoizers to transform data
+
+    std::vector<real_t> pca_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> pca_predict( matrix<real_t>  foot );
+    std::vector<real_t> pca_transform( matrix<real_t>  foot );
+    std::vector<real_t> pca_fit_transform( matrix<real_t>  foot );
+
+    //nmf functions uses vectoizers to transform data
+
+    std::vector<real_t> nmf_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> nmf_predict( matrix<real_t>  foot );
+    std::vector<real_t> nmf_transform( matrix<real_t>  foot );
+
+    //lda functions uses vectoizers to transform data
+    
+    std::vector<real_t> lda_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> lda_predict( matrix<real_t>  foot );
+    std::vector<real_t> lda_transform( matrix<real_t>  foot );
+    std::vector<real_t> lda_fit_transform( matrix<real_t>  foot );
+
+    //qda functions uses vectoizers to transform data
+    
+    std::vector<real_t> qda_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> qda_predict( matrix<real_t>  foot );
+    std::vector<real_t> qda_transform( matrix<real_t>  foot );
+    std::vector<real_t> qda_fit_transform( matrix<real_t>  foot );
+
+    //svd functions uses matrix.h implementation of singular value decomposition to transform data
+    std::vector<real_t> svd_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> svd_predict( matrix<real_t>  foot );
+    std::vector<real_t> svd_transform( matrix<real_t>  foot );
+    std::vector<real_t> svd_fit_transform( matrix<real_t>  foot );
+
+    //jacobi functions uses matrix.h implementation of jacobi eigenvalue algorithm to transform data
+    std::vector<real_t> jacobi_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> jacobi_predict( matrix<real_t>  foot );
+    std::vector<real_t> jacobi_transform( matrix<real_t>  foot );
+    std::vector<real_t> jacobi_fit_transform( matrix<real_t>  foot );
+
+    //svr functions uses vectoizers to transform data
+    std::vector<real_t> svr_fit( const matrix<real_t>  & foot, const std::vector<real_t> & target );
+    std::vector<real_t> svr_predict( matrix<real_t>  foot );
+    std::vector<real_t> svr_transform( matrix<real_t>  foot );
+    std::vector<real_t> svr_fit_transform( matrix<real_t>  foot );
+
   };
 
   struct stage_descriptor
   {
     public:
-    size_t stage_id;
+    uint64_t stage_id;
     std::string name;
     std::string type;
     std::string parameters;
@@ -1140,6 +1257,15 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
     virtual const std::string get_additional_data() const { return ""; }
     virtual void set_additional_data(const std::string& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
+    void set_stage_id(uint64_t id) { stage_id = id; }
+    size_t get_stage_id() const { return stage_id; }
+
+    //process data 
+    virtual void process_data(const std::string& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
+    virtual void process_data(const matrix<real_t>& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
+    virtual void process_data(const std::vector<real_t>& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
+    virtual void process_data(const std::vector<std::vector<real_t> >& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
+
     virtual ~stage_descriptor() {}
 
   };
@@ -1159,7 +1285,16 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     public:
     virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data);
+    
+    //additional data for data sets would be :
+    //1. set/subset of the data.
+    //2. the data types.
+    //3. the data parameters.
+    
+    virtual const std::string get_additional_data() const;
+    virtual void set_additional_data(const std::string& data);
 
+ 
     static dataset_stage* build( );
 
   };
@@ -1192,26 +1327,241 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     static static_dataset_stage* build( );
 
   };  
+  
+  class feature_extraction_paramters 
+  {
+    //comprehensive list of feature extraction parameters.
 
+ 
+
+
+    public :
+    feature_extraction_paramters() : features_length(0), parameters(""), feature_extraction_method(nullptr)
+     {
+ 
+        //initialize the feature extraction method.
+        auto empty_fcp = [](matrix<real_t> data) -> std::vector<real_t>  { 
+                     matrix<real_t> ev=data.eigenvalues(),ev2=data.eigenvectors() ; return std::vector<real_t>(ev.begin(),ev.end());  }; 
+        feature_extraction_method = empty_fcp;
+
+        
+     }
+    feature_extraction_paramters(const feature_extraction_paramters& cpy)
+    {
+      features_length = cpy.features_length;
+      parameters = cpy.parameters;
+      feature_extraction_method = cpy.feature_extraction_method;
+    }
+    feature_extraction_paramters& operator=(const feature_extraction_paramters& cpy)
+    {
+      features_length = cpy.features_length;
+      parameters = cpy.parameters;
+      feature_extraction_method = cpy.feature_extraction_method;
+      return *this;
+    }
+    void set_feature_extraction_method(std::function< std::vector<real_t>  (matrix<real_t> ) > fcp) { feature_extraction_method = fcp; }
+    std::function< std::vector<real_t>  (matrix<real_t> ) > get_feature_extraction_method() const 
+    { return feature_extraction_method; }
+    void set_features_length(size_t length)
+     { features_length = length; }
+    size_t get_features_length() const 
+    { return features_length; }
+
+    virtual ~feature_extraction_paramters() {}
+
+  private: 
+    //size_t method_id
+    size_t features_length;
+    //feature extraction parameters.
+    std::string parameters;
+      //feature extraction method.
+    std::function< std::vector<real_t> (matrix<real_t> ) > feature_extraction_method  ;
+
+  };
+  
+  //end of feature_extraction_paramters class.
   class feature_stage : public stage_descriptor
   {
-    public : 
-    feature_stage();
-    virtual ~feature_stage();
+    private :
+
+    feature_extraction_paramters _extraction_functors;
+
+
+    template <typename T>
+    std::vector<T> parse_string(const std::string& d) const
+    {
+      std::vector<T> v;
+      tokenize(d, v, " ");
+      return v;
+    } 
+
     protected:
     matrix<real_t> data;
+
+    public : 
+    feature_stage()
+    {
+      
+      typedef std::function< std::vector<real_t>  (matrix<real_t> ) > fcp;
+
+      fcp fcp1_sum = [ ](matrix<real_t> ds) -> std::vector<real_t> {            //return vector of probabilities for each column in the data.
+       
+        std::vector<real_t> ret (ds.size2(), 0.0);
+        for (size_t i = 0; i < ds.size2(); ++i)
+        {
+          real_t sum = 0.0;
+          for (size_t j = 0; j < ds.size1(); ++j)
+          {
+            sum += ds(j,i)  ;
+          }
+          ret[i] = sum / ds.size1();
+        } return ret;
+        };
+
+        _extraction_functors.set_feature_extraction_method(fcp1_sum);
+        _extraction_functors.set_features_length(1);
+
+    } 
+    feature_stage(const feature_stage& cpy) : stage_descriptor(cpy)
+    {
+      data = cpy.data;  
+    
+      _extraction_functors = cpy._extraction_functors;
+
+    }
+    virtual ~feature_stage();
     public:
     virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data);
 
     static feature_stage* build( );
 
+    matrix<real_t> get_data() const { return data; }
+    void set_data(const matrix<real_t>& data) { this->data = data; }
+
+    //process data input sources:
+    virtual void process_data(const std::string& data);
+    virtual void process_data(const matrix<real_t>& data);
+    virtual void process_data(const std::vector<real_t>& data);
+    virtual void process_data(const std::vector<std::vector<real_t> >& data);
+     
+
+    virtual matrix<real_t>  extract_features(const std::string& d) 
+    { 
+
+ 
+      //parse the string into a vector.
+        
+       size_t rows = 0;
+       size_t cols = 0;
+       
+       std::vector<real_t> v = parse_string<real_t>(d); 
+
+        if (v.size() == 0)
+          return matrix<real_t>();
+
+        if (data.size1() == 0)
+        {
+          rows = 1;
+          cols = v.size();
+        }
+        else
+        {
+          rows = data.rows();
+          cols = data.cols();
+        } 
+        if  ( v.size() != cols)
+          throw std::runtime_error("feature_stage::extract_features: data size does not match the feature size");
+
+        if (cols == 0)
+          return matrix<real_t>(1, 1 );
+
+        //if we only have one row, we return the vector as a row vector.
+        if (rows == 1)
+        {
+          matrix<real_t> m(1, cols);
+          for (size_t i = 0; i < cols; i++)
+            m(0, i) = v[i];
+          return m;
+        }
+        else
+        {
+          //go over the rows of the matrix and the sample vector and add the sample vector to the matrix.
+          //calculate the correlation between the sample vector and the matrix.
+          matrix<real_t> corr ( data.correlation() );
+          matrix<real_t> m(rows + 1, cols);
+          for (size_t i = 0; i < rows; i++)
+            for (size_t j = 0; j < cols; j++)
+              m(i, j) = data(i, j);
+          for (size_t j = 0; j < cols; j++)
+            m(rows, j) = v[j];
+          return m;
+
+        } 
+
+    }
+    //returns the correlation between the data and the input
+    //or the input and the input columns on zero shot learning.
+    virtual matrix<real_t>  extract_features(const matrix<real_t>& d) 
+    { 
+      //if the data is empty, we return the input as the data.
+      if (data.size1() == 0)
+      {
+        data = d;
+        return data;
+      }
+      else
+      {
+        //go over the rows of the matrix and the sample vector and add the sample vector to the matrix.
+        //calculate the correlation between the sample vector and the matrix.
+        matrix<real_t> corr ( data.correlation() );
+        matrix<real_t> m(data.rows() + 1, data.cols());
+        for (size_t i = 0; i < data.rows(); i++)
+          for (size_t j = 0; j < data.cols(); j++)
+            m(i, j) = data(i, j);
+        for (size_t j = 0; j < data.cols(); j++)
+          m(data.rows(), j) = d(0, j);
+        return m;
+      }
+    } 
+
+
+    //returns the correlation between the data and the input
+    //or the input and the input columns on zero shot learning.
+
+    virtual matrix<real_t>  extract_features(const std::vector<real_t>& d) 
+    { 
+      //if the data is empty, we return the input as the data.
+      if (data.size1() == 0)
+      {
+        data = matrix<real_t>(1, d.size());
+        for (size_t i = 0; i < d.size(); i++)
+          data(0, i) = d[i];
+        return data;
+      }
+      else
+      {
+        //go over the rows of the matrix and the sample vector and add the sample vector to the matrix.
+        //calculate the correlation between the sample vector and the matrix.
+        matrix<real_t> corr ( data.correlation() );
+        matrix<real_t> m(data.rows() + 1, data.cols());
+        for (size_t i = 0; i < data.rows(); i++)
+          for (size_t j = 0; j < data.cols(); j++)
+            m(i, j) = data(i, j);
+        for (size_t j = 0; j < data.cols(); j++)
+          m(data.rows(), j) = d[j];
+        return m;
+      }
+    }
+    
   };
  
+//fill data and labels for classifiers, regressors,vectorizers and clusterers.
 
   class classifier_stage : public stage_descriptor
   {
     public : 
+    
     classifier_stage();
     virtual ~classifier_stage();
     protected:
@@ -1319,15 +1669,312 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   };
   class cluster_stage : public stage_descriptor
   {
+ 
+
+
+    private: 
+    //data for clustering
+    matrix<real_t> data;
+
+    //labels for clustering
+    std::vector<size_t> labels;
+
+    //number of clusters
+    size_t n_clusters;
+
+    //number of iterations
+    size_t n_init;
+
+    //number of initializations
+
+    size_t max_iter;
+
+
+    //tolerance
+    real_t tol;
+    //random state
+    int random_state;
+    //verbosity
+    int verbose;
+    //precompute distances
+    bool precompute_distances;
+    //copy x
+    bool copy_x;
+    //algorithm
+    std::string algorithm;
+    //cluster functions 
+    typedef std::vector<size_t> (cluster_stage::*cluster_t)(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t) ; 
+    //distance functions
+    typedef std::vector<real_t> (cluster_stage::*metric_t)(const matrix<real_t>& data )  ; 
+    //cluster - kmeans, minibatchkmeans, affinitypropagation, mean_shift, spectral_clustering, agglomerative_clustering, dbscan, birch, gaussian_mixture
+    std::map<std::string, cluster_t > algorithms;
+    //cluster params
+    std::map<std::string, std::string> cluster_params;
+    //metric functions:  euclidean, manhattan, cosine, correlation, hamming, jaccard, dice, kulsinski, rogerstanimoto, russellrao, sokalmichener, sokalsneath, yule 
+    
+    std::map<std::string, metric_t > metrics;
+    //metric params
+    std::map<std::string, std::string> metric_params;
+    typedef std::vector<real_t> (cluster_stage::*score_t)(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);//(const matrix<real_t>&, std::vector<size_t>, size_t, size_t, size_t, size_t, size_t);  
+    std::map<std::string,score_t> scores;
+    std::map<std::string,std::vector<std::pair<size_t,real_t>> >score_importance; //each score activated is mapped to a vector of pairs (n_clusters, score) 
+
+
+    //init
+    std::string init;
+    //n jobs
+    int n_jobs;
+    //cluster centers
+    matrix<real_t> cluster_centers;
+    //inertia
+    real_t inertia;
+    //number of iterations
+    size_t n_iter;
+    //labels
+    std::vector<size_t> labels_;
+    //silhouette
+    real_t silhouette;
+    //calinski harabaz
+    real_t calinski_harabaz;
+    //davies bouldin
+    real_t davies_bouldin;
+    //dunn
+    real_t dunn;
+    //dunn2
+    real_t dunn2;
+
+
+ 
+     real_t pearson_correlation ( const std::vector<real_t>& x, const std::vector<real_t>& y,real_t mean_x=0.0/*x[0]*/, real_t mean_y=0.0/*y[0]*/) ;
+
+      //metrics to be mapped:
+      std::vector<real_t> euclidean_distances(const matrix<real_t>& data);
+      std::vector<real_t> manhattan_distances(const matrix<real_t>& data);
+      std::vector<real_t> chebyshev_distances(const matrix<real_t>& data);
+      std::vector<real_t> minkowski_distances(const matrix<real_t>& data);
+      std::vector<real_t> wminkowski_distances(const matrix<real_t>& data);
+      std::vector<real_t> seuclidean_distances(const matrix<real_t>& data);
+      std::vector<real_t> mahalanobis_distances(const matrix<real_t>& data);
+      std::vector<real_t> correlation_distances(const matrix<real_t>& data);
+      std::vector<real_t> cosine_distances(const matrix<real_t>& data);
+      std::vector<real_t> hamming_distances(const matrix<real_t>& data);
+      std::vector<real_t> jaccard_distances(const matrix<real_t>& data);
+      std::vector<real_t> dice_distances(const matrix<real_t>& data);
+      std::vector<real_t> kulsinski_distances(const matrix<real_t>& data);
+      std::vector<real_t> rogerstanimoto_distances(const matrix<real_t>& data);
+      std::vector<real_t> russellrao_distances(const matrix<real_t>& data);
+      std::vector<real_t> sokalmichener_distances(const matrix<real_t>& data);
+      std::vector<real_t> sokalsneath_distances(const matrix<real_t>& data);
+      std::vector<real_t> yule_distances(const matrix<real_t>& data);
+      std::vector<real_t> braycurtis_distances(const matrix<real_t>& data);
+      std::vector<real_t> canberra_distances(const matrix<real_t>& data);
+      std::vector<real_t> haversine_distances(const matrix<real_t>& data);
+      std::vector<real_t> matcing_distances(const matrix<real_t>& data);
+      std::vector<real_t> hellinger_distances(const matrix<real_t>& data);
+      std::vector<real_t> jensenshannon_distances(const matrix<real_t>& data);
+      std::vector<real_t> rbf_distances(const matrix<real_t>& data);
+      std::vector<real_t> spearman_distances(const matrix<real_t>& data);
+      std::vector<real_t> kendall_distances(const matrix<real_t>& data);
+      //algorithm functions (cluster_t signature)
+      /*
+      std::vector<size_t> kmeans(const matrix<real_t>& data, size_t n_clusters, size_t n_init, size_t max_iter, real_t tol, int random_state, int verbose, bool precompute_distances, bool copy_x);
+      std::vector<size_t> minibatchkmeans(const matrix<real_t>& data, size_t n_clusters, size_t batch_size, size_t n_init, size_t max_iter, real_t tol, int random_state, int verbose, bool precompute_distances, bool copy_x);
+      std::vector<size_t> affinitypropagation(const matrix<real_t>& data, real_t damping, size_t max_iter, real_t convergence_iter, real_t preference, int verbose, bool copy, bool affinity);
+      std::vector<size_t> meanshift(const matrix<real_t>& data, real_t bandwidth, size_t max_iter, real_t cluster_all, int bin_seeding, int min_bin_freq, bool cluster_all_);
+      std::vector<size_t> spectralclustering(const matrix<real_t>& data, size_t n_clusters, size_t n_init, size_t max_iter, real_t tol, int random_state, int verbose, bool eigen_solver, bool assign_labels, bool degree, bool coef0, bool kernel_params, bool n_jobs);
+      std::vector<size_t> agglomerativeclustering(const matrix<real_t>& data, size_t n_clusters, size_t linkage, size_t affinity, size_t memory, size_t connectivity, size_t compute_full_tree, size_t pooling_func, size_t distance_threshold);
+      std::vector<size_t> dbscan(const matrix<real_t>& data, real_t eps, size_t min_samples, size_t metric, size_t metric_params, size_t algorithm, size_t leaf_size, size_t p, size_t n_jobs);
+      std::vector<size_t> optics(const matrix<real_t>& data, real_t eps, size_t min_samples, size_t metric, size_t metric_params, size_t algorithm, size_t leaf_size, size_t p, size_t n_jobs);
+       std::vector<size_t> gaussianmixture(const matrix<real_t>& data, size_t n_components, size_t covariance_type, size_t tol, size_t reg_covar, size_t max_iter, size_t n_init, size_t init_params, size_t weights_init, size_t means_init, size_t precisions_init, size_t random_state, size_t warm_start, size_t verbose, size_t verbose_interval);
+      std::vector<size_t> birch(const matrix<real_t>& data, size_t n_clusters, size_t threshold, size_t branching_factor, size_t compute_labels, size_t copy, size_t n_jobs);
+      std::vector<size_t> bicluster(const matrix<real_t>& data, size_t n_clusters, size_t threshold, size_t branching_factor, size_t compute_labels, size_t copy, size_t n_jobs);
+      std::vector<size_t> ward(const matrix<real_t>& data, size_t n_clusters, size_t threshold, size_t branching_factor, size_t compute_labels, size_t copy, size_t n_jobs);
+      std::vector<size_t> spectralbiclustering(const matrix<real_t>& data, size_t n_clusters, size_t threshold, size_t branching_factor, size_t compute_labels, size_t copy, size_t n_jobs);
+      std::vector<size_t> spectralco_clustering(const matrix<real_t>& data, size_t n_clusters, size_t threshold, size_t branching_factor, size_t compute_labels, size_t copy, size_t n_jobs);
+ 
+      */
+      
+      
+      std::vector<size_t> kmeans(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> minibatchkmeans(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> affinitypropagation(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> meanshift(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> spectralclustering(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+
+      std::vector<size_t> agglomerativeclustering(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> dbscan(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> optics(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> gaussianmixture(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> birch(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> bicluster(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> ward(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> spectralbiclustering(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+      std::vector<size_t> spectralco_clustering(const matrix<real_t>&, size_t, size_t, size_t, size_t ,size_t);
+
+      
+
+      //score functions with score_t signatures:
+
+      std::vector<real_t> silhouette_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+
+      std::vector<real_t> calinski_harabasz_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> davies_bouldin_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> adjusted_rand_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> adjusted_mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> homogeneity_completeness_v_measure(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> completeness_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> v_measure_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> fowlkes_mallows_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> normalized_mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+      std::vector<real_t> rand_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t contingency,size_t sample_size, size_t random_state, size_t n_jobs); //ignore parameters 
+
+
+
+
+             
+      std::map<std::string,std::vector<std::pair<size_t,real_t>> >column_importance;
+      std::map<std::string,std::vector<std::pair<size_t,real_t>> >row_importance;
+      std::map<std::string,std::vector<std::pair<size_t,real_t>> >feature_importance;
+
+    
+      //scoring signatures : 
+      
     public : 
-    cluster_stage();
+
+     
+ 
+ 
+    cluster_stage()
+    {
+
+      //metrics to be mapped:
+ 
+      metrics.insert(std::make_pair("euclidean",metric_t(&cluster_stage::euclidean_distances)));
+      metrics.insert(std::make_pair("manhattan",metric_t(&cluster_stage::manhattan_distances)));
+      metrics.insert(std::make_pair("chebyshev",metric_t(&cluster_stage::chebyshev_distances)));
+      metrics.insert(std::make_pair("minkowski",metric_t(&cluster_stage::minkowski_distances))); 
+      metrics.insert(std::make_pair("wminkowski",metric_t(&cluster_stage::wminkowski_distances)));
+      metrics.insert(std::make_pair("seuclidean",metric_t(&cluster_stage::seuclidean_distances)));
+      metrics.insert(std::make_pair("mahalanobis",metric_t(&cluster_stage::mahalanobis_distances)));
+      metrics.insert(std::make_pair("hamming",metric_t(&cluster_stage::hamming_distances)));
+      metrics.insert(std::make_pair("jaccard",metric_t(&cluster_stage::jaccard_distances)));
+      metrics.insert(std::make_pair("dice",metric_t(&cluster_stage::dice_distances)));
+      metrics.insert(std::make_pair("kulsinski",metric_t(&cluster_stage::kulsinski_distances)));
+      metrics.insert(std::make_pair("rogerstanimoto",metric_t(&cluster_stage::rogerstanimoto_distances)));
+      metrics.insert(std::make_pair("russellrao",metric_t(&cluster_stage::russellrao_distances)));
+      metrics.insert(std::make_pair("sokalmichener",metric_t(&cluster_stage::sokalmichener_distances)));
+      metrics.insert(std::make_pair("sokalsneath",metric_t(&cluster_stage::sokalsneath_distances)));
+      metrics.insert(std::make_pair("yule",metric_t(&cluster_stage::yule_distances)));
+      metrics.insert(std::make_pair("braycurtis",metric_t(&cluster_stage::braycurtis_distances)));
+      metrics.insert(std::make_pair("canberra",metric_t(&cluster_stage::canberra_distances)));
+      metrics.insert(std::make_pair("correlation",metric_t(&cluster_stage::correlation_distances)));
+      metrics.insert(std::make_pair("cosine",metric_t(&cluster_stage::cosine_distances)));
+      metrics.insert(std::make_pair("haversine",metric_t(&cluster_stage::haversine_distances)));
+        
+      //algorithms to be mapped:
+      algorithms.insert(std::make_pair("kmeans",cluster_t(&cluster_stage::kmeans)));
+      //algorithms.insert(std::make_pair("kmeans++",cluster_t(&cluster_stage::kmeans_plus_plus)));
+      //algorithms.insert(std::make_pair("kmeans||",cluster_t(&cluster_stage::kmeans_parallel)));
+      algorithms.insert(std::make_pair("birch",cluster_t(&cluster_stage::birch)));
+
+//      algorithms.insert(std::make_pair("kmeans++",cluster_t(&cluster_stage::kmeans_plus_plus)));
+  //    algorithms.insert(std::make_pair("kmeans||",cluster_t(&cluster_stage::kmeans_parallel)));
+       
+      
+      scores.insert(std::make_pair("silhouette",score_t(&cluster_stage::silhouette_score)));
+      scores.insert(std::make_pair("calinskiharabasz",score_t(&cluster_stage::calinski_harabasz_score)));
+      scores.insert(std::make_pair("daviesbouldin",score_t(&cluster_stage::davies_bouldin_score)));
+      //scores.insert(std::make_pair("dunn",score_t(&cluster_stage::dunn_score)));
+      //scores.insert(std::make_pair("xiebeni",score_t(&cluster_stage::xie_beni_score)));
+      scores.insert(std::make_pair("adjustedrand",score_t(&cluster_stage::adjusted_rand_score)));
+      scores.insert(std::make_pair("adjustedmutualinfo",score_t(&cluster_stage::adjusted_mutual_info_score)));
+      scores.insert(std::make_pair("completeness",score_t(&cluster_stage::completeness_score)));
+      scores.insert(std::make_pair("fowlkesmallows",score_t(&cluster_stage::fowlkes_mallows_score)));
+      //scores.insert(std::make_pair("homogeneity",score_t(&cluster_stage::homogeneity_score)));
+      scores.insert(std::make_pair("mutualinfo",score_t(&cluster_stage::mutual_info_score)));
+      scores.insert(std::make_pair("normalizedmutualinfo",score_t(&cluster_stage::normalized_mutual_info_score)));
+      scores.insert(std::make_pair("vmeasure",score_t(&cluster_stage::v_measure_score)));
+      //scores.insert(std::make_pair("homogeneitycompleteness",score_t(&cluster_stage::homogeneity_completeness_score)));
+      scores.insert(std::make_pair("fowlkesmallows",score_t(&cluster_stage::fowlkes_mallows_score)));
+      scores.insert(std::make_pair("silhouette",score_t(&cluster_stage::silhouette_score)));
+      
+      //initializers to be mapped:
+
+      
+    }
+
     virtual ~cluster_stage();
-        static cluster_stage* build( );
-            virtual void load_additional_data(const std::string& data);
+    //calculate distance matrix 
+    //loads data and labels
+    virtual void load_additional_data(const std::string& data);
+     //save data and labels
     virtual void save_additional_data(std::string& data);
+ 
+    static cluster_stage* build( ); 
+
+    //getters
+
+    //get data
+    matrix<real_t>& get_data();
+
+    //get data
+    const matrix<real_t>& get_data()const ;
+
+    //get labels
+    const std::vector<size_t>& get_labels()const;
+    
+    size_t get_n_clusters()const;
+
+    //get n_init
+    size_t get_n_init()const;
+
+    //get max_iter
+    size_t get_max_iter()const;
+
+    //get tol
+
+    real_t get_tol()const;
+
+    //get random_state
+    int get_random_state()const;
+
+    //get verbose
+    int get_verbose()const;
+
+    //get precompute_distances
+    bool get_precompute_distances()const;
+
+    //get copy_x
+    bool get_copy_x()const;
+
+    //get algorithm
+    std::string get_algorithm()const;
+
+    //get metric
+    std::string get_metric()const;
+
+    //get init
+    std::string get_init()const;
+
+    //get n_jobs
+    int get_n_jobs()const;
 
 
+    //get cluster_centers
+    matrix<real_t>& get_cluster_centers()const;
 
+    //get inertia
+    real_t get_inertia();
+
+    //get n_iter
+    size_t get_n_iter();
+
+    //get labels_
+    std::vector<size_t>& get_labels_()const;
+    
+
+    std::vector<real_t> calculate_distance_matrix(const matrix<real_t>& data, const std::string& m);
   };
   class transform_cluster_stage : public stage_descriptor
   {
@@ -1335,10 +1982,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     transform_cluster_stage();
     virtual ~transform_cluster_stage();
         static transform_cluster_stage* build( );
-            virtual void load_additional_data(const std::string& data);
+    virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data);
-
-
   };
   class dimentionality_reduction_stage  : public stage_descriptor
   {
@@ -1704,8 +2349,9 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
     //get/set stages 
        void add_stage(stage_descriptor* stage);
- 
+  
       void remove_stage(uint64_t stage_id); 
+  
       stage_descriptor* get_stage(uint64_t stage_id);
       stage_descriptor* get_stage( const std::string& stage_name); //could be multiple stages with the same name, return the first one 
       stage_descriptor* get_next_stage(uint64_t stage_id);
@@ -1713,6 +2359,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       stage_descriptor* get_first_stage();
       stage_descriptor* get_last_stage();
 
+
+    //get/set number of stages
      size_t get_number_of_stages() const;
     
     //get/set pipelines
@@ -1732,6 +2380,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
 
   };
+
    
   class pipeline_builder
   { 
@@ -1782,9 +2431,11 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
    public : 
    meta_builder();
    virtual ~meta_builder();
+
    bool build();
    bool run();
    bool run(const std::string& input, std::string& output);
+
    bool load_from_file(std::string filename);
    bool save_to_file(std::string filename);
      //generate stages by GAN :
@@ -1794,7 +2445,11 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     //generate stages by GAN :
     pipeline* generate_pipeline(const std::string& pipeline_name, const std::string& input, std::string& output);
 
+
+
  };
+
+
 } /* namespace provallo */
 
 #endif /* DECISION_ENGINE_PIPELINEBUILDER_H_ */

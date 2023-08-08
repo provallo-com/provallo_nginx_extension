@@ -11,7 +11,11 @@
 #include <iostream>
 #include <numeric>
 #include "attribute.h"
-using Float = float;
+#include "utils.h" //real_t and sparse_ix 
+
+
+
+using Float = real_t;
 
 namespace provallo
 {
@@ -19,9 +23,9 @@ namespace provallo
   class class_dist
   {
     // Histogram (class attribute tag is the index of the array)
-    std::vector<Float> _histogram;
+    std::vector<real_t> _histogram;
     // Total sum of the histogram bins
-    Float _sum;
+    real_t _sum;
     // Print distribution
     friend std::ostream&
     operator<< (std::ostream &out, const class_dist &q);
@@ -31,12 +35,12 @@ namespace provallo
 	_sum (0.)
     {
     }
-    class_dist (uint32_t nbins) :
+    class_dist (size_t nbins) :
 	_histogram (nbins), _sum (0.0)
     {   
     }
 
-    class_dist (uint32_t nbins, Float weight) :
+    class_dist (size_t nbins, real_t weight) :
 	_histogram (nbins, (weight / double(nbins))), _sum (weight)
     {
     }
@@ -68,7 +72,7 @@ namespace provallo
     {
       if (_sum != other._sum)
 	        return true;
-      for (uint32_t i = 0; i < _histogram.size (); ++i)
+      for (size_t i = 0; i < _histogram.size (); ++i)
   	      if (_histogram[i] != other._histogram[i])
 	        return true;
       
@@ -79,22 +83,28 @@ namespace provallo
     {
       if (_sum != other._sum)
 	        return false;
-      for (uint32_t i = 0; i < _histogram.size (); ++i)
+      for (size_t i = 0; i < _histogram.size (); ++i)
   	      if (_histogram[i] != other._histogram[i])
 	        return false;
       
       return true;
     }
     
+
+    //mode and percentage
+    std::pair<attribute,real_t> mode_and_percentage () const;
+    std::pair<attribute,real_t> mode_and_percentage (const std::vector<discrete_value>& exclude) const;
+    std::pair<attribute,real_t> mode_and_percentage (const std::vector<discrete_value>& exclude, const std::vector<discrete_value>& include) const;
+ 
     // Get size
-    uint32_t
+    size_t
     size () const
     {
       return _histogram.size ();
     }
     // Accumulate a specific tag
     void
-    accum (uint32_t tag, Float weight = 1.0)
+    accum (size_t tag, real_t weight = 1.0)
     {
       if(tag<_histogram.size()  ) {
         _histogram[tag] += weight;
@@ -109,52 +119,52 @@ namespace provallo
 
     // Accumulate a specific tag
     void accum (const class_dist& other)  { 
-      for (uint32_t i = 0; i < _histogram.size (); ++i)
+      for (size_t i = 0; i < _histogram.size (); ++i)
   	      _histogram[i] += other._histogram[i]; 
       _sum += other._sum;
     }
     // Accumulate a specific tag  
     void accum (class_dist&& other)  {    
-      for (uint32_t i = 0; i < _histogram.size (); ++i)
+      for (size_t i = 0; i < _histogram.size (); ++i)
   	      _histogram[i] += other._histogram[i];
       _sum += other._sum;
     }
     // Accumulate a specific tag
     void    
-    accum (const std::vector<Float> &other)
+    accum (const std::vector<real_t> &other)
     { 
-       for (uint32_t i = 0; i < _histogram.size (); ++i)
+       for (size_t i = 0; i < _histogram.size (); ++i)
   	      _histogram[i] += other[i];
       _sum += std::accumulate(other.begin(),other.end(),0.0);
     }
       // Set a specific tag
     void
-    set (uint32_t tag, Float weight)
+    set (size_t tag, real_t weight)
     {
       _sum -= _histogram[tag];
       _histogram[tag] = weight;
       _sum += weight;
     }
   
-    std::vector<Float>::iterator begin() { return _histogram.begin(); } 
-    std::vector<Float>::iterator end() { return _histogram.end(); } 
-    std::vector<Float>::const_iterator begin() const { return _histogram.begin(); } 
-    std::vector<Float>::const_iterator end() const { return _histogram.end(); } 
+    std::vector<real_t>::iterator begin() { return _histogram.begin(); } 
+    std::vector<real_t>::iterator end() { return _histogram.end(); } 
+    std::vector<real_t>::const_iterator begin() const { return _histogram.begin(); } 
+    std::vector<real_t>::const_iterator end() const { return _histogram.end(); } 
 
     // Get a specific tag
-    Float
-    get (uint32_t tag) const
+    real_t
+    get (size_t tag) const
     {
       return _histogram[tag];
     } 
     // Get a specific tag
-    Float&  
-    get (uint32_t tag) 
+    real_t&  
+    get (size_t tag) 
     {
       return _histogram[tag];
     }
     
-    void add (uint32_t tag, Float weight)
+    void add (size_t tag, real_t weight)
     {
       if(tag<_histogram.size()) {
         _histogram[tag] += weight;
@@ -170,30 +180,30 @@ namespace provallo
    }
 
     // Get sum of the data
-    Float
+    real_t
     sum () const
     {
       return _sum;
     }
     // Get weight of a histogram bins
-    Float
-    weight (uint32_t i) const
+    real_t
+    weight (size_t i) const
     {
       return _histogram[i];
     }
     // Get percentage of a histogram bin
-    Float
-    percentage (uint32_t i) const
+    real_t
+    percentage (size_t i) const
     {
       if (_sum != 0.0)
 	      return _histogram[i] / _sum;
       return 0.0;
     }
 
-    std::vector<Float>
+    std::vector<real_t>
     cumulative () const
     {
-      std::vector<Float> values (size (), 0.0);
+      std::vector<real_t> values (size (), 0.0);
       for (size_t i = 0; i < size (); ++i)
       {
         auto f= percentage(i);
@@ -207,8 +217,8 @@ namespace provallo
       return values;
     }
     // Get the probability of a histogram bin
-    Float
-    probability (uint32_t i) const
+    real_t
+    probability (size_t i) const
     {
       if (_sum != 0.0)
         return _histogram[i] / _sum;
@@ -216,32 +226,32 @@ namespace provallo
     }
 
     // Get the probability of a histogram bin
-    Float
-    probability (uint32_t i, Float sum) const
+    real_t
+    probability (size_t i, real_t sum) const
     {
       if (sum != 0.0)
         return _histogram[i] / sum;
       return 0.0;
     }
     // Get the probability of a histogram bin
-    Float
-    probability (uint32_t i, Float sum, Float weight) const
+    real_t
+    probability (size_t i, real_t sum, real_t weight) const
     {
       if (sum != 0.0)
         return  ( _histogram[i] / sum ) * weight;
       return 0.0;
     } 
     // Get the probability of a histogram bin
-    Float
-    probability (uint32_t i, const std::vector<Float> &sum) const
+    real_t
+    probability (size_t i, const std::vector<real_t> &sum) const
     {
       if (sum[i] != 0.0)
         return _histogram[i] / sum[i];
       return 0.0;
     } 
     // Get the probability of a histogram bin
-    Float 
-    probability (uint32_t i, const std::vector<Float> &sum, Float weight) const
+    real_t 
+    probability (size_t i, const std::vector<real_t> &sum, real_t weight) const
     {
       if (sum[i] != 0.0)
         return  ( _histogram[i] / sum[i] ) * weight;
@@ -250,34 +260,34 @@ namespace provallo
 
 
     // Get the probability of a histogram bin 
-    Float
-    probability (uint32_t i, const std::vector<Float> &sum, const std::vector<Float> &weight) const
+    real_t
+    probability (size_t i, const std::vector<real_t> &sum, const std::vector<real_t> &weight) const
     {
       if (sum[i] != 0.0)
         return  ( _histogram[i] / sum[i] ) * weight[i];
       return 0.0;   
     }   
     // Get the probability of a histogram bin
-    Float
+    real_t
 
-    probability (uint32_t i, const std::vector<Float> &sum, const std::vector<Float> &weight, Float weight_sum) const
+    probability (size_t i, const std::vector<real_t> &sum, const std::vector<real_t> &weight, real_t weight_sum) const
     {
       if (sum[i] != 0.0)
         return  ( _histogram[i] / sum[i] ) * weight[i] * weight_sum;
       return 0.0;   
     }   
 
-    void update(uint32_t tag, Float weight) {
+    void update(size_t tag, real_t weight) {
       _histogram[tag] += weight;
       _sum += weight;
     } 
-    void update(uint32_t tag, Float weight, Float old_weight) {
+    void update(size_t tag, real_t weight, real_t old_weight) {
       _histogram[tag] += weight- old_weight;
       _sum += weight - old_weight; 
     } 
  
 
-    void setup(uint32_t nbins)
+    void setup(size_t nbins)
     {
       _histogram.clear();
       _histogram.resize(nbins,0.0);
@@ -289,11 +299,11 @@ namespace provallo
     mode () const;
 
     // Get the entropy of the distribution
-    Float
+    real_t
     entropy () const;
 
     // Get the gini index of the distribution
-    Float
+    real_t
     gini () const;
 
     

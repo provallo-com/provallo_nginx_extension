@@ -11,6 +11,8 @@
 #define DECISION_ENGINE_PARAMETERS_H_
 #include <iostream>
 #include <map>
+
+#include "utils.h" //real_t
 namespace provallo
 {
   // Enum for classifier type
@@ -132,10 +134,10 @@ namespace provallo
     // Maximum level of the tree
     uint32_t _level;
     // Minimum gain
-    float _min_gain;
+    real_t _min_gain;
 
   public:
-    random_tree_param(uint32_t rho = 1, uint32_t level = 0, float min_gain = 0.0) : _rho(rho), _level(level), _min_gain(min_gain)
+    random_tree_param(uint32_t rho = 1, uint32_t level = 0, real_t min_gain = 0.0) : _rho(rho), _level(level), _min_gain(min_gain)
     {      
     }
 
@@ -167,7 +169,7 @@ namespace provallo
       return _level;
     }
 
-    float
+    real_t
     getMinGain() const
     {
       return _min_gain;
@@ -295,16 +297,16 @@ namespace provallo
     // Number of neighbors
     uint32_t _neighbours;
     // Map of attribute's weights
-    std::map<std::string, float> _weights;
+    std::map<std::string, real_t> _weights;
 
   public:
     metric_classifier_param(uint32_t neighbours,
-                            const std::map<std::string, float> &weights) : _neighbours(neighbours), _weights(weights)
+                            const std::map<std::string, real_t> &weights) : _neighbours(neighbours), _weights(weights)
     {
 
     }
 
-    void set_weights(const std::map<std::string, float> &weights)
+    void set_weights(const std::map<std::string, real_t> &weights)
     {
       this->_weights.clear();
       _weights = weights;
@@ -314,7 +316,7 @@ namespace provallo
     {
       out << "Neighbours: " << _neighbours << std::endl;
       out << "Weights: " << std::endl;
-      for (std::map<std::string, float>::const_iterator it = _weights.begin();
+      for (std::map<std::string, real_t>::const_iterator it = _weights.begin();
            it != _weights.end(); ++it)
       {
         out << it->first << " " << it->second << std::endl;
@@ -339,7 +341,7 @@ namespace provallo
       return _neighbours;
     }
 
-    const std::map<std::string, float> &
+    const std::map<std::string, real_t> &
     getWeights() const
     {
       return _weights;
@@ -366,7 +368,7 @@ namespace provallo
     // Maximum level of the tree
     uint32_t _level;
     // Minimum gain
-    float _min_gain;
+    real_t _min_gain;
     // Number of threads
     uint32_t _nthreads;
     // Seed
@@ -375,7 +377,7 @@ namespace provallo
   public:
     isoforest_param(uint32_t ntrees, uint32_t nsamples, uint32_t max_depth,
                     uint32_t subsample_size, uint32_t rho, uint32_t level,
-                    float min_gain, uint32_t nthreads, uint32_t seed ) : _ntrees(ntrees), _nsamples(nsamples), _max_depth(max_depth),
+                    real_t min_gain, uint32_t nthreads, uint32_t seed ) : _ntrees(ntrees), _nsamples(nsamples), _max_depth(max_depth),
                                                                         _subsample_size(subsample_size), _rho(rho), _level(level),
                                                                         _min_gain(min_gain), _nthreads(nthreads), _seed(seed)
     {
@@ -414,7 +416,7 @@ namespace provallo
     {
       _level = level;
     }
-    void set_min_gain(float min_gain)
+    void set_min_gain(real_t min_gain)
     {
       _min_gain = min_gain;
     }
@@ -507,7 +509,7 @@ namespace provallo
     {
       return _level;
     }
-    float get_min_gain() const
+    real_t get_min_gain() const
     {
       return _min_gain;
     }
@@ -540,7 +542,7 @@ namespace provallo
   class nearest_neighbor_param : public parameter_base
   {
     uint32_t _neighbours;
-    std::map<std::string, float> _weights;
+    std::map<std::string, real_t> _weights;
 
   public:
     nearest_neighbor_param(uint32_t neighbours) : _neighbours(neighbours)
@@ -548,7 +550,7 @@ namespace provallo
     }
 
     nearest_neighbor_param(uint32_t neighbours,
-                           const std::map<std::string, float> &weights) : _neighbours(neighbours), _weights(weights)
+                           const std::map<std::string, real_t> &weights) : _neighbours(neighbours), _weights(weights)
     {
 
     }
@@ -568,7 +570,7 @@ namespace provallo
       out << "---------"
           << " "
           << "------" << std::endl;
-      for (std::map<std::string, float>::const_iterator it =
+      for (std::map<std::string, real_t>::const_iterator it =
                _weights.begin();
            it != _weights.end(); ++it)
       {
@@ -593,7 +595,7 @@ namespace provallo
       return _neighbours;
     }
 
-    const std::map<std::string, float> &
+    const std::map<std::string, real_t> &
     getWeights() const
     {
       return _weights;
@@ -610,16 +612,16 @@ namespace provallo
     // Number of internal points
     uint32_t _points;
     // Map of attribute's weights
-    std::map<std::string, float> _weights;
+    std::map<std::string, real_t> _weights;
 
   public:
 
-    kmeans_param(uint32_t points) : _points(points)
+    kmeans_param(size_t points) : _points(points)
     {
 
     }
 
-    kmeans_param(uint32_t points, const std::map<std::string, float> &weights) : _points(points), _weights(weights)
+    kmeans_param(size_t points, const std::map<std::string, real_t> &weights) : _points(points), _weights(weights)
     {
 
     }
@@ -629,7 +631,7 @@ namespace provallo
     {
       out << "points: " << _points << std::endl;
       out << "weights: " << std::endl;
-      for (std::map<std::string, float>::const_iterator it = _weights.begin(); it != _weights.end(); ++it)
+      for (std::map<std::string, real_t>::const_iterator it = _weights.begin(); it != _weights.end(); ++it)
       {
         out << "  " << it->first << ": " << it->second << std::endl;
       }
@@ -652,7 +654,7 @@ namespace provallo
       return _points;
     }
 
-    const std::map<std::string, float> &
+    const std::map<std::string, real_t> &
     getWeights() const
     {
       return _weights;

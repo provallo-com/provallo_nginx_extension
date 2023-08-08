@@ -12,14 +12,7 @@
 namespace provallo
 {
 
-	// optimizers
-
-	// Gene-expression Library:
-
-	// neural helpers//
-
-	// solvers for QN
- 
+	 	
 	namespace QN
 	{
 		// Quasi-Newton methods

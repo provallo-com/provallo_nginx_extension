@@ -324,7 +324,7 @@ namespace provallo
     assert(distribution.size() == size());
 
     // Create cumulative probabilities
-    std::vector<float> cumulative(distribution.cumulative());
+    std::vector<real_t> cumulative(distribution.cumulative());
 
     // Get target tag
     uint32_t target_tag(_attributes_info.get_target_tag());

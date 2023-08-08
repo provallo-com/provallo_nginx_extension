@@ -144,7 +144,7 @@ public:
         virtual void remove_auto_encoder(provallo::auto_encoder<double,double> ae) = 0;
         virtual void clear() = 0;
     };
-
+    
 }//namespace provallo
 
 

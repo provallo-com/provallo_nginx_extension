@@ -73,23 +73,23 @@ namespace provallo
 
   class dataset; // fwd:
   // Dataset statistics Debugging:
-  Float entropy(const dataset &data);
+  real_t entropy(const dataset &data);
 
-  Float gini(const dataset &data);
-  Float variance(const dataset &data);
-  Float mean(const dataset &data);
-  Float stddev(const dataset &data);
-  Float skewness(const dataset &data);
-  Float kurtosis(const dataset &data);
-  Float median(const dataset &data);
-  Float mode(const dataset &data);
-  Float min(const dataset &data);
-  Float max(const dataset &data);
-  Float sum_of_squares(const dataset &data);
-  Float median_absolute_deviation(const dataset &data);
-  Float max(const dataset &data);
-  Float min(const dataset &data);
-  Float sum(const dataset &data);
+  real_t gini(const dataset &data);
+  real_t variance(const dataset &data);
+  real_t mean(const dataset &data);
+  real_t stddev(const dataset &data);
+  real_t skewness(const dataset &data);
+  real_t kurtosis(const dataset &data);
+  real_t median(const dataset &data);
+  real_t mode(const dataset &data);
+  real_t min(const dataset &data);
+  real_t max(const dataset &data);
+  real_t sum_of_squares(const dataset &data);
+  real_t median_absolute_deviation(const dataset &data);
+  real_t max(const dataset &data);
+  real_t min(const dataset &data);
+  real_t sum(const dataset &data);
 
   // Class to hold data
   class dataset
@@ -1087,62 +1087,62 @@ namespace provallo
     } 
 
 
-    Float
+    real_t
     gini() const
     {
       return provallo::gini(*this);
     }
-    Float entropy() const
+    real_t entropy() const
     {
       return provallo::entropy(*this);
     }
     // variance of the data  set
-    Float variance() const
+    real_t variance() const
     {
       return provallo::variance(*this);
     }
     // mean of the data  set
-    Float mean() const
+    real_t mean() const
     {
       return provallo::mean(*this);
     }
     // median of the data  set
-    Float median() const
+    real_t median() const
     {
       return provallo::median(*this);
     }
     // mode of the data  set
-    Float mode() const
+    real_t mode() const
     {
       return provallo::mode(*this);
     }
     // min of the data  set
-    Float min() const
+    real_t min() const
     {
       return provallo::min(*this);
     }
     // max of the data  set
-    Float max() const
+    real_t max() const
     {
       return provallo::max(*this);
     }
     // sum of the data  set
-    Float sum() const
+    real_t sum() const
     {
       return provallo::sum(*this);
     }
     // std of the data  set
-    Float stddev() const
+    real_t stddev() const
     {
       return provallo::stddev(*this);
     }
     // skewness of the data  set
-    Float skewness() const
+    real_t skewness() const
     {
       return provallo::skewness(*this);
     }
     // kurtosis of the data  set
-    Float kurtosis() const
+    real_t kurtosis() const
     {
       return provallo::kurtosis(*this);
     }
@@ -1165,13 +1165,12 @@ namespace provallo
   dataset::pushData(InputIterator begin, InputIterator end)
   {
     // Get target tag
-    uint32_t target_tag(_attributes_info.get_target_tag());
+    size_t target_tag(_attributes_info.get_target_tag());
     // Loop over each sample
     while ( begin!=end && end-begin > 0 ) {
       // Loop over each attribute
-      
 
-      for (uint32_t i = 0; i < getattributesNumber(); ++i)
+      for (size_t i = 0; i < getattributesNumber(); ++i)
       {
         // Get attribute value
          assert(begin != end);
@@ -1186,9 +1185,13 @@ namespace provallo
 
         if (i==target_tag) { 
                 size_t index = _attributes_info.getValueIndex(target_tag,value); 
-
+                if(index >= _distribution.size())
+                  {
+                    std::cerr << "index " << index << " is greater than the number of classes " << _distribution.size() << std::endl;
+                    throw std::runtime_error("index is greater than the number of classes");
+                  }
                 _distribution.accum(index);
-                          pushattribute(i, attribute(index,att_type));
+                          pushattribute(i, attribute(discrete_value(index)));
 
                   //make sure the target value is less than the number of classes
          }
@@ -1211,17 +1214,17 @@ namespace provallo
   dataset::subset(const Tester &tester) const
   {
     // Get target tag
-    uint32_t target_tag(_attributes_info.get_target_tag());
+    size_t target_tag(_attributes_info.get_target_tag());
     // Crate new data set
     dataset *new_set = getNew();
     // Loop over each sample
-    for (uint32_t i = 0; i < size(); ++i)
+    for (size_t i = 0; i < size(); ++i)
     {
       // Check the value of the attribute
       if (tester.test(this->begin(i), this->end(i)))
       {
         // Push this sample into the new set
-        for (uint32_t j = 0; j < getattributesNumber(); ++j)
+        for (size_t j = 0; j < getattributesNumber(); ++j)
         {
           attribute value(getattribute(i, j));
           // Push back attribute
@@ -2083,17 +2086,17 @@ namespace provallo
   
   // Read importance / weight map from a file (and also check if the attributes are defined on the Attribute information
   // class)
-  std::map<std::string, Float>
+  std::map<std::string, real_t>
   getWeightMap(const attribute_information &attrs, std::ifstream &file);
 
   // Reorder attribute map and return a container with the attributes ordered from higher importance to lower
-  std::vector<std::pair<std::string, Float>>
-  sortImportances(const std::map<std::string, Float> &imp_map);
+  std::vector<std::pair<std::string, real_t>>
+  sortImportances(const std::map<std::string, real_t> &imp_map);
 
   // Print importance map
   void
   printImportanceMap(std::ostream &out,
-                     const std::vector<std::pair<std::string, Float>> &imps);
+                     const std::vector<std::pair<std::string, real_t>> &imps);
 
 } /* namespace provallo */
 

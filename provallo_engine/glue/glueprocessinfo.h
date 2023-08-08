@@ -17,6 +17,8 @@
 #include <iostream>
 #include <sys/ptrace.h>
 #include <regex>
+#include "../decision_engine/utils.h" //real_t
+
 namespace provallo
 {
 //implements dynamic memory hook :
@@ -31,7 +33,7 @@ namespace provallo
     {
       glue_process_info *ret = new glue_process_info (pid);
       if (!ret || !ret->init ())
-	{
+	  {
 	  if (ret)
 	    delete ret;
 	  return nullptr;
@@ -60,7 +62,7 @@ namespace provallo
       bool
       operator () (const module_info &l, const module_info &r) const
       {
-	return l.path < r.path;
+	      return l.path < r.path;
       }
     };
 
@@ -139,7 +141,7 @@ namespace provallo
     push_symbol_info (const symbol_info &info)
     {
       std::vector<symbol_info>::iterator itr = std::lower_bound (
-	  m_symbol_info.begin (), m_symbol_info.end (), info,
+	    m_symbol_info.begin (), m_symbol_info.end (), info,
 	  symbol_info_less_than ());
       std::vector<symbol_info>::iterator pos = m_symbol_info.insert (itr, info);
       m_symbol_name_index.insert (std::make_pair (info.name, *pos));
@@ -243,7 +245,7 @@ namespace provallo
 
   };
 
-
+  //tokenize with regex
   template<class container>
     void
     tokenize (const std::string &str, container &tokens,
@@ -253,46 +255,54 @@ namespace provallo
       std::string::size_type lp = str.find_first_not_of (delim, 0);
       std::string::size_type pos = str.find_first_of (delim, lp);
       while (std::string::npos != pos && std::string::npos != lp)
-	{
+      {
 
-	  auto cut = str.substr (lp, pos - lp);
-	  //remove whitespaces from keys/values :
-	  //(^[ ]+)|([ ]+$)(^[ ]+)|([ ]+$)
-	  cut = std::regex_replace(cut, std::regex("\\s+"),"");
-	  if (cut.length () > 0)
-	    {
+        auto cut = str.substr (lp, pos - lp);
+        //remove whitespaces from keys/values :
+        //(^[ ]+)|([ ]+$)(^[ ]+)|([ ]+$)
+        cut = std::regex_replace(cut, std::regex("\\s+"),"");
+        if (cut.length () > 0)
+          {
 
-	      if (std::isspace (cut[0]))
-		{
-		  cut.erase (cut.begin ());
-		}
+              while (std::isspace (cut[0]))
+              {
+                cut.erase (cut.begin ());
+                if (cut.length () == 1)
+                  break;
+              }
 
-	      if (prefix.length ())
-		tokens.push_back (prefix + cut);
-	      else
-		tokens.push_back (cut);
-	    }
-	  lp = str.find_first_not_of (delim, pos);
-	  pos = str.find_first_of (delim, lp);
-	}
+            if (prefix.length ())
+        tokens.push_back (prefix + cut);
+            else
+        tokens.push_back (cut);
+          }
+        lp = str.find_first_not_of (delim, pos);
+        pos = str.find_first_of (delim, lp);
+      }
 
     }
+  //tokenize with with find_first_of
   template<class Container>
   void tokenize(const std::string& str, Container& tokens, const std::string& delimiters = ",") {
       // Skip delimiters at beginning
-      std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+      std::string::size_type last = str.find_first_not_of(delimiters, 0);
       // Find first non-delimiter
-      std::string::size_type pos = str.find_first_of(delimiters, lastPos);
+      std::string::size_type pos = str.find_first_of(delimiters, last);
 
-      while (std::string::npos != pos || std::string::npos != lastPos) {
+      while (std::string::npos != pos || std::string::npos != last) {
           // Found a token, add it to the vector
-          tokens.push_back(str.substr(lastPos, pos - lastPos));
+          tokens.push_back(str.substr(last, pos - last));
           // Skip delimiters
-          lastPos = str.find_first_not_of(delimiters, pos);
+          last = str.find_first_not_of(delimiters, pos);
           // Find next non-delimiter
-          pos = str.find_first_of(delimiters, lastPos);
+          pos = str.find_first_of(delimiters, last);
       }
   }
+  //specialization for real_t
+
+
+  template <> 
+  void tokenize<std::vector<real_t>>(const std::string& str, std::vector<real_t>& tokens, const std::string& delimiters);
 
 } /* namespace provallo */
 

@@ -551,6 +551,9 @@ namespace provallo
     typedef const T &const_reference;
     typedef std::size_t size_type;
     typedef std::ptrdiff_t difference_type;
+
+
+
     matrix() : size1_(0), size2_(0), data_(nullptr)
     {
     }
@@ -559,7 +562,12 @@ namespace provallo
 
       data_ = new T[size1 * size2];
     }
-    matrix(matrix_base &m) : size1_(m.rows), size2_(m.cols), data_(nullptr)
+    matrix(size_type size1, size_type size2, const T *value) : size1_(size1), size2_(size2), data_(nullptr)
+    {
+      data_ = new T[size1 * size2];
+      std::copy(value, value + size1 * size2, data_);
+    }
+    matrix(matrix_base &m) : size1_(m.rows()), size2_(m.cols()), data_(nullptr)
     {
       data_ = new T[size1_ * size2_];
       for (size_t i = 0; i < size1_; i++)
@@ -644,6 +652,201 @@ namespace provallo
         std::copy(row.begin(), row.end(), data_ + i * size2_);
         ++i;
       }
+    }
+
+    #ifdef SIM_MATRIX_ITERATOR
+     
+    class const_iterator : public std::iterator<std::random_access_iterator_tag, T>
+    {
+      private:
+
+      T *ptr_;
+      size_t size1_;
+      size_t size2_;
+      size_t i_;
+      size_t j_;
+
+      public:
+      const_iterator(T *ptr, size_t size1, size_t size2, size_t i, size_t j) : ptr_(ptr), size1_(size1), size2_(size2), i_(i), j_(j)
+      {
+      }
+      const_iterator(const const_iterator &it) : ptr_(it.ptr_), size1_(it.size1_), size2_(it.size2_), i_(it.i_), j_(it.j_)
+      {
+      } 
+      const_iterator(const_iterator &&it) : ptr_(it.ptr_), size1_(it.size1_), size2_(it.size2_), i_(it.i_), j_(it.j_)
+      {
+      }
+      const_iterator &operator=(const const_iterator &it)
+      {
+        ptr_ = it.ptr_;
+        size1_ = it.size1_;
+        size2_ = it.size2_;
+        i_ = it.i_;
+        j_ = it.j_;
+        return *this;
+      }
+      const_iterator &operator=(const_iterator &&it)
+      {
+        ptr_ = it.ptr_;
+        size1_ = it.size1_;
+        size2_ = it.size2_;
+        i_ = it.i_;
+        j_ = it.j_;
+        return *this;
+      }
+      const_iterator &operator++()
+      {
+        if (j_ < size2_ - 1)
+          ++j_;
+        else
+        {
+          j_ = 0;
+          ++i_;
+        }
+        return *this;
+      }
+      const_iterator operator++(int)
+      {
+        const_iterator tmp(*this);
+        operator++();
+        return tmp;
+      }
+      const_iterator &operator--()
+      {
+        if (j_ > 0)
+          --j_;
+        else
+        {
+          j_ = size2_ - 1;
+          --i_;
+        }
+        return *this;
+      }
+      const_iterator operator--(int)
+      {
+        const_iterator tmp(*this);
+        operator--();
+        return tmp;
+      }
+      const_iterator &operator+=(size_t n)
+      {
+        size_t k = i_ * size2_ + j_ + n;
+        i_ = k / size2_;
+        j_ = k % size2_;
+        return *this;
+      }
+      const_iterator &operator-=(size_t n)
+      {
+        size_t k = i_ * size2_ + j_ - n;
+        i_ = k / size2_;
+        j_ = k % size2_;
+        return *this;
+      }
+      const_iterator operator+(size_t n) const
+      {
+        const_iterator tmp(*this);
+        tmp += n;
+        return tmp;
+      }
+      const_iterator operator-(size_t n) const
+      {
+        const_iterator tmp(*this);
+        tmp -= n;
+        return tmp;
+      }
+      size_t operator-(const const_iterator &it) const
+      {
+        return i_ * size2_ + j_ - it.i_ * size2_ - it.j_;
+      }
+      bool operator==(const const_iterator &it) const
+      {
+        return ptr_ == it.ptr_ && i_ == it.i_ && j_ == it.j_;
+      }
+      bool operator!=(const const_iterator &it) const
+      {
+        return ptr_ != it.ptr_ || i_ != it.i_ || j_ != it.j_;
+      }
+      bool operator<(const const_iterator &it) const
+      {
+        return ptr_ == it.ptr_ && i_ == it.i_ && j_ < it.j_;
+      }
+      bool operator>(const const_iterator &it) const
+      {
+        return ptr_ == it.ptr_ && i_ == it.i_ && j_ > it.j_;
+      }
+      bool operator<=(const const_iterator &it) const
+      {
+        return ptr_ == it.ptr_ && i_ == it.i_ && j_ <= it.j_;
+      }
+      bool operator>=(const const_iterator &it) const
+      {
+        return ptr_ == it.ptr_ && i_ == it.i_ && j_ >= it.j_;
+      }
+      const T &operator*() const
+      {
+        return *(ptr_ + i_ * size2_ + j_);
+      }
+      const T *operator->() const
+      {
+        return ptr_ + i_ * size2_ + j_;
+      }
+      const T &operator[](size_t n) const
+      {
+        return *(ptr_ + i_ * size2_ + j_ + n);
+      }
+
+    };
+
+    const_iterator begin() const
+    {
+      return const_iterator(data_, size1_, size2_, 0, 0);
+    }
+    const_iterator end() const
+    {
+      return const_iterator(data_, size1_, size2_, size1_, 0);
+    }
+    const_iterator cbegin() const
+    {
+      return const_iterator(data_, size1_, size2_, 0, 0);
+    }
+    const_iterator cend() const
+    {
+      return const_iterator(data_, size1_, size2_, size1_, 0);
+    }
+    #endif // ITERATOR
+
+
+    T row_sum(size_t row)const
+    {
+      T sum = 0;
+      for (size_t i = 0; i < size2_; i++)
+        sum += data_[row * size2_ + i];
+      return sum;
+    }
+    T col_sum(size_t col)const
+    {
+      T sum = 0;
+      for (size_t i = 0; i < size1_; i++)
+        sum += data_[i * size2_ + col];
+      return sum;
+    }
+
+    T*& row_begin(size_t row)
+    {
+      
+      return data_ + row * size2_;
+    }
+    T*& row_end(size_t row)
+    {
+      return data_ + (row + 1) * size2_;
+    }
+    T*& col_begin(size_t col)
+    {
+      return data_ + col;
+    }
+    T*& col_end(size_t col)
+    {
+      return data_ + size1_ * size2_ + col;
     }
 
     virtual ~matrix()
@@ -905,6 +1108,57 @@ namespace provallo
 
       return ret;
     }
+ 
+ 
+    template <size_t N> matrix<T> lpNorm() const 
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
+      return ret;
+    }
+
+     matrix<T> lpNorm(double N) const
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
+      return ret;
+    }
+    matrix<T> lpNorm(int N) const
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
+      return ret;
+    } 
+    matrix<T> lpNorm(float N) const
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
+      return ret;
+    } 
+    matrix<T> lpNorm(long double N) const
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
+      return ret;
+    } 
+    matrix<T> lpNorm(long long int N) const
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
+      return ret;
+    } 
 
     size_type
     rows() const
@@ -930,8 +1184,7 @@ namespace provallo
 
       return data_;
     }
-
-    
+ 
     inline matrix<real_t> covariance()  const
     { 
       matrix<real_t> ret(size2(), size2());
@@ -988,9 +1241,11 @@ namespace provallo
     } 
     real_t correlation(size_t i,size_t j) const
     {
-      return correlation(row(i),row(j));
+      //returm correlation(row(i),row(j)); 
+      return correlation(data_+i*size2(),data_+j*size2());
+
     }
-    real_t correlation(array_type &a,array_type &b) const
+    real_t correlation(const array_type &a,const  array_type &b) const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -1086,7 +1341,14 @@ namespace provallo
     }
     real_t eigen_values(size_t i,size_t j) const
     {
-      return eigen_values(row(i),row(j));
+        real_t ret = 0;
+        array_type a = row(i);
+        array_type b = row(j);
+        for(size_t i=0;i<size1();i++)
+          ret += (a[i]-mean(a))*(b[i]-mean(b));
+        return ret/(size1()-1);
+        
+      //return eigen_values(row(i),row(j));
     }
     real_t eigen_values(const array_type &a,const array_type &b)  const
     {
@@ -1139,14 +1401,41 @@ namespace provallo
  
     void get_eigen_values_and_vectors(std::vector<T> &eigen_values, matrix<T> &eigen_vectors) const
     {
-      eigen_values.resize(size2());
-      eigen_vectors.resize(size1(), size2());
-      for (size_t i = 0; i < size2(); i++)
+      //calculate eigen values and vectors
+
+      //eigen values
+      eigen_values.resize(size1());
+      eigen_vectors.resize(size1(), size1());
+
+      //copy data
+      std::copy(data_, data_+(size1_*size2_), eigen_vectors.data().begin());
+      //calculate eigen values and vectors
+      eigen(eigen_vectors, eigen_values);
+      //sort eigen values and vectors
+      std::vector<std::pair<T, size_t> > eigen_values_index(size1());
+      for (size_t i = 0; i < size1(); ++i)
+        eigen_values_index[i] = std::make_pair(eigen_values[i], i);
+      std::sort(eigen_values_index.begin(), eigen_values_index.end(), std::greater<std::pair<T, size_t> >());
+      //copy sorted eigen values and vectors
+      for (size_t i = 0; i < size1(); ++i)
       {
-        eigen_values[i] = eigen_values(i, i);
-        for (size_t j = 0; j < size1(); j++)
-          eigen_vectors(j, i) = eigen_vectors(j, i);
+        eigen_values[i] = eigen_values_index[i].first;
+        for (size_t j = 0; j < size1(); ++j)
+          eigen_vectors(j, i) = eigen_vectors(j, eigen_values_index[i].second);
       }
+      //normalize eigen vectors
+      for (size_t i = 0; i < size1(); ++i)
+      {
+        T norm = 0;
+        for (size_t j = 0; j < size1(); ++j)
+          norm += eigen_vectors(j, i) * eigen_vectors(j, i);
+        norm = std::sqrt(norm);
+        for (size_t j = 0; j < size1(); ++j)
+          eigen_vectors(j, i) /= norm;
+      } 
+      
+      //done  
+      return;
 
     }      
     
@@ -1262,7 +1551,20 @@ namespace provallo
         ret += data_[row * size2_ + j];
       return ret;
     }
-
+    T dot_row(size_t row, const matrix<T> &other) const
+    {
+      T ret(0.);
+      for (size_t j = 0; j < size2_; j++)
+        ret += data_[row * size2_ + j] * other(row, j);
+      return ret;
+    }
+    T dot_row(size_t row, const std::vector<T> &other) const
+    {
+      T ret(0.);
+      for (size_t j = 0; j < size2_; j++)
+        ret += data_[row * size2_ + j] * other[j];
+      return ret;
+    }
     // sets zero on all values
     void
     set_zero() { this->clear(); }

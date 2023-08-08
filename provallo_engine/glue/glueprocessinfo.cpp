@@ -26,6 +26,9 @@
 namespace provallo
 {
 
+
+
+
   glue_process_info::glue_process_info (pid_t pid) :
       m_modules (), _pid (pid), m_entry_info (), m_symbol_info (), m_symbol_name_index (), m_thread_list ()
   {
@@ -359,5 +362,26 @@ namespace provallo
 	}
 
     }
+  //specialization for vector<real_t>
+  template <> 
+  void tokenize<std::vector<real_t>>(const std::string& str, std::vector<real_t>& tokens, const std::string& delimiters)
+  {
+      // Skip delimiters at beginning
+      std::string::size_type last = str.find_first_not_of(delimiters, 0);
+      // Find first non-delimiter
+      std::string::size_type pos = str.find_first_of(delimiters, last);
+
+      while (std::string::npos != pos || std::string::npos != last) {
+          // Found a token, add it to the vector
+          tokens.push_back(std::stof(str.substr(last, pos - last)));
+          // Skip delimiters
+          last = str.find_first_not_of(delimiters, pos);
+          // Find next non-delimiter
+          pos = str.find_first_of(delimiters, last);
+      } 
+
+
+  }
+
 
 } /* namespace provallo */

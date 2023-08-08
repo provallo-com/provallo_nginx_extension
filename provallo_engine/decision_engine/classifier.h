@@ -3105,26 +3105,26 @@ namespace provallo
     // Vector of base classifiers
     std::vector<classifier *> _classifiers;
     // Error factors for each classifier
-    std::vector<Float> _error;
+    std::vector<real_t> _error;
 
     // Print classifier information
     void
     print(std::ostream &out) const;
 
     // Get beta of classifier
-    Float
+    real_t
     getBeta(uint32_t i) const
     {
       return _error[i] / (1 - _error[i]);
     }
 
-    static constexpr const Float lowError = 1E-6;
+    static constexpr const real_t lowError = 1E-6;
 
     // Get weight of the classifier
-    Float
+    real_t
     getWeight(uint32_t i) const
     {
-      Float error(_error[i]);
+      real_t error(_error[i]);
       if (error < lowError)
         return 1.0 / lowError; // If error is small, return a big enough number
       else
@@ -3232,7 +3232,7 @@ namespace provallo
     // Maximum level of the tree
     uint32_t _level;
     // Minimum gain
-    Float _min_gain;
+    real_t _min_gain;
 
     // Method that construct the tree using a list of attributes
     // to choose the best split and the data set
@@ -3362,11 +3362,11 @@ namespace provallo
       uint32_t pop = n;
       for (uint32_t i = _rho; i > 0; --i)
       {
-        Float prob = 1.0;
+        real_t prob = 1.0;
 
         // std::mt19937 gen();
-        std::uniform_real_distribution<Float> uniform(0.0, 1.0);
-        Float x = uniform(getRandom());
+        std::uniform_real_distribution<real_t> uniform(0.0, 1.0);
+        real_t x = uniform(getRandom());
         for (; x < prob; pop--)
           prob -= prob * i / pop;
         new_attributes->push_back(prev_attributes[n - pop - 1]);
@@ -3420,7 +3420,7 @@ namespace provallo
     else
     {
       // Calculate the gain of each attribute
-      std::vector<Float> gain_values(attributes.size());
+      std::vector<real_t> gain_values(attributes.size());
 
       // Calculate the gain for each attribute
       for (uint32_t i = 0; i < gain_values.size(); ++i)
@@ -3507,9 +3507,9 @@ namespace provallo
   class bayesian : public classifier
   {
     // ---- Probability matrix and arrays
-    std::vector<Float> _prior;
+    std::vector<real_t> _prior;
 
-    std::vector<std::vector<std::vector<Float>>> _likelihood;
+    std::vector<std::vector<std::vector<real_t>>> _likelihood;
 
     // Print classifier information
     void
@@ -3519,9 +3519,9 @@ namespace provallo
     serialize(classifier *serial) const;
 
     // Encapsulate access to likelihood matrix (for future improvement on memory access)
-    Float &
+    real_t &
     getLikelihood(uint32_t attr, uint32_t class_value, uint32_t branch);
-    const Float &
+    const real_t &
     getLikelihood(uint32_t attr, uint32_t class_value, uint32_t branch) const;
 
     void init();// called from constructor. 
@@ -3600,8 +3600,8 @@ namespace provallo
     // Loop over each class value
     for (uint32_t i = 0; i < class_number; ++i)
     {
-      Float prior(_prior[i]);
-      Float likelihood(1.0);
+      real_t prior(_prior[i]);
+      real_t likelihood(1.0);
 
       // Loop over each attributes
       for (uint32_t j = 0; j < attrs_number; ++j)
@@ -3619,7 +3619,7 @@ namespace provallo
       }
 
       // Calculate posterior probability
-      Float posterior = prior * likelihood;
+      real_t posterior = prior * likelihood;
       // Accumulate in distribution for this class
       votes.accum(i, posterior);
     }
@@ -3649,14 +3649,14 @@ namespace provallo
     std::vector<std::string> _names;
     // Offsets (to take into account the ignores attributes on the sample)
     // Weights of each attribute
-    std::vector<Float> _weights;
+    std::vector<real_t> _weights;
     // Type of each attribute
     std::vector<attribute_type> _types;
     // Number of neighbors used to classify a sample
     uint32_t _neighbors;
     // We should standardize the samples before classifying them
-    std::vector<Float> _mean;
-    std::vector<Float> _stdev;
+    std::vector<real_t> _mean;
+    std::vector<real_t> _stdev;
 
     // Cast to the correct parameter type
     const metric_classifier_param *
@@ -3697,7 +3697,7 @@ namespace provallo
     // ---- Auxiliary functions to deal with internal points and sample standardization
 
     // Tolerance for convergence (relative error)
-    static constexpr const Float _tolerance = 10E-10;
+    static constexpr const real_t _tolerance = 10E-10;
 
     // Push samples from data set iterator (using internal information)
     template <class InputIterator>
@@ -3825,7 +3825,7 @@ namespace provallo
 
     // Attributes information
     const attribute_information &info(data.getattributes());
-    const std::map<std::string, Float> &weight_map =
+    const std::map<std::string, real_t> &weight_map =
         castParams(parameters)->getWeights();
     // Loop over attributes and check the not ignored ones
     for (uint32_t i = 0; i < info.getSize(); ++i)
@@ -3842,7 +3842,7 @@ namespace provallo
         // Check if we have weights defined
         if (weight_map.size())
         {
-          std::map<std::string, Float>::const_iterator it =
+          std::map<std::string, real_t>::const_iterator it =
               weight_map.find(name);
           // Push weight
           if (it != weight_map.end())
@@ -3860,7 +3860,7 @@ namespace provallo
     }
 
     // Normalize weights
-    Float weight_sum(
+    real_t weight_sum(
         std::accumulate(_weights.begin(), _weights.end(), 0));
     // Sanity check
     // This is like an assert, it shouldn't happen... If the user controls the attribute's name on the weight map before
@@ -3870,7 +3870,7 @@ namespace provallo
 
     std::transform(
         _weights.begin(), _weights.end(), _weights.begin(),
-        std::bind1st(std::multiplies<Float>(), 1.0 / weight_sum));
+        std::bind1st(std::multiplies<real_t>(), 1.0 / weight_sum));
 
     // Resize containers
     _mean.resize(_offsets.size(), 0.0);
@@ -3884,7 +3884,7 @@ namespace provallo
       {
         if (_types[j] == continous_attribute::_type())
         {
-          Float value = (*(it + _offsets[j])).continous();
+          real_t value = (*(it + _offsets[j])).continous();
           // Increment mean
           _mean[j] += value;
           // Increment standard deviation
@@ -3895,7 +3895,7 @@ namespace provallo
 
     for (uint32_t j = 0; j < _mean.size(); ++j)
     {
-      _mean[j] /= (Float)data.size();
+      _mean[j] /= (real_t)data.size();
       _stdev[j] = sqrt(_stdev[j] / data.size() - _mean[j] * _mean[j]);
     }
   }
@@ -3960,8 +3960,8 @@ namespace provallo
     {
       if (_types[j] == continous_attribute::_type())
       {
-        Float value = (*(begin + _offsets[j])).continous();
-        Float standard = (value - _mean[j]);
+        real_t value = (*(begin + _offsets[j])).continous();
+        real_t standard = (value - _mean[j]);
         // Check for NULL standard deviation (in case all values are equal)
         if (_stdev[j] > _tolerance)
           standard /= _stdev[j];
@@ -3989,12 +3989,12 @@ namespace provallo
     {
       if (_types[j] == continous_attribute::_type())
       {
-        Float value = (*(begin + _offsets[j])).continous();
-        Float standard = (value - _mean[j]);
+        real_t value = (*(begin + _offsets[j])).continous();
+        real_t standard = (value - _mean[j]);
         // Check for NULL standard deviation (in case all values are equal)
         if (_stdev[j] > _tolerance)
           standard /= _stdev[j];
-        sample->push_back(attribute(standard));
+        sample->push_back(attribute(cont_value(standard)));  
       }
       else
       {
@@ -4012,8 +4012,8 @@ namespace provallo
                                                    InputIterator end) const
   {
     // Initial distance
-    std::pair<Float, size_t> minor_distance(
-        std::numeric_limits<Float>::infinity(), 0);
+    std::pair<real_t, size_t> minor_distance(
+        std::numeric_limits<real_t>::infinity(), 0);
 
     // Loop over each point and found the closest one
     for (size_t i = 0; i < _data.size(); ++i)
@@ -4022,7 +4022,7 @@ namespace provallo
       if (_class[i] != target || not _data[i])
         continue;
       // Calculate distance
-      Float distance = MetricPolicy::distance(begin, end,
+      real_t distance = MetricPolicy::distance(begin, end,
                                               _data[i]->begin(),
                                               _data[i]->end(),
                                               _types.begin(),
@@ -4045,7 +4045,7 @@ namespace provallo
       InputIterator lbegin, InputIterator lend, InputIterator nbegin,
       InputIterator nend) const
   {
-    Float distance = MetricPolicy::distance(lbegin, lend, nbegin, nend,
+    real_t distance = MetricPolicy::distance(lbegin, lend, nbegin, nend,
                                             _types.begin(),
                                             _weights.begin());
     return (distance <= _tolerance);
@@ -4102,7 +4102,7 @@ namespace provallo
     // TODO : Do some research on how to this more efficiently (this is just a POC)
     // Sorted vector
 
-    std::vector<std::pair<Float, uint32_t>> sorted(_data.size());
+    std::vector<std::pair<real_t, uint32_t>> sorted(_data.size());
     // Sample to classify
     std::vector<attribute> sample;
     pushSample(&sample, begin, end);
@@ -4112,7 +4112,7 @@ namespace provallo
     {
       if (_data[i])
       {
-        Float dist = MetricPolicy::distance(sample.begin(),
+        real_t dist = MetricPolicy::distance(sample.begin(),
                                             sample.end(),
                                             _data[i]->begin(),
                                             _data[i]->end(),
@@ -4123,7 +4123,7 @@ namespace provallo
       else
       {
         sorted[i] = std::make_pair(
-            std::numeric_limits<Float>::infinity(), i);
+            std::numeric_limits<real_t>::infinity(), i);
       }
     }
     // Sort values
@@ -4151,7 +4151,7 @@ namespace provallo
       uint32_t idx(sorted[i].second);
       if (_data[idx])
       {
-        Float dist(sorted[i].first);
+        real_t dist(sorted[i].first);
         votes.accum(_class[idx], 1.0 / dist);
       }
     }
@@ -4185,7 +4185,7 @@ namespace provallo
       {
         if (_types[j] == continous_attribute::_type())
         {
-          Float not_standard((*_data[i])[j].continous());
+          real_t not_standard((*_data[i])[j].continous());
           if (_stdev[j] > _tolerance)
             not_standard *= _stdev[j];
           not_standard += _mean[j];
@@ -4231,8 +4231,8 @@ namespace provallo
     {
       if (_types[j] == continous_attribute::_type())
       {
-        Float value = (*(begin + _offsets[j])).continous();
-        Float standard = (value - _mean[j]);
+        real_t value = (*(begin + _offsets[j])).continous();
+        real_t standard = (value - _mean[j]);
         // Check for NULL standard deviation (in case all values are equal)
         if (_stdev[j] > 10e-10)
           standard /= _stdev[j];
@@ -4255,14 +4255,14 @@ namespace provallo
       return true;
 
     // Sorted vector
-    std::vector<std::pair<Float, uint32_t>> sorted(_data.size());
+    std::vector<std::pair<real_t, uint32_t>> sorted(_data.size());
 
     // Calculate distance
     for (uint32_t i = 0; i < sorted.size(); ++i)
     {
       if (_data[i])
       {
-        Float dist = MetricPolicy::distance(_data[idx]->begin(),
+        real_t dist = MetricPolicy::distance(_data[idx]->begin(),
                                             _data[idx]->end(),
                                             _data[i]->begin(),
                                             _data[i]->end(),
@@ -4273,7 +4273,7 @@ namespace provallo
       else
       {
         sorted[i] = std::make_pair(
-            std::numeric_limits<Float>::infinity(), i);
+            std::numeric_limits<real_t>::infinity(), i);
       }
     }
     // Sort values
@@ -4307,7 +4307,7 @@ namespace provallo
       uint32_t index(sorted[i].second);
       if (_data[index])
       {
-        Float dist(sorted[i].first);
+        real_t dist(sorted[i].first);
         votes.accum(_class[index], 1.0 / dist);
       }
     }
@@ -4882,7 +4882,7 @@ namespace provallo
       // Incorrect classified samples
       std::vector<uint32_t> correct_idx;
       // Error accumulator
-      Float error(0.0);
+      real_t error(0.0);
 
       // Test each sample , run only on the sample data 
       datasize = sampled_data->size();
@@ -4940,7 +4940,7 @@ namespace provallo
         //assume no Nan values in the distribution
         // Get index of sample correctly classified
         uint32_t idx(correct_idx[j]);
-        Float dist= distribution.percentage(idx) * pThis->getBeta(i);
+        real_t dist= distribution.percentage(idx) * pThis->getBeta(i);
         if(dist!=dist) dist=0.0;//if Nan
          // Set weight of sample
         distribution.set(idx,
@@ -5061,7 +5061,7 @@ namespace provallo
     else
     {
       // Calculate the gain of each attribute
-      std::vector<Float> gain_values(attributes.size());
+      std::vector<real_t> gain_values(attributes.size());
 
       // Calculate the gain for each attribute
       for (uint32_t i = 0; i < gain_values.size(); ++i)
@@ -5220,9 +5220,9 @@ namespace provallo
   class random_forest : public ensemble_classifier
   {
     // Raw importance of each variable
-    std::vector<Float> _raw_importance;
+    std::vector<real_t> _raw_importance;
     // Out of Bag (OOB) error estimation
-    Float _oob_error;
+    real_t _oob_error;
 
     // Max random numbers per tree
     static const size_t _max_rng_per_tree = 1000000;
@@ -5258,11 +5258,11 @@ namespace provallo
     }
 
     // Get importance map
-    std::map<std::string, Float>
+    std::map<std::string, real_t>
     getImportanceMap() const;
 
     // Get OOB error
-    Float
+    real_t
     getOobError() const
     {
       return _oob_error;
@@ -5282,9 +5282,9 @@ namespace provallo
     static std::vector<classifier *> *gclassifiers; //= std::ref(_classifiers) ;
     static std::vector<class_dist> *gdist;          // =  std::ref(global_oob_predictions) ;
     static class_dist *distibution_ptr;             // distribution (data.size (), 1.0);
-    static std::vector<Float> *error_copy;
-    static std::vector<Float> *last_raw;
-    static Float *_last_oob;
+    static std::vector<real_t> *error_copy;
+    static std::vector<real_t> *last_raw;
+    static real_t *_last_oob;
   };
   // MT support for parallel training..
 
@@ -5313,13 +5313,13 @@ namespace provallo
   class_dist *random_forest<RandomClassifier>::distibution_ptr = nullptr;
 
   template <class RandomClassifier>
-  std::vector<Float> *random_forest<RandomClassifier>::error_copy = nullptr;
+  std::vector<real_t> *random_forest<RandomClassifier>::error_copy = nullptr;
 
   template <class RandomClassifier>
-  std::vector<Float> *random_forest<RandomClassifier>::last_raw = nullptr;
+  std::vector<real_t> *random_forest<RandomClassifier>::last_raw = nullptr;
 
   template <class RandomClassifier>
-  Float *random_forest<RandomClassifier>::_last_oob = nullptr;
+  real_t *random_forest<RandomClassifier>::_last_oob = nullptr;
 
   template <class RandomClassifier>
   random_forest<RandomClassifier>::random_forest(
@@ -5395,16 +5395,16 @@ namespace provallo
 		                    std::vector<classifier*>& _classifiers (std::ref(*gclassifiers ));
 
 		                    class_dist distribution (*distibution_ptr);
-		                    std::vector<Float>& _error(std::ref(*error_copy));
-		                    std::vector<Float>& _raw_importance (std::ref(*last_raw));
+		                    std::vector<real_t>& _error(std::ref(*error_copy));
+		                    std::vector<real_t>& _raw_importance (std::ref(*last_raw));
 		                    std::vector<class_dist>& global_oob_predictions(std::ref(*gdist));
-		                    Float& _oob_error = *_last_oob;
-                        //Float oob_error = 0.0;//local Out of bag error
+		                    real_t& _oob_error = *_last_oob;
+                        //real_t oob_error = 0.0;//local Out of bag error
                         std::ostream& out=out2;
 		                    clock_t c =clock();
 		                    std::random_device d;
 				                attribute_tag target_tag = last_target;
-                        const size_t ratio =  ((Float)data.size () * (Float)_classifiers.size ());
+                        const size_t ratio =  ((real_t)data.size () * (real_t)_classifiers.size ());
 
 
 		  std::pair<dataset*, dataset*> random_set = data.randomSubsetOob (
@@ -5439,7 +5439,7 @@ namespace provallo
 	  	    _error[i] = 0.0000001;
 
 	  	  }
-		  std::vector<Float> class_importance (sf->getSize (), 0); // The "variable" is actually a split method
+		  std::vector<real_t> class_importance (sf->getSize (), 0); // The "variable" is actually a split method
       // Get OOB set
 		  // OOB set
 		  dataset &oob_set (*random_set.second);
@@ -5518,7 +5518,7 @@ namespace provallo
 		      for (uint32_t j = 0; j < im_size ; j++)
 		    {
 
-		      _raw_importance[j] += class_importance[j] / (Float)_classifiers.size ();
+		      _raw_importance[j] += class_importance[j] / (real_t)_classifiers.size ();
 		    }
 		  }
 
@@ -5541,7 +5541,7 @@ namespace provallo
                 != global_oob_predictions[i].mode ().discrete ())
               ++oob_error;
           }
-      _oob_error += oob_error/Float(ratio);
+      _oob_error += oob_error/real_t(ratio);
       std::cout << "[+]Global OOB error = % " << 100.0 * _oob_error << std::endl; 
           
 
@@ -5608,11 +5608,11 @@ namespace provallo
 
   // Get map of variable name and raw importance
   template <class RandomClassifier>
-  std::map<std::string, Float>
+  std::map<std::string, real_t>
   random_forest<RandomClassifier>::getImportanceMap() const
   {
     // Loop over split methods
-    std::map<std::string, Float> importance_map;
+    std::map<std::string, real_t> importance_map;
     for (uint32_t i = 0; i < splitFactory().getSize(); ++i)
     {
       // Get method
@@ -5621,7 +5621,7 @@ namespace provallo
       std::ostringstream oss;
       method->printName(oss, _attributes_info);
       // Get raw importance
-      Float raw_value = _raw_importance[i];
+      real_t raw_value = _raw_importance[i];
       importance_map.insert(std::make_pair(oss.str(), raw_value));
     }
     // Return map
