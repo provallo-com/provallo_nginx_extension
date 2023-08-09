@@ -959,13 +959,27 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       std::cout<<"-- deleting description file .... "<<std::endl<<std::endl;
       description_file.clear();
       ret = true;
+      std::cout<<"-- deleting dataset .... "<<std::endl<<std::endl;
+      if(dataset_ptr1)
+      delete dataset_ptr1.get();
 
+    
+
+      std::cout<<"-- deleting random factory .... "<<std::endl<<std::endl;
+      if(random_factory)
+        delete random_factory;
+      std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
+      if(factory)
+        delete factory;
+
+/*
       std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
       if(factory)
         delete factory;
       std::cout<<"-- deleting random factory .... "<<std::endl<<std::endl;
       if(random_factory)
         delete random_factory;
+        */
    
 
       //avoid double free 

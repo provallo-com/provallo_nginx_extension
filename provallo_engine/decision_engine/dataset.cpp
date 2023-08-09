@@ -1504,8 +1504,8 @@ namespace provallo
   }
 
   // static debug counters:
-  std::atomic_int dataset::id_counter(0);
-  std::atomic_int dataset::dest_counter(0);
+  std::atomic_uint64_t dataset::id_counter(0);
+  std::atomic_uint64_t dataset::dest_counter(0);
   std::atomic_uint64_t dataset::attribute_iterator::_instance_counter(0);
 
 } /* namespace provallo */

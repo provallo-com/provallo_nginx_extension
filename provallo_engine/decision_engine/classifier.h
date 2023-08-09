@@ -3164,7 +3164,7 @@ namespace provallo
     classify(std::vector<attribute>::const_iterator begin,
              std::vector<attribute>::const_iterator end) const
     {
-      return classify<std::vector<attribute>::const_iterator>(begin, end);
+      return posterior<std::vector<attribute>::const_iterator>(begin, end).mode();
     }
 
     classifier_type
@@ -3195,10 +3195,9 @@ namespace provallo
   ensemble_classifier::posterior(InputIterator begin,
                                  InputIterator end) const
   {
-    // Get target tag
-    attribute_tag target = _attributes_info.get_target_tag();
     // Create container of class votes
-    class_dist votes(_attributes_info.getCount(target));
+    class_dist votes(_attributes_info.getTargetClassCount());
+
     // Classify with each tree
     for (uint32_t i = 0; i < _classifiers.size(); ++i)
     {
@@ -3217,6 +3216,16 @@ namespace provallo
   attribute
   ensemble_classifier::classify(InputIterator begin, InputIterator end) const
   {
+    //removed.mode()
+    //make sure begin-end is row size of dataset
+
+    size_t distance = std::distance(begin, end);
+    if (distance != _attributes_info.getSize())
+    {
+      std::cout << "Error: input size does not match dataset size" << std::endl;
+      return attribute();
+    }
+      
     return posterior(begin, end).mode();
   }
 
@@ -3521,8 +3530,17 @@ namespace provallo
     // Encapsulate access to likelihood matrix (for future improvement on memory access)
     real_t &
     getLikelihood(uint32_t attr, uint32_t class_value, uint32_t branch);
+
     const real_t &
     getLikelihood(uint32_t attr, uint32_t class_value, uint32_t branch) const;
+
+    // Encapsulate access to prior array (for future improvement on memory access)
+    real_t &
+    getPrior(uint32_t class_value);
+
+    const real_t &
+    getPrior(uint32_t class_value) const;
+
 
     void init();// called from constructor. 
 
@@ -3572,6 +3590,29 @@ namespace provallo
     {
       return posterior<std::vector<attribute>::const_iterator>(begin, end);
     }
+    // Get the probability of a class value
+    real_t
+    getProbability(uint32_t class_value) const;
+    //get likelihood of a class value
+    
+    	real_t &
+	  getLikelihood(size_t attr, size_t class_value, size_t branch)
+	{
+		return _likelihood[attr][class_value][branch];
+	}
+
+	const real_t &
+	getLikelihood(size_t attr, size_t class_value,
+							size_t branch) const
+	{
+		return _likelihood[attr][class_value][branch];
+	}
+
+    //get prior of a class value
+    real_t&
+    getPrior(size_t class_value) const;
+
+
 
     // Get type of classifier
     classifier_type
@@ -5446,47 +5487,26 @@ namespace provallo
 		  // Get OOB error
 		  size_t oob_error (0); //local thread error
 		  size_t n(oob_set.size());
+      //bool translate_values = false;
 		  // Test OOB data
 		  for (uint32_t k = 0; k < n; k++){
 
 		      out << "[+] Testing : ["<<k <<"/"<<n<<"]"<< std::endl;
   	      // Get target value on the test data
 
- 
-          attribute test(oob_set.getattribute (k, target_tag));
+        attribute test_attr(oob_set.getattribute (k, target_tag));
 
-		      attribute test_attr ( oob_set.getattribute_info().getValue (target_tag, test));  
-
-          if (test_attr.discrete ()>= oob_set.getattribute_info().getTargetClassCount()) 
-             {
-
-                   test_attr = test;
-              
-             }
-
-          if (test_attr.discrete ()> oob_set.getattribute_info().getTargetClassCount()) 
-            throw std::runtime_error (
-              "[!] Invalid target class value"
-               + std::to_string(oob_set.getattribute_info().getTargetClassCount())
-               + " " +  test.to_string() + "<>" + test_attr.to_string()  
-                );  
-              
+		   
             // Classify the data
 		     attribute class_attr (
 			  _classifiers[i]->classify (oob_set.begin(k), oob_set.end(k)));
 
-		      // Get prediction
-          
-          attribute_value prediction = oob_set.getattribute_info().getValue (target_tag, class_attr) ;
-		      // Check value
-          if (attribute(prediction).discrete ()>= oob_set.getattribute_info().getTargetClassCount() ) 
-          prediction = class_attr.to_string();
-          // Count error
+		 
 
-		      if (  test_attr.discrete() != attribute(prediction).discrete ()) {
+		      if (  test_attr.discrete() != class_attr.discrete ()) {
 			    { // Accumulate OOB error (for importance estimation)
 		      	++oob_error;
-            out<<"[+] misclassification : "<<pthread_self()<<" expected : "<<std::to_string(test_attr.discrete()) << ", got "<<prediction<< std::endl; 
+            out<<"[+] misclassification : "<<pthread_self()<<" expected : "<<std::to_string(test_attr.discrete()) << ", got "<<class_attr.to_string()<< std::endl; 
           }
 		      // Set the result in OOB distribution
            out <<  "[+] classifier running on thread : "<<pthread_self()<<" Classified: ["<<k <<"/"<<n<<"], with :"<<std::to_string(oob_error) +std::string(" errors.")<< std::endl;
@@ -5499,8 +5519,8 @@ namespace provallo
             if ( global_oob_predictions[i].size()==0)
               global_oob_predictions[i].setup (oob_set.getattribute_info().getTargetClassCount()); 
 
-            if (attribute(prediction).discrete () < global_oob_predictions[i].size()) 
-              global_oob_predictions[i].accum ( attribute(prediction).discrete (),  1.0f); 
+            if (class_attr.discrete () < global_oob_predictions[i].size()) 
+              global_oob_predictions[i].accum ( class_attr.discrete (),  1.0f); 
             else 
               global_oob_predictions[i].accum ( 0,  1.0f);
              
@@ -5629,13 +5649,12 @@ namespace provallo
   }
 
   class confusion_matrix
-  {
-    // Confusion matrix data
-    std::vector<std::vector< uint32_t>> _matrix;
-
-    //mmap_vector<mmap_vector<uint32_t>> _matrix;
+  { 
+    //mmap_vector<mmap_vector<size_t>> _matrix;
+    matrix<attribute_tag> _matrix;
     // Information about attributes
-    const attribute_information& _attributes; //we don't want to copy the attribute information
+    std::vector<attribute_value> _class_values;
+
     // Friendly printer
     friend std::ostream &
     operator<<(std::ostream &out, const confusion_matrix &q);
@@ -5644,27 +5663,57 @@ namespace provallo
     confusion_matrix(const dataset &data, const classifier &_classifier);
 
     // Get total number of errors
-    uint32_t
+    size_t
     getError() const;
 
     // Comparison operator
     bool
     operator==(const confusion_matrix &other) const
     {
-      if (_matrix.size() != other._matrix.size())
+      if (_matrix != other._matrix)
         return false;
-      for (size_t i = 0; i < _matrix.size(); ++i)
-        for (size_t j = 0; j < _matrix[i].size(); ++j)
-          if (_matrix[i][j] != other._matrix[i][j])
-            return false;
       return true;
     }
 
+    size_t getMatrixDim() const
+    {
+      return _matrix.size1();
+    }
+  
     virtual ~confusion_matrix()
     {
-
+      _matrix.clear();  
     }
   };
+
+
+  class roc_curve  
+  {
+    // Area under the curve
+    real_t _auc;  
+    typedef std::pair<real_t,real_t> roc_point;
+    // ROC points [dataset row size]
+    std::vector<std::pair<real_t, real_t>> _roc_points;
+    matrix<discrete_value> _matrix;
+    friend std::ostream &
+    
+    operator<<(std::ostream &out, const roc_curve &q);
+
+  public:
+    roc_curve(const dataset &data, const classifier &_classifier);
+
+    // Get area under the curve
+    real_t
+    getAUC() const
+    {
+      return _auc;
+    }
+     virtual ~roc_curve()
+    {
+      _matrix.clear();  
+    }
+  };
+
   class lightgbm_classifier: public ensemble_classifier 
   {
     protected:

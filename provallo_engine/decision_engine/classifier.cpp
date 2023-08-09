@@ -17882,12 +17882,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
       // Get ensemble classifier buffer
       ensemble_classifier* ensemble_buffer(serial->MutableExtension(ensemble_classifier::child));
       // Write classifiers on the buffer
-      for(uint32_t i = 0 ; i < _classifiers.size() ; ++i) {
+      for(size_t i = 0 ; i < _classifiers.size() ; ++i) {
           classifier* serial_class = ensemble_buffer->add_classifiers();
           _classifiers[i]->serialize(serial_class);
       }
       // Write errors
-      for(uint32_t i = 0 ; i < _error.size() ; ++i)
+      for(size_t i = 0 ; i < _error.size() ; ++i)
           ensemble_buffer->add_error(_error[i]);
 
 #endif
@@ -17897,7 +17897,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	ensemble_classifier::print(std::ostream &out) const
 	{
 		out << "Classifiers : " << std::endl;
-		for (uint32_t i = 0; i < _classifiers.size(); ++i)
+		for (size_t i = 0; i < _classifiers.size(); ++i)
 		{
 			out << "weight = " << getWeight(i) << std::endl;
 			out << *_classifiers[i] << std::endl;
@@ -17908,7 +17908,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	ensemble_classifier::~ensemble_classifier()
 	{
 		// Delete classifiers
-		for (uint32_t i = 0; i < _classifiers.size(); ++i)
+		for (size_t i = 0; i < _classifiers.size(); ++i)
 			if ( _classifiers[i] ) 
 				delete  _classifiers[i];
 		_classifiers.clear();
@@ -17937,20 +17937,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// Split method for target tag
 		const split_method *target_split = splitFactory().getTargetMethod();
 		// Get some counts
-		uint32_t class_number(target_split->size());
-		uint32_t attrs_number(splitFactory().getSize());
+		size_t class_number(target_split->size());
+		size_t attrs_number(splitFactory().getSize());
 
 		// Prior probability, number elements equal to the number of classes
 		_prior.resize(class_number, 0.0);
 
 		// Resize likelihood
 		_likelihood.resize(attrs_number); // Number of rows
-		for (uint32_t i = 0; i < _likelihood.size(); ++i)
+		for (size_t i = 0; i < _likelihood.size(); ++i)
 			_likelihood[i].resize(class_number); // Number of columns
 
 		// For each class + attribute, resize the probability array
-		for (uint32_t i = 0; i < _likelihood.size(); ++i)		 // loop over attributes
-			for (uint32_t j = 0; j < _likelihood[i].size(); ++j) // loop over classes
+		for (size_t i = 0; i < _likelihood.size(); ++i)		 // loop over attributes
+			for (size_t j = 0; j < _likelihood[i].size(); ++j) // loop over classes
 				{
 					const split_method* method = splitFactory().getMethod(i);
 					if(method!=nullptr)
@@ -17960,17 +17960,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				}
 
 		// Iterate over each instance
-		for (uint32_t i = 0; i < _data.size(); ++i)
+		for (size_t i = 0; i < _data.size(); ++i)
 		{
 			// Get iterator to the attributes of this instance
 
 			// Get target
-			uint32_t target_branch = target_split->getBranch((_data.begin(i)));
+			size_t target_branch = target_split->getBranch((_data.begin(i)));
 			// Contribute to prior probability
 			_prior[target_branch]++;
 
 			// Loop over each attribute
-			for (uint32_t j = 0; j < attrs_number; ++j)
+			for (size_t j = 0; j < attrs_number; ++j)
 			{
 				// Get attribute value and branch
 				//skip unspilttable or ignored attributes
@@ -17978,7 +17978,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if(method==nullptr)
 					continue;
 				
-				uint32_t attr_branch = method->getBranch(
+				size_t attr_branch = method->getBranch(
 					(_data.begin(i)));
 				
 				if ( attr_branch > method->size() )
@@ -18003,13 +18003,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		float total_count = (float)_data.size();
 
 		// Likelihood normalization
-		for (uint32_t i = 0; i < attrs_number; ++i)
+		for (size_t i = 0; i < attrs_number; ++i)
 		{
-			for (uint32_t j = 0; j < class_number; ++j)
+			for (size_t j = 0; j < class_number; ++j)
 			{
 				// First check if we need to apply the laplacian correction for this attribute
 				bool apply_laplacian(false);
-				for (uint32_t k = 0; k < _likelihood[i][j].size(); ++k)
+				for (size_t k = 0; k < _likelihood[i][j].size(); ++k)
 					if (_likelihood[i][j][k] == 0.0)
 					{
 						apply_laplacian = true;
@@ -18019,20 +18019,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (apply_laplacian)
 				{
 					// Apply laplacian correction
-					for (uint32_t k = 0; k < _likelihood[i][j].size(); ++k)
+					for (size_t k = 0; k < _likelihood[i][j].size(); ++k)
 						_likelihood[i][j][k] = (_likelihood[i][j][k] + 1) / (_prior[j] + _likelihood[i][j].size());
 				}
 				else
 				{
 					// Don't apply laplacian correction
-					for (uint32_t k = 0; k < _likelihood[i][j].size(); ++k)
+					for (size_t k = 0; k < _likelihood[i][j].size(); ++k)
 						_likelihood[i][j][k] /= _prior[j];
 				}
 			}
 		}
 
 		// Finally, the prior probability normalization
-		for (uint32_t j = 0; j < class_number; ++j)
+		for (size_t j = 0; j < class_number; ++j)
 			_prior[j] /= total_count;
 	}
 	// No parameters for now
@@ -18062,18 +18062,6 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			throw std::runtime_error("Cannot serialize into a different classifier type");
 	}
 
-	Float &
-	bayesian::getLikelihood(uint32_t attr, uint32_t class_value, uint32_t branch)
-	{
-		return _likelihood[attr][class_value][branch];
-	}
-
-	const Float &
-	bayesian::getLikelihood(uint32_t attr, uint32_t class_value,
-							uint32_t branch) const
-	{
-		return _likelihood[attr][class_value][branch];
-	}
 
 	bayesian::bayesian(const classifier *deserial) : classifier(deserial)
 	{
@@ -18087,20 +18075,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		 // Split method for target tag
 		 const split_method* target_split = splitFactory().getTargetMethod();
 		 // Get some counts
-		 uint32 class_number(target_split->size());
-		 uint32 attrs_number(splitFactory().getSize());
+		 size_t class_number(target_split->size());
+		 size_t attrs_number(splitFactory().getSize());
 		 // Resize likelihood
 		 _likelihood.resize(attrs_number); // Number of rows
-		 for(uint32_t i = 0 ; i < _likelihood.size() ; ++i)
+		 for(size_t i = 0 ; i < _likelihood.size() ; ++i)
 		 _likelihood[i].resize(class_number); // Number of columns
 
 		 // Fill likelihood array
 		 int cnt(0);
-		 for(uint32_t i = 0 ; i < _likelihood.size() ; ++i) { // loop over attributes
+		 for(size_t i = 0 ; i < _likelihood.size() ; ++i) { // loop over attributes
 		 const split_method* attr_split = splitFactory().getMethod(i);
-		 for(uint32_t j = 0 ; j < _likelihood[i].size() ; ++j) { // loop over classes
+		 for(size_t j = 0 ; j < _likelihood[i].size() ; ++j) { // loop over classes
 		 // Loop over attributes values
-		 for(uint32 k = 0 ; k < attr_split->size() ; ++k) {
+		 for(size_t k = 0 ; k < attr_split->size() ; ++k) {
 		 _likelihood[i][j].push_back(nb_buffer.likelihood(cnt));
 		 ++cnt;
 		 }
@@ -18120,7 +18108,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
 		// Nothing to do
 		_likelihood.clear();
+
 	}
+	real_t &
+    bayesian::getPrior(uint32_t class_value)
+	{
+		return _prior[class_value];
+	}
+    const real_t &
+    bayesian::getPrior(uint32_t class_value) const
+	{
+		if (class_value >= _prior.size())
+			throw std::runtime_error("Class value out of range");
+		return _prior[class_value];
+	}
+ 
 
 	std::ostream &
 	operator<<(std::ostream &out, const classifier &q)
@@ -18167,7 +18169,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// Just print the name
 		out << "(";
 		_split_method->printName(out, information);
-		out << ") - " << (uint32_t)_distribution.sum() << std::endl;
+		out << ") - " << (size_t)_distribution.sum() << std::endl;
 	}
 	void
 	TreeLeaf::_print(std::ostream &out,
@@ -18179,7 +18181,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		out << " = ";
 		_split_method->printBranch(out, information,
 								   _distribution.mode().discrete());
-		out << ") ==> " << (uint32_t)_distribution.sum() << std::endl;
+		out << ") ==> " << (size_t)_distribution.sum() << std::endl;
 	}
 
 	void
@@ -18301,21 +18303,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 	}
 
-	uint32_t
+	size_t
 	testClassifier(const classifier &_classifier, const dataset &data)
 	{
 		// Target tag
 		attribute_tag target_tag = data.getattributes().get_target_tag();
 		// Total error
-		uint32_t error(0);
+		size_t error(0);
 
 #ifdef HAVE_OPENMP
 #pragma omp parallel
 		{
-			uint32_t local_error(0);
+			size_t local_error(0);
 
 #pragma omp for
-			for (uint32_t i = 0; i < data.size(); ++i)
+			for (size_t i = 0; i < data.size(); ++i)
 			{
 				// Get target value on the test data
 				attribute test_attr(*(data.begin(i) + target_tag));
@@ -18331,7 +18333,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 #else
 		// Test data
-		for (uint32_t i = 0; i < data.size(); ++i)
+		for (size_t i = 0; i < data.size(); ++i)
 		{
 			// Get target value on the test data
 			attribute test_attr (data.getattribute(i,target_tag));
@@ -18345,110 +18347,157 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 		// Return error
 		return error;
-	}
+	} // testClassifier
 
-	// for classifiers
-	confusion_matrix::confusion_matrix(const dataset &data,
-									   const classifier &classifier_) : _attributes(data.getattributes())
-	{
-
+	// ROC curve
+	roc_curve::roc_curve(const dataset &data, const classifier &classifier_)  
 		// Target tag
-		attribute_tag target_tag = _attributes.get_target_tag();
+		{
+		// Target tag
+		attribute_tag target_tag = data.getattributes().get_target_tag();
 		// Get number of target attributes
-		uint32_t target_count = _attributes.getCount(target_tag)+1;
+		size_t target_count = data.getattributes().getTargetClassCount();
+		real_t total_false_positive(0);
+		real_t total_true_positive(0);
+		real_t total_false_negative(0);
+		real_t total_true_negative(0);
 
 		// Allocate matrix
-		//_matrix = mmap_vector<mmap_vector<uint32_t>>(
-		//			target_count, mmap_vector<uint32_t>(target_count, 0));
-		_matrix = std::vector<std::vector<uint32_t>>(target_count, std::vector<uint32_t>(target_count, 0));		
-
-
-#ifdef HAVE_OPENMP
-#pragma omp parallel
-		{
-			// Allocate local matrix
-			std::vector<std::vector<uint32_t>> local_matrix(target_count, vector<uint32>(target_count, 0));
-// Test data
-#pragma omp for
-			for (uint32_t i = 0; i < data.size(); ++i)
-			{
-				// Get target value on the test data
-				attribute test_attr(*(data.begin(i) + target_tag));
-				// Classify the data
-				attribute class_attr(classifier_.classify(data.begin(i), data.end(i)).discrete_value);
-				// Accumulate confusion matrix
-				local_matrix[test_attr.discrete()][class_attr.discrete()]++;
-			}
-
-// Contribute to global matrix
-#pragma omp critical
-			{
-				for (uint32_t i = 0; i < _matrix.size(); ++i)
-					for (uint32_t j = 0; j < _matrix[i].size(); ++j)
-						_matrix[i][j] += local_matrix[i][j];
-			}
-		}
-#else
+		_matrix.resize(target_count, target_count);
 		// Test data
-		for (uint32_t i = 0; i < data.size(); ++i)
+		for (size_t i = 0; i < data.size(); ++i)
 		{
 			// Get target value on the test data
-			attribute test (data.getattribute(i ,target_tag));
-			//translate the attribute : 
-			attribute_value v =_attributes.getValue(target_tag, test); 
-			attribute test_attr(v);
-
+			attribute test_attr(data.getattribute(i, target_tag));
+			
+			 
 			// Classify the data
-			attribute res(classifier_.classify(data.begin(i) , data.end(i)));
 
-			attribute class_attr(_attributes.getValue(target_tag, res)); 
-			// Accumulate confusion matrix
-			if( class_attr.discrete() < _matrix[0].size() && test_attr.discrete() < _matrix.size()	)
-				_matrix[test_attr.discrete()][class_attr.discrete()]++;
+			attribute class_attr(
+				classifier_.classify(data.begin(i), data.end(i)));
+		 
+
+			//update TPR/FPR/TNR/FNR
+			if (test_attr.discrete() == class_attr.discrete())
+			{
+				if (test_attr.discrete() == 0)
+					++total_true_negative;
+				else
+					++total_true_positive;
+			}
 			else
 			{
-				std::cout << "Error: confusion matrix index out of range" << std::endl;
-				std::cout << "test_attr.discrete() = " << test_attr.discrete() << ", test ="<<test.to_string()<< std::endl;
-				std::cout << "class_attr.discrete() = " << class_attr.discrete() <<", class = "<<res.to_string()<< std::endl;
+				if (test_attr.discrete() == 0)
+					++total_false_positive;
+				else
+					++total_false_negative;
 			}	
-		}
-#endif
-	}
+				
+				//update confusion matrix and update roc_curve
+				++_matrix(test_attr.discrete(), class_attr.discrete());
+			
+			//update roc_curve
+			_roc_points.push_back(std::make_pair(total_false_positive / (total_false_positive + total_true_negative),
+												total_true_positive / (total_true_positive + total_false_negative)));
 
-	uint32_t
+		}
+
+	 
+	} // roc_curve	
+
+		
+	
+ 
+	// Confusion matrix
+
+	confusion_matrix::confusion_matrix(const dataset &data,
+									   const classifier &classifier_) 	{
+
+		// Target tag
+		attribute_tag target_tag = data.getattributes().get_target_tag();
+		// Get number of target attributes
+		size_t target_count = data.getattributes().getCount(target_tag);
+		//fill class values 
+		_class_values.resize(target_count);
+		for (size_t i = 0; i < target_count; ++i)
+			_class_values[i] = data.getattributes().getValue(target_tag,attribute( discrete_value(i) ));
+		
+
+		// Allocate matrix
+		//_matrix = mmap_vector<mmap_vector<size_t>>(
+		//			target_count, mmap_vector<size_t>(target_count, 0));
+ 		_matrix.resize(target_count,target_count);
+		_matrix.clear();//set 0
+		 
+		 
+		// Test data
+		for (size_t i = 0; i < data.size(); ++i)
+		{
+			// Get target value on the test data
+			attribute test_attr (data.getattribute(i ,target_tag));
+			//translate the attribute : _class_values
+		 	if(test_attr.discrete()>=_matrix.size1())
+			{
+			 
+					test_attr  = discrete_value(0);
+
+ 			}
+
+			attribute res(classifier_.classify(data.begin(i) , data.end(i)));
+			if ( res.discrete() >=_matrix.size2())
+				{
+					attribute test (data.getattributes().getValue(target_tag,res));
+					if(test.is_discrete()&&test.discrete()<_matrix.size2()) 
+						res = test;
+					else 
+						//translate empty to 0.
+						res  = discrete_value(0);
+						
+				}
+
+	 		//update confusion matrix
+			++_matrix(test_attr.discrete(), res.discrete());
+
+			//update roc_curve
+			
+		}// for
+ 	}// confusion_matrix
+
+	size_t
 	confusion_matrix::getError() const
 	{
-		uint32_t error(0);
-		for (uint32_t i = 0; i < _matrix.size(); ++i)
-			for (uint32_t j = 0; j < _matrix[i].size(); ++j)
+		size_t error = 0;
+		for (size_t i = 0; i < _matrix.size1(); ++i)
+			for (size_t j = 0; j < _matrix.size2(); ++j)
 				if (i != j)
-					error += _matrix[i][j];
+					error += _matrix(i, j);
 		return error;
 	}
-
+ 
 	std::ostream &
 	operator<<(std::ostream &out, const confusion_matrix &q)
 	{
-		attribute_tag target_tag = q._attributes.get_target_tag();
-		uint32_t target_count = q._attributes.getCount(target_tag);
-
+ 
+		size_t target_count =  q.getMatrixDim();
 		// Print header
 		out << std::setw(10) << "+";
-		for (uint32_t i = 0; i < target_count; ++i)
+		for (size_t i = 0; i < target_count; ++i)
 			out << std::setw(10)
-				<< "(" + q._attributes.getValue(target_tag, attribute(discrete_value(i))) + ")";
+				//<< "(" + q._attributes.getValue(target_tag, attribute(discrete_value(i))) + ")";
+				<< "(" + q._class_values[i] + ")";
 		out << std::endl;
 
 		// Print matrix
-		for (uint32_t i = 0; i < target_count; ++i)
+		for (size_t i = 0; i < target_count; ++i)
 		{
 			out << std::setw(10)
-				<< "(" + q._attributes.getValue(target_tag, attribute(discrete_value(i))) + ")";
-			for (uint32_t j = 0; j < target_count; ++j)
+				//<< "(" + q._attributes.getValue(target_tag, attribute(discrete_value(i))) + ")";
+				<< "(" + q._class_values[i] + ")";
+
+			for (size_t j = 0; j < target_count; ++j)
 				out << std::setw(10) << q._matrix[i][j];
 			out << std::endl;
 		}
-
 		return out;
 	}
 
@@ -18510,8 +18559,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	provallo::matrix<double> iso_classifier::transform_data() const
 	{
 		provallo::matrix<double> samples(_data.size() / _data.getattributes().getSize(), _data.getattributes().getSize());
-		for (uint32_t i = 0; i < _data.size(); ++i)
-			for (uint32_t j = 0; j < _data.getattributes().getSize(); ++j)
+		for (size_t i = 0; i < _data.size(); ++i)
+			for (size_t j = 0; j < _data.getattributes().getSize(); ++j)
 				samples(i, j) = _data.getattribute(i / _data.getattributes().getSize(), j).continous();
 		return samples;
 	}
@@ -18530,8 +18579,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		provallo::matrix<double> samples(data.size() / cnt, cnt);
 
-		for (uint32_t i = 0; i < data.size(); ++i)
-			for (uint32_t j = 0; j < classifier::_attributes_info.getSize(); j++)
+		for (size_t i = 0; i < data.size(); ++i)
+			for (size_t j = 0; j < classifier::_attributes_info.getSize(); j++)
 				samples(i / cnt, j) = data[(i * cnt) + j].continous();
 
 		size_t nclasses = classifier::_attributes_info.getCount(classifier::_attributes_info.get_target_tag());
@@ -18540,7 +18589,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		class_dist result(nclasses);
 		class_dist return_result(result_probabilities.size());
 
-		for (uint32_t i = 0; i < result_probabilities.size(); ++i)
+		for (size_t i = 0; i < result_probabilities.size(); ++i)
 		{
 			return_result.set(i, result_probabilities[i]);
 		}
@@ -18568,23 +18617,23 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// Get target tag
 		attribute_tag target_tag = classifier::_attributes_info.get_target_tag();
 		// Get number of target attributes
-		uint32_t target_count = classifier::_attributes_info.getCount(target_tag);
+		size_t target_count = classifier::_attributes_info.getCount(target_tag);
 		// Check number of target attributes
 		if (target_count != 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): Only one target attribute is allowed");
 
 		// Get number of attributes
-		uint32_t attributes_count = classifier::_attributes_info.getSize();
+		size_t attributes_count = classifier::_attributes_info.getSize();
 		// Check number of attributes
 		if (attributes_count < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one attribute is required");
 		// Get number of samples
-		uint32_t samples_count = _data.size();
+		size_t samples_count = _data.size();
 		// Check number of samples
 		if (samples_count < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one sample is required");
 		// Get number of samples
-		uint32_t samples_size = _data.size() / attributes_count;
+		size_t samples_size = _data.size() / attributes_count;
 		// Check number of samples
 		if (samples_size < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one sample size is required");
@@ -18592,7 +18641,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (samples_count < 2 * samples_size)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least two samples are required");
 		// Get number of trees
-		size_t trees_count = (uint32_t)(std::log((double)samples_count) / std::log(2.0));
+		size_t trees_count = (size_t)(std::log((double)samples_count) / std::log(2.0));
 		// Check number of trees
 		if (trees_count < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one tree is required");
@@ -18602,12 +18651,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (samples_per_tree < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one sample per tree is required");
 		// Get number of attributes per tree
-		size_t _attributes_per_tree = (uint32_t)(attributes_count / 2);
+		size_t _attributes_per_tree = (size_t)(attributes_count / 2);
 		// Check number of attributes per tree
 		if (_attributes_per_tree < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one attribute per tree is required");
 		// Get number of attributes per sample
-		size_t attributes_per_sample = (uint32_t)(samples_size / 2);
+		size_t attributes_per_sample = (size_t)(samples_size / 2);
 		// Check number of attributes per sample
 		if (attributes_per_sample < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one attribute per sample is required");
@@ -18651,7 +18700,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		print(out);
 		data.print(out);
 		out << std::string("Predictions: ") << std::endl;
-		for (uint32_t i = 0; i < predictions.size(); ++i)
+		for (size_t i = 0; i < predictions.size(); ++i)
 		{
 			out <<std::string("  ") << predictions[i].continous() << std::endl;
 		}	

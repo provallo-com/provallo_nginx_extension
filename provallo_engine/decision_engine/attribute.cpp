@@ -335,9 +335,25 @@ namespace provallo
       const attribute_information &right) : _tag_map(right._tag_map), _name_map(right._name_map), _target_pos(right._target_pos), _definition_map(right._definition_map.size()), _count(right._count), _type(right._type), _groups(right._groups)
   {
 
-    // Clone definitions
+    // copy definitions
     for (uint32_t i = 0; i < _definition_map.size(); ++i)
       _definition_map[i] = right._definition_map[i]->clone();
+    // copy groups
+    _groups = right._groups;
+    // copy name map
+    _name_map = right._name_map;
+    // copy tag map
+    _tag_map = right._tag_map;
+    // copy target position
+    _target_pos = right._target_pos;
+    // copy count
+    _count = right._count;
+    // copy type
+    _type = right._type;
+    
+
+    
+    
   }
 
   attribute_information::attribute_information(
@@ -380,37 +396,18 @@ namespace provallo
     if (!serial || serial == this)
       return;
       // Put information on buffer
-#if 0
-  for(uint32_t i = 0 ; i < _tag_map.size() ; ++i) {
-        serial->add_names(_tag_map[i]);
-        serial->add_count(_count[i]);
-        serial->add_types(_type[i]);
-        attribute_definition* definition_buffer = serial->add_definitions();
-        _definition_map[i]->serialize(definition_buffer);
-    }
-    serial->set_target(_target_pos);
-    // Serialize groups
-    attribute_groups* groups_buffer = serial->mutable_groups();
-    _groups.serialize(groups_buffer);
-
-#endif
+    serial->_tag_map = _tag_map;
+    serial->_name_map = _name_map;
+    serial->_target_pos = _target_pos;
+    serial->_count = _count;
+    serial->_type = _type;
+    serial->_groups = _groups;
+    // Copy definitions
+    for (uint32_t i = 0; i < _definition_map.size(); ++i)
+      serial->_definition_map[i] = _definition_map[i]->clone();
+        
   }
 
-  attribute_information::~attribute_information()
-  {
-    // Delete definitions
-
-    for (vector<attribute_definition *>::const_iterator it =
-             _definition_map.begin();
-         it != _definition_map.end(); ++it){
-          attribute_definition* def =  *it;
-          if(def!=nullptr )
-            delete def;
-      }
-
-    _definition_map.clear();
-    _groups.clear();
-  }
   attribute_information &attribute_information::operator=(const attribute_information &right)
   {
     if (this != &right)
@@ -440,6 +437,29 @@ namespace provallo
     }
     return *this;
   }
+  attribute_information &attribute_information::operator=(attribute_information &&right)
+  {
+    if (this != &right)
+    {
+      // Delete definitions
+      for (vector<attribute_definition *>::const_iterator it =
+               _definition_map.begin();
+           it != _definition_map.end(); ++it)
+        delete (*it);
+
+      // Clone definitions
+      _definition_map = right._definition_map;
+      right._definition_map.clear();
+
+      _tag_map = right._tag_map;
+      _name_map = right._name_map;
+      _target_pos = right._target_pos;
+      _count = right._count;
+      _type = right._type;
+      _groups = right._groups;
+    }
+    return *this;
+  } 
 
   std::atomic_uint64_t attribute::_id_counter(0);
 

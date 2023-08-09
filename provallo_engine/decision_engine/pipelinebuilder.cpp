@@ -1644,7 +1644,6 @@ namespace provallo
     {
       os << *stage << std::endl;
     }
-    
     return os;  
   }
 

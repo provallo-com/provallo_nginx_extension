@@ -32,7 +32,7 @@ namespace provallo
 
   public:
     class_dist () :
-	_sum (0.)
+	_sum (0.) //, _histogram ()
     {
     }
     class_dist (size_t nbins) :
@@ -50,11 +50,12 @@ namespace provallo
     class_dist (  class_dist&& other) : _histogram(std::move(other._histogram)),_sum(std::move(other._sum))
     {
     }
-
+    
     const class_dist& operator = (const class_dist& other)
     {
       this->_histogram=other._histogram;
       this->_sum=other._sum;
+
 
       return *this;
 
@@ -311,7 +312,11 @@ namespace provallo
     virtual
     ~class_dist ()
     {
+        //delete _histogram;
+        _histogram.clear();
+        _sum=0.0;
 
+        
     }
   };
 

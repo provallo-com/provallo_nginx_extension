@@ -622,17 +622,7 @@ namespace provallo
     {
       return 0;
     }
-
-    virtual ~continous_attribute()
-    {
-
-      static uint64_t count = 0;
-      count++;
-      if (count % 100000 == 0)
-      {
-        std::cout << "continous_attribute destructor called " << count << std::endl;
-      }
-    }
+     ~continous_attribute() = default;
   };
 
   // Ignored attributes
@@ -830,7 +820,7 @@ namespace provallo
     }
     attribute_groups(const attribute_groups *deserial);
     attribute_groups(const std::vector<std::vector<attribute_tag>> &groups,
-                     const std::vector<split_type> &split_type) : _groups(groups), _split_type(split_type), _type(groups.size(), CONTINUOUS)
+                     const std::vector<split_type> &split_type) : _groups(groups), _split_type(split_type), _type(groups.size(), CONTINUOUS )
     {
     }
     attribute_groups(const std::vector<std::vector<attribute_tag>> &groups,
@@ -847,7 +837,7 @@ namespace provallo
     attribute_groups(attribute_groups &other) : _groups(other._groups),
                                                 _split_type(other._split_type),
                                                 _type(other._type)
-    {
+    { 
     }
     attribute_groups(attribute_groups *other) : _groups(other->_groups),
                                                 _split_type(other->_split_type),
@@ -1005,7 +995,15 @@ namespace provallo
     attribute_information(
         const attribute_name &target_name,
         const std::vector<std::pair<attribute_name, std::string>> &attributes);
+    //copy constructor
     attribute_information(const attribute_information &right);
+    //move constructor
+    attribute_information(attribute_information &&right);
+    //copy assignment
+    attribute_information &operator=(const attribute_information &right);
+    //move assignment
+    attribute_information &operator=(attribute_information &&right);
+
     attribute_information(const attribute_information *deserial);
 
     // Get attribute by value
@@ -1030,6 +1028,22 @@ namespace provallo
       return _definition_map[tag]->getValue(value);
     }
 
+    std::vector<attribute> get_values (const attribute_tag &tag) const
+    {
+      std::vector<attribute> ret;
+      attribute_definition *def = _definition_map[tag];
+      if(def)
+      {
+        for(size_t n = 0;n<def->getCount();n++)
+        { 
+          attribute val(def->getValue( attribute(std::to_string(n)) ));
+          
+          ret.push_back(val);
+        }
+
+      }
+      return ret;
+    }
     // Get definition of an attribute ("right hand" side on the .names file)
     std::string
     getDefinition(const attribute_tag &tag) const;
@@ -1202,8 +1216,7 @@ namespace provallo
     void
     serialize(attribute_information *serial) const;
 
-    ~attribute_information();
-    // get value index
+     // get value index
     uint32_t getValueIndex(const attribute_tag &tag, const attribute &value) const
     {
       if ( tag < _definition_map.size())
@@ -1220,8 +1233,13 @@ namespace provallo
       return attribute(value).discrete();
     }
 
-    attribute_information &operator=(const attribute_information &right);
-
+    //destruct
+    ~attribute_information()
+    {
+      for (uint32_t i = 0; i < _definition_map.size(); ++i)
+        delete _definition_map[i];
+    } 
+    
   private:
   };
   // Print attributes information

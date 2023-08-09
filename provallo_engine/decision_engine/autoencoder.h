@@ -234,7 +234,7 @@ namespace provallo
         void update();
         
     public:
-
+        //constructor
         auto_encoder(size_t inputDim, size_t hiddenDim, size_t outputDim);
         virtual ~auto_encoder(); 
         T sigmoid(T x);
@@ -1424,52 +1424,33 @@ namespace provallo
         weight1Update = new T[inputDim * hiddenDim];
         weight2Update = new T[hiddenDim * outputDim];
         bias1Update = new T[hiddenDim];
-
         bias2Update = new T[outputDim];
-
-
         weight1Decay = new T[inputDim * hiddenDim];
         weight2Decay = new T[hiddenDim * outputDim];
         bias1Decay = new T[hiddenDim];
         bias2Decay = new T[outputDim];
-
         weight1Sparsity = new T[inputDim * hiddenDim];
         weight2Sparsity = new T[hiddenDim * outputDim];
-
         bias1Sparsity = new T[hiddenDim];
         bias2Sparsity = new T[outputDim];
-
-
         weight1SparsityHat = new T[inputDim * hiddenDim];
         weight2SparsityHat = new T[hiddenDim * outputDim];
-
         bias1SparsityHat = new T[hiddenDim];
         bias2SparsityHat = new T[outputDim];
-
-
         weight1SparsityGrad = new T[inputDim * hiddenDim];
         weight2SparsityGrad = new T[hiddenDim * outputDim];
-
         bias1SparsityGrad = new T[hiddenDim];
         bias2SparsityGrad = new T[outputDim];
-
-
         weight1SparsityGradHat = new T[inputDim * hiddenDim];
         weight2SparsityGradHat = new T[hiddenDim * outputDim];
-
         bias1SparsityGradHat = new T[hiddenDim];
         bias2SparsityGradHat = new T[outputDim];
-
-
         weight1Inc = new T[inputDim * hiddenDim];
         weight2Inc = new T[hiddenDim * outputDim];
-
         weight1GradPrev = new T[inputDim * hiddenDim];
         weight2GradPrev = new T[hiddenDim * outputDim];
-        
         bias1GradPrev = new T[hiddenDim];
         bias2GradPrev = new T[outputDim];
-
         bias1Inc = new T[hiddenDim];
         bias2Inc = new T[outputDim];
 
@@ -1478,18 +1459,11 @@ namespace provallo
 
         bias1Prev = new T[hiddenDim];
         bias2Prev = new T[outputDim];
-
-
-
-
         weight1GradPrevPrev = new T[inputDim * hiddenDim];
         weight2GradPrevPrev = new T[hiddenDim * outputDim];
-
         bias1GradPrevPrev = new T[hiddenDim];
         bias2GradPrevPrev = new T[outputDim];
-
-        //initialize the weights
-
+        
 
         initializeWeight();
         initializeBias();

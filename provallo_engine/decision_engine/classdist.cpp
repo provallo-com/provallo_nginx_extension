@@ -26,11 +26,11 @@ namespace provallo
     out << i << ":" << 100 * q.percentage (i);
     return out;
   }
-  
+
   attribute
   class_dist::mode () const
   {
- 
+      
       discrete_value distance  = (discrete_value)std::distance (_histogram.begin(),  std::max_element (_histogram.begin (),_histogram.end () ));
       return attribute(distance);
   }

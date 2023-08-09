@@ -99,7 +99,7 @@ namespace provallo
   protected:
     clock_t last_sort;
     // Information about the attributes on this data set
-    attribute_information _attributes_info;
+     attribute_information _attributes_info;
     // Holds sorted indices of each attribute (useful when dealing with
     // numeric attributes)
     
@@ -905,7 +905,7 @@ namespace provallo
     }
 
     dataset(dataset &&move) : last_sort(std::move(move.last_sort)),
-                              _attributes_info(std::move(move._attributes_info)),
+                              _attributes_info(move._attributes_info),//same reference
                               _sorted_indices(std::move(move._sorted_indices)),
                               _distribution(std::move(move._distribution)), _dirty(move._dirty)
 
@@ -920,7 +920,7 @@ namespace provallo
     {
       if (this != &ref)
       {
-        _attributes_info = ref._attributes_info;
+        _attributes_info  = ref._attributes_info;
         _sorted_indices = ref._sorted_indices;
         _distribution = ref._distribution;
         _dirty = ref._dirty;
@@ -988,8 +988,7 @@ namespace provallo
     {
       return _attributes_info;
     }
-
-    // Number of attributes
+     // Number of attributes
     uint32_t
     getattributesNumber() const
     {
@@ -1003,6 +1002,20 @@ namespace provallo
       return _distribution;
     }
 
+    std::vector<attribute_tag> get_values(const attribute_tag &tag)const
+    {
+        auto value_strings = _attributes_info.get_values(tag);
+        std::vector<attribute_tag> ret;
+        for(auto &v : value_strings)
+        {
+
+            ret.push_back(attribute(v).discrete());
+
+        }
+        return ret;
+
+    }
+  
     // Get subset of samples in a branch
     dataset *
     subset(const split_method &split_method, uint32_t nbranch) const;
@@ -1151,8 +1164,8 @@ namespace provallo
     std::vector<filter_function> _filters;
 
   protected:
-    static std::atomic_int id_counter;
-    static std::atomic_int dest_counter;
+    static std::atomic_uint64_t id_counter;
+    static std::atomic_uint64_t dest_counter;
 
     size_t _id;
   };
