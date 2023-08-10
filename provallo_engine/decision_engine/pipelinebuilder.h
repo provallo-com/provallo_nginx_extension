@@ -1598,13 +1598,228 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::function< std::vector<real_t> (matrix<real_t> ) > feature_extraction_method  ;
 
   };
+
+  //feature extraction methods :
+
+  template <typename vec_src,typename real_>
+  class feature_transformer;
+  template <typename vec_src,typename real_>
+  class feature_selector;
+  template <typename vec_src,typename real_>
+  class feature_aggregator ;
+  template <typename vec_src,typename real_>
+  class feature_normalizer ;
+  template <typename vec_src,typename real_>
+  class feature_weighter;
+  template <typename vec_src,typename real_>
+  class feature_binarizer ;
+  template <typename vec_src,typename real_>
+  class feature_filter ;
+  template <typename vec_src,typename real_>
+  class feature_reducer ;
   
+
+
+  //end of feature_extraction_paramters class.
+  template <typename vec_src,typename real_>
+  class feature_extractor 
+  {
+      //feature extractor is a class that extracts features from a vector of real_t.
+      //it is used to extract features from a dataset.
+
+    public:
+      feature_extractor() {}
+      virtual ~feature_extractor() {}
+      virtual std::vector<real_> extract_features(const vec_src& data) const = 0;
+      virtual size_t get_features_length() const = 0;
+      virtual void set_features_length(size_t length) = 0;
+      virtual void set_feature_extraction_method(std::function< std::vector<real_>  (matrix<real_> ) > fcp) = 0;
+      virtual std::function< std::vector<real_>  (matrix<real_> ) > get_feature_extraction_method() const = 0;
+      virtual void set_parameters(const std::string& parameters) = 0;
+      virtual std::string get_parameters() const = 0;
+      virtual void set_feature_extraction_method_id(size_t id) = 0;
+      virtual size_t get_feature_extraction_method_id() const = 0;
+      virtual void set_feature_extraction_method_name(const std::string& name) = 0;
+      virtual std::string get_feature_extraction_method_name() const = 0;
+      virtual void set_feature_extraction_method_parameters(const std::string& parameters) = 0;
+      //extract features from a dataset: 
+      virtual matrix<real_> extract_features(const matrix<real_>& data) const = 0;
+    protected:
+    feature_extraction_paramters _feature_extraction_paramters;
+
+      //
+  };
+  //implement verctorized concrete feature extractors here,usa pca as an example.
+  class pca_feature_extractor  : public feature_extractor<std::string,real_t> 
+  {
+    public:
+      pca_feature_extractor() {}
+      virtual ~pca_feature_extractor() {}
+      virtual std::vector<real_t> extract_features(const std::string& data) const ;
+      virtual size_t get_features_length() const ;
+      virtual void set_features_length(size_t length) ;
+      virtual void set_feature_extraction_method(std::function< std::vector<real_t>  (matrix<real_t> ) > fcp) ;
+      virtual std::function< std::vector<real_t>  (matrix<real_t> ) > get_feature_extraction_method() const ;
+      virtual void set_parameters(const std::string& parameters) ;
+      virtual std::string get_parameters() const ;
+      virtual void set_feature_extraction_method_id(size_t id) ;
+      virtual size_t get_feature_extraction_method_id() const ;
+      virtual void set_feature_extraction_method_name(const std::string& name) ;
+      virtual std::string get_feature_extraction_method_name() const ;
+      virtual void set_feature_extraction_method_parameters(const std::string& parameters) ;
+      //extract features from a dataset: 
+      virtual matrix<real_t> extract_features(const matrix<real_t>& data) const ;
+
+  };
+  class independent_component_analysis_feature_extractor : public feature_extractor<std::string,real_t>
+  {
+    public:
+      independent_component_analysis_feature_extractor() {}
+      virtual ~independent_component_analysis_feature_extractor() {}
+      virtual std::vector<real_t> extract_features(const std::string& data) const ;
+      virtual size_t get_features_length() const ;
+      virtual void set_features_length(size_t length) ;
+      virtual void set_feature_extraction_method(std::function< std::vector<real_t>  (matrix<real_t> ) > fcp) ;
+      virtual std::function< std::vector<real_t>  (matrix<real_t> ) > get_feature_extraction_method() const ;
+      virtual void set_parameters(const std::string& parameters) ;
+      virtual std::string get_parameters() const ;
+      virtual void set_feature_extraction_method_id(size_t id) ;
+      virtual size_t get_feature_extraction_method_id() const ;
+      virtual void set_feature_extraction_method_name(const std::string& name) ;
+      virtual std::string get_feature_extraction_method_name() const ;
+      virtual void set_feature_extraction_method_parameters(const std::string& parameters) ;
+      //extract features from a dataset: 
+      virtual matrix<real_t> extract_features(const matrix<real_t>& data) const ;
+
+  };
+  class lda_feature_extractor : public feature_extractor<std::string,real_t>
+  {
+    public:
+      lda_feature_extractor() {}
+      virtual ~lda_feature_extractor() {}
+      virtual std::vector<real_t> extract_features(const std::string& data) const ;
+      virtual size_t get_features_length() const ;
+      virtual void set_features_length(size_t length) ;
+      virtual void set_feature_extraction_method(std::function< std::vector<real_t>  (matrix<real_t> ) > fcp) ;
+      virtual std::function< std::vector<real_t>  (matrix<real_t> ) > get_feature_extraction_method() const ;
+      virtual void set_parameters(const std::string& parameters) ;
+      virtual std::string get_parameters() const ;
+      virtual void set_feature_extraction_method_id(size_t id) ;
+      virtual size_t get_feature_extraction_method_id() const ;
+      virtual void set_feature_extraction_method_name(const std::string& name) ;
+      virtual std::string get_feature_extraction_method_name() const ;
+      virtual void set_feature_extraction_method_parameters(const std::string& parameters) ;
+      //extract features from a dataset: 
+      virtual matrix<real_t> extract_features(const matrix<real_t>& data) const ;
+
+  };
+  template<class vec_src,class real_>
+  class feature_transformer{
+      //transform features from a dataset:
+      public:
+      virtual matrix<real_> transform_features(const matrix<real_>& data) const = 0;
+      //transform features from a dataset:
+      virtual matrix<real_> transform_features(const vec_src& data) const = 0;
+      virtual std::string get_feature_transformation_method_name() const = 0;
+      
+  };
+  //feature transformers :
+
+  template <typename vec_src,typename real_>
+  class feature_engineering 
+  {
+     public:
+    feature_engineering():_extractor(nullptr),_transformer(nullptr),
+    _selector(nullptr),_aggregator(nullptr),_weighter(nullptr),
+    _binarizer(nullptr),_filter(nullptr),_reducer(nullptr)
+    {}
+    virtual ~feature_engineering() {}
+
+    void set_extractor(  feature_extractor<vec_src,real_>* extractor) { _extractor = extractor; }
+    void set_transformer(  feature_transformer<vec_src,real_>* transformer) { _transformer = transformer; }
+    void set_selector(  feature_selector<vec_src,real_>*selector) { _selector = selector; }
+    void set_aggregator(  feature_aggregator<vec_src,real_>* aggregator) { _aggregator = aggregator; }
+    void set_normalizer(  feature_normalizer<vec_src,real_>* normalizer) { _normalizer = normalizer; }
+    void set_weighter(  feature_weighter<vec_src,real_>* weighter) { _weighter = weighter; }
+    void set_binarizer(  feature_binarizer<vec_src,real_>* binarizer) { _binarizer = binarizer; }
+    void set_filter(  feature_filter<vec_src,real_>*filter) { _filter = filter; }
+    void set_reducer(  feature_reducer<vec_src,real_>* reducer) { _reducer = reducer; }
+    feature_extractor<vec_src,real_>* get_extractor() { return _extractor; }
+    feature_transformer<vec_src,real_>* get_transformer() { return _transformer; }
+    feature_selector<vec_src,real_>* get_selector() { return _selector; }
+    feature_aggregator<vec_src,real_>* get_aggregator() { return _aggregator; }
+    feature_normalizer<vec_src,real_>* get_normalizer() { return _normalizer; }
+    feature_weighter<vec_src,real_>*  get_weighter() { return _weighter; }
+    feature_binarizer<vec_src,real_>*  get_binarizer() { return _binarizer; }
+    feature_filter<vec_src,real_>*  get_filter() { return _filter; }
+    feature_reducer<vec_src,real_>*  get_reducer() { return _reducer; }
+    void extract(const vec_src& src, matrix<real_>& dst) { _extractor!=nullptr? _extractor.extract(src, dst) :nops++; }
+    void transform(const vec_src& src, matrix<real_>& dst) {_transformer!=nullptr?  _transformer.transform(src, dst):nops++; }
+    void select(const vec_src& src, matrix<real_>& dst) { _selector!=nullptr? _selector.select(src, dst):nops++; }
+    void aggregate(const vec_src& src, matrix<real_>& dst) { _aggregator!=nullptr?_aggregator.aggregate(src, dst):nops++; }
+    void normalize(const vec_src& src, matrix<real_>& dst) { _normalizer!=nullptr? _normalizer.normalize(src, dst):nops++; }
+    void weight(const vec_src& src, matrix<real_>& dst) { _weighter!=nullptr? _weighter.weight(src, dst):nops++; }
+    void binarize(const vec_src& src, matrix<real_>& dst) { _binarizer!=nullptr? _binarizer.binarize(src, dst):nops++; }
+    void filter(const vec_src& src, matrix<real_>& dst) {  _filter!=nullptr?_filter.filter(src, dst):nops++; }
+    void reduce(const vec_src& src, matrix<real_>& dst) { _reducer!=nullptr?_reducer.reduce(src, dst):nops++; }
+    
+    void extract(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _extractor.extract(src, dst, params) ; }
+    void transform(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _transformer.transform(src, dst, params); }
+    void select(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _selector.select(src, dst, params); }
+
+    void aggregate(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _aggregator.aggregate(src, dst, params); }
+    void normalize(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _normalizer.normalize(src, dst, params); }
+    void weight(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _weighter.weight(src, dst, params); }
+    void binarize(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _binarizer.binarize(src, dst, params); }
+    void filter(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _filter.filter(src, dst, params); }
+    void reduce(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _reducer.reduce(src, dst, params); }
+    void extract(const vec_src& src, matrix<real_>& dst, const std::string& params) { _extractor.extract(src, dst, params); }
+    void transform(const vec_src& src, matrix<real_>& dst, const std::string& params) { _transformer.transform(src, dst, params); }
+    void select(const vec_src& src, matrix<real_>& dst, const std::string& params) { _selector.select(src, dst, params); }
+
+    void aggregate(const vec_src& src, matrix<real_>& dst, const std::string& params) { _aggregator.aggregate(src, dst, params); }
+    void normalize(const vec_src& src, matrix<real_>& dst, const std::string& params) { _normalizer.normalize(src, dst, params); }
+
+    void weight(const vec_src& src, matrix<real_>& dst, const std::string& params) { _weighter.weight(src, dst, params); }
+    void binarize(const vec_src& src, matrix<real_>& dst, const std::string& params) { _binarizer.binarize(src, dst, params); }
+    void filter(const vec_src& src, matrix<real_>& dst, const std::string& params) { _filter.filter(src, dst, params); }
+    void reduce(const vec_src& src, matrix<real_>& dst, const std::string& params) { _reducer.reduce(src, dst, params); }
+    void extract(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _extractor.extract(src, dst, params); }
+    void transform(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _transformer.transform(src, dst, params); }
+
+    void select(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _selector.select(src, dst, params); }
+    void aggregate(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _aggregator.aggregate(src, dst, params); }
+    void normalize(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _normalizer.normalize(src, dst, params); }
+    void weight(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _weighter.weight(src, dst, params); }
+    void binarize(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _binarizer.binarize(src, dst, params); }
+    void filter(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _filter.filter(src, dst, params); }
+    void reduce(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _reducer.reduce(src, dst, params); }
+    private :
+    feature_extractor<vec_src,real_>* _extractor;
+    feature_transformer<vec_src,real_>* _transformer;
+    feature_selector<vec_src,real_>* _selector;
+    feature_aggregator<vec_src,real_>* _aggregator;
+    feature_normalizer<vec_src,real_>* _normalizer;
+    feature_weighter<vec_src,real_>* _weighter;
+    feature_binarizer<vec_src,real_>* _binarizer;
+    feature_filter<vec_src,real_>* _filter;
+    feature_reducer<vec_src,real_>* _reducer;
+    //feature_map with indexes to the matrix
+    std::map<std::string,std::vector<std::pair<size_t,size_t>> > _feature_map;
+    matrix<real_> _data;
+
+    //optional:
+    std::set<std::string> _feature_names;
+    std::map<std::pair<std::string,std::string>,std::string> _feature_names_map;
+    size_t nops = 0;
+  };
   //end of feature_extraction_paramters class.
   class feature_stage : public stage_descriptor
   {
     private :
 
     feature_extraction_paramters _extraction_functors;
+    feature_engineering<std::string,real_t> _engineering_functors;
 
 
     template <typename T>
@@ -1839,8 +2054,33 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
      static vectorizer_stage* build( );
          virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data);
+    
+    vectorizer_type type;
+    size_t ngram; //
+    size_t min_df;//
+    size_t max_df;//
+    size_t max_features;//
+    size_t max_norm;//
+    size_t norm;//
+    size_t binary;//
+    size_t use_idf;//
+    size_t smooth_idf;//
+    size_t sublinear_tf;//
 
+    std::vector<vectorizer<std::string, real_t> *> vectorizers;
+    std::vector<feature_extractor<std::string, real_t> *> extractors;
+    std::vector<feature_transformer<std::string, real_t> *> transformers;
+    std::vector<feature_selector<std::string, real_t> *> selectors;
+    std::vector<feature_aggregator<std::string, real_t> *> aggregators;
+    std::vector<feature_normalizer<std::string, real_t> *> normalizers;
+    std::vector<feature_weighter<std::string, real_t> *> weighters;
+    std::vector<feature_binarizer<std::string, real_t> *> binarizers;
+    std::vector<feature_filter<std::string, real_t> *> filters;
+    std::vector<feature_reducer<std::string, real_t> *> reducers;
 
+    
+    
+ 
   };
   class encoder_stage : public stage_descriptor
   {
@@ -2814,7 +3054,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
     real_t transfer_accuracy_markedness(const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn); 
     real_t transfer_accuracy_gmean(const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn);
-    
+
     };  
   
   class pipeline

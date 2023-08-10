@@ -704,6 +704,64 @@ bool test_vectorizers ( provallo::dataset& vectorize_set   )
 
 }
 
+bool fit_fuzzsb_folder ( const std::string& fit_fuzzsb_folder)
+{
+  //get the files in the folder
+  //iterate over them and 
+  // 1) load the string file 
+  // 2) vectorize it
+  // 3) train autoencoder to select the best features
+  // 4) create a matrix of the best features and save it to disk
+  // 5) create a dataset from the matrix and save it to disk
+  // 6) create a classifier and train it
+  // 7) save the classifier to disk
+  // 8) test the classifier
+  // 9) save the results to disk
+  // 10) repeat for all the files in the folder
+  // 11) save the results to disk
+  // 12) return true if all the tests are passed, false otherwise
+
+  bool ret = false;
+  std::vector<std::string> files = getFilesInFolder(fit_fuzzsb_folder);
+  std::vector<std::string> string_files;
+  for (auto file : files)
+  {
+    if (file.find(".txt") != std::string::npos)
+    {
+      string_files.push_back(file);
+    }
+  } 
+  //iterate over the txt files,
+  // load them, vectorize them, train autoencoder,
+  // create matrix, create dataset, create classifier, train classifier, test classifier, save results to disk 
+  // repeat for all the files in the folder
+  //autoencoder has 2 outputs, one for the features, one for the classes 
+  //autoencoder has multiple inputs for the features, one input for the classes
+  //the features are used to train the classifier, the classes are used to test the classifier
+  //the classifier is trained on the features, and tested on the classes
+  //the results are saved to disk
+  //the results are compared to the expected results
+  //the results are saved to disk
+
+  //load or generate a pipeline: 
+  // 1) load the pipeline from disk
+
+   provallo::meta_builder meta("fuzzdb_meta",fit_fuzzsb_folder+"/fuzzdb_meta.json");
+   provallo::pipeline* new_pipeline =   meta.generate_pipeline();
+    if(new_pipeline)
+    {
+      std::cout << "Pipeline loaded from disk" << std::endl;
+    }
+    else
+    {
+      std::cout << "Pipeline not found, creating a new one" << std::endl;
+      new_pipeline = new provallo::pipeline();
+    }
+    // 2) iterate over the files in the folder
+    
+  return ret;
+
+}
  
 
 
