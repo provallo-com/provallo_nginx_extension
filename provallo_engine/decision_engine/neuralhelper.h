@@ -16,6 +16,8 @@
 #include "../util/csv_file.h"
 #include "../third_party/cifar10.h"
 #include "matrix.h"
+#include "utils.h" //real_t type
+
 
 namespace provallo
 {
@@ -53,11 +55,7 @@ namespace provallo
     using real_type = float;
 
     using type_matrix = matrix<real_type>;
-
-
-
-
-
+ 
 
     //default constructor
     neuron_layer () = default;
@@ -913,14 +911,14 @@ namespace provallo
           float runTestDis(int limit = -1, bool returnErrorRate = 1);
 
           /// Effectue une approximation du score des réseaux
-          float gameScore(int nbImages);
+          //[deprecated] float gameScore(int nbImages);
 
           /// Génère une image à partir d'un input
           /**
            * Effectue un process de l'input par le Generateur
            * @param input un vecteur colonne, généralement, du bruit blanc
            */
-          matrix<float> genProcessing(matrix<float> input);
+          //[deprecated]          matrix<float> genProcessing(matrix<float> input);
 
   	private:
   		/// Génère un minibatch à partir d'un batch

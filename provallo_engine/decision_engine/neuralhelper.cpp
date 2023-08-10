@@ -877,7 +877,7 @@ namespace provallo
         if (!mustProcessData)
             throw std::logic_error("Not implemented yet");
 
-        for (size_t index{0}; index < mErrorStats.size(); ++index)
+        for (size_t index=0; index < mErrorStats.size(); ++index)
         {
             error_processor::error_statistics data(mErrorStats[index].processData());
 
@@ -887,6 +887,7 @@ namespace provallo
 
     void source_processor::exportImage(const matrix<float> &image, size_t teachIndex, size_t sizeSide)
     {
+
         mCSVImg << "#" << teachIndex << endrow;
         for (size_t j(0); j < sizeSide * sizeSide; j++)
         {

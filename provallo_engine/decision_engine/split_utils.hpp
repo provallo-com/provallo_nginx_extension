@@ -1651,7 +1651,36 @@ namespace provallo
 	
 
 	};
+	struct ternary_split : public continous_base
+	{
 
+		ternary_split() = default;
+		ternary_split(const ternary_split &other) = default;
+		ternary_split(ternary_split &&other) = default;
+
+		// Accept or reject splitting
+		bool
+		checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
+					   uint32_t cut_point, const attribute_tag &tag) const
+		{
+			// Always return true
+			if (   begin==end)
+				return false;	
+			if (cut_point == end-1)	
+				return true;	
+			if(data.get_target_tag()==tag )	
+				return true;
+			
+			return true;
+		}
+		
+		split_type
+		get_type() const
+		{
+			return CONE_TERNARY;
+		}
+		//serialize and deserialize
+	};
 	// MultiInterval splitting continuous attribute
 	struct multi_interval_split : public continous_base
 	{

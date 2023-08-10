@@ -1918,7 +1918,7 @@ namespace provallo
     {
         
         feedforward(input, output, size);
-        
+
         //done
     }
 
@@ -1927,12 +1927,16 @@ namespace provallo
     {
         T* inputarray  =  new T[input.cols()];
         T* outputarray =  new T[outputDim];
+        
         if ( inputarray==nullptr || outputarray==nullptr)
         {
             std::cout << "error in test matrix" << std::endl;
             return;
         }
 
+        bzero(outputarray,sizeof(T)*outputDim);
+        bzero(inputarray,sizeof(T)*input.cols());
+        
         for (size_t i = 0; i < input.rows(); i++)
         {
             for (size_t j = 0; j < input.cols(); j++)
@@ -3579,8 +3583,8 @@ namespace provallo
         }
     };
 
-    //autoencoder<>::save_as_pt - save autoencoder as tensorflow pt file
-    
+    //autoencoder<>::save_as_pt - save autoencoder as tensorflow pre trained file
+    //
     template <typename T, typename real_x >
     void auto_encoder<T,real_x>::save_as_pt ( const std::string filename ) {
 
@@ -3596,11 +3600,8 @@ namespace provallo
         out.write((char*)bias1, sizeof(real_x) * hiddenDim);
         out.write((char*)bias2, sizeof(real_x) * outputDim);
         out.close();
-
-        
-
-
     }
+
     //convert autoencoder json to tensorflow pt file:
     //src: autoencoder json file
     //dst: tensorflow pt file
@@ -3617,7 +3618,7 @@ namespace provallo
         }
     };
 
-
+    
 
 } // namespace provallo
 

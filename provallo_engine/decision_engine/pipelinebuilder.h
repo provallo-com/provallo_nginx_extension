@@ -41,7 +41,6 @@ namespace provallo
   {
   protected:
     
-
   public:
     estimator() = default;
     estimator(const estimator<real_x> &other){ UNDEF_REFERENCE(other);UNDEF_REFERENCE2(other);}
@@ -60,6 +59,7 @@ namespace provallo
   template< typename real_x>
    class transform_estimator : public estimator <real_x>
    {
+    
     matrix<real_x> _data;
 
    public:
@@ -106,6 +106,9 @@ return std::vector<real_t>();
     std::vector<real_x> _transformed_data;
     matrix<real_x> _fitted_data;
     std::vector<real_x> _predicted_data;
+    //avoid incomplete type
+    template <typename vector_src2, typename real_x2> friend class vectorizer;
+
     public:
     vectorizer(vectorizer_type type):transform_estimator<real_x>()  
     {
@@ -181,21 +184,15 @@ return std::vector<real_t>();
     virtual  std::vector<real_x> fit( const std::vector<vector_src>& data_){DEFAULT_IMPL(data_);}
     virtual  std::vector<real_x> predict(const std::vector<vector_src>& data_){DEFAULT_IMPL(data_);}
     virtual  std::vector<real_x> transform(const std::vector<vector_src>& data_){DEFAULT_IMPL(data_);}
-    virtual  std::vector<real_x> fit_transform(const std::vector<vector_src>& data_){ DEFAULT_IMPL(data_);}
-
-
-
+    virtual  std::vector<real_x> fit_transform(const std::vector<vector_src>& data_){ DEFAULT_IMPL(data_);} 
     //inverse:
     virtual  std::vector<real_x> fit( const provallo::matrix<real_x>&data_ ){DEFAULT_IMPL(data_);}
     virtual  std::vector<real_x> predict(const provallo::matrix<real_x>& data_){ DEFAULT_IMPL(data_);}
-
     virtual  std::vector<real_x> transform(const provallo::matrix<real_x>& data_){ DEFAULT_IMPL(data_);}
-    virtual ~vectorizer(){
-      
-    }
-
-  };
-
+    
+    virtual ~vectorizer() = default;
+  };//end of vectorizer
+//helper class for tfidf vectorizer
 class tfidf 
 {
   protected:
@@ -241,7 +238,7 @@ class tfidf
   //transform
     std::vector<real_t> transform(const std::string& document);
 
-//transform
+  //transform
     std::vector<std::vector<real_t> >  transform(const std::vector<std::string>& document);
     
 
@@ -269,21 +266,17 @@ class tfidf
 
   //get_tf_idf_matrix
     std::vector<std::vector<real_t>> get_tf_idf_matrix();
-
-  
-
-  
+ 
 };
 
 class tfidf_vectorizer : public vectorizer<std::string, real_t>
 {
   protected:
   class tfidf _tfidf;
-
+  typedef vectorizer<std::string, real_t> base_t;
   public:
   
   tfidf_vectorizer();
-
   tfidf_vectorizer(const tfidf_vectorizer &other);
   tfidf_vectorizer( const std::vector<std::string> &corpus );
   tfidf_vectorizer(tfidf_vectorizer &&other); //move constructor
@@ -340,7 +333,7 @@ class standard_scaler_vectorizer : public vectorizer<std::string, real_t>
   standard_scaler_vectorizer&
       operator= (standard_scaler_vectorizer &&other);
   
-
+  //
   virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
   virtual  std::vector<real_t> predict(const std::vector<std::string>&documents );
   virtual  std::vector<real_t> transform(const std::vector<std::string>&documents);
@@ -421,12 +414,72 @@ class normalizer_vectorizer : public vectorizer<std::string, real_t>
 
  
 };
+//pca helper class
+class bag_of_words 
+{
+  //bag of words
+  public:
+  bag_of_words();
+  //initialize with a vocabulary
+  explicit bag_of_words(const std::vector<std::string>&);
+  //copy constructor
+  bag_of_words(const bag_of_words &other);
+  bag_of_words(bag_of_words &&other); //move constructor
+  bag_of_words& operator= (const bag_of_words &other);
+  bag_of_words&
+      operator= (bag_of_words &&other);
+  //fit
+    std::vector<real_t> fit(const std::string &doc);
+    std::vector<std::vector<real_t>> fit(const std::vector<std::string>&documents);
+    std::vector<std::vector<real_t>> fit(const provallo::matrix<real_t>&);
+  //transform
+    std::vector<real_t> transform(const std::string&doc);
+
+    std::vector<std::vector<real_t>> transform(const std::vector<std::string>&documents);
+    std::vector<std::vector<real_t>> transform(const provallo::matrix<real_t>&);
+  //fit_transform
+    std::vector<std::vector<real_t>> fit_transform(const std::vector<std::string>&documents);
+    std::vector<std::vector<real_t>> fit_transform(const provallo::matrix<real_t>&);
+  //inverse_transform
+  //virtual std::string inverse_transform( real_t bow_value);
+    std::string inverse_transform(const std::vector<real_t>&); 
+    std::vector<std::string> inverse_transform(const std::vector<std::vector<real_t>>&);
+    std::vector<std::string> inverse_transform(const provallo::matrix<real_t>&);
+  //predict
+    std::vector<std::vector<real_t>> predict(const std::vector<std::string>&documents);
+    std::vector<real_t> predict(const std::string& doc);
+    std::vector<std::vector<real_t>> predict(const provallo::matrix<real_t>&);
+     ~bag_of_words()= default;
+  protected:
+  //bag of words
+  std::vector<std::string> _vocabulary;
+  std::vector<real_t> _bow;
+  std::vector<std::vector<real_t>> _bow_transformed;
+  std::vector<std::vector<real_t>> _bow_transformed_inverse;
+
+  matrix<real_t> _bow_matrix;
+
+
+  //add document and process document helper functions 
+  virtual void add_document(const std::string&);
+  virtual void process_document(const std::string&);
+
+
+
+};
+
+
 
 class principal_component_analysis
 {
-
+  
   public:
   principal_component_analysis();
+  explicit principal_component_analysis(const std::vector<std::string>&);
+  explicit principal_component_analysis(const std::vector<std::vector<real_t>>&);
+  explicit principal_component_analysis(const provallo::matrix<real_t>&);
+  principal_component_analysis(const principal_component_analysis &other);
+
   principal_component_analysis(principal_component_analysis &&other); //move constructor
   principal_component_analysis& operator= (const principal_component_analysis &other);
   principal_component_analysis&
@@ -436,7 +489,25 @@ class principal_component_analysis
   virtual std::vector<real_t> fit( const provallo::matrix<real_t>& );
   virtual std::vector<real_t> predict(const provallo::matrix<real_t>& );
   virtual std::vector<real_t> transform(const provallo::matrix<real_t>& );
+
+ //strings return fit({tokens:string1})
+
+  virtual std::vector<real_t> fit( const std::string& );
+  virtual std::vector<real_t> predict( const std::string& );
+  virtual std::vector<real_t> transform( const std::string& );
+
+// 'document' return fit({tokens:s1,tokens:s2,...sN})
   
+  virtual std::vector<std::vector<real_t>> fit( const std::vector<std::string>& );
+  virtual std::vector<std::vector<real_t>> predict(const std::vector<std::string>& );
+  virtual std::vector<std::vector<real_t>> transform(const std::vector<std::string>& );
+
+  //documents return fit{documents1,documents2,...documentsN}
+
+  virtual std::vector<std::vector<real_t>>  fit( const std::vector<std::vector<std::string>>& );
+  virtual std::vector<std::vector<real_t>>  predict(const std::vector<std::vector<std::string>>& );
+  virtual std::vector<std::vector<real_t>>  transform(const std::vector<std::vector<std::string>>&);
+
   void QRDecomposition(const matrix<real_t>& mtx,matrix<real_t>& Q,  matrix<real_t>& R); 
 
   std::vector<real_t> mul ( const matrix<real_t>& mtx, const std::vector<real_t>& vec)
@@ -481,29 +552,33 @@ class principal_component_analysis
 
           
 
-          //scale
-          real_t scale = elim(col,col);
-          for ( size_t ix = 0;ix < elim.rows();ix++)
-          {
-              elim.element(col,ix) /= scale;
-          }
-          for ( size_t iy=0;iy < elim.rows();iy++)
-          {
-              if ( iy != col)
-              {
-                  real_t scale = elim(iy,col);
-                  if(scale==0.0)continue;
+    //scale
+    real_t scale = elim(col,col);
+    for ( size_t ix = 0;ix < elim.rows();ix++)
+    {
+        elim.element(col,ix) /= scale;
+    }
+    for ( size_t iy=0;iy < elim.rows();iy++)
+    {
+        if ( iy != col)
+        {
+            real_t scale = elim(iy,col);
+            if(scale==0.0)continue;
 
-                  for ( size_t ix = 0;ix < elim.rows();ix++)
-                  {
-                      elim.element(iy,ix) -= scale * elim.element(col,ix);
-                  }
-              }
-          }
+            for ( size_t ix = 0;ix < elim.rows();ix++)
+            {
+                elim.element(iy,ix) -= scale * elim.element(col,ix);
+            }
+        }
+    }
+    //end of scale
 
-      }//end of for loop
 
-  }
+     }//end of for loop
+
+  } //end of gauss_jordan_elimination
+
+
   matrix<real_t> gram_schmidt(const matrix<real_t>& mtx)
   {
     matrix<real_t> result(mtx.rows(),mtx.cols());
@@ -514,11 +589,6 @@ class principal_component_analysis
     return result;
   }   
 
-
-  virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
-  virtual  std::vector<real_t> predict(const std::vector<std::string>&documents );
-  virtual  std::vector<real_t> transform(const std::vector<std::string>&documents);
-  virtual  std::vector<real_t> fit_transform(const std::vector<std::string>&documents);
  
   //for use with inverse transformation matrices 
   //destructor
@@ -526,29 +596,46 @@ class principal_component_analysis
   
   
   protected:
-  std::vector<real_t> _mean;
-  std::vector<real_t> _variance;
-  std::vector<real_t> _standard_deviation;
-  std::vector<real_t> _standardized_data;
-  matrix<real_t> _covariance_matrix;
-  matrix<real_t>  _eigen_values;
-  matrix<real_t>  _eigen_vectors;
-  matrix<real_t> _pca_data;
-  matrix<real_t> _pca_components;
-  matrix<real_t> _pca_explained_variance;
 
-  matrix<real_t> _pca_explained_variance_ratio;
-  matrix<real_t> _pca_singular_values;
-  std::vector<real_t> _pca_noise_variance;
-  real_t _pca_mean;
-  std::vector<real_t> _pca_n_components;
-  std::vector<real_t> _pca_n_features;
-  std::vector<real_t> _pca_n_samples;
-  std::vector<real_t> _pca_n_components_;
-  std::vector<real_t> _pca_n_features_;
-  std::vector<real_t> _pca_n_samples_;
- 
-  
+
+    std::vector<real_t> _mean;
+    std::vector<real_t> _variance;
+    std::vector<real_t> _standard_deviation;
+    std::vector<real_t> _standardized_data;
+    std::vector<real_t> _covariance_matrix;
+    std::vector<real_t> _eigen_values;
+    std::vector<real_t> _eigen_vectors;
+    std::vector<real_t> _pca_data;
+    std::vector<real_t> _pca_components;
+    std::vector<real_t> _pca_explained_variance;
+    std::vector<real_t> _pca_explained_variance_ratio;
+    std::vector<real_t> _pca_singular_values;
+    std::vector<real_t> _pca_noise_variance;
+    std::vector<real_t> _pca_mean;
+    size_t _pca_n_components_;
+    size_t  _pca_n_features_;
+    size_t  _pca_n_samples_;
+
+    matrix<real_t> _pca_components_matrix;
+    matrix<real_t> _pca_explained_variance_matrix;
+    matrix<real_t> _pca_explained_variance_ratio_matrix;
+    matrix<real_t> _pca_singular_values_matrix;
+    //vocabulary
+
+  //pca_mean
+
+   //use bow_vectorizer to transform documents into a matrix
+  //use pca to transform matrix into a matrix of principal components
+  //vocabularies
+  typedef std::map<std::string,size_t> vocabulary_t;
+  typedef std::map<size_t,std::string> reverse_vocabulary_t;
+  vocabulary_t _vocabulary;
+  reverse_vocabulary_t _reverse_vocabulary;   
+  std::vector<std::vector<real_t> > _bow_matrix; //bag of words matrix
+  std::vector<std::string> _words;
+
+  //words vector
+
 };
 
 
@@ -577,26 +664,16 @@ class pca_vectorizer : public vectorizer<std::string, real_t>
   virtual vectorizer_type get_type() const ;
   
   virtual ~pca_vectorizer();
+  private:
+
   principal_component_analysis _pca;
+    bag_of_words _bow;//bag of words vectorizer
+  
 };
 
 class lda_vectorizer : public vectorizer<std::string, real_t>
 {
-  protected:
-  std::vector<real_t> _lda_data;
-  std::vector<real_t> _lda_components;
-  std::vector<real_t> _lda_explained_variance;
-  std::vector<real_t> _lda_explained_variance_ratio;
-  std::vector<real_t> _lda_singular_values;
-  std::vector<real_t> _lda_noise_variance;
-  std::vector<real_t> _lda_mean;
-  std::vector<real_t> _lda_n_components;
-  std::vector<real_t> _lda_n_features;
-  std::vector<real_t> _lda_n_samples;
-  std::vector<real_t> _lda_n_components_;
-  std::vector<real_t> _lda_n_features_;
-  std::vector<real_t> _lda_n_samples_;
-
+  protected: 
 
 
 
@@ -622,9 +699,106 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
  
 
   virtual ~lda_vectorizer();
+  private:
+  //labels 
+  std::vector<std::string> _labels;
+  real_t _alpha;
+  real_t _beta;
+  real_t _eta;
+  real_t _gamma;
+  real_t _theta;
+  real_t _lambda;
+  size_t _n_iter;
+  size_t _n_topics;
+  size_t _n_features;
+  size_t _n_samples;
+  size_t _n_components;
+  size_t _n_top_words;
+  size_t _n_jobs;
+  size_t _random_state;
+  real_t _doc_topic_prior;
+  real_t _topic_word_prior;
+  real_t _learning_decay;
+  real_t _learning_offset;
+  size_t _max_doc_update_iter;
+  size_t _total_samples;
+  real_t _mean_change_tol;
+  
 
+
+
+  friend std::ostream& operator<<(std::ostream& os, const lda_vectorizer& lda)
+  {
+    // write out individual members of s with an end of line between each one 
+    os <<"[lda_vectorizer]"<<std::endl;
+    os <<"alpha"<<std::to_string( lda._alpha) <<std::endl;
+    os <<"beta"<<std::to_string( lda._beta) <<std::endl;
+    os <<"eta"<<std::to_string( lda._eta) <<std::endl;
+    os <<"gamma"<<std::to_string( lda._gamma) <<std::endl;
+    os <<"theta"<<std::to_string( lda._theta) <<std::endl;
+    os <<"lambda"<<std::to_string( lda._lambda) <<std::endl;
+    os <<"n_iter"<<std::to_string( lda._n_iter) <<std::endl;
+    os <<"n_topics"<<std::to_string( lda._n_topics) <<std::endl;
+    os <<"n_features"<<std::to_string( lda._n_features) <<std::endl;
+    os <<"n_samples"<<std::to_string( lda._n_samples) <<std::endl;
+    os <<"n_components"<<std::to_string( lda._n_components) <<std::endl;
+    os <<"n_top_words"<<std::to_string( lda._n_top_words) <<std::endl;
+    os <<"n_jobs"<<std::to_string( lda._n_jobs) <<std::endl;
+    os <<"random_state"<<std::to_string( lda._random_state) <<std::endl;
+    os <<"doc_topic_prior"<<std::to_string( lda._doc_topic_prior) <<std::endl;
+    os <<"topic_word_prior"<<std::to_string( lda._topic_word_prior) <<std::endl;
+    os <<"learning_decay"<<std::to_string( lda._learning_decay) <<std::endl;
+    os <<"learning_offset"<<std::to_string( lda._learning_offset) <<std::endl;
+    os <<"max_doc_update_iter"<<std::to_string( lda._max_doc_update_iter) <<std::endl;
+    os <<"total_samples"<<std::to_string( lda._total_samples) <<std::endl;
+    os <<"mean_change_tol"<<std::to_string( lda._mean_change_tol) <<std::endl;
+    return os;
+  }
+   
+  //lda
+  //bow
+  //inverse_transform
+  //inverse_transform_matrix
+  //inverse_transform_matrix_
+  
 };
 
+//helper class for tsne 
+class tsne
+{
+  private:
+  std::vector<real_t> _tsne_data;
+  std::vector<real_t> _tsne_components;
+  std::vector<real_t> _tsne_explained_variance;
+  std::vector<real_t> _tsne_explained_variance_ratio;
+  std::vector<real_t> _tsne_singular_values;
+  std::vector<real_t> _tsne_noise_variance;
+  std::vector<real_t> _tsne_mean;
+  std::vector<real_t> _tsne_n_components;
+  std::vector<real_t> _tsne_n_features;
+  std::vector<real_t> _tsne_n_samples;
+  
+  public:
+  tsne();
+  tsne(tsne &&other); //move constructor
+  tsne& operator= (const tsne &other);
+  tsne&
+      operator= (tsne &&other);
+  virtual ~tsne();
+  //fit
+  
+  //fit_transform
+  
+  //get_params
+
+  //inverse_transform
+
+  //set_params
+
+  //transform
+
+  
+};
 
 class tsne_vectorizer : public vectorizer<std::string, real_t>
 {
@@ -1270,7 +1444,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
   };
 
-
+  
 
   class dataset_stage : public stage_descriptor
   {
@@ -1294,14 +1468,64 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual const std::string get_additional_data() const;
     virtual void set_additional_data(const std::string& data);
 
- 
+
     static dataset_stage* build( );
+    enum dataset_type { STATIC, DYNAMIC } _type;
+    enum dataset_purpose { BUILD_TRAIN, TRAIN, OPTIMIZE_TRAIN, TEST,OPTIMIZE_TEST, VALIDATE,XVALIDATE } _purpose; 
+    dataset_type type() const { return _type; }
+    
+    void type(dataset_type t) { _type = t; }
+    bool is_static() const { return _type == STATIC; }
+    bool is_dynamic() const { return _type == DYNAMIC; }
+    bool is_labeled() const { return _labels.size() > 0; }   
+    std::vector<size_t> get_labels() const { return _labels; } 
+    std::vector<std::string> get_label_names() const { return _label_names; }
+    void set_label_names(const std::vector<std::string>& names) { _label_names = names; } 
+
+    class_dist get_class_dist() const { return _class_dist; } 
+    enum dataset_purpose purpose() const { return _purpose; } 
+    void purpose(dataset_purpose p) { _purpose = p; }
+    bool is_build_train() const { return _purpose == BUILD_TRAIN; }
+    bool is_train() const { return _purpose == TRAIN; }
+    bool is_optimize_train() const { return _purpose == OPTIMIZE_TRAIN; }
+    bool is_test() const { return _purpose == TEST; }
+    bool is_optimize_test() const { return _purpose == OPTIMIZE_TEST; }
+    bool is_validate() const { return _purpose == VALIDATE; }
+    bool is_xvalidate() const { return _purpose == XVALIDATE; }
+
+
+    //process data
+    // implements the virtual functions of stage_descriptor 
+    // decents should override process_data with matrix_base
+    // 
+    virtual void process_data(const std::string& data); 
+    virtual void process_data(const matrix<real_t>& data);
+    virtual void process_data(const std::vector<real_t>& data);
+    virtual void process_data(const std::vector<std::vector<real_t> >& data);
+
+    //adapter for dataset_ptr or matrix_base 
+    //converts matrix_base to matrix<real_t> and processes the dataset. 
+
+    virtual void process_data(matrix_base& data); 
+    private:
+    class_dist _class_dist;
+    //labels:
+    std::vector<size_t> _labels;
+    std::vector<std::string> _label_names; 
+
+    public:
+    void set_labels(const std::vector<std::string>& labels);
 
   };
 
 
-  class dynamic_dataset_stage : public stage_descriptor
+  class dynamic_dataset_stage : public dataset_stage
   {
+
+    //dynamic dataset stage is a dataset stage that can be modified before or during the training process. 
+    //it is used for example to add new data to the training set during the training process. 
+    //it is also used to add new data to the training set during the training process. 
+
     public : 
     dynamic_dataset_stage();
     virtual ~dynamic_dataset_stage();
@@ -1314,7 +1538,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
   };
   
-  class static_dataset_stage : public stage_descriptor
+  class static_dataset_stage : public dataset_stage
   {
     public : 
     static_dataset_stage();
@@ -1331,11 +1555,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   class feature_extraction_paramters 
   {
     //comprehensive list of feature extraction parameters.
-
- 
-
-
-    public :
+  public :
     feature_extraction_paramters() : features_length(0), parameters(""), feature_extraction_method(nullptr)
      {
  
@@ -2145,6 +2365,14 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
     private:
     size_t seed;
+    size_t num_splits;
+
+
+    //splits are indexes of the matrix rows that are split into different matrices 
+ 
+    std::vector<std::pair<size_t,size_t> > splits; 
+    
+
     public:
     static splitrows_stage* build( );
     
@@ -2166,7 +2394,32 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual ~pivot_stage();
 
     static pivot_stage* build( );
+    private:
+    //criteria for split 
+    enum ColCriterion  colum_criterion; 
+    enum GainCriterion gain_criterion;
+    //splitting criteria
+    size_t num_splits;
+    size_t min_samples_split;
+    size_t min_samples_leaf;
+    size_t max_depth;
+    size_t max_features;
+    size_t seed;
+    //splits are indexes of the matrix rows that are split into different matrices
+
+    typedef std::pair<size_t,size_t> sample_index_t;
+    //list of samples that are split into different matrices
+
+    typedef std::vector<sample_index_t> sample_index_list_t; 
+    //list of samples that are split into different matrices 
+    std::vector<sample_index_list_t> splits;
+    //list of samples that are split into different matrices
+    matrix<real_t> pivot_matrix;
+    //imputer for missing values
+    struct Imputer imputer;
   };
+
+  
   class unpivot_stage : public stage_descriptor
   {
     public : 
@@ -2316,7 +2569,254 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
     virtual ~classdist_stage();
   };
+  //Knoledge transfer stage implmenets the following algorithms 
+  //https://arxiv.org/pdf/1511.06440.pdf
+  //https://arxiv.org/pdf/2006.16331.pdf
+  //where the transfer function, accuracy and loss function are defined as follows 
+  //Transfer function
+  //f(x) = x
+  //Accuracy function
+  //a(x) = 1 if x > 0.5 else 0
+  //Loss function
+  //l(x) = (1 − x)^2
+  //The transfer function is the identity function
+  //The accuracy function is the step function
+  //The loss function is the squared error function
+  
+  //Training can be formulated as minimizing the error function
+  //J(X; θ) := ∑a∈X`(a; θ) 
+  //where X` is the training set and θ is the model parameters
+  //The error function is minimized by gradient descent
+  //θ := θ − α∇θJ(X; θ)
+  //where α is the learning rate
+  //The gradient is computed by backpropagation
+  //∇θJ(X; θ) = ∑a∈X`∇θ(a; θ)
+  //where ∇θ(a; θ) is the gradient of the error function for a single training example
+  
 
+  class knowledge_transfer_stage : public stage_descriptor
+  {
+    public : 
+    enum transfer_strategy{
+      NONE,
+      TRANSFER,
+      ADAPT,
+      HYPERPARAMETER_TRANSFER,
+      HYPERPARAMETER_ADAPT,
+      HYPERPARAMETER_TRANSFER_ADAPT
+    };
+    enum knowledge_transfer_function_t{
+      COPY,
+      LINEAR,
+      EXPONENTIAL,
+      LOGARITHMIC,
+      SIGMOID
+    };
+    enum transfer_accuracy_t{
+      ACCURACY,
+      F1,
+      PRECISION,
+      RECALL,
+      ROC_AUC,
+      PR_AUC,
+      KAPPA,
+      MCC,
+      BAC,
+      BMAC,
+      BACC,
+      BMA
+    };
+
+    struct accuracy_t{
+      transfer_accuracy_t accuracy;
+      real_t value;
+    };
+
+    struct measure_t{
+      transfer_strategy strategy;
+      knowledge_transfer_function_t transfer_function;
+      //list of accuracies for the success of the transfer 
+      //and the harmonic infomation transfer
+
+      std::vector<accuracy_t> accuracies;
+
+    }; 
+
+    knowledge_transfer_stage();
+    static  knowledge_transfer_stage* build( );  
+
+    virtual ~knowledge_transfer_stage();
+    
+    private:
+
+    typedef std::pair< matrix<real_t> ,matrix<real_t> > knowledge_adapter_t;
+    typedef std::pair<std::vector<real_t>,std::vector<real_t> > knowledge_transfer_hyperparam_t;
+
+
+
+
+    
+    //define the transfer function
+    //define model to transfer
+    //define the output model
+    std::vector<knowledge_adapter_t> knowledge_adapters; 
+    std::vector<knowledge_transfer_hyperparam_t> knowledge_transfer_hyperparam_adapters; 
+    //define the transfer function
+    typedef   real_t (knowledge_transfer_stage::*knowledge_transfer_function_func)(real_t,real_t,real_t,real_t ) ; 
+     //transfer function
+    knowledge_transfer_function_t transfer_function;
+
+    //transfer function parameters
+    real_t transfer_function_alpha;
+    real_t transfer_function_beta;
+    real_t transfer_function_gamma;
+    real_t transfer_function_delta;
+    //transfer function
+    knowledge_transfer_function_t transfer_function_hyperparam;
+    //transfer function parameters
+    real_t transfer_function_hyperparam_alpha;
+    real_t transfer_function_hyperparam_beta;
+    real_t transfer_function_hyperparam_gamma;
+    real_t transfer_function_hyperparam_delta;
+
+    //errors , error gradients and error deltas 
+    
+    std::vector<real_t> errors;
+    std::vector<real_t> error_gradients;
+    std::vector<real_t> error_deltas;
+    
+    //create pairwise distributions for the transfer function 
+    //and the hyperparameter transfer function
+    std::vector<real_t> pairwise_distributions;
+    std::vector<real_t> pairwise_distributions_hyperparam;
+
+    //create pairwise distributions for the transfer function 
+    //and the hyperparameter transfer function
+    std::vector<real_t> pairwise_distributions_gradients;
+    std::vector<real_t> pairwise_distributions_hyperparam_gradients; 
+    //variational auto encoder for the transfer function 
+    //and the hyperparameter transfer function
+
+    variational_auto_encoder<real_t> transfer_function_autoencoder; 
+    variational_auto_encoder<real_t> transfer_function_hyperparam_autoencoder; 
+    //transfer function
+    knowledge_transfer_function_func transfer_function_func; 
+    knowledge_transfer_function_func transfer_function_hyperparam_func; 
+    //evaluation function
+    transfer_accuracy_t transfer_accuracy;
+    transfer_accuracy_t transfer_accuracy_hyperparam;
+    
+    //measure accuracy of the transfer function:
+    //accuracy function
+    typedef   real_t (knowledge_transfer_stage::*transfer_accuracy_func)(real_t,real_t ) ; 
+    transfer_accuracy_func _accuracy_func;
+    transfer_accuracy_func _accuracy_hyperparam_func;
+    //accuracy function parameters
+    real_t transfer_accuracy_alpha;
+    real_t transfer_accuracy_beta;
+    real_t transfer_accuracy_gamma;
+    real_t transfer_accuracy_delta;
+    //accuracy function parameters
+    real_t transfer_accuracy_hyperparam_alpha;
+    real_t transfer_accuracy_hyperparam_beta;
+    real_t transfer_accuracy_hyperparam_gamma;
+    real_t transfer_accuracy_hyperparam_delta;
+
+    //implement functions same signature fit the hyperparameter transfer function:
+    //F1 score:
+    real_t transfer_accuracy_f1(real_t tp,real_t fp,real_t fn,real_t tn); 
+    //accuracy:
+    real_t transfer_accuracy_accuracy(real_t tp,real_t fp,real_t fn,real_t tn);
+    //precision:
+    real_t transfer_accuracy_precision(real_t tp,real_t fp,real_t fn,real_t tn);
+    //recall
+    real_t transfer_accuracy_recall(real_t tp,real_t fp,real_t fn,real_t tn);
+    //ROC AUC
+    real_t transfer_accuracy_roc_auc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //PR AUC
+    real_t transfer_accuracy_pr_auc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Kappa 
+    real_t transfer_accuracy_kappa(real_t tp,real_t fp,real_t fn,real_t tn);
+
+    //informdness
+    real_t transfer_accuracy_informedness(real_t tp,real_t fp,real_t fn,real_t tn);
+    
+    //Matthews correlation coefficient
+    real_t transfer_accuracy_mcc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced accuracy
+    real_t transfer_accuracy_bac(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass accuracy
+    real_t transfer_accuracy_bmac(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass recall
+    real_t transfer_accuracy_bmrc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass precision
+    real_t transfer_accuracy_bmpc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass F1 score
+    real_t transfer_accuracy_bmf1(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass Matthews correlation coefficient
+    real_t transfer_accuracy_bmmcc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass Kappa
+    real_t transfer_accuracy_bmkappa(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass ROC AUC
+    real_t transfer_accuracy_bmroc_auc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //Balanced multiclass PR AUC
+    real_t transfer_accuracy_bmpr_auc(real_t tp,real_t fp,real_t fn,real_t tn);
+    //specificity
+    real_t transfer_accuracy_specificity(real_t tp,real_t fp,real_t fn,real_t tn);
+    //sensitivity
+    real_t transfer_accuracy_sensitivity(real_t tp,real_t fp,real_t fn,real_t tn);
+    //F1 score:
+    real_t transfer_accuracy_f1 (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);  
+    //accuracy:
+    real_t transfer_accuracy_accuracy (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //precision:
+    real_t transfer_accuracy_precision (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //recall
+    real_t transfer_accuracy_recall (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //ROC AUC
+    real_t transfer_accuracy_roc_auc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //  PR AUC
+    real_t transfer_accuracy_pr_auc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //  Kappa
+    real_t transfer_accuracy_kappa (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+
+    //informdness
+    real_t transfer_accuracy_informedness (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+
+  
+    //  Matthews correlation coefficient
+    real_t transfer_accuracy_mcc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //balanced accuracy
+    real_t transfer_accuracy_bac (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //multiclass
+    real_t transfer_accuracy_bmac (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //recall for multiclass
+    real_t transfer_accuracy_bmrc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //precision for multiclass
+    real_t transfer_accuracy_bmpc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //f1 for multiclass
+    real_t transfer_accuracy_bmf1 (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //mcc
+    real_t transfer_accuracy_bmmcc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //kappa 
+    real_t transfer_accuracy_bmkappa (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //broc auc
+    real_t transfer_accuracy_bmroc_auc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //bpr auc
+    real_t transfer_accuracy_bmpr_auc (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+
+    //specificity 
+    real_t transfer_accuracy_specificity (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    //sensitivity
+    real_t transfer_accuracy_sensitivity (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn,const std::vector<real_t> &tn);
+    // fawlkes mallows index  
+    real_t transfer_accuracy_fawlkes_mallows_index (const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn); 
+    
+    real_t transfer_accuracy_markedness(const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn); 
+    real_t transfer_accuracy_gmean(const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn);
+    
+    };  
+  
   class pipeline
   { 
     public:
@@ -2429,7 +2929,11 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
  class meta_builder : public pipeline_builder
  {
    public : 
-   meta_builder();
+   //initialize the meta-builder with the meta-file
+   meta_builder(const std::ifstream& meta_file);
+   //initialize a new meta-builder settings and saves it to the meta-file
+   meta_builder(const std::string& meta_name, const std::string& meta_file_path);
+
    virtual ~meta_builder();
 
    bool build();
@@ -2439,14 +2943,49 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
    bool load_from_file(std::string filename);
    bool save_to_file(std::string filename);
      //generate stages by GAN :
-   pipeline* generate_pipeline();
+    pipeline* generate_pipeline();
     //generate stages by GAN :
     pipeline* generate_pipeline(const std::string& pipeline_name);
     //generate stages by GAN :
     pipeline* generate_pipeline(const std::string& pipeline_name, const std::string& input, std::string& output);
+  private :
+  //meta-parameters :
+  //number of pipelines to generate
+  uint64_t _number_of_pipelines;
+  //number of threads per pipeline
+  uint64_t _number_of_threads;
+  //number of maximum stages per pipeline
+  uint64_t _max_number_of_stages;
+  //number of maximum stages per pipeline
+  uint64_t _min_number_of_stages; // should be 2 at least, otherwise it is not a pipeline
+  //maximum numbers of aggregated pipelines to generate per pipeline  
+  uint64_t _max_number_of_aggregated_pipelines;
 
+  learning_task _learning_task;
+  std::map<std::string, auto_encoder<real_t>> _stage_output_autoencoders;
+  std::map<std::string, auto_encoder<real_t>> _stage_input_autoencoders;
+  
+  real_t _accuracy; //accuracy of the pipeline
+  real_t _loss; //loss of the pipeline
+  real_t _cost; //cost of the pipeline
+  real_t _complexity;//complexity of the pipeline
 
+  real_t _accuracy_weight; //accuracy of the pipeline
+  real_t _loss_weight; //loss of the pipeline
+  real_t _cost_weight; //cost of the pipeline
+  real_t _complexity_weight;//complexity of the pipeline
 
+  real_t _accuracy_threshold; //accuracy of the pipeline
+  real_t _loss_threshold; //loss of the pipeline
+  real_t _cost_threshold; //cost of the pipeline
+  real_t _complexity_threshold;//complexity of the pipeline
+
+  real_t _accuracy_weight_step; //accuracy of the pipeline
+  real_t _loss_weight_step; //loss of the pipeline
+  real_t _cost_weight_step; //cost of the pipeline
+  real_t _complexity_weight_step;//complexity of the pipeline
+   
+ 
  };
 
 

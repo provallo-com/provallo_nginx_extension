@@ -16,8 +16,419 @@
 namespace provallo
 {
 
-  // vectorizers implementation:
+  // bag of words implementation:
+  bag_of_words::bag_of_words() : _vocabulary(), _bow()
+  {
+  }
 
+  // constructor from vocabulary
+  bag_of_words::bag_of_words(const std::vector<std::string> &vocabulary) : _vocabulary(vocabulary), _bow(vocabulary.size(), 0.0)
+  {
+
+    // std::cout<<"vocabulary size: "<<_vocabulary.size()<<std::endl;
+    // set bag of words values on the tokens
+    for (size_t i = 0; i < _vocabulary.size(); ++i)
+    {
+      std::string token = _vocabulary[i];
+
+      for (size_t j = i + 1; j < _vocabulary.size(); ++j)
+      {
+        if (_vocabulary[j] == token)
+        {
+          _bow[i] += 1.0;
+          _bow[j] = 0.0;
+        }
+      }
+      for (size_t j = 0; j < i; ++j)
+      {
+        if (_vocabulary[j] == token)
+        {
+          _bow[i] += 1.0;
+          _bow[j] = 0.0;
+        }
+      }
+
+      _bow[i] = _bow[i] / _vocabulary.size();
+    }
+    // update the bow matrix
+    // matrix is the number of components x samples
+    _bow_matrix = matrix<real_t>(_vocabulary.size(), 1);
+    for (size_t i = 0; i < _vocabulary.size(); ++i)
+    {
+      _bow_matrix(i, 0) = _bow[i];
+    }
+
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    // std::cout<<"bow: "<<_bow<<std::endl;
+  }
+  // copy constructor
+  bag_of_words::bag_of_words(const bag_of_words &other)
+  {
+    _vocabulary = other._vocabulary;
+    _bow = other._bow;
+    _bow_matrix = other._bow_matrix;
+    _bow_transformed = other._bow_transformed;
+    _bow_transformed_inverse = other._bow_transformed_inverse;
+  }
+  // move constructor
+  bag_of_words::bag_of_words(bag_of_words &&other)
+  {
+    _vocabulary = std::move(other._vocabulary);
+    _bow = std::move(other._bow);
+    _bow_matrix = std::move(other._bow_matrix);
+    _bow_transformed = std::move(other._bow_transformed);
+    _bow_transformed_inverse = std::move(other._bow_transformed_inverse);
+
+    other._vocabulary.clear();
+    other._bow.clear();
+    other._bow_matrix.clear();
+    other._bow_transformed.clear();
+    other._bow_transformed_inverse.clear();
+
+    other._vocabulary.shrink_to_fit();
+    other._bow.shrink_to_fit();
+    other._bow_transformed.shrink_to_fit();
+    other._bow_transformed_inverse.shrink_to_fit();
+
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    
+  }
+
+  // assignment
+  bag_of_words &
+  bag_of_words::operator=(const bag_of_words &other)
+  {
+    if (this != &other)
+    {
+      _vocabulary = other._vocabulary;
+      _bow = other._bow;
+      _bow_matrix = other._bow_matrix;
+      _bow_transformed = other._bow_transformed;
+      _bow_transformed_inverse = other._bow_transformed_inverse;
+    }
+    return *this;
+  }
+  // move assignment
+  bag_of_words &
+  bag_of_words::operator=(bag_of_words &&other)
+  {
+    if (this != &other)
+    {
+      _vocabulary = std::move(other._vocabulary);
+      _bow = std::move(other._bow);
+      _bow_matrix = std::move(other._bow_matrix);
+      _bow_transformed = std::move(other._bow_transformed);
+      _bow_transformed_inverse = std::move(other._bow_transformed_inverse);
+    }
+    return *this;
+  }
+  //process the documents
+  //  virtual void add_document(const std::string&);
+  void bag_of_words::add_document(const std::string & doc)  
+  {
+    // tokenize the document
+    std::vector<std::string> tokens;
+    tokenize(doc, tokens);
+    // update vocabulary and bow matrices
+    for (auto token : tokens)
+    {
+      // find token in vocabulary and update its bow value
+      // or add it to the vocabulary if it doesn't exists
+      auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
+      if (it != _vocabulary.end())
+      {
+        // update bow value
+        size_t index = std::distance(_vocabulary.begin(), it);
+        _bow[index] += 1.0;
+      }
+      else
+      {
+        // add token to vocabulary
+        _vocabulary.push_back(token);
+        // update bow value
+        _bow.push_back(1.0);
+      }
+    } // end for
+    // update bow matrix
+    if ( _bow_matrix.size1() == 0 && _bow_matrix.size2() == 0)
+    {
+      _bow_matrix = matrix<real_t>(_vocabulary.size(), 1);
+    }
+    else
+    {
+      _bow_matrix.resize(_vocabulary.size(), 1);
+    }
+    _bow_matrix = matrix<real_t>(_vocabulary.size(), 1);
+    for (size_t i = 0; i < _vocabulary.size(); ++i)
+    {
+      _bow_matrix(i, 0) = _bow[i];
+    }
+    // std::cout<<"bow matrix: "<<_bow_matrix<<std::endl;
+    return ;
+  }
+  //  virtual void process_document(const std::string&);
+  void bag_of_words::process_document(const std::string & doc) 
+  {
+    //same as add_document
+    add_document(doc);
+    return ;
+  }
+  //  virtual void process_documents(const std::vector<std::string>&);
+  // implementation of bag of words:
+  std::vector<std::vector<real_t>> bag_of_words::fit(const std::vector<std::string> &documents)
+  {
+    
+    std::vector<std::vector<real_t>> result(documents.size());
+
+    if (_vocabulary.size() > 0)
+    {
+
+      // update vocabulary and bow matrices
+      for (auto document : documents)
+      {
+        std::vector<std::string> tokens;
+        tokenize(document, tokens);
+        for (auto token : tokens)
+        {
+          // find token in vocabulary and update its bow value
+          // or add it to the vocabulary if it doesn't exists
+          auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
+          if (it != _vocabulary.end())
+          {
+            // update bow value
+            size_t index = std::distance(_vocabulary.begin(), it);
+            _bow[index] += 1.0;
+          }
+          else
+          {
+            // add token to vocabulary
+            _vocabulary.push_back(token);
+            // update bow value
+            _bow.push_back(1.0);
+          }
+        }
+        // update bow matrix
+      }
+    }
+    else
+    {
+      // update vocabulary and bow matrices
+      for (auto document : documents)
+      {
+        std::vector<std::string> tokens;
+        tokenize(document, tokens);
+        for (auto token : tokens)
+        {
+          // find token in vocabulary and update its bow value
+          // or add it to the vocabulary if it doesn't exists
+          auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
+          if (it != _vocabulary.end())
+          {
+            // update bow value
+            size_t index = std::distance(_vocabulary.begin(), it);
+            _bow[index] += 1.0;
+          }
+          else
+          {
+            // add token to vocabulary
+            _vocabulary.push_back(token);
+            // update bow value
+            _bow.push_back(1.0);
+          }
+        }
+        // update bow matrix
+      }
+    }
+    // normalize bow
+    for (size_t i = 0; i < _bow.size(); ++i)
+    {
+      _bow[i] = _bow[i] / _vocabulary.size();
+    }
+
+    // update the bow matrix - copy, add new row and delete old one
+
+    matrix<real_t> new_bow = matrix<real_t>(_bow_matrix.size1() + 1, _bow_matrix.size2());
+
+    for (size_t i = 0; i < _bow_matrix.size1(); ++i)
+    {
+      for (size_t j = 0; j < _bow_matrix.size2(); ++j)
+      {
+        new_bow(i, j) = _bow_matrix(i, j);
+      }
+    }
+    for (size_t j = 0; j < _bow_matrix.size2(); ++j)
+    {
+      new_bow(_bow_matrix.size1(), j) = _bow[j];
+    }
+    _bow_matrix = new_bow;
+
+    _bow_matrix = matrix<real_t>(_vocabulary.size(), 1);
+    for (size_t i = 0; i < _vocabulary.size(); ++i)
+    {
+      _bow_matrix(i, 0) = _bow[i];
+    }
+
+    return result;
+  }
+  std::vector<std::vector<real_t>> bag_of_words::fit(const provallo::matrix<real_t> &mat)
+  {
+    std::vector<std::vector<real_t>> result(mat.rows(), std::vector<real_t>(mat.cols(), 0.0));
+
+    // already a matrix, just return it formatted as a vector of vectors
+    for (size_t i = 0; i < mat.rows(); i++)
+    {
+      for (size_t j = 0; j < mat.cols(); j++)
+      {
+        result[i][j] = mat(i, j);
+      }
+    }
+    return result;
+  }
+  std::vector<real_t> bag_of_words::fit(const std::string& doc)
+  {
+    std::vector<real_t> result;
+    std::vector<std::string> tokens;
+    tokenize(doc, tokens);
+
+    // for each token in the document
+    // find it in the vocabulary
+    // if it exists, add its bow value to the result
+    // otherwise add 0.0
+    for (auto token : tokens)
+    {
+      auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
+      if (it != _vocabulary.end())
+      {
+        // update bow value
+        size_t index = std::distance(_vocabulary.begin(), it);
+        result.push_back(_bow[index]);
+      }
+      else
+      {
+        // add token to vocabulary
+        result.push_back(0.0);
+      }
+    }
+    return result;  
+  }
+  std::vector<real_t> bag_of_words::transform(const std::string &doc)
+  {
+    std::vector<real_t> result;
+    std::vector<std::string> tokens;
+    tokenize(doc, tokens);
+
+    // for each token in the document
+    // find it in the vocabulary
+    // if it exists, add its bow value to the result
+    // otherwise add 0.0
+    for (auto token : tokens)
+    {
+      auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
+      if (it != _vocabulary.end())
+      {
+        // update bow value
+        size_t index = std::distance(_vocabulary.begin(), it);
+        result.push_back(_bow[index]);
+      }
+      else
+      {
+        // add token to vocabulary
+        result.push_back(0.0);
+      }
+    }
+    return result;
+  }
+
+    // transform
+  std::vector<std::vector<real_t>> bag_of_words::transform(const std::vector<std::string> &documents)
+  {
+    std::vector<std::vector<real_t>> result;
+    for (auto document : documents)
+    {
+      result.push_back(transform(document));
+    }
+
+    return result;
+  }
+  std::vector<std::vector<real_t>> bag_of_words::transform(const provallo::matrix<real_t> & mat)
+  {
+    std::vector<std::vector<real_t>> result;
+    return transform(fit(mat));
+
+  }
+
+  // fit_transform
+
+  std::vector<std::vector<real_t>> bag_of_words::fit_transform(const std::vector<std::string> &documents)
+  {
+     std::vector<std::vector<real_t>> result;
+     for(auto document : documents)
+     {
+       result.push_back(fit(document));
+     }
+      return result;  
+ 
+   }
+
+  std::vector<std::vector<real_t>> bag_of_words::fit_transform(const provallo::matrix<real_t> & mat)
+  {
+    std::vector<std::vector<real_t>> result;
+    return transform(fit(mat));
+
+    
+  }
+  std::vector<real_t> bag_of_words::predict(const std::string &doc)
+  {
+    return transform(doc);
+  }
+  std::vector<std::vector<real_t>> bag_of_words::predict(const std::vector<std::string> &documents)
+  {
+    return transform(documents);
+  }
+  std::vector<std::vector<real_t>> bag_of_words::predict(const provallo::matrix<real_t> & mat)
+  {
+    return transform(mat);
+  }
+  // inverse_transform
+  std::string bag_of_words::inverse_transform(const std::vector<real_t>& reverse_tokens) 
+  {
+    std::string result;
+    for (auto token : reverse_tokens)
+    {
+      auto it = std::find(_bow.begin(), _bow.end(), token);
+      if (it != _bow.end())
+      {
+        // update bow value
+        size_t index = std::distance(_bow.begin(), it);
+        result += _vocabulary[index];
+      }
+      else
+      {
+        // add token to vocabulary
+        result += " ";
+      }
+    }
+    return result;
+  }
+  std::vector<std::string> bag_of_words::inverse_transform(const std::vector<std::vector<real_t>>& mat)
+  {
+    std::vector<std::string> result;
+    for (auto document : mat)
+    {
+      result.push_back(inverse_transform(document));
+    }
+    return result;
+  }
+  //vtable functions:
+
+  std::vector<std::string> bag_of_words::inverse_transform(const provallo::matrix<real_t>& mat)
+  {
+    std::vector<std::string> result;
+    return inverse_transform(fit(mat));
+  }
+  // inverse_transform end
+  // bag of words end
+  
   tfidf::tfidf(const tfidf &other) : _tf(other._tf), _idf(other._idf)
   {
   }
@@ -88,7 +499,7 @@ namespace provallo
           {
             if (tf_doc.find(word) == tf_doc.end())
             {
-              tf_doc[word] = 1.0;
+              tf_doc.insert(std::make_pair(word, 1.0));
             }
             else
             {
@@ -675,48 +1086,65 @@ namespace provallo
     std::vector<real_t> _pca_singular_values;
     std::vector<real_t> _pca_noise_variance;
     std::vector<real_t> _pca_mean;
-    std::vector<real_t> _pca_n_components;
-    std::vector<real_t> _pca_n_features;
-    std::vector<real_t> _pca_n_samples;
-    std::vector<real_t> _pca_n_components_;
-    std::vector<real_t> _pca_n_features_;
-    std::vector<real_t> _pca_n_samples_;
+    size_t _pca_n_components_;
+    size_t  _pca_n_features_;
+    size_t  _pca_n_samples_;
   */
 
   // principal_component_analysis implementation:
 
-  principal_component_analysis::principal_component_analysis()
-  {
-    // default constructor
-  }
+  principal_component_analysis::principal_component_analysis() : _pca_n_components_(0), _pca_n_features_(0), _pca_n_samples_(0) {}
+  
+  //copy constructor:
+  principal_component_analysis::principal_component_analysis(const principal_component_analysis& other) :
+  _mean(other._mean),
+  _variance(other._variance),
+  _standard_deviation(other._standard_deviation),
+  _standardized_data(other._standardized_data),
 
-  principal_component_analysis::~principal_component_analysis()
-  {
-    // default destructor
-  }
-  principal_component_analysis::principal_component_analysis(principal_component_analysis &&other) : _mean(std::move(other._mean)),
-                                                                                                     _variance(std::move(other._variance)),
-                                                                                                     _standard_deviation(std::move(other._standard_deviation)),
-                                                                                                     _standardized_data(std::move(other._standardized_data)),
-                                                                                                     _covariance_matrix(std::move(other._covariance_matrix)),
-                                                                                                     _eigen_values(std::move(other._eigen_values)),
-                                                                                                     _eigen_vectors(std::move(other._eigen_vectors)),
-                                                                                                     _pca_data(std::move(other._pca_data)),
-                                                                                                     _pca_components(std::move(other._pca_components)),
-                                                                                                     _pca_explained_variance(std::move(other._pca_explained_variance)),
-                                                                                                     _pca_explained_variance_ratio(std::move(other._pca_explained_variance_ratio)),
-                                                                                                     _pca_singular_values(std::move(other._pca_singular_values)),
-                                                                                                     _pca_noise_variance(std::move(other._pca_noise_variance)),
-                                                                                                     _pca_mean(std::move(other._pca_mean)),
-                                                                                                     _pca_n_components(std::move(other._pca_n_components)),
-                                                                                                     _pca_n_features(std::move(other._pca_n_features)),
-                                                                                                     _pca_n_samples(std::move(other._pca_n_samples)),
-                                                                                                     _pca_n_components_(std::move(other._pca_n_components_)),
-                                                                                                     _pca_n_features_(std::move(other._pca_n_features_)),
-                                                                                                     _pca_n_samples_(std::move(other._pca_n_samples_))
-  {
-  }
+  _covariance_matrix(other._covariance_matrix),
+  _eigen_values(other._eigen_values),
+  _eigen_vectors(other._eigen_vectors),
+  _pca_data(other._pca_data),
+  _pca_components(other._pca_components),
+  _pca_explained_variance(other._pca_explained_variance),
+  _pca_explained_variance_ratio(other._pca_explained_variance_ratio),
+  _pca_singular_values(other._pca_singular_values),
+  _pca_noise_variance(other._pca_noise_variance),
+  _pca_mean(other._pca_mean),
+  _pca_n_components_(other._pca_n_components_),
+  _pca_n_features_(other._pca_n_features_),
+  _pca_n_samples_(other._pca_n_samples_)
+  {}
+  //move constructor:
+  principal_component_analysis::principal_component_analysis(principal_component_analysis&& other) :  
+  _mean(std::move(other._mean)),
+  _variance(std::move(other._variance)),
+  _standard_deviation(std::move(other._standard_deviation)),
+  _standardized_data(std::move(other._standardized_data)),
+  _covariance_matrix(std::move(other._covariance_matrix)),
+  _eigen_values(std::move(other._eigen_values)),
+  _eigen_vectors(std::move(other._eigen_vectors)),
+  _pca_data(std::move(other._pca_data)),
+  _pca_components(std::move(other._pca_components)),
+  _pca_explained_variance(std::move(other._pca_explained_variance)),
 
+  _pca_explained_variance_ratio(std::move(other._pca_explained_variance_ratio)),
+  _pca_singular_values(std::move(other._pca_singular_values)),
+  _pca_noise_variance(std::move(other._pca_noise_variance)),
+  _pca_mean(std::move(other._pca_mean)),
+
+  _pca_n_components_(std::move(other._pca_n_components_)),
+  _pca_n_features_(std::move(other._pca_n_features_)),
+  _pca_n_samples_(std::move(other._pca_n_samples_))
+  {}
+
+  //copy assignment
+
+  principal_component_analysis::~principal_component_analysis() {
+    //no allocation
+  }
+  //assignment 
   principal_component_analysis &
   principal_component_analysis::operator=(const principal_component_analysis &other)
   {
@@ -739,12 +1167,17 @@ namespace provallo
       this->_pca_singular_values = other._pca_singular_values;
       this->_pca_noise_variance = other._pca_noise_variance;
       this->_pca_mean = other._pca_mean;
-      this->_pca_n_components = other._pca_n_components;
-      this->_pca_n_features = other._pca_n_features;
-      this->_pca_n_samples = other._pca_n_samples;
       this->_pca_n_components_ = other._pca_n_components_;
       this->_pca_n_features_ = other._pca_n_features_;
       this->_pca_n_samples_ = other._pca_n_samples_;
+      
+     _pca_components_matrix = std::move(other._pca_components_matrix);
+     _pca_explained_variance_matrix = std::move(other._pca_explained_variance_matrix);
+     _pca_explained_variance_ratio_matrix = std::move(other._pca_explained_variance_ratio_matrix);
+     _pca_singular_values_matrix = std::move(other._pca_singular_values_matrix);
+    
+
+      
     }
     return *this;
   }
@@ -771,12 +1204,16 @@ namespace provallo
       this->_pca_singular_values = std::move(other._pca_singular_values);
       this->_pca_noise_variance = std::move(other._pca_noise_variance);
       this->_pca_mean = std::move(other._pca_mean);
-      this->_pca_n_components = std::move(other._pca_n_components);
-      this->_pca_n_features = std::move(other._pca_n_features);
-      this->_pca_n_samples = std::move(other._pca_n_samples);
       this->_pca_n_components_ = std::move(other._pca_n_components_);
       this->_pca_n_features_ = std::move(other._pca_n_features_);
       this->_pca_n_samples_ = std::move(other._pca_n_samples_);
+      //
+
+     _pca_components_matrix = std::move(other._pca_components_matrix);
+     _pca_explained_variance_matrix = std::move(other._pca_explained_variance_matrix);
+     _pca_explained_variance_ratio_matrix = std::move(other._pca_explained_variance_ratio_matrix);
+     _pca_singular_values_matrix = std::move(other._pca_singular_values_matrix);
+    
     }
     return *this;
   }
@@ -789,15 +1226,162 @@ namespace provallo
   // move assignment operator
 
   // principal_component_analysis implementation:
-  // virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
-  std::vector<real_t> principal_component_analysis::fit(const std::vector<std::string> &documents)
+  // virtual  std::vector<real_t> fit( const std::string &document) 
+  std::vector<real_t> principal_component_analysis::fit ( const std::string& document) 
   {
-    std::vector<real_t> result;
+     // tokenize the document into words
+    std::vector<std::string> words ;
+     tokenize(document,words, " ");
+    for( auto & word : words )
+    {
+      auto occurances = std::count(words.begin(), words.end(), word);
+        
+      if  ( _vocabulary.find(word) == _vocabulary.end() )
+      {
+        //add the word to the vocabulary
+        
+        _vocabulary.insert(std::make_pair(word, occurances / _vocabulary.size()));
+        //
+        //update the word in the vocabulary
+        
+      }
+      else
+      {
+        //update the word in the vocabulary
+        _vocabulary[word] += (occurances / _vocabulary.size());
+      }
+    }
+    //normalize the vocabulary
+    for (auto &word : _vocabulary)
+    {
+      word.second /= _vocabulary.size();
+    }
+    // create a vector of real_t to store the results
+    std::vector<real_t> results;
+    // for each word in the vocabulary
+    for (auto &word : _vocabulary)
+    {
+      // add the word to the results
+      results.push_back(word.second);
+    }
+    // return the results
+    return results;
+  }
+    // create a vector of real_t to store the results
+
+  
+  std::vector<real_t> principal_component_analysis::transform ( const std::string& doc) 
+  {
+    //TODO: implement the transform method without modifying the vocabulary.
+    // create a vector of real_t to store the results
+
+    std::vector<real_t> results;
+    // tokenize the document into words
+    std::vector<std::string> words ;
+     tokenize(doc,words, " ");
+    for( auto & word : words )
+    {
+      auto occurances = std::count(words.begin(), words.end(), word);
+        
+      if  ( _vocabulary.find(word) == _vocabulary.end() )
+      {
+        //add the word to the vocabulary
+        
+        _vocabulary.insert(std::make_pair(word, occurances / _vocabulary.size()));
+        //
+        //update the word in the vocabulary
+        
+      }
+      else
+      {
+        //update the word in the vocabulary
+        _vocabulary[word] += (occurances / _vocabulary.size());
+      }
+    }   
+    //normalize the vocabulary
+    for (auto &word : _vocabulary)
+    {
+      word.second /= _vocabulary.size();
+    }
+    // for each word in the vocabulary
+    for (auto &word : _vocabulary)
+    {
+      // add the word to the results
+      results.push_back(word.second);
+    }
+    // return the results
+    return results;
+
+  }
+  // transform method 
+  std::vector<std::vector<real_t>> principal_component_analysis::transform ( const std::vector<std::string>& docs) 
+  { 
+    //return the results of the transform method for each document in the vector of documents 
+    std::vector<std::vector<real_t>> results(docs.size());
+    size_t i=0;
+    for (auto &doc : docs)
+    {
+        auto res = transform(doc);
+        for (auto &r : res)
+        {
+          results[i].push_back(r);
+        }
+        i++;
+    } 
+    // return the results
+    return results;
+
+  }
+  
+  std::vector<std::vector<real_t>> principal_component_analysis::transform(const  std::vector<std::vector<std::string> > &data_)
+  {
+    std::vector<std::vector<real_t>> ret(data_.size());
+    //first , transform the documents into vectors of real_t 
+    std::vector<std::vector<real_t>> data(data_.size());
+    size_t i=0;
+    for (auto &doc : data_)
+    {
+        auto res = transform(doc);
+        for (auto &r : res)
+        {
+          for (auto & d : r )
+          data[i].push_back(d);
+        }
+        i++;
+    }
+    //then , transform the vectors of real_t into the new space
+    for (auto &d : data)
+    {
+      auto res = transform(d);
+      for (auto &r : res)
+      {
+        ret[i].push_back(r);
+      }
+      i++;
+    }
+    //return the results
+    
+
+    return ret;
+  }
+
+   
+  // virtual  std::vector<std::vector<real_t>> fit( const std::vector<std::string> &documents)
+  std::vector<std::vector<real_t>> principal_component_analysis::fit(const std::vector<std::string> &documents)
+  {
+    //for each set of documents aggregate the results to a vector of vectors instead of a vector of vectors of vectors 
+    std::vector<std::vector<real_t>> results(documents.size());
+    size_t i=0;
     for (auto &document : documents)
     {
-      result.push_back(.1 * document.size());
+        auto res = fit(document);
+        for (auto &r : res)
+        {
+          results[i].push_back(r);
+        }
+        i++;
     }
-    return result;
+    return results;
   }
 
   // QR decomposition
@@ -916,11 +1500,10 @@ namespace provallo
         for (size_t k = 0; k < cols; ++k)
         {
           //
-          transformed_data(i, j) += data_(i, k) * this->_pca_components(k, j);
+          transformed_data(i, j) += data_(i, k) * this->_pca_components_matrix(k, j);
         }
       }
-    }
-
+    } // end of the loop over the rows
     // return the transformed data
     return std::vector<real_t>(transformed_data.begin(), transformed_data.end());
   }
@@ -932,7 +1515,7 @@ namespace provallo
     // get the number of rows and columns
     size_t rows = data_.rows();
     size_t cols = data_.cols();
-
+    std::vector<real_t> ret(cols, 0.0);
     // initialize the mean vector
     std::vector<real_t> mean(cols, 0.0);
 
@@ -974,57 +1557,29 @@ namespace provallo
         covariance_matrix(i, j) /= rows;
         covariance_matrix(j, i) = covariance_matrix(i, j);
       }
-    }
+    } // end of the loop over the columns
 
-    // initialize the eigenvalues and eigenvectors
-    std::vector<real_t> eigenvalues(cols, 0.0);
-    matrix<real_t> eigenvectors(cols, cols);
+ 
+    //QR Decomposition
+    matrix<real_t> eigenvalues;
+    matrix <real_t> eigenvectors_transpose;
+    matrix<real_t> eigenvectors;
 
-    /// nrot : number of rotations
-    //
-    //    template <typename T>
-    // void jacobi(const matrix<T> &a1, std::vector<T> &d, matrix<T> &v, size_t &nrot)
-    // initialize the sorted eigenvalues and eigenvectors
-    size_t nrot = eigenvalues.size() * eigenvalues.size(); // cols*cols
-    jacobi(covariance_matrix, eigenvalues, eigenvectors, nrot);
-
-    std::vector<real_t> sorted_eigenvalues(eigenvalues);
-    matrix<real_t> sorted_eigenvectors(eigenvectors);
-
-    // sort the eigenvalues and eigenvectors
-    std::sort(sorted_eigenvalues.begin(), sorted_eigenvalues.end(), std::greater<real_t>());
-
+    // get the eigenvalues and eigenvectors
+    this->QRDecomposition(covariance_matrix, eigenvalues, eigenvectors);
+    // get the eigenvectors
+    eigenvectors_transpose = eigenvectors.transpose();
+    // get the eigenvalues
     for (size_t i = 0; i < cols; ++i)
     {
-      for (size_t j = 0; j < cols; ++j)
-      {
-        if (eigenvalues[j] == sorted_eigenvalues[i])
-        {
-          for (size_t k = 0; k < cols; ++k)
-          {
-            sorted_eigenvectors(k, i) = eigenvectors(k, j);
-          }
-          eigenvalues[j] = 0.0;
-          break;
-        }
-      }
+      ret[i] = eigenvalues(i, i);
     }
-    // initialize the pca components
-    matrix<real_t> pca_components(cols, cols);
-    // get the pca components
-    for (size_t i = 0; i < cols; ++i)
-    {
-      for (size_t j = 0; j < cols; ++j)
-      {
-        pca_components(i, j) = sorted_eigenvectors(i, j);
-      }
-    }
+    // get the principal components matrix
+    this->_pca_components_matrix = eigenvectors_transpose;
+    // return the eigenvalues
+    return ret;
 
-    // set the pca components
-    this->_pca_components = pca_components;
-
-    // return the pca components
-    return std::vector<real_t>(pca_components.begin(), pca_components.end());
+    
   }
   std::vector<real_t>
   principal_component_analysis::predict(const provallo::matrix<real_t> &data_)
@@ -1044,45 +1599,115 @@ namespace provallo
         transformed_data(i, j) = 0.0;
         for (size_t k = 0; k < cols; ++k)
         {
-          transformed_data(i, j) += data_(i, k) * this->_pca_components(k, j);
+          transformed_data(i, j) += data_(i, k) * this->_pca_components_matrix(k, j);
         }
       }
     }
-
+  
     // return the transformed data
     return std::vector<real_t>(transformed_data.begin(), transformed_data.end());
   }
 
-  std::vector<real_t> principal_component_analysis::predict(const std::vector<std::string> &documents)
+  std::vector<std::vector<real_t>> principal_component_analysis::predict(const std::vector<std::string> &documents)
   {
-    UNDEF_REFERENCE(documents);
-    UNDEF_REFERENCE2(documents);
-    return std::vector<real_t>();
-  }
+    // transform the documents
+    std::vector<std::vector<real_t>> ret;
+    for (size_t i = 0; i < documents.size(); ++i)
+    {
+      ret.push_back(this->predict(documents[i]));
+    }
+     return ret;
+  } //
 
-  std::vector<real_t> principal_component_analysis::transform(const std::vector<std::string> &documents)
+  std::vector<real_t> principal_component_analysis::predict(const std::string &document)
+  { // parse the document
+
+    std::vector<real_t> ret;
+    // transform the document
+    std::vector<std::string> tokens;
+    
+    tokenize(document, tokens ," ");
+    
+    ret.resize(tokens.size()+1, 0.0);
+
+    //search each token and update or return 0.
+    for (size_t i = 0; i < tokens.size(); ++i)
+    {
+      auto it = this->_vocabulary.find(tokens[i]);
+      if (it != this->_vocabulary.end())
+      {
+        ret[it->second] += 1.0;
+      }
+      else
+      {
+        ret[tokens.size()] += 1.0;
+      }
+    }
+
+    //    std::cout << "ret.size() = " << ret.size() << std::endl;  
+    // transform the document
+    ret = this->predict(ret);
+
+    return ret;
+  } 
+
+  //
+  //  principal_component_analysis::fit(std::vector<std::vector<std::string, std::allocator<std::string> >, std::allocator<std::vector<std::string, std::allocator<std::string> > > > const&)'
+
+  std::vector<std::vector<real_t>> principal_component_analysis::fit ( const std::vector<std::vector<std::string> > &documents)
   {
+    // get the number of documents
+    size_t n_documents = documents.size();
+    // initialize the transformed documents
+    std::vector<std::vector<real_t>> ret(n_documents);
+    // transform the documents
+    for (size_t i = 0; i < n_documents; ++i)
+    {
+      //fit each document in the documents vector
+      std::vector<std::vector<real_t>> fitret ( this->fit(documents[i])  );
 
-    UNDEF_REFERENCE(documents);
-    UNDEF_REFERENCE2(documents);
-    return std::vector<real_t>();
+      //copy the result
+      ret[i].resize(fitret.size()*fitret[0].size(), 0.0);
+      for (size_t j = 0; j < fitret.size(); ++j)
+      {
+        std::copy(fitret[j].begin(), fitret[j].end(), ret[i].begin() + j*fitret[j].size());
+      }
+    }
+    // return the transformed documents
+    return ret;
   }
-
-  std::vector<real_t> principal_component_analysis::fit_transform(const std::vector<std::string> &documents)
+  std::vector<std::vector<real_t>> principal_component_analysis::predict(const std::vector<std::vector<std::string>> &documents)
   {
-    UNDEF_REFERENCE(documents);
-    UNDEF_REFERENCE2(documents);
-    return std::vector<real_t>();
-  }
+    // get the number of documents
+    size_t n_documents = documents.size();
+    // initialize the transformed documents
+    std::vector<std::vector<real_t>> ret(n_documents);
+    // transform the documents
+    for (size_t i = 0; i < n_documents; ++i)
+    {
+      //fit each document in the documents vector
+      std::vector<std::vector<real_t>> fitret ( this->predict(documents[i])  );
 
-  // pca_vectorizer :: predict
-  //  pca_vectorizer :: fit_transform
-  // pca_vectorizer :: transform
+
+      //copy the result
+      ret[i].resize(fitret.size()*fitret[0].size(), 0.0);
+      for (size_t j = 0; j < fitret.size(); ++j)
+      {
+        std::copy(fitret[j].begin(), fitret[j].end(), ret[i].begin() + j*fitret[j].size());
+      }
+      
+
+    }
+
+    // return the transformed documents
+    return ret;
+  }   
+
 
   std::vector<real_t> pca_vectorizer::predict(provallo::matrix<real_t> const &data_)
   {
     return _pca.predict(data_);
-  }
+ }
 
   std::vector<real_t> pca_vectorizer::transform(provallo::matrix<real_t> const &data_)
   {
@@ -1091,12 +1716,33 @@ namespace provallo
 
   std::vector<real_t> pca_vectorizer::predict(std::vector<std::string> const &documents)
   {
-    return _pca.predict(documents);
+    std::vector<std::vector<real_t>> ret = _pca.predict(documents);
+    std::vector<real_t> ret_value;
+    //flatten the vector
+    for (size_t i = 0; i < ret.size(); ++i)
+    {
+      for (size_t j = 0; j < ret[i].size(); ++j)
+      {
+        ret_value.push_back(ret[i][j]);
+      }
+    }
+    return ret_value;
   }
 
   std::vector<real_t> pca_vectorizer::fit_transform(std::vector<std::string> const &documents)
   {
-    return _pca.fit_transform(documents);
+   std::vector<std::vector<real_t>> ret = _pca.fit(documents);
+   std::vector<real_t> ret_value;
+    //flatten the vector
+    for (size_t i = 0; i < ret.size(); ++i)
+    {
+      for (size_t j = 0; j < ret[i].size(); ++j)
+      {
+        ret_value.push_back(ret[i][j]);
+      }
+    }
+    return ret_value;
+
   }
   vectorizer_type pca_vectorizer::get_type() const
   {
@@ -1104,7 +1750,17 @@ namespace provallo
   }
   std::vector<real_t> pca_vectorizer::transform(std::vector<std::string> const &documents)
   {
-    return _pca.transform(documents);
+    std::vector<std::vector<real_t>> ret = _pca.transform(documents);
+    std::vector<real_t> ret_value;
+    //flatten the vector
+    for (size_t i = 0; i < ret.size(); ++i)
+    {
+      for (size_t j = 0; j < ret[i].size(); ++j)
+      {
+        ret_value.push_back(ret[i][j]);
+      }
+    }
+    return ret_value;
   }
   std::vector<real_t> standard_scaler_vectorizer::predict(provallo::matrix<real_t> const &data_)
   {
@@ -1607,16 +2263,16 @@ namespace provallo
   std::ofstream &operator<<(std::ofstream &os, const pipeline &p)
   {
 
-    os <<"name:"<< p.get_pipeline_name() << std::endl;
-    os <<"id:"<< p.get_pipeline_id() << std::endl;
+    os << "name:" << p.get_pipeline_name() << std::endl;
+    os << "id:" << p.get_pipeline_id() << std::endl;
 
-    //first see if any pipelines are aggregated in this pipeline 
-    for ( auto pipeline : p._pipelines)
+    // first see if any pipelines are aggregated in this pipeline
+    for (auto pipeline : p._pipelines)
     {
-      os<<*pipeline<<std::endl;
+      os << *pipeline << std::endl;
     }
 
-    os<<"#stages:"<<p.get_number_of_stages()<<std::endl;
+    os << "#stages:" << p.get_number_of_stages() << std::endl;
     // write the stages
     for (auto stage : p._stages)
     {
@@ -1624,9 +2280,7 @@ namespace provallo
       os << *stage << std::endl;
     }
     return os;
-    
   }
-
 
   std::ostream &operator<<(std::ostream &os, const pipeline &p)
   {
@@ -1634,17 +2288,17 @@ namespace provallo
     os << "pipeline id: " << p.get_pipeline_id() << std::endl;
     // write the stages
     os << "#pipelines: " << p._pipelines.size() << std::endl;
-    for ( auto pipeline : p._pipelines)
+    for (auto pipeline : p._pipelines)
     {
-      os<<*pipeline<<std::endl;
+      os << *pipeline << std::endl;
     }
     os << "#stages: " << p._stages.size() << std::endl;
-    
+
     for (auto stage : p._stages)
     {
       os << *stage << std::endl;
     }
-    return os;  
+    return os;
   }
 
   // set_pipeline_name
@@ -1700,232 +2354,217 @@ namespace provallo
   //    friend std::istream& operator>>(std::istream& is, stage_descriptor& sd);
 
   // stage descriptor ifstream/ofstream
-  //cluster stage metrics :
+  // cluster stage metrics :
 
-  //https://www.sciencedirect.com/science/article/pii/S016786551730166X 
-  //pearson
+  // https://www.sciencedirect.com/science/article/pii/S016786551730166X
+  // pearson
 
-    real_t cluster_stage::pearson_correlation (const std::vector<real_t>& x, const std::vector<real_t>& y,real_t mean_x , real_t mean_y  )
+  real_t cluster_stage::pearson_correlation(const std::vector<real_t> &x, const std::vector<real_t> &y, real_t mean_x, real_t mean_y)
+  {
+    real_t sum_sq_x = 0.0;
+    real_t sum_sq_y = 0.0;
+    real_t sum_coproduct = 0.0;
+
+    for (size_t i = 2; i < x.size() + 1; i += 1)
     {
-        real_t sum_sq_x = 0.0;
-        real_t sum_sq_y = 0.0;
-        real_t sum_coproduct = 0.0;
-      
-        for (size_t i = 2; i < x.size() + 1; i += 1) {
-            real_t sweep = (i - 1.0) / i;
-            real_t delta_x = x[i - 1] - mean_x;
-            real_t delta_y = y[i - 1] - mean_y;
-            sum_sq_x += delta_x * delta_x * sweep;
-            sum_sq_y += delta_y * delta_y * sweep;
-            sum_coproduct += delta_x * delta_y * sweep;
-            mean_x += delta_x / i;
-            mean_y += delta_y / i;
-        }
-        real_t pop_sd_x = sqrt(sum_sq_x / x.size());
-        real_t pop_sd_y = sqrt(sum_sq_y / x.size());
-        real_t cov_x_y = sum_coproduct / x.size();
-        return cov_x_y / (pop_sd_x * pop_sd_y);
- 
+      real_t sweep = (i - 1.0) / i;
+      real_t delta_x = x[i - 1] - mean_x;
+      real_t delta_y = y[i - 1] - mean_y;
+      sum_sq_x += delta_x * delta_x * sweep;
+      sum_sq_y += delta_y * delta_y * sweep;
+      sum_coproduct += delta_x * delta_y * sweep;
+      mean_x += delta_x / i;
+      mean_y += delta_y / i;
     }
-   
+    real_t pop_sd_x = sqrt(sum_sq_x / x.size());
+    real_t pop_sd_y = sqrt(sum_sq_y / x.size());
+    real_t cov_x_y = sum_coproduct / x.size();
+    return cov_x_y / (pop_sd_x * pop_sd_y);
+  }
 
-    std::vector<real_t> cluster_stage::rogerstanimoto_distances(const matrix<real_t>& data)
-    {
-        //first define correlation matrices for the two objects
-        //then calculate the distance between the two correlation matrices 
-        //Expressions for finding the most informative correlation matrices via cost functions
-        //of the form Jρ(K) = ρ ‖A − K‖2
-        //F + F (dN (K)).
-        //The cost function Jρ(K) is a function of the correlation matrix K, and the
-        //function dN (K) is the derivative of the cost function with respect to the correlation
-        //russellrao_distances - Quantifying the Informativeness of Similarity Measurements
-        //https://arxiv.org/pdf/1802.02547.pdf
+  std::vector<real_t> cluster_stage::rogerstanimoto_distances(const matrix<real_t> &data)
+  {
+    // first define correlation matrices for the two objects
+    // then calculate the distance between the two correlation matrices
+    // Expressions for finding the most informative correlation matrices via cost functions
+    // of the form Jρ(K) = ρ ‖A − K‖2
+    // F + F (dN (K)).
+    // The cost function Jρ(K) is a function of the correlation matrix K, and the
+    // function dN (K) is the derivative of the cost function with respect to the correlation
+    // russellrao_distances - Quantifying the Informativeness of Similarity Measurements
+    // https://arxiv.org/pdf/1802.02547.pdf
 
-        std::vector<real_t> ret(data.rows() * data.rows());
-        std::vector<real_t> x(data.cols());
-        std::vector<real_t> y(data.cols());
+    std::vector<real_t> ret(data.rows() * data.rows());
+    std::vector<real_t> x(data.cols());
+    std::vector<real_t> y(data.cols());
 
+    matrix<real_t> xcorr(data.cols(), data.cols());
+    matrix<real_t> ycorr(data.cols(), data.cols());
 
-        matrix<real_t> xcorr(data.cols(), data.cols());
-        matrix<real_t> ycorr(data.cols(), data.cols());
- 
-        //calculate the correlation matrices xcorr and ycorr for x and y
-        //correlation matrix is a square matrix that contains the Pearson product-moment correlation coefficients (often abbreviated as Pearson's r), which measure the linear dependence between pairs of features.
-        //Pearson's r is a measure of the linear correlation between two variables X and Y. It's value lies between -1 and +1, -1 indicating total negative linear correlation, 0 indicating no linear correlation, and +1 indicating total positive linear correlation.
+    // calculate the correlation matrices xcorr and ycorr for x and y
+    // correlation matrix is a square matrix that contains the Pearson product-moment correlation coefficients (often abbreviated as Pearson's r), which measure the linear dependence between pairs of features.
+    // Pearson's r is a measure of the linear correlation between two variables X and Y. It's value lies between -1 and +1, -1 indicating total negative linear correlation, 0 indicating no linear correlation, and +1 indicating total positive linear correlation.
 
-        //Pearson's r is calculated as follows:
-        //r = (nΣxy - (Σx)(Σy)) / sqrt((nΣx2 - (Σx)2)(nΣy2 - (Σy)2))
-        //where Σxy is the sum of the products of the corresponding values of the two data sets, Σx is the sum of the first data set, Σy is the sum of the second data set, Σx2 is the sum of the squares of the first data set, Σy2 is the sum of the squares of the second data set, and n is the number of values in each data set.
- 
-        for(size_t i=0;i<data.rows();++i)
-            for(size_t j=0;j<data.rows();++j)
-            {
-                for(size_t k=0;k<data.cols();++k)
-                {
-                    x[k] = data(i, k);
-                    y[k] = data(j, k);
-                }
-                xcorr(i, j) = pearson_correlation(x, y);
-                ycorr(i, j) = pearson_correlation(y, x);
-            }
-         //calculate the distance between the two correlation matrices and fill the ret vector
-        
-        for(size_t i=0;i<xcorr.rows()&&i<ycorr.rows();++i)
-            for(size_t j=0;j<xcorr.cols()&&j<ycorr.cols();++j)
-            {
-                ret[i * xcorr.rows() + j] = 1.0 - xcorr(i, j) * ycorr(i, j);
-            }
+    // Pearson's r is calculated as follows:
+    // r = (nΣxy - (Σx)(Σy)) / sqrt((nΣx2 - (Σx)2)(nΣy2 - (Σy)2))
+    // where Σxy is the sum of the products of the corresponding values of the two data sets, Σx is the sum of the first data set, Σy is the sum of the second data set, Σx2 is the sum of the squares of the first data set, Σy2 is the sum of the squares of the second data set, and n is the number of values in each data set.
 
-        return ret;
-    }   
-    
-    std::vector<real_t> cluster_stage::russellrao_distances(const matrix<real_t>& data)
-    {
-        //first define correlation matrices for the two objects
-        //then calculate the distance between the two correlation matrices 
-        //Expressions for finding the most informative correlation matrices via cost functions
-        //of the form Jρ(K) = ρ ‖A − K‖2
-        //F + F (dN (K)).
-        //The cost function Jρ(K) is a function of the correlation matrix K, and the
-        //function dN (K) is the derivative of the cost function with respect to the correlation    
-         std::vector<real_t> ret(data.rows());
-        std::vector<real_t> x(data.cols()); 
-
-        matrix<real_t> xcorr(data.cols(), data.cols());
-        matrix<real_t> ycorr(data.cols(), data.cols());
-        //calculate the correlation matrices xcorr and ycorr for x and y
-
-        for(size_t i=0;i<data.rows();++i)
-        {
-            for(size_t k=0;k<data.cols();++k)
-            {
-                x[k] = data(i, k);
-                ycorr(i, k) = data(i, k);
-                xcorr(i, k) = data(i, k);
-            }
-            ret[i] = 1.0 - (real_t)std::count(x.begin(), x.end(), 1) / x.size();
-            
-
-        }
-
-        //return the ret vector
-    
-        for(size_t i=0;i<xcorr.rows()&&i<ycorr.rows();++i)
-            for(size_t j=0;j<xcorr.cols()&&j<ycorr.cols();++j)
-            {
-                ret[i * xcorr.rows() + j] = 1.0 - xcorr(i, j) * ycorr(i, j);
-            }
-        //return the ret vector
-        return ret;
-
-    }   
-         
-
-    //kulsinski_distances - A Generalized Formula for Computing Pairwise Distances for Multi-Valued Attributes
-    std::vector<real_t>   cluster_stage::kulsinski_distances(const matrix<real_t>& data)
-    {
-      //continous kulsinski coefficient cK=|X intersection Y |/ c*|X| + |Y| - |X intersection Y|
-
-      std::vector<real_t> ret(data.rows() * data.rows()); 
-      std::vector<real_t> x(data.cols());
-      std::vector<real_t> y(data.cols());
-       
-    
-
-      //initialize x and y from data
-      for(size_t i = 0; i < data.rows(); i++)
+    for (size_t i = 0; i < data.rows(); ++i)
+      for (size_t j = 0; j < data.rows(); ++j)
       {
-          real_t c = 0;
-          real_t c1 = 0;
-          real_t c2 = 0;
-        for(size_t k = 0; k < data.cols(); k++)
+        for (size_t k = 0; k < data.cols(); ++k)
         {
           x[k] = data(i, k);
-          y[k] = data(i, k);
-           if(x[k] == 1 && y[k] == 1)
-            {
-              c++;
-            }
-            if(x[k] == 1)
-            {
-              c1++;
-            }
-            if(y[k] == 1)
-            {
-              c2++;
-            }
-            ret[i] += ( c / (c1 + c2 - c) ) / data.rows();
-
+          y[k] = data(j, k);
         }
-
+        xcorr(i, j) = pearson_correlation(x, y);
+        ycorr(i, j) = pearson_correlation(y, x);
       }
-      //return the ret vector
-      return ret;
+    // calculate the distance between the two correlation matrices and fill the ret vector
 
-       
-    } 
-    
-
-    //dice 
-    std::vector<real_t> cluster_stage::dice_distances(const matrix<real_t>& data)
-    {
-      //continous dice coefficient cDC=2 |X intersection Y |/ c*|X| + |Y|
-
-      std::vector<real_t> ret(data.rows() * data.rows()); 
-      std::vector<real_t> x(data.cols());
-      std::vector<real_t> y(data.cols());
-      //initialize x and y from data
-      for(size_t i = 0; i < data.rows(); i++)
+    for (size_t i = 0; i < xcorr.rows() && i < ycorr.rows(); ++i)
+      for (size_t j = 0; j < xcorr.cols() && j < ycorr.cols(); ++j)
       {
-          real_t c = 0;
-          real_t c1 = 0;
-          real_t c2 = 0;
-        for(size_t k = 0; k < data.cols(); k++)
-        {
-          x[k] = data(i, k);
-          y[k] = data(i, k);
-           if(x[k] == 1 && y[k] == 1)
-            {
-              c++;
-            }
-            if(x[k] == 1)
-            {
-              c1++;
-            }
-            if(y[k] == 1)
-            {
-              c2++;
-            }
-            ret[i] += ( 2 * c / (c1 + c2) ) / data.rows();
-
-        }
-
+        ret[i * xcorr.rows() + j] = 1.0 - xcorr(i, j) * ycorr(i, j);
       }
-      return ret;
-    } 
 
-    std::vector<real_t> cluster_stage::sokalsneath_distances ( const matrix<real_t>& data)
+    return ret;
+  }
+
+  std::vector<real_t> cluster_stage::russellrao_distances(const matrix<real_t> &data)
+  {
+    // first define correlation matrices for the two objects
+    // then calculate the distance between the two correlation matrices
+    // Expressions for finding the most informative correlation matrices via cost functions
+    // of the form Jρ(K) = ρ ‖A − K‖2
+    // F + F (dN (K)).
+    // The cost function Jρ(K) is a function of the correlation matrix K, and the
+    // function dN (K) is the derivative of the cost function with respect to the correlation
+    std::vector<real_t> ret(data.rows());
+    std::vector<real_t> x(data.cols());
+
+    matrix<real_t> xcorr(data.cols(), data.cols());
+    matrix<real_t> ycorr(data.cols(), data.cols());
+    // calculate the correlation matrices xcorr and ycorr for x and y
+
+    for (size_t i = 0; i < data.rows(); ++i)
     {
-      //calculate sokalsneath distance of the data matrix:
-      //dxy = (a + b) / (a + b + 2c)
+      for (size_t k = 0; k < data.cols(); ++k)
+      {
+        x[k] = data(i, k);
+        ycorr(i, k) = data(i, k);
+        xcorr(i, k) = data(i, k);
+      }
+      ret[i] = 1.0 - (real_t)std::count(x.begin(), x.end(), 1) / x.size();
+    }
 
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //for each pair of vectors
+    // return the ret vector
 
-      real_t a = 0;
-      real_t b = 0;
+    for (size_t i = 0; i < xcorr.rows() && i < ycorr.rows(); ++i)
+      for (size_t j = 0; j < xcorr.cols() && j < ycorr.cols(); ++j)
+      {
+        ret[i * xcorr.rows() + j] = 1.0 - xcorr(i, j) * ycorr(i, j);
+      }
+    // return the ret vector
+    return ret;
+  }
+
+  // kulsinski_distances - A Generalized Formula for Computing Pairwise Distances for Multi-Valued Attributes
+  std::vector<real_t> cluster_stage::kulsinski_distances(const matrix<real_t> &data)
+  {
+    // continous kulsinski coefficient cK=|X intersection Y |/ c*|X| + |Y| - |X intersection Y|
+
+    std::vector<real_t> ret(data.rows() * data.rows());
+    std::vector<real_t> x(data.cols());
+    std::vector<real_t> y(data.cols());
+
+    // initialize x and y from data
+    for (size_t i = 0; i < data.rows(); i++)
+    {
       real_t c = 0;
-      for(size_t i = 0; i < data.rows(); i++)
-      for(size_t j = 0; j < data.rows(); j++)
+      real_t c1 = 0;
+      real_t c2 = 0;
+      for (size_t k = 0; k < data.cols(); k++)
+      {
+        x[k] = data(i, k);
+        y[k] = data(i, k);
+        if (x[k] == 1 && y[k] == 1)
+        {
+          c++;
+        }
+        if (x[k] == 1)
+        {
+          c1++;
+        }
+        if (y[k] == 1)
+        {
+          c2++;
+        }
+        ret[i] += (c / (c1 + c2 - c)) / data.rows();
+      }
+    }
+    // return the ret vector
+    return ret;
+  }
+
+  // dice
+  std::vector<real_t> cluster_stage::dice_distances(const matrix<real_t> &data)
+  {
+    // continous dice coefficient cDC=2 |X intersection Y |/ c*|X| + |Y|
+
+    std::vector<real_t> ret(data.rows() * data.rows());
+    std::vector<real_t> x(data.cols());
+    std::vector<real_t> y(data.cols());
+    // initialize x and y from data
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      real_t c = 0;
+      real_t c1 = 0;
+      real_t c2 = 0;
+      for (size_t k = 0; k < data.cols(); k++)
+      {
+        x[k] = data(i, k);
+        y[k] = data(i, k);
+        if (x[k] == 1 && y[k] == 1)
+        {
+          c++;
+        }
+        if (x[k] == 1)
+        {
+          c1++;
+        }
+        if (y[k] == 1)
+        {
+          c2++;
+        }
+        ret[i] += (2 * c / (c1 + c2)) / data.rows();
+      }
+    }
+    return ret;
+  }
+
+  std::vector<real_t> cluster_stage::sokalsneath_distances(const matrix<real_t> &data)
+  {
+    // calculate sokalsneath distance of the data matrix:
+    // dxy = (a + b) / (a + b + 2c)
+
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // for each pair of vectors
+
+    real_t a = 0;
+    real_t b = 0;
+    real_t c = 0;
+    for (size_t i = 0; i < data.rows(); i++)
+      for (size_t j = 0; j < data.rows(); j++)
       {
         a = 0;
         b = 0;
         c = 0;
-        for(size_t k = 0; k < data.cols(); k++)
+        for (size_t k = 0; k < data.cols(); k++)
         {
-          if(data(i, k) == data(j, k))
+          if (data(i, k) == data(j, k))
           {
-            if(data(i, k) == 1)
+            if (data(i, k) == 1)
             {
               a++;
             }
@@ -1941,671 +2580,801 @@ namespace provallo
         }
         ret[i * data.rows() + j] = (a + b) / (a + b + 2 * c);
       }
-        
 
-      
-      //return the result
-      return ret;
-
-    }
-    std::vector<real_t> cluster_stage::sokalmichener_distances(const matrix<real_t> & data)
+    // return the result
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::sokalmichener_distances(const matrix<real_t> &data)
+  {
+    // calculate sokalmichener distance of the data matrix:
+    // dxy = (a + b) / (a + b + 2c)
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // for each pair of vectors
+    //--------------------------------------------------------------------
+    for (size_t i = 0; i < data.rows(); i++)
     {
-      //calculate sokalmichener distance of the data matrix:
-      //dxy = (a + b) / (a + b + 2c)
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //for each pair of vectors
-      //--------------------------------------------------------------------
-      for(size_t i = 0; i < data.rows(); i++)
+      for (size_t j = i; j < data.rows(); j++)
       {
-        for(size_t j = i; j < data.rows(); j++)
+        // calculate a, b, c
+        real_t a = 0;
+        real_t b = 0;
+        real_t c = 0;
+        for (size_t k = 0; k < data.cols(); k++)
         {
-          //calculate a, b, c
-          real_t a = 0;
-          real_t b = 0;
-          real_t c = 0;
-          for(size_t k = 0; k < data.cols(); k++)
+          if (data(i, k) == data(j, k))
           {
-            if(data(i, k) == data(j, k))
+            if (data(i, k) == 1)
             {
-              if(data(i, k) == 1)
-              {
-                a++;
-              }
-              else
-              {
-                b++;
-              }
+              a++;
             }
             else
             {
-              c++;
+              b++;
             }
           }
-          //calculate distance
-          ret[i * data.rows() + j] = (a + b) / (a + b + 2 * c);
-          ret[j * data.rows() + i] = ret[i * data.rows() + j];
-        }
-      }
-      return ret;
-    }
-    std::vector<real_t> cluster_stage::haversine_distances(const matrix<real_t>& data)
-    {
-      //calculate haversine distance of the data matrix:
-      //dxy = 2 * asin(sqrt(sin((lat1-lat2)/2)^2 + cos(lat1) * cos(lat2) * sin((lon1-lon2)/2)^2))
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //extract lon and lat from data
-      std::vector<real_t> lon(data.rows());
-      std::vector<real_t> lat(data.rows());
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        lon[i] = data(i, 0);
-        lat[i] = data(i, 1);
-      }
-      //for each pair of vectors
-      //--------------------------------------------------------------------
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize haversine distance
-          real_t haversine = 0;
-          //calculate haversine distance
-          real_t dlon = lon[i] - lon[j];
-          real_t dlat = lat[i] - lat[j];
-          real_t a = pow(sin(dlat / 2), 2) + cos(lat[i]) * cos(lat[j]) * pow(sin(dlon / 2), 2);
-          haversine = 2 * asin(sqrt(a));
-          //store haversine distance
-          ret[i * data.rows() + j] = haversine;
-        }
-      } //end for each pair of vectors
-      return ret;
-
-
-    }
-    std::vector<real_t> cluster_stage::yule_distances(const matrix<real_t> & data)
-    {
-      //calculate yule distance of the data matrix:
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //calculate the dissimilarity between two probability distributions based on their overlap
-      //The Yule distance between two probability distributions, P and Q is given by: The distance ranges from 0 to 1, with 0 indicating that the two distributions are identical and 1 indicating that they have no overlap
-
-      std::vector<real_t> p(data.cols());
-      std::vector<real_t> q(data.cols());
-      //for each pair of vectors
-      //--------------------------------------------------------------------
-
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize yule distance
-          real_t yule = 0.0;
-          //for each coordinate
-          for(size_t k = 0; k < data.cols(); k++)
+          else
           {
-            //calculate the probability of the kth coordinate of the ith vector
-            p[k] = data(i, k) /  data.row_sum(i); 
-            //calculate the probability of the kth coordinate of the jth vector
-            q[k] = data(j, k) /  data.row_sum(j);
-            //calculate the yule distance
-            yule += (p[k] * q[k]) / (p[k] + q[k]);
+            c++;
           }
-          //set the yule distance
-          ret[i * data.rows() + j] = 1.0 - yule;
+        }
+        // calculate distance
+        ret[i * data.rows() + j] = (a + b) / (a + b + 2 * c);
+        ret[j * data.rows() + i] = ret[i * data.rows() + j];
+      }
+    }
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::haversine_distances(const matrix<real_t> &data)
+  {
+    // calculate haversine distance of the data matrix:
+    // dxy = 2 * asin(sqrt(sin((lat1-lat2)/2)^2 + cos(lat1) * cos(lat2) * sin((lon1-lon2)/2)^2))
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // extract lon and lat from data
+    std::vector<real_t> lon(data.rows());
+    std::vector<real_t> lat(data.rows());
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      lon[i] = data(i, 0);
+      lat[i] = data(i, 1);
+    }
+    // for each pair of vectors
+    //--------------------------------------------------------------------
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize haversine distance
+        real_t haversine = 0;
+        // calculate haversine distance
+        real_t dlon = lon[i] - lon[j];
+        real_t dlat = lat[i] - lat[j];
+        real_t a = pow(sin(dlat / 2), 2) + cos(lat[i]) * cos(lat[j]) * pow(sin(dlon / 2), 2);
+        haversine = 2 * asin(sqrt(a));
+        // store haversine distance
+        ret[i * data.rows() + j] = haversine;
+      }
+    } // end for each pair of vectors
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::yule_distances(const matrix<real_t> &data)
+  {
+    // calculate yule distance of the data matrix:
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // calculate the dissimilarity between two probability distributions based on their overlap
+    // The Yule distance between two probability distributions, P and Q is given by: The distance ranges from 0 to 1, with 0 indicating that the two distributions are identical and 1 indicating that they have no overlap
+
+    std::vector<real_t> p(data.cols());
+    std::vector<real_t> q(data.cols());
+    // for each pair of vectors
+    //--------------------------------------------------------------------
+
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize yule distance
+        real_t yule = 0.0;
+        // for each coordinate
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          // calculate the probability of the kth coordinate of the ith vector
+          p[k] = data(i, k) / data.row_sum(i);
+          // calculate the probability of the kth coordinate of the jth vector
+          q[k] = data(j, k) / data.row_sum(j);
+          // calculate the yule distance
+          yule += (p[k] * q[k]) / (p[k] + q[k]);
+        }
+        // set the yule distance
+        ret[i * data.rows() + j] = 1.0 - yule;
+      }
+    }
+    return ret;
+  }
+
+  //
+  // braycurtis
+  // The Bray curtis distance has a nice property that if all coordinates are postive,
+  // its value is between zero and one.
+  // Zero bray curtis represent exact similar coordinate. If both objects are in the zero coordinates, the Bray curtis distance is undefined.
+
+  std::vector<real_t> cluster_stage::braycurtis_distances(const matrix<real_t> &data)
+  {
+    // calculate bray curtis distance of the data matrix:
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // bray curtis distance is the sum of the absolute difference between the elements of the vectors
+    // for each pair of vectors
+
+    // for each pair of vectors
+    //--------------------------------------------------------------------
+
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize bray curtis distance to 0
+        ret[i * data.rows() + j] = 0.0;
+
+        // for each element of the vectors
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          // calculate bray curtis distance
+          ret[i * data.rows() + j] += std::abs(data(i, k) - data(j, k)) / (std::abs(data(i, k)) + std::abs(data(j, k)));
         }
       }
-      return ret;
+    }
+    //--------------------------------------------------------------------
+    return ret;
+  }
 
+  // canberra_distances
+  std::vector<real_t> cluster_stage::canberra_distances(const matrix<real_t> &data)
+  {
+    // is a numerical measure of the distance between pairs of points in a vector space, introduced in 1966 and refined in 1967 by Godfrey N
+    // calculate canberra distance of the data matrix:
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // canberra distance is the sum of the absolute difference between the elements of the vectors
+    // for each pair of vectors
+
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize canberra distance to 0
+        ret[i * data.rows() + j] = 0.0;
+
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += std::abs(data(i, k) - data(j, k)) / (std::abs(data(i, k)) + std::abs(data(j, k)));
+        }
+      }
+    }
+    return ret;
+    // no score for this metric
+  }
+
+  std::vector<real_t> cluster_stage::chebyshev_distances(const matrix<real_t> &data)
+  {
+    // calculate chebyshev distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // chebeshev distance is the maximum of the absolute difference between the elements of the vectors
+    // for each pair of vectors
+
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize chebeshev distance to 0
+        ret[i * data.rows() + j] = 0.0;
+
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] = std::max(ret[i * data.rows() + j], std::abs(data(i, k) - data(j, k)));
+        }
+        ret[i * data.rows() + j] = std::abs(ret[i * data.rows() + j]);
+      }
+      ret[i * data.rows() + i] = 0.0;
+    }
+    // update the distance matrix
+    // and the local score matrix
+
+    return ret;
+  }
+
+  std::vector<real_t> cluster_stage::minkowski_distances(const matrix<real_t> &data)
+  {
+    // calculate minkowski distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize minkowski distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += std::pow(std::abs(data(i, k) - data(j, k)), 3);
+        }
+        ret[i * data.rows() + j] = std::pow(ret[i * data.rows() + j], 1.0 / 3.0);
+      }
+    }
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::wminkowski_distances(const matrix<real_t> &data)
+  {
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // calculate wminkowski distance of the data matrix
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize wminkowski distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += std::pow(std::abs(data(i, k) - data(j, k)), 3);
+        }
+        ret[i * data.rows() + j] = std::pow(ret[i * data.rows() + j], 1.0 / 3.0);
+      }
     }
 
-    //
-    //braycurtis
-    //The Bray curtis distance has a nice property that if all coordinates are postive,
-    // its value is between zero and one. 
-    //Zero bray curtis represent exact similar coordinate. If both objects are in the zero coordinates, the Bray curtis distance is undefined.
-    
-    std::vector<real_t> cluster_stage::braycurtis_distances (const matrix<real_t>& data)
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::seuclidean_distances(const matrix<real_t> &data)
+  {
+    // calculate seuclidean distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    for (size_t i = 0; i < data.rows(); i++)
     {
-      //calculate bray curtis distance of the data matrix:
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //bray curtis distance is the sum of the absolute difference between the elements of the vectors
-      //for each pair of vectors
-      
-      //for each pair of vectors
-      //--------------------------------------------------------------------
-
-      for(size_t i = 0; i < data.rows(); i++)
+      for (size_t j = 0; j < data.rows(); j++)
       {
-        for(size_t j = 0; j < data.rows(); j++)
+        // initialize seuclidean distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
         {
-          //initialize bray curtis distance to 0
+          ret[i * data.rows() + j] += std::pow(std::abs(data(i, k) - data(j, k)), 2);
+        }
+        ret[i * data.rows() + j] = std::sqrt(ret[i * data.rows() + j] / data.cols());
+      }
+      ret[i * data.rows() + i] = 0.0;
+    }
+    // return the seuclidean distance matrix
+
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::hamming_distances(const matrix<real_t> &data)
+  {
+    // calculate hamming distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize hamming distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += (data(i, k) != data(j, k));
+        }
+        ret[i * data.rows() + j] /= data.cols();
+      }
+    }
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::jaccard_distances(const matrix<real_t> &data)
+  {
+    // calculate jaccard distance of the data matrix
+    // the difference between jaccard and hamming distance is that jaccard distance is normalized
+    std::vector<real_t> ret(data.rows() * data.rows());
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize jaccard distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += (data(i, k) != data(j, k));
+        }
+        // normalize jaccard distance
+        ret[i * data.rows() + j] /= (data.cols() - ret[i * data.rows() + j]);
+      }
+    }
+    return ret;
+  }
+  // spearman
+  std::vector<real_t> cluster_stage::spearman_distances(const matrix<real_t> &data)
+  {
+
+    matrix<real_t> rank_data(data.rows(), data.cols());
+    std::vector<size_t> rank(data.cols());
+
+    // initialize rank
+    for (size_t i = 0; i < rank.size(); i++)
+    {
+      rank[i] = rank.size() - i;
+    }
+    // calculate rank of each column
+    for (size_t i = 0; i < data.cols(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        for (size_t k = 0; k < data.rows(); k++)
+        {
+          if (data(i, j) > data(i, k))
+          {
+            rank[j]--;
+          }
+          else if (data(i, j) < data(i, k))
+          {
+            rank[k]--;
+          }
+        }
+      }
+      // sort the rank
+      std::sort(rank.begin(), rank.end());
+      // assign the rank to the rank_data matrix
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        rank_data(i, j) = rank[j];
+      }
+      // reset the rank
+      for (size_t j = 0; j < rank.size(); j++)
+      {
+        rank[j] = rank.size() - j;
+      }
+    }
+    // calculate spearman distance of the rank_data matrix
+    return cluster_stage::euclidean_distances(matrix<real_t>(rank_data * rank_data.transpose()) / data.cols());
+  }
+
+  // kendall
+  std::vector<real_t> cluster_stage::kendall_distances(const matrix<real_t> &data)
+  {
+    // calculate kendall distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    matrix<real_t> rank_data(data.rows(), data.cols());
+    std::vector<size_t> rank(data.cols());
+
+    // initialize rank
+    for (size_t i = 0; i < rank.size(); i++)
+    {
+      rank[i] = rank.size() - i;
+    }
+    // calculate rank of each column
+    for (size_t i = 0; i < data.cols(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        for (size_t k = 0; k < data.rows(); k++)
+        {
+          if (data(j, i) > data(k, i))
+          {
+            rank[j]--;
+          }
+          else if (data(j, i) < data(k, i))
+          {
+            rank[k]--;
+          }
+        }
+      }
+      // copy rank to rank_data
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        rank_data(j, i) = rank[j];
+      }
+      // reset rank
+      for (size_t j = 0; j < rank.size(); j++)
+      {
+        rank[j] = rank.size() - j;
+      }
+    }
+    // calculate kendall distance of rank_data
+    // calculate kendall distance of the data matrix
+
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize kendall distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += (rank_data(i, k) - rank_data(j, k)) * (rank_data(i, k) - rank_data(j, k));
+        }
+        // normalize kendall distance
+        ret[i * data.rows() + j] /= (2 * data.cols() * (data.cols() - 1));
+      }
+    } // calculate kendall distance of rank_data
+    // return kendall distance:
+
+    return ret;
+  }
+  // cosine
+  std::vector<real_t> cluster_stage::cosine_distances(const matrix<real_t> &data)
+  {
+    // calculate cosine distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // calculate cosine distance of the data matrix
+
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize cosine distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += data(i, k) * data(j, k);
+        }
+        // normalize cosine distance:
+        ret[i * data.rows() + j] /= sqrt(data.sum_row(i) * data.sum_row(j));
+
+        // cosine distance is between 0 and 1
+        ret[i * data.rows() + j] = 1.0 - ret[i * data.rows() + j];
+        // if cosine distance is negative, set it to 0
+        if (ret[i * data.rows() + j] < 0.0)
+        {
           ret[i * data.rows() + j] = 0.0;
-
-          //for each element of the vectors
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            //calculate bray curtis distance
-            ret[i * data.rows() + j] += std::abs(data(i, k) - data(j, k)) / (std::abs(data(i, k)) + std::abs(data(j, k)));
-          }
         }
-      }
-      //--------------------------------------------------------------------
-      return ret;
-
-
-    }
-
-    //canberra_distances
-    std::vector<real_t> cluster_stage::canberra_distances (const matrix<real_t>& data)
-    {
-      //is a numerical measure of the distance between pairs of points in a vector space, introduced in 1966 and refined in 1967 by Godfrey N
-      //calculate canberra distance of the data matrix: 
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //canberra distance is the sum of the absolute difference between the elements of the vectors
-      //for each pair of vectors
-
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
+        // if cosine distance is greater than 1, set it to 1
+        if (ret[i * data.rows() + j] > 1.0)
         {
-          //initialize canberra distance to 0
+          ret[i * data.rows() + j] = 1.0;
+        }
+        // if cosine distance is nan, set it to 0
+        if (ret[i * data.rows() + j] != ret[i * data.rows() + j])
+        {
           ret[i * data.rows() + j] = 0.0;
-
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += std::abs(data(i, k) - data(j, k)) / (std::abs(data(i, k)) + std::abs(data(j, k)));
-          }
         }
-      } 
-      return ret;
-      //no score for this metric
-    } 
-
-    std::vector<real_t> cluster_stage::chebyshev_distances  (const matrix<real_t>& data)
-    {
-      //calculate chebyshev distance of the data matrix 
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //chebeshev distance is the maximum of the absolute difference between the elements of the vectors
-      //for each pair of vectors
-
-
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
+        // if cosine distance is inf/-inf, set it to 0
+        if (ret[i * data.rows() + j] == std::numeric_limits<real_t>::infinity() || ret[i * data.rows() + j] == -std::numeric_limits<real_t>::infinity())
         {
-          //initialize chebeshev distance to 0
           ret[i * data.rows() + j] = 0.0;
-
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] = std::max(ret[i * data.rows() + j], std::abs(data(i, k) - data(j, k)));
-          }
-          ret[i * data.rows() + j] = std::abs(ret[i * data.rows() + j]);
-          
         }
-        ret[i * data.rows() + i] = 0.0; 
-      }
-      //update the distance matrix
-      //and the local score matrix
+        // finish calculating cosine distance
 
-      return ret;
-    }
- 
-    std::vector<real_t> cluster_stage::minkowski_distances  (const matrix<real_t>& data)
+      } // end for j
+    }   // end for i
+
+    return ret; // return cosine distance
+  }             // end cosine distance
+  // correlation
+  std::vector<real_t> cluster_stage::correlation_distances(const matrix<real_t> &data)
+  {
+    // calculate correlation distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // calculate correlation distance of the data matrix
+    // calculate mean of each column
+    std::vector<real_t> mean(data.cols());
+    for (size_t i = 0; i < data.cols(); i++)
     {
-      //calculate minkowski distance of the data matrix 
-      std::vector<real_t> ret(data.rows() * data.rows());
-      for(size_t i = 0; i < data.rows(); i++)
+      mean[i] = 0.0;
+      for (size_t j = 0; j < data.rows(); j++)
       {
-        for(size_t j = 0; j < data.rows(); j++)
+        mean[i] += data(j, i);
+      }
+      mean[i] /= data.rows();
+    }
+    // calculate standard deviation of each column
+    std::vector<real_t> std(data.cols());
+    for (size_t i = 0; i < data.cols(); i++)
+    {
+      std[i] = 0.0;
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        std[i] += (data(j, i) - mean[i]) * (data(j, i) - mean[i]);
+      }
+      std[i] /= data.rows();
+      std[i] = sqrt(std[i]);
+    }
+    // calculate correlation distance of the data matrix
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize correlation distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
         {
-          //initialize minkowski distance to 0
+          ret[i * data.rows() + j] += (data(i, k) - mean[k]) * (data(j, k) - mean[k]);
+        }
+        // normalize correlation distance
+        ret[i * data.rows() + j] /= (std[i] * std[j]);
+        // correlation distance is between -1 and 1
+        ret[i * data.rows() + j] = 1.0 - ret[i * data.rows() + j];
+        // if correlation distance is negative, set it to 0
+        if (ret[i * data.rows() + j] < 0.0)
+        {
           ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += std::pow(std::abs(data(i, k) - data(j, k)), 3);
-          }
-          ret[i * data.rows() + j] = std::pow(ret[i * data.rows() + j], 1.0/3.0);
-
         }
+
+      } // end for j
+    }   // end for i
+    // return correlation distance
+    return ret;
+    // return correlation_distances(data, mean, std);
+  }
+  // manhattan
+  std::vector<real_t> cluster_stage::manhattan_distances(const matrix<real_t> &data)
+  {
+    // calculate manhattan distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // calculate manhattan distance of the data matrix
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize manhattan distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += fabs(data(i, k) - data(j, k));
+        }
+      } // end for j
+    }   // end for i
+    // return manhattan distance
+    return ret;
+  }
+  // euclidean
+  std::vector<real_t> cluster_stage::euclidean_distances(const matrix<real_t> &data)
+  {
+    // calculate euclidean distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // calculate euclidean distance of the data matrix
+
+    for (size_t i = 0; i < data.rows(); i++)
+    {
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        // initialize euclidean distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
+        {
+          ret[i * data.rows() + j] += (data(i, k) - data(j, k)) * (data(i, k) - data(j, k));
+        }
+        // euclidean distance is between 0 and 1
+        ret[i * data.rows() + j] = sqrt(ret[i * data.rows() + j]);
+      } // end for j
+    }   // end for i
+
+    // return euclidean distance
+    return ret;
+  }
+  // mahalanobis
+  std::vector<real_t> cluster_stage::mahalanobis_distances(const matrix<real_t> &data)
+  {
+    // calculate mahalanobis distance of the data matrix
+    std::vector<real_t> ret(data.rows() * data.rows());
+    // calculate mahalanobis distance of the data matrix
+    // calculate mean of each column
+    std::vector<real_t> std(data.cols());
+    std::vector<real_t> mean(data.cols());
+    for (size_t i = 0; i < data.cols(); i++)
+    {
+      mean[i] = 0.0;
+      for (size_t j = 0; j < data.rows(); j++)
+      {
+        mean[i] += data(j, i);
       }
-      return ret;
+      mean[i] /= data.rows();
     }
-    std::vector<real_t> cluster_stage::wminkowski_distances  (const matrix<real_t>& data)
-    {
-       std::vector<real_t> ret(data.rows() * data.rows());
-       //calculate wminkowski distance of the data matrix
-        for(size_t i = 0; i < data.rows(); i++)
-        {
-          for(size_t j = 0; j < data.rows(); j++)
-          {
-            //initialize wminkowski distance to 0
-            ret[i * data.rows() + j] = 0.0;
-            for(size_t k = 0; k < data.cols(); k++)
-            {
-              ret[i * data.rows() + j] += std::pow(std::abs(data(i, k) - data(j, k)), 3);
-            } 
-            ret[i * data.rows() + j] = std::pow(ret[i * data.rows() + j], 1.0/3.0);
-          }
-         } 
+    // calculate standard deviation of each column
 
-      return ret;
-    }
-    std::vector<real_t> cluster_stage::seuclidean_distances  (const matrix<real_t>& data)
+    for (size_t i = 0; i < data.cols(); i++)
     {
-      //calculate seuclidean distance of the data matrix 
-      std::vector<real_t> ret(data.rows() * data.rows());
-      for(size_t i = 0; i < data.rows(); i++)
+      std[i] = 0.0;
+      for (size_t j = 0; j < data.rows(); j++)
       {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-            //initialize seuclidean distance to 0
-            ret[i * data.rows() + j] = 0.0;
-            for(size_t k = 0; k < data.cols(); k++)
-            {
-              ret[i * data.rows() + j] += std::pow(std::abs(data(i, k) - data(j, k)), 2);
-            }
-            ret[i * data.rows() + j] = std::sqrt(ret[i * data.rows() + j] / data.cols());
-
-        }
-        ret[i * data.rows() + i] = 0.0;
+        std[i] += (data(j, i) - mean[i]) * (data(j, i) - mean[i]);
       }
-      //return the seuclidean distance matrix
-
-      return ret;
+      std[i] /= data.rows();
+      std[i] = sqrt(std[i]);
     }
-     std::vector<real_t> cluster_stage::hamming_distances  (const matrix<real_t>& data)
+    // calculate mahalanobis distance of the data matrix
+    for (size_t i = 0; i < data.rows(); i++)
     {
-      //calculate hamming distance of the data matrix 
-      std::vector<real_t> ret(data.rows() * data.rows());
-      for(size_t i = 0; i < data.rows(); i++)
+      for (size_t j = 0; j < data.rows(); j++)
       {
-        for(size_t j = 0; j < data.rows(); j++)
+        // initialize mahalanobis distance to 0
+        ret[i * data.rows() + j] = 0.0;
+        for (size_t k = 0; k < data.cols(); k++)
         {
-          //initialize hamming distance to 0
-          ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += (data(i, k) != data(j, k));
-          }
-          ret[i * data.rows() + j] /= data.cols();
-
+          ret[i * data.rows() + j] += (data(i, k) - mean[k]) * (data(j, k) - mean[k]);
         }
-      }
-      return ret;
+        // normalize mahalanobis distance
+        ret[i * data.rows() + j] /= (std[i] * std[j]);
+        // mahalanobis distance is between 0 and 1
+        ret[i * data.rows() + j] = sqrt(ret[i * data.rows() + j]);
+      } // end for j
+    }   // end for i
+    // return mahalanobis distance
+    return ret;
+  }
+
+  // matching
+
+  // dice
+
+  // jaccard
+
+  // calculate distance matrix
+  std::vector<real_t> cluster_stage::calculate_distance_matrix(const matrix<real_t> &data, const std::string &m)
+  {
+    if (metrics.find(m) != metrics.end())
+    {
+      // calculate distance matrix return this reference to the function
+
+      return (this->*metrics[m])(data);
     }
-    std::vector<real_t> cluster_stage::jaccard_distances  (const matrix<real_t>& data)
+    else
     {
-      //calculate jaccard distance of the data matrix 
-      //the difference between jaccard and hamming distance is that jaccard distance is normalized
-      std::vector<real_t> ret(data.rows() * data.rows());
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize jaccard distance to 0
-          ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += (data(i, k) != data(j, k));
-          }
-          //normalize jaccard distance
-          ret[i * data.rows() + j] /= (data.cols() - ret[i * data.rows() + j]);
-
-
-        }
-      }
-      return ret; 
+      // calculate distance matrix
+      return euclidean_distances(data);
     }
-    //spearman 
-    std::vector<real_t> cluster_stage::spearman_distances  (const matrix<real_t>& data)
-    { 
+    // calculate distance matrix
 
-      matrix<real_t> rank_data(data.rows(), data.cols());
-      std::vector<size_t> rank(data.cols());
+  } // end calculate_distance_matrix
+  //transfer learning stage implemnenation
 
-      //initialize rank
-      for(size_t i = 0; i < rank.size(); i++)
-      {
-        rank[i] = rank.size() - i;
-      }
-      //calculate rank of each column
-      for(size_t i = 0; i < data.cols(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          for(size_t k = 0; k < data.rows(); k++)
-          {
-            if(data(i, j) > data(i, k))
-            {
-              rank[j]--;
-            }
-            else if(data(i, j) < data(i, k))
-            {
-              rank[k]--;
-            }
-          }
-        }
-        //sort the rank
-        std::sort(rank.begin(), rank.end());
-        //assign the rank to the rank_data matrix
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          rank_data(i, j) = rank[j];
-        }
-        //reset the rank
-        for(size_t j = 0; j < rank.size(); j++)
-        {
-          rank[j] = rank.size() - j;
-        } 
-      }
-      //calculate spearman distance of the rank_data matrix
-      return cluster_stage::euclidean_distances(matrix<real_t>(rank_data * rank_data.transpose())  / data.cols() );
-    }
-     
-    //kendall
-    std::vector<real_t> cluster_stage::kendall_distances(const matrix<real_t>& data)
-    {
-       //calculate kendall distance of the data matrix
-      std::vector<real_t> ret(data.rows() * data.rows());
-      matrix<real_t> rank_data(data.rows(), data.cols());
-      std::vector<size_t> rank(data.cols());
-
-      //initialize rank
-      for(size_t i = 0; i < rank.size(); i++)
-      {
-        rank[i] = rank.size() - i;
-      }
-      //calculate rank of each column
-      for(size_t i = 0; i < data.cols(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          for(size_t k = 0; k < data.rows(); k++)
-          {
-            if(data(j, i) > data(k, i))
-            {
-              rank[j]--;
-            }
-            else if(data(j, i) < data(k, i))
-            {
-              rank[k]--;
-            }
-          }
-        }
-        //copy rank to rank_data
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          rank_data(j, i) = rank[j];
-        }
-        //reset rank
-        for(size_t j = 0; j < rank.size(); j++)
-        {
-          rank[j] = rank.size() - j;
-        }
-      } 
-      //calculate kendall distance of rank_data
-      //calculate kendall distance of the data matrix
-
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize kendall distance to 0
-          ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += (rank_data(i, k) - rank_data(j, k)) * (rank_data(i, k) - rank_data(j, k));
-          }
-          //normalize kendall distance
-          ret[i * data.rows() + j] /= (2 * data.cols() * (data.cols() - 1));
-
-        }
-      } //calculate kendall distance of rank_data
-      //return kendall distance:
-
-      return ret;
-
-    }
-    //cosine
-    std::vector<real_t> cluster_stage::cosine_distances  (const matrix<real_t>& data)
-    {
-      //calculate cosine distance of the data matrix
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //calculate cosine distance of the data matrix
-
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize cosine distance to 0
-          ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += data(i, k) * data(j, k);
-          }
-          //normalize cosine distance:
-           ret[i * data.rows() + j] /= sqrt(data.sum_row(i) * data.sum_row(j));
+  //evaluation metrics 
+  //transfer_accuracy_f1 implementation :
+real_t knowledge_transfer_stage::transfer_accuracy_f1(const std::vector<real_t>& tp,
+const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<real_t>& tn)
+{
 
 
-          //cosine distance is between 0 and 1
-          ret[i * data.rows() + j] = 1.0 - ret[i * data.rows() + j];
-          //if cosine distance is negative, set it to 0
-          if(ret[i * data.rows() + j] < 0.0)
-          {
-            ret[i * data.rows() + j] = 0.0;
-          }
-          //if cosine distance is greater than 1, set it to 1
-          if(ret[i * data.rows() + j] > 1.0)
-          {
-            ret[i * data.rows() + j] = 1.0;
-          }
-          //if cosine distance is nan, set it to 0
-          if(ret[i * data.rows() + j] != ret[i * data.rows() + j])
-          {
-            ret[i * data.rows() + j] = 0.0;
-          }
-          //if cosine distance is inf/-inf, set it to 0
-          if(ret[i * data.rows() + j] == std::numeric_limits<real_t>::infinity()|| ret[i * data.rows() + j] == -std::numeric_limits<real_t>::infinity())
-          {
-            ret[i * data.rows() + j] = 0.0;
-          }
-          //finish calculating cosine distance
+  //calculate accuracy
+  real_t accuracy = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    accuracy += (tp[i] + tn[i]) / (tp[i] + tn[i] + fp[i] + fn[i]);
+  }
+  accuracy /= tp.size();
+  //calculate f1
+  real_t f1 = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    f1 += (2 * tp[i]) / (2 * tp[i] + fp[i] + fn[i]);
+  }
+  f1 /= tp.size();
+  //return accuracy and f1
+  return (accuracy + f1) / 2.0;   
+}
+//transfer_accuracy_accuracy implementation :
+real_t knowledge_transfer_stage::transfer_accuracy_accuracy(const std::vector<real_t>& tp,  
+const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<real_t>& tn)
+{
+  //calculate accuracy
+  real_t accuracy = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    accuracy += (tp[i] + tn[i]) / (tp[i] + tn[i] + fp[i] + fn[i]);
+  }
+  accuracy /= tp.size();
+  //return accuracy
+  return accuracy;      
+}
+//transfer_accuracy_precision
+real_t knowledge_transfer_stage::transfer_accuracy_precision(const std::vector<real_t>& tp,
+const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<real_t>& tn)
+{
+  UNDEF_REFERENCE(fn);
+  UNDEF_REFERENCE2(tn);
+  //calculate precision
+  real_t precision = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    precision += (tp[i]) / (tp[i] + fp[i]);
+  }
+  precision /= tp.size();
+  //return precision
+  return precision;      
+}
+//transfer_accuracy_recall
+real_t knowledge_transfer_stage::transfer_accuracy_recall(const std::vector<real_t>& tp,
+const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<real_t>& tn)
+{
+  UNDEF_REFERENCE(fp);
+  UNDEF_REFERENCE2(tn);
 
-          
-        }//end for j
-      }   //end for i
+  //calculate recall
+  real_t recall = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    recall += (tp[i]) / (tp[i] + fn[i]);
+  }
+  recall /= tp.size();
+  //return recall
+  return recall;      
+}
+//transfer_accuracy_auc
+real_t knowledge_transfer_stage::transfer_accuracy_roc_auc(const std::vector<real_t>& tp,
+const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<real_t>& tn)
+{
+  UNDEF_REFERENCE(tn);
+  UNDEF_REFERENCE2(fp);
 
-      return ret; //return cosine distance
-    }//end cosine distance
-    //correlation
-    std::vector<real_t> cluster_stage::correlation_distances  (const matrix<real_t>& data)
-    {
-      //calculate correlation distance of the data matrix
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //calculate correlation distance of the data matrix 
-      //calculate mean of each column
-      std::vector<real_t> mean(data.cols());
-      for(size_t i = 0; i < data.cols(); i++)
-      {
-        mean[i] = 0.0;
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          mean[i] += data(j, i);
-        }
-        mean[i] /= data.rows();
-      }
-      //calculate standard deviation of each column
-      std::vector<real_t> std(data.cols());
-      for(size_t i = 0; i < data.cols(); i++)
-      {
-        std[i] = 0.0;
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          std[i] += (data(j, i) - mean[i]) * (data(j, i) - mean[i]);
-        }
-        std[i] /= data.rows();
-        std[i] = sqrt(std[i]);
-      }
-      //calculate correlation distance of the data matrix
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize correlation distance to 0
-          ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += (data(i, k) - mean[k]) * (data(j, k) - mean[k]);
-          }
-          //normalize correlation distance
-          ret[i * data.rows() + j] /= (std[i] * std[j]);  
-          //correlation distance is between -1 and 1
-          ret[i * data.rows() + j] = 1.0 - ret[i * data.rows() + j];
-          //if correlation distance is negative, set it to 0
-          if(ret[i * data.rows() + j] < 0.0)
-          {
-            ret[i * data.rows() + j] = 0.0;
-          }
-          
-        }//end for j
-      }   //end for i
-      //return correlation distance
-      return ret;
-      //return correlation_distances(data, mean, std);
+  //calculate auc
+  real_t auc = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    auc += (tp[i]) / (tp[i] + fn[i]);
+  }
+  auc /= tp.size();
+  //return auc
+  return auc;
 
-    }
-    //manhattan
-    std::vector<real_t> cluster_stage::manhattan_distances  (const matrix<real_t>& data)
-    {
-      //calculate manhattan distance of the data matrix
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //calculate manhattan distance of the data matrix
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize manhattan distance to 0
-          ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += fabs(data(i, k) - data(j, k));
-          }
-        }//end for j
-      }   //end for i
-      //return manhattan distance
-      return ret; 
-    }
-    //euclidean
-    std::vector<real_t> cluster_stage::euclidean_distances  (const matrix<real_t>& data)
-    {
-        //calculate euclidean distance of the data matrix
-        std::vector<real_t> ret(data.rows() * data.rows());
-        //calculate euclidean distance of the data matrix
+}
 
-        for(size_t i = 0; i < data.rows(); i++)
-        {
-          for(size_t j = 0; j < data.rows(); j++)
-          {
-            //initialize euclidean distance to 0
-            ret[i * data.rows() + j] = 0.0;
-            for(size_t k = 0; k < data.cols(); k++)
-            {
-              ret[i * data.rows() + j] += (data(i, k) - data(j, k)) * (data(i, k) - data(j, k));
-            }
-            //euclidean distance is between 0 and 1
-            ret[i * data.rows() + j] = sqrt(ret[i * data.rows() + j]);
-          }//end for j
-        }   //end for i   
+//transfer_accuracy_pr_auc
+real_t knowledge_transfer_stage::transfer_accuracy_pr_auc(const std::vector<real_t>& tp,
+                                                          const std::vector<real_t> &fp, 
+                                                          const std::vector<real_t> &fn,
+                                                          const std::vector<real_t> &tn)
+{
+  //calculate pr auc
+  //undef what is not needed
+  UNDEF_REFERENCE(tn);
+  UNDEF_REFERENCE2(fp);
 
+  real_t pr_auc = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    pr_auc += (tp[i]) / (tp[i] + fn[i]);
+  }
+  pr_auc /= tp.size();
+  //return pr auc
+  return pr_auc;
 
-        //return euclidean distance
-        return ret;
+}
+real_t  knowledge_transfer_stage::transfer_accuracy_kappa(const std::vector<real_t>& tp,
+const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<real_t>& tn
+)
+{
+ //calculate kappa
+  real_t kappa = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    kappa += (tp[i] + tn[i]) / (tp[i] + tn[i] + fp[i] + fn[i]);
+  }
+  kappa /= tp.size();
+  //return kappa
+  return kappa;
 
-    }
-    //mahalanobis
-    std::vector<real_t> cluster_stage::mahalanobis_distances  (const matrix<real_t>& data)
-    {
-      //calculate mahalanobis distance of the data matrix
-      std::vector<real_t> ret(data.rows() * data.rows());
-      //calculate mahalanobis distance of the data matrix
-      //calculate mean of each column
-      std::vector<real_t> std(data.cols());
-      std::vector<real_t> mean(data.cols());
-      for(size_t i = 0; i < data.cols(); i++)
-      {
-        mean[i] = 0.0;
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          mean[i] += data(j, i);
-        }
-        mean[i] /= data.rows();
+}
+real_t knowledge_transfer_stage::transfer_accuracy_mcc(const std::vector<real_t>& tp,
+                                                       const std::vector<real_t> &fp, 
+                                                        const std::vector<real_t> &fn,
+                                                        const std::vector<real_t> &tn)
+{ 
+  //calculate mcc
+  real_t mcc = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    mcc += (tp[i] + tn[i]) / (tp[i] + tn[i] + fp[i] + fn[i]);
+  }
+  mcc /= tp.size();
+  //return mcc
+  return mcc;
 
-      }
-      //calculate standard deviation of each column
-      
-      for(size_t i = 0; i < data.cols(); i++)
-      {
-        std[i] = 0.0;
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          std[i] += (data(j, i) - mean[i]) * (data(j, i) - mean[i]);
-        }
-        std[i] /= data.rows();
-        std[i] = sqrt(std[i]);
-      } 
-      //calculate mahalanobis distance of the data matrix
-      for(size_t i = 0; i < data.rows(); i++)
-      {
-        for(size_t j = 0; j < data.rows(); j++)
-        {
-          //initialize mahalanobis distance to 0
-          ret[i * data.rows() + j] = 0.0;
-          for(size_t k = 0; k < data.cols(); k++)
-          {
-            ret[i * data.rows() + j] += (data(i, k) - mean[k]) * (data(j, k) - mean[k]);
-          }
-          //normalize mahalanobis distance
-          ret[i * data.rows() + j] /= (std[i] * std[j]);  
-          //mahalanobis distance is between 0 and 1
-          ret[i * data.rows() + j] = sqrt(ret[i * data.rows() + j]);
-        }//end for j
-      }   //end for i
-      //return mahalanobis distance
-      return ret;
-
-
-    }
-
-    //matching
-
-    //dice 
-    
-    //jaccard
-
-    //calculate distance matrix
-    std::vector<real_t> cluster_stage::calculate_distance_matrix(const matrix<real_t>& data, const std::string& m)
-    {
-        if (metrics.find(m)!=metrics.end())
-        {
-          //calculate distance matrix return this reference to the function
-           
-          return (this->*metrics[m])(data);
- 
-        }
-        else
-        {
-          //calculate distance matrix
-          return euclidean_distances(data);
-        }
-      //calculate distance matrix
-
-     }//end calculate_distance_matrix
+} 
+real_t knowledge_transfer_stage::transfer_accuracy_informedness(const std::vector<real_t>& tp,
+const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<real_t>& tn)
+{
+  //calculate informedness
+  real_t informedness = 0.0;
+  for (size_t i = 0; i < tp.size(); i++)
+  {
+    informedness += (tp[i] + tn[i]) / (tp[i] + tn[i] + fp[i] + fn[i]);
+  }
+  informedness /= tp.size();
+  //return informedness
+  return informedness;    
+}
 
 
 
 
-     // ofstream/ifstream for pipelines 
-     // operator <<
- 
+
+
 } // namespace provallo

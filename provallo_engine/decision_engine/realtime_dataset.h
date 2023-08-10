@@ -12,7 +12,7 @@
 #include "dataset.h"
 #include "optimizers.h"
 #include "matrix.h"
-#include "../utils/csvfile.h"
+#include "../util/csv_file.h"
 
 
 namespace provallo
@@ -41,9 +41,8 @@ namespace provallo
         
         
         public:
-        realtime_dataset(const attribute_info& info);
-        
-        realtime_datset(const provallo::csvfile &file_in  )
+          //constructors            
+        explicit realtime_datset(const provallo::csvfile &file_in  )
 
         //implement the pure virtual functions inherited from dataset :
         virtual dataset *
@@ -53,8 +52,8 @@ namespace provallo
         
         virtual  attribute *getattributeptr(uint32_t i, attribute_tag tag, bool *found) ;
 
-        const attribute & getattribute(uint32_t i, attribute_tag tag) const override;
-        attribute & getattribute(uint32_t i, attribute_tag tag) override;
+        const attribute & getattribute(uint32_t i, attribute_tag tag) const ;
+        attribute & getattribute(uint32_t i, attribute_tag tag) ;
 
         virtual const attribute *getattributeptr(uint32_t i, const std::string& name, bool *found) const;
 

@@ -340,7 +340,7 @@ namespace provallo
       std::mt19937 gen(rd());
       std::uniform_real_distribution<> uniform(0.0, 1.0);
 
-      Float rho(uniform(gen));
+      real_t rho(uniform(gen));
 
       // Check numerics
       if (rho < 0.0)
@@ -380,7 +380,7 @@ namespace provallo
      
  
     // Create cumulative probabilities
-    std::vector<Float> cumulative( distribution.cumulative());
+    std::vector<real_t> cumulative( distribution.cumulative());
 
     // Get target tag
     uint32_t target_tag(_attributes_info.get_target_tag());
@@ -403,7 +403,7 @@ namespace provallo
       std::mt19937 gen(rd());
       std::uniform_real_distribution<> uniform(0.0, 1.0);
 
-      Float rho(uniform(gen));
+      real_t rho(uniform(gen));
 
       // Check numerics
       if (rho < 0.0)
@@ -1033,30 +1033,23 @@ namespace provallo
     return attribute(max);
   }
 
-  Float
+  real_t
   entropy(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0.);
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0.);
     for (uint32_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
-      discrete_value d = data.getattribute(i, tag).discrete();
+       discrete_value d = data.getattribute(i, tag).discrete();
 
-      if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
-        probs[d]++;
+       probs[d]++;
     }
 
     // Entropy
-    Float entropy = 0.0;
+    real_t entropy = 0.0;
     for (uint32_t i = 0; i < probs.size(); ++i)
     {
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
       if (prob != 0.0)
         entropy += -prob * log<2>(prob);
     }
@@ -1064,12 +1057,12 @@ namespace provallo
     return entropy;
   }
   // Gini index
-  Float gini(const dataset &data)
+  real_t gini(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
     attribute_tag nclasses = data.getattributes().getCount(tag);
     //initialize weight vector
-    std::vector<Float> probs( nclasses, 0.0);
+    std::vector<real_t> probs( nclasses, 0.0);
     for (uint32_t i = 0; i < data.size(); ++i)
     {
 
@@ -1082,15 +1075,15 @@ namespace provallo
        /// probs[data.getattribute (i,tag).discrete ()]++;
     }
     // gini
-    Float gini = 1.0;
+    real_t gini = 1.0;
     for (uint32_t i = 0; i < probs.size(); ++i)
     {
 
-      Float c = (Float)std::count(probs.begin(), probs.end(), probs[i]);
+      real_t c = (real_t)std::count(probs.begin(), probs.end(), probs[i]);
 
       // weight gini index against other tags
 
-      Float prob = c * probs[i] / (Float)data.size();
+      real_t prob = c * probs[i] / (real_t)data.size();
 
       gini -= prob * prob;
     }
@@ -1100,116 +1093,95 @@ namespace provallo
 
 
   // Variance
-  Float variance(const dataset &data)
+  real_t variance(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0.0);
+    real_t variance = 0.0;
+    
     for (size_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
+     
       discrete_value d = data.getattribute(i, tag).discrete();
+      if (d < probs.size())probs[d]++;
+      else probs[0]++;
 
-      if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
-        probs[d]++;
+            
     } // variance
-    Float variance = 0.0;
     for (uint32_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
       variance += prob * prob;
     }
     // Return variance
     return variance;
   }
-  Float mean(const dataset &data)
+  real_t mean(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0);
     for (size_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
 
       if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
         probs[d]++;
     }
     // mean
-    Float mean = 0.0;
-    Float sum = std::accumulate(probs.begin(), probs.end(), 0.0);
-    mean = sum / Float(probs.size());
+    real_t mean = 0.0;
+    real_t sum = std::accumulate(probs.begin(), probs.end(), 0.0);
+    mean = sum / real_t(probs.size());
     // Return mean
     return mean;
   }
-  Float stddev(const dataset &data)
+  real_t stddev(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getCount(tag), 0);
     for (size_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
 
       if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
         probs[d]++;
     } // stddev
-    Float stddev = 0.0;
-    Float sum = std::accumulate(probs.begin(), probs.end(), Float(0.0));
-    Float mean = sum / Float(probs.size());
-    Float accum = 0.0;
-    std::for_each(std::begin(probs), std::end(probs), [&](const Float d)
+    real_t stddev = 0.0;
+    real_t sum = std::accumulate(probs.begin(), probs.end(), real_t(0.0));
+    real_t mean = sum / real_t(probs.size());
+    real_t accum = 0.0;
+    std::for_each(std::begin(probs), std::end(probs), [&](const real_t d)
                   { accum += (d - mean) * (d - mean); });
 
-    stddev = sqrt(accum / (Float(probs.size())));
+    stddev = sqrt(accum / (real_t(probs.size())));
     
     // Return stddev
     return stddev;
   }
-  Float skewness(const dataset &data)
+  real_t skewness(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getCount(tag), 0);
     for (size_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
       discrete_value d = data.getattribute(i, tag).discrete();
 
-      if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
-        probs[d]++;
+      if (d < probs.size())
+      probs[d]++;
 
       // probs[data.getattribute (i,tag).discrete ()]++;
     }
     // skewness
-    //Float kurtosis = 0., kurt = 0.0;
-    Float delta, delta_n, delta_n2, term1;
+    //real_t kurtosis = 0., kurt = 0.0;
+    real_t delta, delta_n, delta_n2, term1;
     size_t n = 0;
-    Float M1, M2, M3, M4;
+    real_t M1, M2, M3, M4;
     M1 = M2 = M3 = M4 = 0.0;
-    Float skewn = 0.0, skewness = 0.0;
+    real_t skewn = 0.0, skewness = 0.0;
     for (size_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
       n++;
       delta = prob - M1;
       delta_n = delta / n;
@@ -1220,42 +1192,38 @@ namespace provallo
       M3 += term1 * delta_n * (n - 2) - 3 * delta_n * M2;
       M2 += term1;
       skewn = sqrt(n) * M3 / pow(M2, 1.5);
-      skewness += skewn / (Float)data.size();
+      skewness += skewn / (real_t)data.size();
     }
     // Return skewness
     return skewness;
   }
   // kurtosis :
-  Float kurtosis(const dataset &data)
+  real_t kurtosis(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getCount(tag), 0);
     for (size_t i = 0; i < data.size(); ++i)
 
     {
 
       // fix mislabeling discrete and continous target labels
       discrete_value d(data.getattribute(i, tag).discrete());
-      cont_value c(data.getattribute(i, tag).continous());
+      
+      if ( d < probs.size() )
+        probs[d]++;
+      else probs[0]++;
 
-      if (d > probs.size()){
-        if (c < probs.size())
-          d = (discrete_value)c;
-        else
-          d = probs.size() - 1;
-      }
-      probs[d]++;
     }
     // kurtosis
-    Float kurtosis = 0., kurt = 0.0;
-    Float delta, delta_n, delta_n2, term1;
+    real_t kurtosis = 0., kurt = 0.0;
+    real_t delta, delta_n, delta_n2, term1;
     size_t n = 0;
-    Float M1, M2, M3, M4;
+    real_t M1, M2, M3, M4;
     M1 = M2 = M3 = M4 = 0.0;
     for (size_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
       n++;
       delta = prob - M1;
       delta_n = delta / n;
@@ -1272,30 +1240,26 @@ namespace provallo
     return kurtosis;
   }
   // return the median
-  Float median(const dataset &data)
+  real_t median(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getCount(tag), 0);
     for (size_t i = 0; i < data.size(); ++i)
     {
       // fix mislabeling discrete and continous target labels
       discrete_value d(data.getattribute(i, tag).discrete());
-      cont_value c(data.getattribute(i, tag).continous());
+      
+      if ( d < probs.size() )
+        probs[d]++;
+      else probs[0]++;
 
-      if (d > probs.size()){
-        if (c < probs.size())
-          d = (discrete_value)c;
-        else
-          d = probs.size() - 1;
-      }
-      probs[d]++;
     }
     // median
-    Float median = 0.0;
-    for (uint32_t i = 0; i < probs.size(); ++i)
+    real_t median = 0.0;
+    for (size_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
 
       median += prob * prob;
     }
@@ -1303,113 +1267,94 @@ namespace provallo
     return median;
   }
   // return the mode
-  Float mode(const dataset &data)
+  real_t mode(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0);
     for (size_t i = 0; i < data.size(); ++i)
     {
 
       // fix mislabeling discrete and continous target labels
       discrete_value d(data.getattribute(i, tag).discrete());
-      cont_value c(data.getattribute(i, tag).continous());
-
-      if (d > probs.size()) {
-
-        if (c < probs.size())
-          d = (discrete_value)c;
-        else
-          d = probs.size() - 1;
-      }
+      if(d < probs.size() )
       probs[d]++;
+      else probs[0]++;
+
 
       // probs[data.getattribute (i,tag).discrete ()]++;
     }
     // mode
-    Float mode = 0.0;
+    real_t mode = 0.0;
     for (size_t i = 0; i < probs.size(); ++i)
     {
-
-      Float prob = probs[i] / (Float)data.size();
-
-      mode += prob * prob;
+     real_t prob = probs[i] / (real_t)data.size();
+     mode += prob * prob;
     }
     // Return mode
     return mode;
   }
-  Float min(const dataset &data)
+  real_t min(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0.0);
-    Float min = 0.0;
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0.0);
+    real_t min = 0.0;
     for (uint32_t i = 0; i < data.size(); ++i)
       probs[data.getattribute(tag, i).discrete()]++;
     // min
     for (size_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
 
       min += prob * prob;
     }
     // Return min
     return min;
   }
-  Float max(const dataset &data)
+  real_t max(const dataset &data)
   {
 
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0.0);
-    Float max = 0.0;
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0.0);
+    real_t max = 0.0;
     for (size_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
-      discrete_value d = data.getattribute(i, tag).discrete();
+       discrete_value d = data.getattribute(i, tag).discrete();
 
-      if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
+      if ( d < probs.size() )
         probs[d]++;
 
     } // max
     for (uint32_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
 
       max = prob > max ? prob : max; // prob*prob;
     }
     // Return max
     return max;
   }
-  Float sum_of_squares(const dataset &data)
+  real_t sum_of_squares(const dataset &data)
   {
 
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    Float sum_of_squares = 0.0;
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0);
+    real_t sum_of_squares = 0.0;
     for (size_t i = 0; i < data.size(); ++i)
     {
-      cont_value v = data.getattribute(i, tag).continous();
-      discrete_value d = data.getattribute(i, tag).discrete();
+       discrete_value d = data.getattribute(i, tag).discrete();
 
-      if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
+      if ( d < probs.size() )
         probs[d]++;
+      else probs[0]++;
     }
     // probs[data.getattribute ( tag , i ).discrete ()]++;
     // sum_of_squares
     for (uint32_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
 
       sum_of_squares += prob * prob;
     }
@@ -1417,24 +1362,20 @@ namespace provallo
     return sum_of_squares;
   }
   // return the median from absolute deviation
-  Float median_absolute_deviation(const dataset &data)
+  real_t median_absolute_deviation(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<Float> probs(data.getattributes().getCount(tag), 0);
-    Float median_absolute_deviation = 0.0;
+    std::vector<real_t> probs(data.getattributes().getCount(tag), 0);
+    real_t median_absolute_deviation = 0.0;
     for (size_t i = 0; i < data.size(); ++i)
     {
       
-      cont_value v = data.getattribute(i, tag).continous();
-      discrete_value d = data.getattribute(i, tag).discrete();
+       discrete_value d = data.getattribute(i, tag).discrete();
 
-      if (d >= probs.size())
-        if (v < probs.size())
-          probs[discrete_value(v)]++;
-        else
-          d = 0;
-      else
+      if ( d < probs.size() )
+
         probs[d]++;
+      else probs[0]++;
       //
       // probs[data.getattribute (i, tag).discrete ()]++;
     }
@@ -1442,7 +1383,7 @@ namespace provallo
     for (uint32_t i = 0; i < probs.size(); ++i)
     {
 
-      Float prob = probs[i] / (Float)data.size();
+      real_t prob = probs[i] / (real_t)data.size();
 
       median_absolute_deviation += prob * prob;
     }
@@ -1450,11 +1391,11 @@ namespace provallo
     return median_absolute_deviation;
   }
 
-  std::map<std::string, Float>
+  std::map<std::string, real_t>
   getWeightMap(const attribute_information &attrs, std::ifstream &file)
   {
     std::string line;
-    std::map<std::string, Float> weights;
+    std::map<std::string, real_t> weights;
     std::string target("");
     size_t nline(1);
     if (file.is_open())
@@ -1477,8 +1418,8 @@ namespace provallo
 
         attribute_name _name(reduce(definition[0], ""));
         attribute_tag tag = attrs.getTag(_name);
-        Float value(
-            attribute_definition::fromString<Float>(definition[1]));
+        real_t value(
+            attribute_definition::fromString<real_t>(definition[1]));
         std::cout << "[#] Reading attribute (tag = " << tag << ") " << _name
                   << " with weight " << value << std::endl;
         weights.insert(std::make_pair(_name, value));
@@ -1494,7 +1435,7 @@ namespace provallo
 
   void
   printImportanceMap(std::ostream &out,
-                     const std::vector<std::pair<std::string, Float>> &imps)
+                     const std::vector<std::pair<std::string, real_t>> &imps)
   {
     
       for (auto& it : imps )

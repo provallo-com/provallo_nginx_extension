@@ -51,7 +51,12 @@ namespace provallo
     CONE_MDLP = 3,
     CONE_RANDOM = 4,
     HISTOGRAM = 5,
-    IGNOREDSPLIT = 6
+    IGNOREDSPLIT = 6,
+    CONE_TERNARY = 7,
+    CONE_ISO = 8,
+    CONE_ISO2 = 9,
+    UNDEF = 10
+  
   };
 
   constexpr const cont_value UNKNOWN = 0160000000;
@@ -1239,7 +1244,7 @@ namespace provallo
       for (uint32_t i = 0; i < _definition_map.size(); ++i)
         delete _definition_map[i];
     } 
-    
+
   private:
   };
   // Print attributes information
