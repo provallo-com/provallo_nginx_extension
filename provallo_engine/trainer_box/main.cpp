@@ -40,6 +40,8 @@ bool test_dataset_load();
 provallo::isolation_forest* isoforest_single(const provallo::attribute_information& attributes);
 
 bool benchmark_classifiers (const std::string benchmark_folder = "./db/benchmarks");
+bool fit_fuzzsb_folder(const std::string benchmark_folder = "/home/kardon/eclipse-workspace/fuzzdb/fuzzdb/attack/");
+
 
  
 ssize_t
@@ -745,24 +747,110 @@ bool fit_fuzzsb_folder ( const std::string& fit_fuzzsb_folder)
 
   //load or generate a pipeline: 
   // 1) load the pipeline from disk
+   //provallo::meta_builder meta("fuzzdb_meta",fit_fuzzsb_folder+"/fuzzdb_meta.json");
+  // 
+  // 2) if the pipeline is not found, create a new one
+    provallo::pipeline_builder builder("fuzzdb_meta",fit_fuzzsb_folder+"/fuzzdb_meta.json"); 
+  
+    if(builder.get_number_of_stages()<2 ||builder.get_number_of_pipelines()<1)
+    {
+        builder.add_pipeline("fuzzdb_pipeline",false);
+        provallo::pipeline* new_pipeline =  builder.get_pipeline("fuzzdb_pipeline");
+        // data set load may or may not parse columns or split the data set into train and test
+        // if the data set is not split into train and test, the pipeline will do it on the training load 
+        // if the stages contain a classifier, the pipeline will train the classifier on the training data set 
+        if(new_pipeline!=nullptr)
+        {
 
-   provallo::meta_builder meta("fuzzdb_meta",fit_fuzzsb_folder+"/fuzzdb_meta.json");
-   provallo::pipeline* new_pipeline =   meta.generate_pipeline();
-    if(new_pipeline)
-    {
-      std::cout << "Pipeline loaded from disk" << std::endl;
+          //let's make the pipeline a pipeline of pipelines
+          //get each pipeline by name from the new pipeline to set the stages
+          new_pipeline->add_stage("pipeline","data_pipeline");
+          new_pipeline->add_stage("pipeline","feature_pipeline");
+          new_pipeline->add_stage("pipeline","autoencoder_pipeline");
+          new_pipeline->add_stage("pipeline","classifier_pipeline");
+          new_pipeline->add_stage("pipeline","train_pipeline");
+          new_pipeline->add_stage("pipeline","evaluation_pipeline");
+          new_pipeline->add_stage("pipeline","test_pipeline");
+          new_pipeline->add_stage("pipeline","save_pipeline");
+          new_pipeline->add_stage("pipeline","load_pipeline");
+          new_pipeline->add_stage("pipeline","compare_pipeline");
+          new_pipeline->add_stage("pipeline","save_results_pipeline");
+
+          provallo::pipeline* data_pipeline =  new_pipeline->get_pipeline("data_pipeline");
+          provallo::pipeline* feature_pipeline =  new_pipeline->get_pipeline("feature_pipeline");
+          provallo::pipeline* autoencoder_pipeline =  new_pipeline->get_pipeline("autoencoder_pipeline");
+          provallo::pipeline* classifier_pipeline =  new_pipeline->get_pipeline("classifier_pipeline");
+          provallo::pipeline* train_pipeline =  new_pipeline->get_pipeline("train_pipeline");
+          provallo::pipeline* evaluation_pipeline =  new_pipeline->get_pipeline("evaluation_pipeline");
+          provallo::pipeline* test_pipeline =  new_pipeline->get_pipeline("test_pipeline");
+          provallo::pipeline* save_pipeline =  new_pipeline->get_pipeline("save_pipeline");
+          provallo::pipeline* load_pipeline =  new_pipeline->get_pipeline("load_pipeline");
+          provallo::pipeline* compare_pipeline =  new_pipeline->get_pipeline("compare_pipeline");
+          provallo::pipeline* save_results_pipeline =  new_pipeline->get_pipeline("save_results_pipeline");
+            
+            //push stages into pipelines : 
+            data_pipeline->add_stage("dataset","load_train_dataset");
+            data_pipeline->add_stage("dataset","load_test_dataset");
+            feature_pipeline->add_stage("feature_engineering","tfidf_vectorizer");
+            feature_pipeline->add_stage("feature_engineering","bow_vectorizer");
+            feature_pipeline->add_stage("feature_engineering","pca_vectorizer");
+            feature_pipeline->add_stage("feature_engineering","autoencoder");
+            feature_pipeline->add_stage("feature_engineering","select_k_best");
+            feature_pipeline->add_stage("feature_engineering","tsne");
+            feature_pipeline->add_stage("feature_engineering","pca");
+            feature_pipeline->add_stage("feature_engineering","ica");
+            feature_pipeline->add_stage("feature_engineering","nmf");
+            feature_pipeline->add_stage("feature_engineering","lda");
+            autoencoder_pipeline->add_stage("autoencoder","autoencoder");
+            classifier_pipeline->add_stage("classifier","classifier");
+            train_pipeline->add_stage("train","train");
+            evaluation_pipeline->add_stage("evaluation","roc_auc");
+            evaluation_pipeline->add_stage("evaluation","pr_auc");
+
+            test_pipeline->add_stage("test","test");
+            save_pipeline->add_stage("save","save");
+            load_pipeline->add_stage("load","load");
+            compare_pipeline->add_stage("compare","compare");
+            save_results_pipeline->add_stage("save_results","save_results");
+            
     }
-    else
+    else  //if the pipeline is found, load it
     {
-      std::cout << "Pipeline not found, creating a new one" << std::endl;
-      new_pipeline = new provallo::pipeline();
+      //build the pipeline from disk
+      builder.build();
+
+
     }
-    // 2) iterate over the files in the folder
-    
+    //iterate all the files in the folder, if it's a txt file, vectorize it and add to the dataset matrix 
+    std::vector<std::string> files = getFilesInFolder(fit_fuzzsb_folder);
+    std::vector<std::string> txt_files;
+
+    for (auto file : files)
+    {
+      if (file.find(".txt") != std::string::npos)
+      {
+        txt_files.push_back(file);
+
+        std::cout<<"-- found txt file : "<<file<<std::endl;
+
+      }
+    }
+    //TODO: add the files to the dataset
+    //TODO: vectorize the documents
+    //extract number of features from the pipeline
+    //extract number of classes from the pipeline
+    //activate the pipeline 
+
+
+     
+      ret = true;
+  }//if 
+  else
+  {
+    std::cout<<"-- benchmark folder not found : "<<fit_fuzzsb_folder<<std::endl;
+  }
   return ret;
-
 }
- 
 
 
 bool benchmark_classifiers (const std::string benchmark_folder )

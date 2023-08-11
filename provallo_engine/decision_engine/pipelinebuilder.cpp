@@ -6,7 +6,6 @@
  */
 
 #include "pipelinebuilder.h"
-#include "../util/singleton.h"
 #include "matrix.h"
 
 #include <iostream>
@@ -1957,53 +1956,6 @@ namespace provallo
       throw std::runtime_error("could not load the pipeline from the given file");
   }
 
-  class stage_factory : public singleton<stage_factory>
-  {
-    std::mutex _mtx;
-    std::map<std::string, std::function<stage_descriptor *()>> _stage_map;
-
-  public:
-    stage_descriptor *build_stage(const stage_descriptor &stage)
-    {
-      // build the stage from the stage descriptor
-      stage_descriptor *new_stage = nullptr;
-      // create stage from the stage descriptor
-
-      auto THIS = stage_factory::get_instance();
-      // lock the mutex
-      std::lock_guard<std::mutex> lock(THIS->_mtx);
-
-      if (THIS->_stage_map.find(stage.name) != THIS->_stage_map.end())
-      {
-        new_stage = THIS->_stage_map[stage.name](); // returns new_stage
-
-        // copy the stage descriptor
-        new_stage->set_descriptor(stage);
-      }
-      else
-        throw std::runtime_error("stage not found");
-
-      return new_stage;
-    }
-
-    stage_factory() : _mtx(), _stage_map()
-    {
-      // initialize the stage map
-
-      _stage_map["dataset"] = &dataset_stage::build;
-      _stage_map["vectorizer"] = &vectorizer_stage::build;
-      _stage_map["classifier"] = &classifier_stage::build;
-      _stage_map["regressor"] = &regressor_stage::build;
-      _stage_map["cluster"] = &cluster_stage::build;
-      _stage_map["dimensionality_reduction"] = &dimentionality_reduction_stage::build;
-      _stage_map["feature_stage"] = &feature_stage::build;
-      _stage_map["encoder"] = &encoder_stage::build;
-      _stage_map["decoder"] = &decoder_stage::build;
-      _stage_map["normalizer"] = &normalizer_stage::build;
-    }
-    // create stage from the stage descriptor
-  }; // end of stage factory
-
   bool pipeline::load_stage(std::ifstream &stage_file, const stage_descriptor &stage)
   {
     bool ret_val = false;
@@ -2013,7 +1965,7 @@ namespace provallo
     stage_descriptor *new_stage = nullptr;
 
     // create stage from the stage descriptor
-    new_stage = stage_factory::get_instance()->build_stage(stage);
+    new_stage = stage_factory_singleton::get_instance()->build_stage(stage);
     if (new_stage == nullptr)
       throw std::runtime_error("stage not found");
     // load the additional data
@@ -2169,10 +2121,23 @@ namespace provallo
     return nullptr;
   }
   // get the number of stages
-
+  // from the pipeline and the pipelines it contains.
   size_t pipeline::get_number_of_stages() const
   {
-    return _stages.size();
+     size_t stages = 0;
+    for(pipeline* pipe : _pipelines)
+    {
+
+      if(pipe&& pipe->get_number_of_stages() > 0 &&pipe!=this)
+      {
+        stages+= pipe->get_number_of_stages();
+      }
+    }
+    //there are stages for each aggregated pipeline
+    //and the stages of the current pipeline
+    //minus the stages that describes the pipelines
+
+    return _stages.size()+stages-_pipelines.size();
   }
   std::ofstream &operator<<(std::ofstream &os, const stage_descriptor &stage)
   {
@@ -2250,7 +2215,7 @@ namespace provallo
       is >> stage;
       stage_descriptor *new_stage = nullptr;
       // create the stage
-      new_stage = stage_factory::get_instance()->build_stage(stage);
+      new_stage = stage_factory_singleton::get_instance()->build_stage(stage);
       if (new_stage == nullptr)
         throw std::runtime_error("stage not found");
 
@@ -2313,8 +2278,68 @@ namespace provallo
   }
   void pipeline_builder::add_pipeline(pipeline *pipe)
   {
-    _pipelines.push_back(pipe);
+    if(pipe != nullptr)
+      _pipelines.push_back(pipe);
+
+    if (_current_pipeline != nullptr &&pipe!=_current_pipeline)
+      _current_pipeline = pipe;
+
+
   }
+  // pipeline_builder constructor
+  
+  pipeline_builder::pipeline_builder (const std::string & filename , bool load_from_file): _filename(filename), _name(filename) 
+  {
+          // read the pipeline from the file
+        if (load_from_file)
+        {
+         std::ifstream is(filename);
+
+        if (!is.is_open()){
+             throw std::runtime_error("could not open file");
+        }
+        is >> *this;
+        is.close();        
+        }
+        else
+        {
+            // create a new pipeline
+            _current_pipeline = new pipeline( );
+            _current_pipeline->set_pipeline_name(filename);
+            // add the pipeline to the builder
+            add_pipeline(_current_pipeline);
+        } 
+       // 
+
+   }
+    // pipeline_builder constructor
+
+    pipeline_builder::pipeline_builder (const std::string & filename , const std::string & pipeline_name, bool load_from_file) : _filename(filename) , _name(pipeline_name)    
+    { 
+      // read the pipeline from the file
+        if (load_from_file)
+        {
+         std::ifstream is(_filename);
+
+        if (!is.is_open()){
+             throw std::runtime_error("could not open file");
+        }
+        is >> *this;
+        is.close();        
+        }
+        else
+        {
+            // create a new pipeline
+            _current_pipeline = new pipeline(pipeline_name);
+            // add the pipeline to the builder
+            add_pipeline(_current_pipeline);
+            
+
+        } 
+       // 
+
+    }
+
 
   std::ifstream &operator>>(std::ifstream &is, pipeline_builder &pb)
   {

@@ -10,6 +10,7 @@
 #include "matrix.h"
 #include "classifier.h"
 #include "../parsers/parser.h" //for the encoders/decoders
+#include "../util/singleton.h"//for
 #include "autoencoder.h"
 #include "neuralhelper.h"
 #include <vector>
@@ -1439,13 +1440,27 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual void process_data(const matrix<real_t>& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
     virtual void process_data(const std::vector<real_t>& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
     virtual void process_data(const std::vector<std::vector<real_t> >& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
+    virtual void set_parameter(const std::string& parameter_name, const std::string& parameter_value)
+    {
+        if(parameters_map.find(parameter_name) == parameters_map.end())
+        {
+          parameters_map[parameter_name] = parameter_value;
+        }
+        else
+        {
+          parameters_map.insert(std::make_pair(parameter_name, parameter_value));
 
+        }
+      
+    } 
+    
     virtual ~stage_descriptor() {}
-
+    std::unordered_map<std::string, std::string> parameters_map;
+  
   };
 
-  
 
+  
   class dataset_stage : public stage_descriptor
   {
 
@@ -1598,6 +1613,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::function< std::vector<real_t> (matrix<real_t> ) > feature_extraction_method  ;
 
   };
+  //end of feature_extraction_paramters class.
 
   //feature extraction methods :
 
@@ -1617,10 +1633,11 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   class feature_filter ;
   template <typename vec_src,typename real_>
   class feature_reducer ;
+  template <typename vec_src,typename real_>
+  class feature_combiner ;
   
 
 
-  //end of feature_extraction_paramters class.
   template <typename vec_src,typename real_>
   class feature_extractor 
   {
@@ -2077,7 +2094,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::vector<feature_binarizer<std::string, real_t> *> binarizers;
     std::vector<feature_filter<std::string, real_t> *> filters;
     std::vector<feature_reducer<std::string, real_t> *> reducers;
-
+    std::vector<feature_combiner<std::string, real_t> *> combiners;
     
     
  
@@ -3056,12 +3073,101 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     real_t transfer_accuracy_gmean(const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn);
 
     };  
-  
+    //utility class to build stages using ::build() method mapped to stage type.
+  class stage_factory 
+  {
+    public:
+    typedef std::unordered_map<std::string, stage_descriptor* (*)()> stage_map;
+    static stage_map& get_map()
+    {
+      static stage_map map;
+      return map;
+    }
+    static stage_descriptor* build(const std::string& type)
+    {
+      stage_map& map = get_map();
+      stage_map::iterator it = map.find(type);
+      if(it == map.end())
+      {
+        return NULL;
+      }
+      return it->second();
+    }
+    static void register_stage(const std::string& type, stage_descriptor* (*builder)())
+    {
+      stage_map& map = get_map();
+      map[type] = builder;
+    }
+    stage_descriptor* create_stage(const std::string& category,const std::string& opname)
+    {
+      //stage is created using the factory if the stage is not registered, it will return NULL. 
+      
+      stage_descriptor* stage = build( category);
+      if(stage)
+      {
+        stage->name = opname;
+      }
+      return stage;
+      stage->set_parameter("name", opname);
+      stage->set_parameter("type", category);
+      return stage;
+    } 
+
+  };
+  //singleton stage factory
+
+  class stage_factory_singleton : public singleton<stage_factory_singleton>
+  {
+    std::mutex _mtx;
+    std::map<std::string, std::function<stage_descriptor *()>> _stage_map;
+
+  public:
+    stage_descriptor *build_stage(const stage_descriptor &stage)
+    {
+      // build the stage from the stage descriptor
+      stage_descriptor *new_stage = nullptr;
+      // create stage from the stage descriptor
+
+      auto THIS = stage_factory_singleton::get_instance();
+      // lock the mutex
+      std::lock_guard<std::mutex> lock(THIS->_mtx);
+
+      if (THIS->_stage_map.find(stage.name) != THIS->_stage_map.end())
+      {
+        new_stage = THIS->_stage_map[stage.name](); // returns new_stage
+
+        // copy the stage descriptor
+        new_stage->set_descriptor(stage);
+      }
+      else
+        throw std::runtime_error("stage not found");
+
+      return new_stage;
+    }
+
+    stage_factory_singleton() : _mtx(), _stage_map()
+    {
+      // initialize the stage map
+
+      _stage_map["dataset"] = &dataset_stage::build;
+      _stage_map["vectorizer"] = &vectorizer_stage::build;
+      _stage_map["classifier"] = &classifier_stage::build;
+      _stage_map["regressor"] = &regressor_stage::build;
+      _stage_map["cluster"] = &cluster_stage::build;
+      _stage_map["dimensionality_reduction"] = &dimentionality_reduction_stage::build;
+      _stage_map["feature_stage"] = &feature_stage::build;
+      _stage_map["encoder"] = &encoder_stage::build;
+      _stage_map["decoder"] = &decoder_stage::build;
+      _stage_map["normalizer"] = &normalizer_stage::build;
+    }
+    // create stage from the stage descriptor
+  }; // end of stage factory
+
   class pipeline
   { 
     public:
     
-    std::vector<pipeline_stage*> _pipelines;
+    std::vector<pipeline*> _pipelines;//container for aggregated pipeline stages 
  
     std::vector<stage_descriptor*> _stages;
 
@@ -3087,8 +3193,10 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     //constructor
     pipeline();
     
-    //get/set stages 
-       void add_stage(stage_descriptor* stage);
+      //get/set stages 
+      void add_stage(stage_descriptor* stage);
+      void add_stage(const std::string& category,const std::string& opname);
+
   
       void remove_stage(uint64_t stage_id); 
   
@@ -3109,11 +3217,14 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     void set_pipeline_name(const std::string& name);
     inline uint64_t get_pipeline_id() const{return _pipe_id;}
     inline void set_pipeline_id(uint64_t id){_pipe_id=id;}
-
+    
     //file load constructor 
     explicit pipeline(const std::string& file_);
     //destructor
     virtual ~pipeline();
+    pipeline* get_pipeline(uint64_t pipeline_id);
+    pipeline* get_pipeline(const std::string& pipeline_name);
+
     private : 
     uint64_t _pipe_id; 
     std::string _pipe_name;
@@ -3126,9 +3237,6 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   { 
      // a pipeline stage can have multipe pipeline descriptors for each pipeline 
      //  a pipeline descriptor can have multiple stages
-     protected:
-    std::vector<pipeline*> _pipelines;
-    pipeline* _current_pipeline;
      public:
     //build 
     
@@ -3144,7 +3252,19 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     void set_current_pipeline(uint64_t index);
 
     void remove_pipeline(const std::string & pipeline_name);
+    void remove_pipeline(uint64_t index);
 
+
+    pipeline* get_pipeline(const std::string & pipeline_name);
+    pipeline* get_pipeline(uint64_t index);
+    pipeline* get_current_pipeline();
+
+
+    size_t get_number_of_pipelines() const;
+    //returns the number of stages in the current pipeline
+    size_t get_current_pipeline_size() const;
+    //returns the number of stages in all the pipelines
+    size_t get_number_of_stages() const;
     
     
     pipeline_builder (pipeline_builder &&other);
@@ -3156,6 +3276,10 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual
     ~pipeline_builder ();
     pipeline_builder ();
+    pipeline_builder (const std::string & filename , bool load_from_file=false);
+    pipeline_builder (const std::string & filename , const std::string & pipeline_name, bool load_from_file=false);
+
+
     friend std::ostream & operator<< (std::ostream & os, const pipeline_builder & p);
     friend std::ifstream & operator>> (std::ifstream & is, pipeline_builder & p);
     bool build();
@@ -3163,6 +3287,11 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     bool run(const std::string& input, std::string& output);
     bool load_from_file(std::string filename);
     bool save_to_file(std::string filename);
+    protected:
+    std::vector<pipeline*> _pipelines;
+    pipeline* _current_pipeline;
+    std::string _filename;
+    std::string _name;
 
  };
 
