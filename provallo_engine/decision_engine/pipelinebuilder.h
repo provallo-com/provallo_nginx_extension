@@ -661,6 +661,15 @@ class pca_vectorizer : public vectorizer<std::string, real_t>
   virtual std::vector<real_t> transform(const provallo::matrix<real_t>& );
  
 
+
+  //vector<vector>> impl simply calls the vector<string> impl for each document.
+  //each document contains strings , each string contains tokens, each token is a word. 
+
+  virtual std::vector<std::vector<real_t>>  fit( const std::vector<std::vector<std::string>>& );
+  virtual std::vector<std::vector<real_t>>  predict(const std::vector<std::vector<std::string>>& );
+  virtual std::vector<std::vector<real_t>>  transform(const std::vector<std::vector<std::string>>&);
+
+
   //override get_type
   virtual vectorizer_type get_type() const ;
   
@@ -1456,6 +1465,9 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
     virtual ~stage_descriptor() {}
     std::unordered_map<std::string, std::string> parameters_map;
+
+    //category of the stage
+    const std::string get_category() const { return type; } 
   
   };
 
@@ -1463,8 +1475,17 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   
   class dataset_stage : public stage_descriptor
   {
-
+    
     public : 
+    enum data_type{ DATATYPE_NUMERIC,DATATYPE_TEXT,DATATYPE_IMAGE,DATATYPE_AUDIO,DATATYPE_VIDEO,DATATYPE_TIME_SERIES,DATATYPE_GENERIC } _data_type;
+    enum data_format{ TEXT,CSV,TSV,ARFF,LIBSVM,LIBFM,LIBFFM,TFRECORD,CAFFE2,TORCH,MXNET,ONNX,HDF5,NPY } _format; 
+    enum dataset_purpose{ BUILD_TRAIN,TRAIN,OPTIMIZE_TRAIN,TEST,OPTIMIZE_TEST,VALIDATE,XVALIDATE } _purpose;
+    enum dataset_type{ STATIC,DYNAMIC } _dataset_type;
+    enum dataset_source{ FILE,STREAM,GENERATOR } _dataset_source;
+    enum dataset_status{ UNINITIALIZED,INITIALIZED,LOADED,PROCESSED } _dataset_status;
+    enum dataset_mode{ READ,WRITE } _dataset_mode;
+
+
     dataset_stage();
 
     virtual ~dataset_stage();
@@ -1483,15 +1504,20 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual const std::string get_additional_data() const;
     virtual void set_additional_data(const std::string& data);
 
-
+    //process data
     static dataset_stage* build( );
-    enum dataset_type { STATIC, DYNAMIC } _type;
-    enum dataset_purpose { BUILD_TRAIN, TRAIN, OPTIMIZE_TRAIN, TEST,OPTIMIZE_TEST, VALIDATE,XVALIDATE } _purpose; 
-    dataset_type type() const { return _type; }
+    enum dataset_type get_type() const { return _dataset_type; }
+    enum data_format get_format() const { return _format; }
+    enum data_type get_data_type() const { return _data_type; }
+    enum dataset_source get_source() const { return _dataset_source; }
+    enum dataset_status get_status() const { return _dataset_status; }
+    enum dataset_mode get_mode() const { return _dataset_mode; }
+    void set_type(enum dataset_type t) { _dataset_type = t; }
+    void set_format(enum data_format f) { _format = f; }
     
-    void type(dataset_type t) { _type = t; }
-    bool is_static() const { return _type == STATIC; }
-    bool is_dynamic() const { return _type == DYNAMIC; }
+
+     bool is_static() const { return _dataset_type == STATIC; }
+    bool is_dynamic() const { return _dataset_type == DYNAMIC; }
     bool is_labeled() const { return _labels.size() > 0; }   
     std::vector<size_t> get_labels() const { return _labels; } 
     std::vector<std::string> get_label_names() const { return _label_names; }
@@ -1507,17 +1533,37 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     bool is_optimize_test() const { return _purpose == OPTIMIZE_TEST; }
     bool is_validate() const { return _purpose == VALIDATE; }
     bool is_xvalidate() const { return _purpose == XVALIDATE; }
-
+    bool is_text() const { return _format == TEXT; }
+    bool is_binary() const { return _format != TEXT&&_format!=CSV; }
+    bool is_csv() const { return _format == CSV; }
+    bool is_libsvm() const { return _format == LIBSVM; }
+    bool is_libfm() const { return _format == LIBFM; }
+    bool is_libffm() const { return _format == LIBFFM; }
+    //tensor flow 
+    bool is_tfrecord() const { return _format == TFRECORD; }
+    bool is_tsv() const { return _format == TSV; }
+    bool is_torch() const { return _format == TORCH; }
+     bool is_caffe2() const { return _format == CAFFE2; }
+    bool is_mxnet() const { return _format == MXNET; }
+    bool is_onnx() const { return _format == ONNX; }
+     bool is_hdf5() const { return _format == HDF5; }
+     bool is_npy() const { return _format == NPY; }     
 
     //process data
     // implements the virtual functions of stage_descriptor 
     // decents should override process_data with matrix_base
     // 
+    // load file 
     virtual void process_data(const std::string& data); 
+    //adapter for matrix<real_t>
+
     virtual void process_data(const matrix<real_t>& data);
+    //adapter for vector<real_t>
     virtual void process_data(const std::vector<real_t>& data);
+    //adapter for vector<vector<real_t> >
     virtual void process_data(const std::vector<std::vector<real_t> >& data);
 
+ 
     //adapter for dataset_ptr or matrix_base 
     //converts matrix_base to matrix<real_t> and processes the dataset. 
 
@@ -1527,7 +1573,50 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     //labels:
     std::vector<size_t> _labels;
     std::vector<std::string> _label_names; 
+    std::vector<std::string> _column_names; 
+    std::vector<std::string> _label_values;
+    std::vector<std::string> _classes;
+    std::vector<std::string> _features; //or column_names... 
+    std::map<std::string,size_t> number_of_samples_per_label;
+    std::map<size_t,size_t> number_of_samples_per_class;
+    std::map<std::string,size_t> number_of_samples_per_feature;
+    std::map<std::string,size_t> number_of_samples_per_column;
+    std::map<std::string,size_t> number_of_samples_per_row;
+    std::map<std::string,size_t> number_of_samples_per_attribute;
+    std::map<std::string,size_t> number_of_samples_per_instance;
 
+     //data:
+
+    matrix<real_t> _data;    //data matrix
+    dataset_base* _dataset; //pointer to the data in the file
+    std::string _data_file; //file name of the source data file
+    std::vector<size_t> _number_of_samples_per_label;
+    size_t _number_of_labels;
+    size_t _number_of_samples ;
+    size_t _number_of_attributes ;
+    size_t _number_of_classes ;
+    size_t _num_of_clusters;
+    size_t _num_of_outliers;
+    size_t _num_of_noise;
+    size_t _num_of_features;
+    size_t _num_of_unlabelled;
+    size_t _num_of_labelled;
+    size_t _num_of_test;
+    size_t _num_of_train;
+    size_t _num_of_validate;
+    size_t _num_of_optimize;
+    size_t _num_of_xvalidate;
+    size_t _num_of_build_train;
+    size_t _num_of_optimize_train;
+    size_t _num_of_optimize_test;
+ 
+
+    //additional data
+
+    std::vector<std::string> additional_data; //[type,source,format,modes,labels,classes,attributes,rows,columns,values,classes,labels,attributes,rows,columns,values]
+
+    //information about the data:
+    
     public:
     void set_labels(const std::vector<std::string>& labels);
 
@@ -1544,9 +1633,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     public : 
     dynamic_dataset_stage();
     virtual ~dynamic_dataset_stage();
-    protected:
-    matrix<real_t> data;
-    public:
+      public:
     virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data); 
     static dynamic_dataset_stage* build( );
@@ -1558,9 +1645,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     public : 
     static_dataset_stage();
     virtual ~static_dataset_stage();
-    protected:
-    matrix<real_t> data;
-    public:
+      public:
     virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data); 
     static static_dataset_stage* build( );
@@ -2072,7 +2157,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
          virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data);
     
-    vectorizer_type type;
+    vectorizer_type vtype;
     size_t ngram; //
     size_t min_df;//
     size_t max_df;//
@@ -2305,7 +2390,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       std::vector<real_t> mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
       std::vector<real_t> normalized_mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
       std::vector<real_t> rand_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t contingency,size_t sample_size, size_t random_state, size_t n_jobs); //ignore parameters 
-
+      std::vector<real_t> homogeneity_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t contingency,size_t sample_size, size_t random_state, size_t n_jobs); //ignore parameters 
 
 
 
@@ -2485,17 +2570,6 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
   };    
   
-  //aggregate a pipline of pipeline stages
-  class pipeline_stage : public stage_descriptor
-  {
-    public : 
-    pipeline_stage();
-    virtual ~pipeline_stage();
-    static pipeline_stage* build( );
-        virtual void load_additional_data(const std::string& data);
-    virtual void save_additional_data(std::string& data);
-
-  };
 
   //normalizer 
   class normalizer_stage : public stage_descriptor
@@ -2954,8 +3028,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     //variational auto encoder for the transfer function 
     //and the hyperparameter transfer function
 
-    variational_auto_encoder<real_t> transfer_function_autoencoder; 
-    variational_auto_encoder<real_t> transfer_function_hyperparam_autoencoder; 
+    variational_auto_encoder<real_t>* transfer_function_autoencoder; 
+    variational_auto_encoder<real_t>* transfer_function_hyperparam_autoencoder; 
     //transfer function
     knowledge_transfer_function_func transfer_function_func; 
     knowledge_transfer_function_func transfer_function_hyperparam_func; 
@@ -3144,6 +3218,49 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
       return new_stage;
     }
+    std::vector<std::string> get_stage_names()
+    {
+      std::lock_guard<std::mutex> lock(_mtx);    
+      std::vector<std::string> names;
+      for (auto &stage : _stage_map)
+      {
+        names.push_back(stage.first);
+      }
+      return names;
+    }
+    std::vector<std::string> get_stage_categories()
+    {
+      std::vector<std::string> categories;
+      std::lock_guard<std::mutex> lock(_mtx);
+    
+      for (auto &stage : _stage_map)
+      {
+        categories.push_back(stage.second()->get_category());
+      }
+      return categories;
+    } 
+
+    std::vector<std::string> get_types(const std::string& category)
+    {
+      std::vector<std::string> types;
+      std::lock_guard<std::mutex> lock(_mtx);
+      for (auto &stage : _stage_map)
+      {
+        if(stage.second()->get_category() == category)
+        {
+          types.push_back(stage.first);
+        }
+      }
+      return types; 
+    }
+    void register_stage(const std::string &name, std::function<stage_descriptor *()> builder)
+    {
+      // lock the mutex
+      std::lock_guard<std::mutex> lock(_mtx);
+      _stage_map[name] = builder;
+    } 
+
+
 
     stage_factory_singleton() : _mtx(), _stage_map()
     {
@@ -3151,14 +3268,19 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
       _stage_map["dataset"] = &dataset_stage::build;
       _stage_map["vectorizer"] = &vectorizer_stage::build;
+      _stage_map["feature"] = &feature_stage::build;
+      _stage_map["cluster"] = &cluster_stage::build;
       _stage_map["classifier"] = &classifier_stage::build;
       _stage_map["regressor"] = &regressor_stage::build;
-      _stage_map["cluster"] = &cluster_stage::build;
       _stage_map["dimensionality_reduction"] = &dimentionality_reduction_stage::build;
-      _stage_map["feature_stage"] = &feature_stage::build;
+      //evaluation
+      _stage_map["evaluation"] = &knowledge_transfer_stage::build;
+      
       _stage_map["encoder"] = &encoder_stage::build;
       _stage_map["decoder"] = &decoder_stage::build;
       _stage_map["normalizer"] = &normalizer_stage::build;
+      _stage_map["filter"] = &filter_stage::build;
+      
     }
     // create stage from the stage descriptor
   }; // end of stage factory
@@ -3213,8 +3335,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
     //get/set pipelines
 
-    std::string get_pipeline_name() const;
-    void set_pipeline_name(const std::string& name);
+    std::string get_pipeline_name() const{return _pipe_name;}
+    void set_pipeline_name(const std::string& name){_pipe_name=name;}
     inline uint64_t get_pipeline_id() const{return _pipe_id;}
     inline void set_pipeline_id(uint64_t id){_pipe_id=id;}
     
@@ -3232,6 +3354,24 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
   };
 
+  //aggregate a pipline of pipeline stages
+  class pipeline_stage : public stage_descriptor
+  {
+    public : 
+    pipeline_stage();
+    pipeline_stage(const std::string& name);
+    virtual ~pipeline_stage();
+    static pipeline_stage* build( );
+        virtual void load_additional_data(const std::string& data);
+    virtual void save_additional_data(std::string& data);
+    pipeline * get_pipeline(){return _pipeline;}
+    //when pipeline is already loaded and we want to place it inside another pipeline
+    void set_pipeline(pipeline * p){_pipeline=p;}
+
+    private:
+    pipeline * _pipeline;
+
+  };
    
   class pipeline_builder
   { 
@@ -3258,6 +3398,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     pipeline* get_pipeline(const std::string & pipeline_name);
     pipeline* get_pipeline(uint64_t index);
     pipeline* get_current_pipeline();
+    const pipeline* get_current_pipeline() const;
 
 
     size_t get_number_of_pipelines() const;
@@ -3354,7 +3495,6 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   real_t _cost_weight_step; //cost of the pipeline
   real_t _complexity_weight_step;//complexity of the pipeline
    
- 
  };
 
 

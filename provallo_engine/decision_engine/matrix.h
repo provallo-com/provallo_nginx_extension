@@ -848,7 +848,66 @@ namespace provallo
     {
       return data_ + size1_ * size2_ + col;
     }
+    void remove_column(size_t col)
+    {
+      size_t new_col_size = size2_ - 1;
 
+      T* tmp = new T[size1_ * new_col_size];
+      for (size_t i = 0; i < size1_; i++)
+      {
+        for (size_t j = 0; j < col; j++)
+          tmp[i * new_col_size + j] = data_[i * size2_ + j];
+        for (size_t j = col; j < new_col_size; j++)
+          tmp[i * new_col_size + j] = data_[i * size2_ + j + 1];
+      }
+      delete[] data_;
+      data_ = tmp;
+      size2_--;
+
+    }
+    std::vector<real_t> row_entropy()const 
+    {
+      //returns the entropy of each column of the matrix as a vector
+      std::vector<real_t> entropy(size1_);
+      for (size_t i = 0; i < size1_; i++)
+      {
+        entropy[i] = 0;
+        for (size_t j = 0; j < size2_; j++)
+          entropy[i] += data_[i * size2_ + j] * std::log(data_[i * size2_ + j]);
+        entropy[i] = -entropy[i];
+      }
+      return entropy;
+
+    }
+    std::vector<real_t> col_entropy()const
+    {
+      //returns the entropy of each column of the matrix as a vector
+      std::vector<real_t> entropy(size2_);
+      for (size_t j = 0; j < size2_; j++)
+      {
+        entropy[j] = 0;
+        for (size_t i = 0; i < size1_; i++)
+          entropy[j] += data_[i * size2_ + j] * log(data_[i * size2_ + j]);
+        entropy[j] = -entropy[j];
+      }
+      return entropy;
+
+    } 
+    void remove_row(size_t row)
+    {
+        
+        size_t new_row_count = size1_ - 1;
+        T* tmp = new T[new_row_count * size2_];
+        for (size_t i = 0; i < row; i++)
+          for (size_t j = 0; j < size2_; j++)
+            tmp[i * size2_ + j] = data_[i * size2_ + j];
+        for (size_t i = row; i < new_row_count; i++)
+          for (size_t j = 0; j < size2_; j++)
+            tmp[i * size2_ + j] = data_[(i + 1) * size2_ + j];
+        delete[] data_;
+        data_ = tmp;
+        size1_--;
+    }
     virtual ~matrix()
     {
       if (data_ != nullptr)
@@ -1184,7 +1243,12 @@ namespace provallo
 
       return data_;
     }
- 
+    void fill(const T &val)
+    {
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          (*this)(i, j) = val;
+    }
     inline matrix<real_t> covariance()  const
     { 
       matrix<real_t> ret(size2(), size2());
@@ -3056,8 +3120,7 @@ namespace provallo
     {
     }
   };
-
-  // Spherical distribution
+   // Spherical distribution
   template <class Array>
   class SphericalPoint
   {

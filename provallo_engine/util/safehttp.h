@@ -87,12 +87,12 @@ namespace provallo
            safe_http_parser();
           ~safe_http_parser();
 
-          enum status_t
+          enum http_parser_status_t
           {
               Done, Error, Incomplete
           };
 
-          status_t add_bytes(const char* bytes, unsigned len);
+          http_parser_status_t add_bytes(const char* bytes, unsigned len);
 
           const char* get_method();
           const char* get_uri();
@@ -137,8 +137,10 @@ namespace provallo
               p_error = 12
           };
 
-          status_t _status;
+          http_parser_status_t _status;
   };
+  //for http query building [LB Testing]
+  //------------------------------------
 
   class query_builder {
       // Path for queries

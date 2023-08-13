@@ -6,6 +6,9 @@
  */
 
 #include "pipelinebuilder.h"
+#include "utils.h"
+#include "../util/csv_file.h" //load csv into matrix_base*
+
 #include "matrix.h"
 
 #include <iostream>
@@ -18,6 +21,7 @@ namespace provallo
   // bag of words implementation:
   bag_of_words::bag_of_words() : _vocabulary(), _bow()
   {
+
   }
 
   // constructor from vocabulary
@@ -873,6 +877,45 @@ namespace provallo
    return transform(ret_matrix);
  }
  */
+
+  std::vector<std::vector<real_t>> pca_vectorizer::fit( const std::vector<std::vector<std::string>>& documents  )
+  {
+      std::vector<std::vector<real_t>> ret(documents.size()); 
+      for (size_t i = 0; i < documents.size(); ++i)
+      {
+        ret[i] = fit(documents[i]);
+      }
+
+      return ret; 
+      
+  }
+
+  std::vector<std::vector<real_t>>  pca_vectorizer::predict(const std::vector<std::vector<std::string>>& documents)
+  {
+    std::vector<std::vector<real_t>> ret;
+    
+    for (size_t i = 0; i < documents.size(); ++i)
+    {
+      ret[i] = predict(documents[i]);
+    }
+    
+    return ret;
+
+  }
+  std::vector<std::vector<real_t>>  pca_vectorizer::transform(const std::vector<std::vector<std::string>>& documents)
+  {
+    std::vector<std::vector<real_t>> ret;
+    
+    for (size_t i = 0; i < documents.size(); ++i)
+    {
+      ret[i] = transform(documents[i]);
+    }
+    
+    return ret;
+
+  }
+
+
   pca_vectorizer &
   pca_vectorizer::operator=(const pca_vectorizer &other)
   {
@@ -1058,6 +1101,58 @@ namespace provallo
     }
   }
 
+  void pipeline_builder::add_pipeline(pipeline *pipeline)
+  {
+    _pipelines.push_back(pipeline);
+    _current_pipeline = pipeline;
+  }
+  //get number of pipelines
+  uint64_t pipeline_builder::get_number_of_pipelines() const
+  {
+    return _pipelines.size();
+  }
+  //get current pipeline
+  pipeline *pipeline_builder::get_current_pipeline()  
+  {
+    return _current_pipeline;
+  }
+  const pipeline *pipeline_builder::get_current_pipeline() const
+  {
+    return _current_pipeline;
+  }
+
+  //get pipeline by index
+  pipeline *pipeline_builder::get_pipeline(uint64_t index)  
+  {
+    auto it = std::find_if(_pipelines.begin(), _pipelines.end(), [index](pipeline *p)
+                           { return p->get_pipeline_id() == index; });
+    if (it != _pipelines.end())
+    {
+      return *it;
+    }
+    return nullptr;
+  }
+  //get pipeline by name
+  pipeline *pipeline_builder::get_pipeline(const std::string &pipeline_name)  
+  {
+    auto it = std::find_if(_pipelines.begin(), _pipelines.end(), [pipeline_name](pipeline *p)
+                           { return p->get_pipeline_name() == pipeline_name; });
+    if (it != _pipelines.end())
+    {
+      return *it;
+    }
+    return nullptr;
+  }
+  
+  //get number of stages in current pipeline
+  uint64_t pipeline_builder::get_number_of_stages() const
+  {
+    if (_current_pipeline)
+    {
+      return _current_pipeline->get_number_of_stages();
+    }
+    return 0;
+  } 
   /*
   void pipeline_builder::set_current_pipeline(pipeline* pipeline)
   {
@@ -2028,6 +2123,54 @@ namespace provallo
     for (auto stage : _stages)
       delete stage;
   }
+  void pipeline::add_stage(const std::string& category, const std::string& name)  // add a stage to the pipeline 
+  {
+    // create a stage descriptor from the given parameters
+    // find mapped types of stages from the given category
+
+
+    if(category=="pipeline")
+    {
+        pipeline_stage *stage = new pipeline_stage();
+        stage->name = name;
+        stage->type = "pipeline";
+        //stage id is   sample from chrono system time as uint64_t
+        stage->stage_id = std::chrono::system_clock::now().time_since_epoch().count();
+
+        _stages.push_back(stage);
+        _pipelines.push_back(stage->get_pipeline());
+
+        return;
+    }
+
+    std::vector<std::string> types = stage_factory_singleton::get_instance()->get_types(category); 
+    // find the type of the stage with the given name
+    auto it = std::find_if(types.begin(), types.end(), [name](const std::string& type) { return type == name; });
+    if (it != types.end())
+    {
+      // create a stage descriptor from the given parameters
+      stage_descriptor stage;
+      stage.name = name;
+      stage.type = *it;
+      stage.stage_id = std::chrono::system_clock::now().time_since_epoch().count();
+      stage.input = "";
+      stage.output = "";
+      stage.input_type = "";
+      stage.output_type = "";
+      stage.input_parameters = "";
+      stage.output_parameters = "";
+      stage.parameters = ""; 
+      // create a stage from the stage descriptor with empty initialization
+      stage_descriptor *new_stage = stage_factory_singleton::get_instance()->build_stage(stage);
+      if (new_stage == nullptr)
+        throw std::runtime_error("stage not found");
+      // add the stage to the pipeline
+      _stages.push_back(new_stage);
+    }
+    else
+      throw std::runtime_error("stage not found");
+    
+  }
   // add a stage to the pipeline
   void pipeline::add_stage(stage_descriptor *stage)
   {
@@ -2139,6 +2282,35 @@ namespace provallo
 
     return _stages.size()+stages-_pipelines.size();
   }
+
+
+  //get pipeline by name  
+  pipeline* pipeline::get_pipeline(const std::string& name)
+  {
+    // find the pipeline with the given name
+    auto it = std::find_if(_pipelines.begin(), _pipelines.end(), [name](pipeline *pipe)
+                           { return pipe->get_pipeline_name() == name; });
+    if (it != _pipelines.end())
+    {
+      // return the pipeline
+      return *it;
+    }
+    return nullptr;
+  }
+  //get pipeline by id
+  pipeline* pipeline::get_pipeline(uint64_t id)
+  {
+    // find the pipeline with the given id
+    auto it = std::find_if(_pipelines.begin(), _pipelines.end(), [id](pipeline *pipe)
+                           { return pipe->get_pipeline_id() == id; });
+    if (it != _pipelines.end())
+    {
+      // return the pipeline
+      return *it;
+    }
+    return nullptr;
+  }
+
   std::ofstream &operator<<(std::ofstream &os, const stage_descriptor &stage)
   {
     // write the stage
@@ -2265,27 +2437,7 @@ namespace provallo
     }
     return os;
   }
-
-  // set_pipeline_name
-  void pipeline::set_pipeline_name(const std::string &name_)
-  {
-    _pipe_name = name_;
-  }
-  // get_pipeline_name
-  std::string pipeline::get_pipeline_name() const
-  {
-    return _pipe_name;
-  }
-  void pipeline_builder::add_pipeline(pipeline *pipe)
-  {
-    if(pipe != nullptr)
-      _pipelines.push_back(pipe);
-
-    if (_current_pipeline != nullptr &&pipe!=_current_pipeline)
-      _current_pipeline = pipe;
-
-
-  }
+ 
   // pipeline_builder constructor
   
   pipeline_builder::pipeline_builder (const std::string & filename , bool load_from_file): _filename(filename), _name(filename) 
@@ -3396,10 +3548,1287 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
   //return informedness
   return informedness;    
 }
+  bool pipeline::build()
+  {
+    //build all stages
+    
+    return true;
+  }
+  //pipeline_builder::build
+  bool pipeline_builder::build()
+  { 
+    for (auto& pipeline : _pipelines)
+    {
+      if (!pipeline->build())
+      {
+        return false;
+      }
+    }
+    return true;
+
+  }
+  
+  //pipeline_stage constructor
+  pipeline_stage::pipeline_stage(const std::string& name) :_pipeline(nullptr)
+  {
+    //empty
+    this->_pipeline = new pipeline();
+    _pipeline->set_pipeline_name(name);
+
+  }   
+  //default constructor
+  pipeline_stage::pipeline_stage():_pipeline(nullptr)  {
+    //empty
+    this->_pipeline = new pipeline();
+    _pipeline->set_pipeline_name("pipeline_stage");
+
+  } 
+  //pipeline_stage destructor
+  pipeline_stage::~pipeline_stage()
+  {
+    //empty
+    delete _pipeline;
+  } 
+  //pipeline_stage -load additional data loads the file with the stages this pipeline contains  
+  void pipeline_stage::load_additional_data(const std::string& file_name)
+  {
+    //empty
+
+    UNDEF_REFERENCE(file_name);
+
+    std::ifstream file(file_name);
+    if (file.is_open())
+    {
+      if(!_pipeline) _pipeline = new pipeline();
+      file>>*_pipeline;
+      file.close();
+
+    }
+    else
+    {
+      std::cout << "Unable to open file " << file_name << std::endl;
+    } 
+  } 
+  void pipeline_stage::save_additional_data(  std::string& filename)
+  {
+    //empty
+    UNDEF_REFERENCE(filename);
+    //save pipeline
+    std::ofstream file(filename);
+    if (file.is_open())
+    {
+      file<<*_pipeline;
+      file.close();
+    }
+    else
+    {
+      std::cout << "Unable to open file " << filename << std::endl;
+    }
+    //save pipeline
+
+  }
+ 
+
+  //stage build functions vectorizer,feature_stage,cluster_stage,classifier_stage,regressor_stage ,etc..
+ 
+  vectorizer_stage* vectorizer_stage::build()
+  {
+    //build vectorizer stage
+    vectorizer_stage* stage =  new vectorizer_stage;
+    //set vectorizer stage name
+     //return stage
+     stage->type = "vectorizer_stage";
+    return stage;
+
+  }
+
+  feature_stage* feature_stage::build()
+  {
+    //build feature stage
+    feature_stage* stage = new feature_stage;
+    //set feature stage name
+    //return stage
+     stage->type = "feature_stage";
+    return stage;
+  }
+
+  cluster_stage* cluster_stage::build()
+  {
+    //build cluster stage
+    cluster_stage* stage = new cluster_stage;
+    //set cluster stage name
+    //return stage
+     stage->type = "cluster_stage";
+    return stage;
+  }
+
+  classifier_stage* classifier_stage::build()
+  {
+    //build classifier stage
+    classifier_stage* stage = new classifier_stage();
+    
+    //set classifier stage name
+    //return stage
+    //stage->set_descriptor(this);
+
+    stage->type = "classifier_stage";
+    return stage;
+  }
+
+  regressor_stage* regressor_stage::build()
+  {
+    //build regressor stage
+    regressor_stage* stage = new regressor_stage;
+    //set regressor stage name
+    //return stage
+ 
+    stage->type = "regressor_stage";
+    return stage;
+  }
+
+  knowledge_transfer_stage* knowledge_transfer_stage::build()
+  {
+    //build knowledge transfer stage
+    knowledge_transfer_stage* stage = new knowledge_transfer_stage;
+    //set knowledge transfer stage name
+    //return stage
+ 
+    stage->type = "knowledge_transfer_stage";
+    return stage;
+  }
+  dataset_stage* dataset_stage::build()
+  {
+    //build dataset stage
+    dataset_stage* stage = new dataset_stage;
+    //set dataset stage name
+    //return stage
+ 
+    stage->type = "dataset_stage";
+    return stage;
+  }
+  dimentionality_reduction_stage * dimentionality_reduction_stage::build()
+  {
+    //build dimentionality reduction stage
+    dimentionality_reduction_stage* stage = new dimentionality_reduction_stage;
+    //set dimentionality reduction stage name
+    //return stage
+ 
+    stage->type = "dimentionality_reduction_stage";
+    return stage;
+  }
+  //encoder stage 
+  encoder_stage* encoder_stage::build()
+  {
+    //build encoder stage
+    encoder_stage* stage = new encoder_stage;
+    //set encoder stage name
+    //return stage
+ 
+    stage->type = "encoder_stage";
+    return stage;
+  } 
+  //decoder stage
+  decoder_stage* decoder_stage::build()
+  {
+    //build decoder stage
+    decoder_stage* stage = new decoder_stage;
+    //set decoder stage name
+    //return stage
+ 
+    stage->type = "decoder_stage";
+    return stage;
+  } 
+  //normalizer
+  normalizer_stage* normalizer_stage::build()
+  {
+    //build normalizer stage
+    normalizer_stage* stage = new normalizer_stage;
+    //set normalizer stage name
+    //return stage
+ 
+    stage->type = "normalizer_stage";
+    return stage;
+  }   
+
+
+  //filter
+  filter_stage* filter_stage::build()
+  {
+    //build filter stage
+    filter_stage* stage = new filter_stage;
+    //set filter stage name
+    //return stage
+ 
+    stage->type = "filter_stage";
+    return stage;
+  } 
+
+  //vectorizer_stage::build
+  //dataset_stage constructor
+  dataset_stage::dataset_stage():_dataset(nullptr)
+  {
+    name = "dataset_stage";
+
+    //empty
+    //    this->_dataset = new dataset_base();
+
+    //_dataset->set_dataset_name("dataset_stage");
+
+  }
+
+
+  //dataset_stage destructor
+  dataset_stage::~dataset_stage()
+  {
+    //empty
+    if(_dataset)
+    delete _dataset;
+  }
+
+  //dataset_stage -load additional data loads the file with the stages this dataset contains
+  void dataset_stage::load_additional_data(const std::string& file_name)
+  {
+    //empty 
+    //load dataset from file 
+    //this is a blind dataset, no attributes or labels are known yet. 
+    //we don't know the number of samples/columns/rows yet
+     //load dataset from file
+    //create dataset
+    UNDEF_REFERENCE(file_name);
+    UNDEF_REFERENCE2(file_name);
+
+    //load dataset from file
+
+  #if 0
+        io::csv_reader reader;
+        reader.read(file_name);
+
+        if(!_dataset) _dataset = new dataset_base();
+        _dataset->set_dataset_name(file_name);
+        _dataset->set_dataset(reader.get_dataset());
+        _dataset->set_attributes(reader.get_attributes());
+        _dataset->set_labels(reader.get_labels());
+        _dataset->set_number_of_samples(reader.get_number_of_samples());
+        _dataset->set_number_of_attributes(reader.get_number_of_attributes());
+        _dataset->set_number_of_labels(reader.get_number_of_labels());
+        _dataset->set_number_of_classes(reader.get_number_of_classes());
+        _dataset->set_number_of_clusters(reader.get_number_of_clusters());
+        _dataset->set_number_of_rows(reader.get_number_of_rows());
+        _dataset->set_number_of_columns(reader.get_number_of_columns());
+        _dataset->set_number_of_samples_per_class(reader.get_number_of_samples_per_class());
+        _dataset->set_number_of_samples_per_cluster(reader.get_number_of_samples_per_cluster());
+        _dataset->set_number_of_samples_per_label(reader.get_number_of_samples_per_label());
+        _dataset->set_number_of_samples_per_row(reader.get_number_of_samples_per_row());
+        _dataset->set_number_of_samples_per_column(reader.get_number_of_samples_per_column());
+        _dataset->set_number_of_samples_per_attribute(reader.get_number_of_samples_per_attribute());
+        _dataset->set_number_of_samples_per_class_and_label(reader.get_number_of_samples_per_class_and_label());
+        _dataset->set_number_of_samples_per_class_and_attribute(reader.get_number_of_samples_per_class_and_attribute());
+  #endif
+    //set dataset
+    //set attributes
+    
+ } 
+ //vectorizer_stage::vectorizer_stage
+  vectorizer_stage::vectorizer_stage() 
+  {
+    name = "vectorizer_stage";
+
+    //empty
+    //this->_vectorizer = new vectorizer_base();
+    //_vectorizer->set_vectorizer_name("vectorizer_stage");
+  }
+  //classifier_stage::classifier_stage
+  classifier_stage::classifier_stage() 
+  {
+    name = "classifier_stage";
+    //empty
+    //this->_classifier = new classifier_base();
+    //_classifier->set_classifier_name("classifier_stage");
+  } 
+  regressor_stage::regressor_stage() 
+  {
+    name = "regressor_stage";
+    //empty
+    //this->_regressor = new regressor_base();
+    //_regressor->set_regressor_name("regressor_stage");
+  } 
+  knowledge_transfer_stage::knowledge_transfer_stage()   
+  {
+    name = "knowledge_transfer_stage";
+    //empty
+    //this->_knowledge_transfer = new knowledge_transfer_base();
+    //_knowledge_transfer->set_knowledge_transfer_name("knowledge_transfer_stage");
+  } 
+  dimentionality_reduction_stage::dimentionality_reduction_stage()
+  {
+    name = "dimentionality_reduction_stage";
+    //empty
+    //this->_dimentionality_reduction = new dimentionality_reduction_base();
+    //_dimentionality_reduction->set_dimentionality_reduction_name("dimentionality_reduction_stage");
+  }   
+  encoder_stage::encoder_stage() 
+  {
+    name = "encoder_stage";
+    //empty
+    //this->_encoder = new encoder_base();
+    //_encoder->set_encoder_name("encoder_stage");
+  }
+  decoder_stage::decoder_stage() 
+  {
+    name = "decoder_stage";
+    //empty
+    //this->_decoder = new decoder_base();
+    //_decoder->set_decoder_name("decoder_stage");
+  }
+  normalizer_stage::normalizer_stage() 
+  {
+    name = "normalizer_stage";
+    //empty
+    //this->_normalizer = new normalizer_base();
+    //_normalizer->set_normalizer_name("normalizer_stage");
+  }
+  filter_stage::filter_stage() 
+  {
+    name = "filter_stage";
+    //empty
+    //this->_filter = new filter_base();
+    //_filter->set_filter_name("filter_stage");
+  } 
+  //cluster_stage::birch
+  std::vector<size_t> cluster_stage::birch(const matrix<real_t>& data,size_t n_clusters ,size_t threshold,size_t branching_factor,size_t compute_labels,size_t copy)
+  {
+    //birch
+    //parameters n_clusters, size_t threshold, size_t branching_factor, size_t compute_labels, size_t copy
+    std::vector<size_t> ret;
+    UNDEF_REFERENCE(n_clusters);
+    UNDEF_REFERENCE2(threshold);
+    UNDEF_REFERENCE2(branching_factor);
+    UNDEF_REFERENCE2(compute_labels);
+    UNDEF_REFERENCE2(copy);
+    //birch
+
+    //Given a set of N d-dimensional data points, the clustering feature C F CF of the set is defined as the triple C F = ( N , L S → , S S ) {\displaystyle CF=(N,{\overrightarrow {LS}},SS)}, where 
+    //N is the number of data points in the set,
+    //L S → {\displaystyle {\overrightarrow {LS}}} {\displaystyle {\overrightarrow {LS}}} is the linear sum of the data points in the set, and
+    //S S {\displaystyle SS} SS is the squared sum of the data points in the set.
+    //The clustering feature of a set of data points can be computed recursively from the clustering features of its subsets.
+
+     //L S → = ∑ i = 1 N X i → {\displaystyle {\overrightarrow {LS}}=\sum _{i=1}^{N}{\overrightarrow {X_{i}}}} is the linear sum.
+     //S S = ∑ i = 1 N X i → ⋅ X i → {\displaystyle SS=\sum _{i=1}^{N}{\overrightarrow {X_{i}}}\cdot {\overrightarrow {X_{i}}}} is the squared sum.
+      //N = ∑ i = 1 N N i {\displaystyle N=\sum _{i=1}^{N}N_{i}} is the number of data points.
+
+    
+    
+    
+    matrix<real_t> linear_sum;
+    matrix<real_t> squared_sum;
+    matrix<real_t> number_of_data_points;
+    matrix<real_t> co_moments;
+    matrix<real_t> centroids;
+    matrix<real_t> labels;
+    matrix<real_t> distances;
+
+
+    co_moments.resize(data.cols(),data.cols());
+    co_moments.fill(0.0);
+    //linear sum
+    linear_sum.resize(data.cols(),1);
+    linear_sum.fill(0.0);
+    //squared sum
+    squared_sum.resize(data.cols(),1);
+    squared_sum.fill(0.0);
+    //number of data points
+    number_of_data_points.resize(data.cols(),1);
+    number_of_data_points.fill(0.0);
+    //compute linear sum
+
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        linear_sum(j,0) += data(i,j);
+        squared_sum(j,0) += data(i,j)*data(i,j);
+        number_of_data_points(j,0) += 1.0;
+        co_moments(j,j) += data(i,j)*data(i,j);
+        
+      }
+    }
+    //compute linear sum
+    //compute squared sum
+    for ( size_t j = 0; j < data.cols(); j++)
+    {
+      squared_sum(j,0) = sqrt(squared_sum(j,0));
+    }
+    //compute squared sum
+    //compute number of data points
+    for ( size_t j = 0; j < data.cols(); j++)
+    {
+      number_of_data_points(j,0) = number_of_data_points(j,0);
+    }
+    //compute number of data points
+    //compute clustering feature
+    matrix<real_t> clustering_feature;
+    clustering_feature.resize(data.cols(),3);
+    clustering_feature.fill(0.0);
+    //compute clustering feature
+    
+
+    //calculate clustering feature
+    for ( size_t j = 0; j < data.cols(); j++)
+    {
+      clustering_feature(j,0) = number_of_data_points(j,0);
+      clustering_feature(j,1) = linear_sum(j,0);
+      clustering_feature(j,2) = squared_sum(j,0);
+      //co moments
+
+    } 
+    //calculate covariance and distances between the matrices 
+    matrix<real_t> covariance = data.covariance();
+    
+    
+    //calculate covariance
+
+    //calculate distances using the distance function and fill distance matrix
+    distances.resize(data.cols(),data.cols());
+    distances.fill(0.0);
+    //get the distance function from the map metrics
+     //std::map<std::string,metric_t> metrics;
+    
+    //all the distance functions should be mapped to the metrics map
+    auto manhatten_distance = metrics["manhatten_distance"] ;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+    auto euclidean_distance = metrics["euclidean_distance"] ;
+    auto inter_cluster_distance = metrics["inter_cluster_distance"] ; 
+    auto intra_cluster_distance = metrics["intra_cluster_distance"] ;
+    auto variance_increased = metrics["variance_increased"] ;
+
+
+    std::vector<metric_t> distance_functions;
+    distance_functions.push_back(manhatten_distance);
+    distance_functions.push_back(euclidean_distance);
+    distance_functions.push_back(inter_cluster_distance);
+    distance_functions.push_back(intra_cluster_distance);
+    distance_functions.push_back(variance_increased);
+
+
+    //    calculate_distance_matrix(data,distances,metrics); 
+    
+
+    //auto cluster_function = metrics.find(_distance_function)->second;    
+     //calculate distances
+    distances = covariance;
+    for ( auto dist : distance_functions )
+    {
+      auto ret = ((this->*dist)(covariance));
+      for  ( size_t i=0;i*distances.cols()<ret.size();++i)
+      {
+        for(size_t j=0;j<distances.cols();j++)
+        {
+          distances(i,j) += ret[i*distances.cols()+j];
+        }
+      }
+    } 
+    //normalize distance
+    distances =distances  / real_t(distance_functions.size());
+    //calculate distances
+
+    //distances are now calculated
+    //now we can calculate the centroids
+    //we can use the distances to calculate the centroids
+    //we can use the distances to calculate the centroids
+
+
+    //calculate centroids
+    centroids.resize(data.cols(),data.cols());
+    centroids.fill(0.0);
+    //calculate centroids
+    
+
+    
+    //calculate the centroids
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        centroids(i,j) = clustering_feature(i,j);
+      }
+    }
+    //find the labels for the data
+    labels.resize(data.rows(),1);
+    labels.fill(0.0);
+    //find the labels for the data
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        labels(i,0) = clustering_feature(j,0);
+      }
+    } 
+    
+    //fill ret   labels
+    for ( size_t i = 0; i < labels.rows(); i++)
+    {
+      ret.push_back(labels(i,0));
+    }
+    return ret;
+  }
+  //    void dataset_stage::set_data(const matrix <real_t>& data )      
+   //parameters n_clusters, size_t n_init, size_t max_iter, real_t tol, int random_state, int verbose, bool precompute_distances, bool copy_x
+   std::vector<size_t> cluster_stage::kmeans(const matrix<real_t>& data,size_t n_clusters ,size_t n_init,size_t max_iter,size_t random_state ,size_t verbose )
+   {
+      //kmeans
+      //parameters n_clusters, size_t n_init, size_t max_iter , int random_state, 
+      //kmeans
+      //this tolerance means that if the relative error is less than tol, the algorithm is considered to have converged and the iterations are stopped. 
+ 
+      UNDEF_REFERENCE(n_clusters);
+      UNDEF_REFERENCE2(n_init);
+      UNDEF_REFERENCE2(max_iter);
+      UNDEF_REFERENCE2(random_state);
+      UNDEF_REFERENCE2(verbose);
+
+      
+
+      
+      std::vector<size_t> result(data.rows(),0);
+      
+      return result; //return labels
+
+   }  
+   
+  //dataset_stage::dataset_stage
+  //scoring functions implementations 
+  //silouhette score       std::vector<real_t> silhouette_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs);
+
+  std::vector<real_t> cluster_stage::silhouette_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  { 
+    //calculate the goodness of the clustering method, 
+    //Silhouette Coefficient or silhouette score is a metric used to calculate the goodness of a clustering technique. Its value ranges from -1 to 1. 1: Means clusters are well apart from each other and clearly distinguished.
+
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+    std::vector<real_t> ret;
+
+
+    auto intra_distance = scores["intra_cluster_distance"];
+    auto inter_distance = scores["inter_cluster_distance"];
+
+    //calculate the intra cluster distance
+    auto intra = ((this->*intra_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the inter cluster distance
+    auto inter = ((this->*inter_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the silhouette score
+    //silhouette score = (inter - intra) / max(inter,intra)
+
+    for ( size_t i = 0; i < intra.size(); i++)
+    {
+      ret.push_back((inter[i] - intra[i]) / std::max(inter[i],intra[i]));
+    } 
+    return ret;
+  }
+  //calinski harabasz score
+  std::vector<real_t> cluster_stage::calinski_harabasz_score(const matrix<real_t>& data, std::vector<size_t> labels , size_t met, size_t sample_size, size_t random_state, size_t n_jobs  )
+  {
+    std::vector<real_t> ret;
+    
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+
+    //Variance Ratio Criterion (Calinski & Harabasz, 1974)
+    //The Calinski-Harabasz index (variance ratio criterion) can be used to evaluate the model, where a higher Calinski-Harabasz score relates to a model with better defined clusters.
+    //The score is defined as ratio between the within-cluster dispersion and the between-cluster dispersion.
+    auto intra_cluster_distance = scores["intra_cluster_distance"];
+    auto inter_cluster_distance = scores["inter_cluster_distance"];
+
+    //calculate the intra cluster distance
+    auto intra = ((this->*intra_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the inter cluster distance
+    auto inter = ((this->*inter_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //(n-cn)*sum(diag(B))/((cn-1)*sum(diag(W))) . B being the between-cluster means, and W being the within-clusters covariance matrix.
+
+    //calculate the centroids
+    matrix<real_t> centroids;
+    centroids.resize(data.cols(),data.cols());
+    centroids.fill(0.0);
+    
+    //labels for each row of the data matrix represents the cluster number for that row of the data matrix   
+    //calculate the covariant matrix for each cluster
+    matrix<real_t> clustering_feature;
+    clustering_feature.resize(data.cols(),data.cols());
+    clustering_feature.fill(0.0);
+    //fill the clustering_feature matrix
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        clustering_feature(labels[i],j) += data(i,j);
+      }
+    } 
+    //calculate the centroids
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        centroids(i,j) = clustering_feature(i,j);
+      }
+    } 
+    //fill the ret vector
+    for ( size_t i = 0; i < intra.size(); i++)
+    {
+      ret.push_back(((data.rows() - intra[i]) * inter[i]) / ((intra[i] - 1) * intra[i]));
+    }
+    return ret;
+
+  }
+  //davies bouldin score
+  std::vector<real_t> cluster_stage::davies_bouldin_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    std::vector<real_t> ret;
+    
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+
+    //Davies-Bouldin index can be used to evaluate the model, where a lower Davies-Bouldin index relates to a model with better separation between the clusters. 
+    //The index is calculated by finding the average similarity measure of each cluster with its most similar cluster, where similarity is the ratio of within-cluster distances to between-cluster distances.
+    //Thus, clusters which are farther apart and less dispersed will result in a better score.
+    //The index is the average similarity measure of each cluster with its most similar cluster, where similarity is the ratio of within-cluster distances to between-cluster distances.
+    //Thus, those clusters which are farther apart and less dispersed will result in a better score.
+    //The minimum score is zero, with lower values indicating better clustering.
+
+    auto intra_cluster_distance = scores["intra_cluster_distance"];
+    auto inter_cluster_distance = scores["inter_cluster_distance"];
+
+    //calculate the intra cluster distance
+    auto intra = ((this->*intra_cluster_distance)(data,labels,  met, sample_size, random_state, n_jobs));
+    //calculate the inter cluster distance
+    auto inter = ((this->*inter_cluster_distance)(data,labels,  met, sample_size, random_state, n_jobs));
+    //calculate the centroids
+    matrix<real_t> centroids;
+    centroids.resize(data.cols(),data.cols());
+    centroids.fill(0.0);
+    
+
+    //labels for each row of the data matrix represents the cluster number for that row of the data matrix
+    //calculate the covariant matrix for each cluster
+    matrix<real_t> clustering_feature;
+    clustering_feature.resize(data.cols(),data.cols());
+    clustering_feature.fill(0.0);
+    //fill the clustering_feature matrix
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        clustering_feature(labels[i],j) += data(i,j);
+      }
+    } 
+    //calculate the centroids
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        centroids(i,j) = clustering_feature(i,j);
+      }
+    } 
+
+
+    //fill the ret vector
+    for ( size_t i = 0; i < intra.size(); i++)
+    {
+      ret.push_back((intra[i] + inter[i]) / intra[i]);
+    } 
+
+    return ret;
+  }// davies_bouldin_score
+  //silhouette score
+
+  
+
+  std::vector<real_t> cluster_stage::adjusted_rand_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    std::vector<real_t> ret; 
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+//adjusted rand score
+    //adjusted_rand_score(labels_true, labels_pred)
+    //labels_true : int array, shape = [n_samples]
+    //Ground truth class labels to be used as a reference`
+    //labels_pred : array, shape = [n_samples]
+    //Cluster labels to evaluate
+    //adjusted_rand_score : float
+    //Rand index adjusted for chance.
+    //The Rand Index computes a similarity measure between two clusterings by considering all pairs of samples and counting pairs that are assigned in the same or different clusters in the predicted and true clusterings.
+    //The raw RI score is then “adjusted for chance” into the ARI score using the following scheme:
+    //ARI = (RI - Expected_RI) / (max(RI) - Expected_RI)
+    //The adjusted Rand index is thus ensured to have a value close to 0.0 for random labeling independently of the number of clusters and samples and exactly 1.0 when the clusterings are identical (up to a permutation).
+    //ARI is a symmetric measure:
+    //ARI(a, b) == ARI(b, a)
+    //ARI is furthermore symmetric to label permutations:
+    //ARI(a, b) == ARI(a[i], b[i]) for any permutations of the labels a[i] of cluster A and b[i] of cluster B.
+    //ARI is furthermore almost symmetric to adding uniformly distributed noise to a clustering:
+    //ARI(a, b) == ARI(a, c) for c = add_uniform_noise(a, size=n_samples, n_clusters=n_clusters)
+    //ARI is in the range [-1, 1]. Random labelings have an ARI close to 0.0. 1.0 stands for perfect match.
+     //calculate the intra cluster distance
+    auto intra_cluster_distance = scores["intra_cluster_distance"];
+    auto inter_cluster_distance = scores["inter_cluster_distance"];
+
+    auto intra = ((this->*intra_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));  
+    //calculate the inter cluster distance
+    auto inter = ((this->*inter_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the centroids
+    matrix<real_t> centroids;
+
+    centroids.resize(data.cols(),data.cols());
+    centroids.fill(0.0);
+    
+    //labels for each row of the data matrix represents the cluster number for that row of the data matrix
+    //calculate the covariant matrix for each cluster
+    matrix<real_t> clustering_feature;
+    clustering_feature.resize(data.cols(),data.cols());
+    clustering_feature.fill(0.0);
+    //fill the clustering_feature matrix
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        clustering_feature(labels[i],j) += data(i,j);
+      }
+    } 
+    //calculate the centroids
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        centroids(i,j) = clustering_feature(i,j);
+      }
+    } 
+    //calculate the adjusted rand score
+    for ( size_t i = 0; i < intra.size(); i++)
+    { 
+      real_t ari = (inter[i] - intra[i]) / (std::max(inter[i],intra[i]) - intra[i]); 
+      ret.push_back(ari);
+      
+    }     
+ 
+    return ret;
+  }
+  std::vector<real_t> cluster_stage::adjusted_mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    std::vector<real_t> ret;
+    
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+    //adjusted_mutual_info_score(labels_true, labels_pred)
+    //labels_true : int array, shape = [n_samples]
+    //Ground truth class labels to be used as a reference
+    //labels_pred : array, shape = [n_samples]
+    //Cluster labels to evaluate
+    //adjusted_mutual_info_score : float
+    //Adjusted Mutual Information between two clusterings.
+    //Adjusted Mutual Information (AMI) is an adjustment of the Mutual Information (MI) score to account for chance. It accounts for the fact that the MI is generally higher for two clusterings with a larger number of clusters, regardless of whether there is actually more information shared. For two clusterings U and V, the AMI is given as:
+    //where H(U) and H(V) are the entropy of the two clusterings and MI(U, V) is the mutual information between the two clusterings.
+    //The AMI returns a value of 1 when the two partitions are identical (ie perfectly matched). Random partitions (independent labellings) have an expected AMI around 0 on average hence can be negative.
+    //The AMI is symmetric: switching label_true with label_pred will return the same score value. This is not the case for the Mutual Information.
+    //Be mindful that this function is an order of magnitude slower than other metrics, such as the Adjusted Rand Index.
+    //Note: The logarithm used is the natural logarithm (base-e).
+    //Note: This is an asymmetric measure and thus does not satisfy the mathematical definition of a metric.
+    //Note: In the literature, the MI score is sometimes called the variation of information (VI).
+    //Note: The algorithm used by this function is an adaptation of the one used in FAST (Francois 2009).
+    //Note: The AMI between two clusterings with random labels is 0. The AMI between a clustering and its shuffled version is 1.
+    //Note: The AMI is not adjusted for chance.
+    //Note: The AMI requires the number of clusters to be equal in both clusterings.
+    //Note: The AMI is often used in the literature when the number of clusters are not equal. In this case, the AMI is not well-defined. It is preferable to use the Adjusted Rand Index instead in such application, which is implemented in adjusted_rand_score and also available as adjusted_rand_index.
+    //Note: The AMI is symmetric, the order of the label arguments does not matter.
+    //Note: The AMI is bounded between -1 and 1. Values close to 0 indicate two label assignments that are largely independent, while values close to 1 indicate significant agreement. Values close to -1 on the other hand indicate significant disagreement.
+
+
+    //calculate the intra cluster distance
+    auto intra_cluster_distance = scores["intra_cluster_distance"];
+    auto inter_cluster_distance = scores["inter_cluster_distance"];
+
+    auto intra = ((this->*intra_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the inter cluster distance
+    auto inter = ((this->*inter_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+
+    //calculate the centroids
+    matrix<real_t> centroids;
+
+    centroids.resize(data.cols(),data.cols());
+    centroids.fill(0.0);
+
+    //labels for each row of the data matrix represents the cluster number for that row of the data matrix
+    //calculate the covariant matrix for each cluster
+    matrix<real_t> clustering_feature;
+    clustering_feature.resize(data.cols(),data.cols());
+    clustering_feature.fill(0.0);
+    //fill the clustering_feature matrix
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        clustering_feature(labels[i],j) += data(i,j);
+      }
+    }
+    //calculate the centroids
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        centroids(i,j) = clustering_feature(i,j);
+      }
+    }
+    //calculate the adjusted mutual info score
+    for ( size_t i = 0; i < intra.size(); i++)
+    {
+      real_t ami = (inter[i] - intra[i]) / (std::max(inter[i],intra[i]) - intra[i]);
+      ret.push_back(ami);
+
+    }
+
+    return ret;
+  }
+
+  std::vector<real_t> cluster_stage::homogeneity_completeness_v_measure(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    //return homogeneity_score(labels_true, labels_pred), completeness_score(labels_true, labels_pred), v_measure_score(labels_true, labels_pred)
+    std::vector<real_t> ret;
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+
+    //calculate the homogeneity score
+    auto homogeneity = homogeneity_score(data,labels,met,sample_size,random_state,n_jobs); 
+    //calculate the completeness score
+    auto completeness = completeness_score(data,labels,met,sample_size,random_state,n_jobs);
+    //calculate the v measure score
+    auto v_measure = v_measure_score(data,labels,met,sample_size,random_state,n_jobs);
+
+
+    for ( size_t i = 0; i < homogeneity.size(); i++)
+    {
+      ret.push_back(homogeneity[i]);
+      ret.push_back(completeness[i]);
+      ret.push_back(v_measure[i]);
+    }
+    //return homogeneity_score(labels_true, labels_pred), completeness_score(labels_true, labels_pred), v_measure_score(labels_true, labels_pred)
+    return ret;
+
+  }
+  std::vector<real_t> cluster_stage::completeness_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    //return the completeness score
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+
+    std::vector<real_t> ret;
+    //calculate the intra cluster distance
+    auto intra_cluster_distance = scores["intra_cluster_distance"];
+    auto inter_cluster_distance = scores["inter_cluster_distance"];
+
+    //calculate the intra cluster distance
+    auto intra = ((this->*intra_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the inter cluster distance
+    auto inter = ((this->*inter_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+
+    //calculate the centroids
+    matrix<real_t> centroids;
+    //calculate the centroids
+    centroids.resize(data.cols(),data.cols());
+    centroids.fill(0.0);
+
+    //labels for each row of the data matrix represents the cluster number for that row of the data matrix
+    //calculate the covariant matrix for each cluster
+    matrix<real_t> clustering_feature;
+    clustering_feature.resize(data.cols(),data.cols());
+    clustering_feature.fill(0.0);
+    //fill the clustering_feature matrix
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        clustering_feature(labels[i],j) += data(i,j);
+      }
+    }
+    //calculate the centroids
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        centroids(i,j) = clustering_feature(i,j);
+      }
+    }
+    //calculate the completeness score
+    for ( size_t i = 0; i < intra.size(); i++)
+    {
+      real_t completeness = intra[i] / inter[i];
+      ret.push_back(completeness);
+    }
+    //return the completeness score
+    return ret;
+
+  }
+  std::vector<real_t> cluster_stage::v_measure_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    //return the v measure score
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+
+    std::vector<real_t> ret;
+    //calculate the homogeneity score
+    auto homogeneity = homogeneity_score(data,labels,met,sample_size,random_state,n_jobs);
+    //calculate the completeness score
+    auto completeness = completeness_score(data,labels,met,sample_size,random_state,n_jobs);
+
+    //calculate the v measure score
+    for ( size_t i = 0; i < homogeneity.size(); i++)
+    {
+      real_t v_measure = 2 * (homogeneity[i] * completeness[i]) / (homogeneity[i] + completeness[i]);
+      ret.push_back(v_measure);
+    }
+    //return the v measure score
+    return ret; 
+  }
+  std::vector<real_t> cluster_stage::fowlkes_mallows_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    //return the fowlkes mallows score
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
 
 
 
+    std::vector<real_t> ret;
+    //false positive
+    real_t fp = 0.0;
+    //false negative
+    real_t fn = 0.0;
+    //true positive
+    real_t tp = 0.0;
 
+    //calculate the intra cluster distance
+    auto intra_cluster_distance = scores["intra_cluster_distance"];
+    auto inter_cluster_distance = scores["inter_cluster_distance"];
 
+    //calculate the intra cluster distance
+    auto intra = ((this->*intra_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the inter cluster distance
+    auto inter = ((this->*inter_cluster_distance)(data,labels,met,sample_size,random_state,n_jobs));
+    //calculate the centroids
+    matrix<real_t> centroids;
+    //calculate the centroids
+    centroids.resize(data.cols(),data.cols());
+    centroids.fill(0.0);
+    //labels for each row of the data matrix represents the cluster number for that row of the data matrix
+    //calculate the covariant matrix for each cluster
+    matrix<real_t> clustering_feature;
+    clustering_feature.resize(data.cols(),data.cols());
+    clustering_feature.fill(0.0);
+    //fill the clustering_feature matrix
+    //fill the clustering_feature matrix
+    for ( size_t i = 0; i < data.rows(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        clustering_feature(labels[i],j) += data(i,j);
+      }
+    }
+    //calculate the centroids
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        centroids(i,j) = clustering_feature(i,j);
+      }
+    }
+    //calculate the false positive
+    for ( size_t i = 0; i < intra.size(); i++)
+    {
+      fp += intra[i];
+    }
+    //calculate the false negative
+    for ( size_t i = 0; i < inter.size(); i++)
+    {
+      fn += inter[i];
+    }
+    //calculate the true positive
+    for ( size_t i = 0; i < centroids.rows(); i++)
+    {
+      for ( size_t j = 0; j < centroids.cols(); j++)
+      {
+        tp += centroids(i,j);
+      }
+    }
+    //calculate the fowlkes mallows score
+    real_t fowlkes_mallows = sqrt((tp * tp) / ((tp + fp) * (tp + fn)));
+    //return the fowlkes mallows score
+    ret.push_back(fowlkes_mallows);
+    //return the fowlkes mallows score
+    return ret;
 
-} // namespace provallo
+  }//end of fowlkes mallows score
+  std::vector<real_t> cluster_stage::mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+        //return the mutual info score
+        UNDEF_REFERENCE(met);
+        UNDEF_REFERENCE2(sample_size);
+        UNDEF_REFERENCE2(random_state);
+        UNDEF_REFERENCE2(n_jobs);
+        UNDEF_REFERENCE2(labels);
+        //return the mutual info score
+        std::vector<real_t> ret;
+        //calculate the mutual info score
+        for ( size_t i = 0; i < data.cols(); i++)
+        {
+          for ( size_t j = 0; j < data.cols(); j++)
+          {
+            real_t mutual_info = 0.0;
+            //calculate the mutual info score
+            for ( size_t k = 0; k < data.rows(); k++)
+            {
+              mutual_info += data(k,i) * data(k,j) * std::log(data(k,i) / (data(k,i) * data(k,j)));
+            }
+            //push the mutual info score
+            ret.push_back(mutual_info);
+          }
+        }
+        //return the mutual info score
+        return ret; 
+      }
+      std::vector<real_t> cluster_stage::normalized_mutual_info_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+      {
+        std::vector<real_t> ret;
+        //calculate the mutual info score
+        auto mutual_info = mutual_info_score(data,labels,met,sample_size,random_state,n_jobs);
+        //calculate the entropy
+        auto entrop = data.row_entropy();
+        //calculate the mutual info score
+        for ( size_t i = 0; i < mutual_info.size(); i++)
+        {
+          real_t normalized_mutual_info = mutual_info[i] / entrop[i];
+          //push the normalized mutual info score
+          ret.push_back(normalized_mutual_info);
+        }
+        //return the normalized mutual info score
+        return ret;
+
+      }
+      std::vector<real_t> cluster_stage::rand_score(const matrix<real_t>& data, std::vector<size_t> labels, size_t contingency,size_t sample_size, size_t random_state, size_t n_jobs) //ignore parameters 
+      {
+        //return the rand score
+        UNDEF_REFERENCE(contingency);
+        UNDEF_REFERENCE2(sample_size);
+        UNDEF_REFERENCE2(random_state);
+        UNDEF_REFERENCE2(n_jobs);
+        UNDEF_REFERENCE2(labels);
+        //return the rand score
+        std::vector<real_t> ret;
+        //calculate the rand score
+        for ( size_t i = 0; i < data.cols(); i++)
+        {
+          for ( size_t j = 0; j < data.cols(); j++)
+          {
+            real_t rand_score = 0.0;
+            //calculate the rand score
+            for ( size_t k = 0; k < data.rows(); k++)
+            {
+              rand_score += data(k,i) * data(k,j);
+            }
+            //push the rand score
+            ret.push_back(rand_score);
+          }
+        }
+        //return the rand score
+        return ret;   
+  }//end of rand score
+  //homogeneity_score
+  std::vector<real_t> cluster_stage::homogeneity_score( const matrix<real_t>& data , std::vector<size_t> labels, size_t met, size_t sample_size, size_t random_state, size_t n_jobs)
+  {
+    //return the homogeneity score
+    UNDEF_REFERENCE(met);
+    UNDEF_REFERENCE2(sample_size);
+    UNDEF_REFERENCE2(random_state);
+    UNDEF_REFERENCE2(n_jobs);
+    UNDEF_REFERENCE2(labels);
+    //return the homogeneity score
+    std::vector<real_t> ret;
+    //calculate the homogeneity score
+    for ( size_t i = 0; i < data.cols(); i++)
+    {
+      for ( size_t j = 0; j < data.cols(); j++)
+      {
+        real_t homogeneity_score = 0.0;
+        //calculate the homogeneity score
+        for ( size_t k = 0; k < data.rows(); k++)
+        {
+          homogeneity_score += data(k,i) * data(k,j) / data(k,i);
+        }
+        //push the homogeneity score
+        ret.push_back(homogeneity_score);
+      }
+    }
+    //return the homogeneity score
+    return ret;   
+  }//end of homogeneity score 
+
+   
+  //load and save additional data for datasets :
+    void dataset_stage::save_additional_data(std::string& data)
+    {
+        UNDEF_REFERENCE(data);
+        UNDEF_REFERENCE2(data);
+    }
+    //load and save additional data for clusters :
+    void cluster_stage::load_additional_data(const std::string& data)
+    {
+        UNDEF_REFERENCE(data);
+        UNDEF_REFERENCE2(data);
+    }
+    void cluster_stage::save_additional_data(std::string& data)
+    {
+        UNDEF_REFERENCE(data);
+        UNDEF_REFERENCE2(data);
+    }
+    const std::string dataset_stage::get_additional_data()const
+    {
+      std::string ret;
+      ret = "[";
+      for ( size_t i = 0; i < additional_data.size(); i++)
+      {
+        ret += additional_data[i];
+        if ( i != additional_data.size() - 1)
+        {
+          ret += ",";
+        }
+      }
+      ret += "]";
+      return ret;
+
+    }
+    
+    void dataset_stage::process_data(const matrix<real_t>& data )
+    {
+        this->_data = data;
+        //process the data
+        UNDEF_REFERENCE(data);
+        //initialize local variables of the data
+      this->_number_of_samples = data.rows(); 
+      this->_number_of_classes = 0;
+      this->_number_of_labels = 0;
+      this->_number_of_attributes = 0;
+      this->_num_of_clusters = 0;
+      this->_num_of_outliers = 0;
+      this->_num_of_noise = 0;
+      this->_num_of_features = 0;
+      this->_num_of_unlabelled = 0;
+      this->_num_of_labelled = 0;
+      this->_num_of_test = 0;
+      this->_num_of_train = 0;
+      this->_num_of_validate = 0;
+      this->_num_of_optimize = 0;
+      this->_num_of_xvalidate = 0;
+      this->_num_of_build_train = 0;
+      this->_num_of_optimize_train = 0;
+      this->_num_of_optimize_test = 0;
+      //iterate over the data once to calculate the number of classes
+      //and the number of attributes, and the number of labels
+      for ( size_t i = 0; i < data.rows(); i++)
+      {
+        //get the label
+        size_t label = data(i,data.cols() - 1);
+        //check if the label is not in the labels
+        if ( std::find(_labels.begin(),_labels.end(),label) == _labels.end())
+        {
+          //push the label
+          _labels.push_back(label);
+          //increment the number of labels
+          this->_number_of_labels++;
+        }
+        //check if the label is not in the classes
+        if ( std::find(_classes.begin(),_classes.end(),std::to_string(label)) ==_classes.end())
+        {
+          //push the label
+          _classes.push_back(std::to_string(label));
+          //increment the number of classes
+          this->_number_of_classes++;
+        }
+        //iterate over the features
+         
+      } 
+       //second iteration - calculate the number of samples in each class
+      for ( size_t i = 0; i < data.rows(); i++)
+      {
+        //get the label
+        size_t label = data(i,data.cols() - 1);
+        //get the class
+        size_t class_ = data(i,data.cols() - 1);
+        //increment the number of samples in the class
+        //
+        this->number_of_samples_per_class[class_]++;
+        //check if the label is not in the classes
+        if ( std::find(_classes.begin(),_classes.end(),std::to_string(label)) ==_classes.end())
+        {
+          //push the label
+          _classes.push_back(std::to_string(label));
+          //increment the number of classes
+          this->_number_of_classes++;
+        }
+        //iterate over the features
+        
+      }
+      //calculate the number of samples
+      this->_number_of_samples = data.rows();
+      //calculate the number of features
+      this->_num_of_features = data.cols() - 1;
+  
+
+      //calculate the number of samples
+      this->_number_of_samples = data.rows();
+      //calculate the noise
+      this->_num_of_noise = 0;
+      //noisy samples are those samples that are not in the classes
+      //iterate over the samples
+      for ( size_t i = 0; i < data.rows(); i++)
+      {
+        //get the label
+        size_t label = data(i,data.cols() - 1);
+        //check if the label is not in the classes
+        if ( std::find(_classes.begin(),_classes.end(),std::to_string(label)) ==_classes.end())
+        {
+          //increment the number of noise
+          this->_num_of_noise++;
+        }
+      } 
+      //calculate the number of clusters
+      this->_num_of_clusters = 0;
+      
+      //calculate the number of outliers
+      this->_num_of_outliers = 0;
+      //optimize
+      this->_num_of_optimize = 0;
+      //validate
+      this->_num_of_validate = 0;
+      //test
+      
+
+      //calculate the number of unlabelled
+      this->_num_of_unlabelled = 0;
+      //calculate the number of labelled
+      this->_num_of_labelled = 0;
+      
+    }
+
+ } // namespace provallo

@@ -169,7 +169,7 @@ namespace provallo
       return true;
   }
 
-  safe_http_parser::status_t safe_http_parser::add_bytes(const char* bytes, unsigned len)
+  safe_http_parser::http_parser_status_t safe_http_parser::add_bytes(const char* bytes, unsigned len)
   {
       if (_status != Incomplete)
       {
