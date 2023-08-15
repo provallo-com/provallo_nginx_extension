@@ -14,7 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_BUILD_TYPE Debug)
 
 #set the compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -Wextra -Wpedantic -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -Wextra -Wpedantic -Werror")
 
 #set the include directories
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/util ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_CURRENT_SOURCE_DIR}/glue ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine  ${CMAKE_CURRENT_SOURCE_DIR}/parsers ${CMAKE_CURRENT_SOURCE_DIR}/helpers ${CMAKE_CURRENT_SOURCE_DIR}/statistics ${CMAKE_CURRENT_SOURCE_DIR}/third_party )   

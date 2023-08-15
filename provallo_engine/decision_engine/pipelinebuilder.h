@@ -19,8 +19,16 @@
 namespace provallo
 {
 
-
-  
+    //dataset enums
+    enum data_type : uint8_t{ DATATYPE_NUMERIC,DATATYPE_TEXT,DATATYPE_IMAGE,DATATYPE_AUDIO,DATATYPE_VIDEO,DATATYPE_TIME_SERIES,DATATYPE_GENERIC } ;
+    enum data_format: uint8_t{ TEXT,CSV,TSV,ARFF,LIBSVM,LIBFM,LIBFFM,TFRECORD,CAFFE2,TORCH,MXNET,ONNX,HDF5,NPY } ; 
+    enum dataset_purpose: uint8_t{ BUILD_TRAIN,TRAIN,OPTIMIZE_TRAIN,TEST,OPTIMIZE_TEST,VALIDATE,XVALIDATE } ;
+    enum dataset_type: uint8_t{ STATIC,DYNAMIC } ;
+    enum dataset_source: uint8_t{ FILE,STREAM,GENERATOR };
+    enum dataset_status: uint8_t{ UNINITIALIZED,INITIALIZED,LOADED,PROCESSED };
+    enum dataset_mode: uint8_t{ READ,WRITE } ;
+    //dataset classes
+    
 
   //python style estimators (fit/predict)
   enum vectorizer_type  : uint8_t {
@@ -28,12 +36,14 @@ namespace provallo
       STANDARD_SCALER,
       MIN_MAX_SCALER,
       PCA,
+      ONE_HOT_VECTORIZER,
       NEURAL_TRANSFORMER,
       AERONATIC_QARTERION, // tensor operator pitch/yaw/roll matrices
       SVD_OPERATOR,
       HPLANE_TRANSFORMER,
       HUFFMAN_TRANSFORMER,
-      HMM_TRANSFORMER,REGRESSION_TRANSFORMER
+      HMM_TRANSFORMER,REGRESSION_TRANSFORMER,
+      UNKNOWN_VECTORIZER  //for initialization of serialized objects
   };
   //forward declaration
   template <typename vector_src, typename real_x>   class vectorizer;
@@ -96,6 +106,12 @@ namespace provallo
 UNDEF_REFERENCE(X); \
 UNDEF_REFERENCE2(X); \
 return std::vector<real_t>();
+
+//vector
+std::ifstream& operator>>(std::ifstream& is, std::vector<real_t>& obj);
+std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
+
+//matrix is already contained.
 
 
   template <typename vector_src, typename real_x>
@@ -190,8 +206,54 @@ return std::vector<real_t>();
     virtual  std::vector<real_x> fit( const provallo::matrix<real_x>&data_ ){DEFAULT_IMPL(data_);}
     virtual  std::vector<real_x> predict(const provallo::matrix<real_x>& data_){ DEFAULT_IMPL(data_);}
     virtual  std::vector<real_x> transform(const provallo::matrix<real_x>& data_){ DEFAULT_IMPL(data_);}
-    
+    void clear()
+    {
+      _data.clear();
+      _transformed_data.clear();
+      _fitted_data.clear();
+      _predicted_data.clear();
+    }
     virtual ~vectorizer() = default;
+    friend std::ifstream& operator>>(std::ifstream& is, vectorizer<vector_src,real_x>& vec)
+    {
+      std::string tmp;
+       std::string line;
+       size_t type  = (size_t)vec._type;
+
+        std::getline(is,line);
+        std::istringstream iss(line);
+        iss>>tmp>> type;
+        vec._type = (vectorizer_type)type;
+        std::getline(is,line);
+        iss.str(line);
+        iss.clear();
+        is>>vec._data;
+        std::getline(is,line);
+        is>>vec._transformed_data;
+        std::getline(is,line);
+        iss.str(line);
+        iss.clear();
+        is>>vec._fitted_data;
+        std::getline(is,line);
+        iss.str(line);
+        iss.clear();
+        is>>vec._predicted_data;
+
+
+      return is;
+
+
+      
+    } 
+    friend std::ofstream& operator<< (std::ofstream& os, const vectorizer<vector_src,real_x>& vec)
+    {
+      os<<"type:"<<vec._type<<std::endl;
+      os<<"data:"<<vec._data<<std::endl;
+      os<<"transformed_data:"<<vec._transformed_data;
+      os<<"fitted:"<<vec._fitted_data;
+      os<<"predicted_data:"<<vec._predicted_data;
+      return os;
+    } 
   };//end of vectorizer
 //helper class for tfidf vectorizer
 class tfidf 
@@ -420,6 +482,21 @@ class bag_of_words
 {
   //bag of words
   public:
+
+
+
+  size_t get_number_of_words() const;
+  size_t get_number_of_documents() const;
+  size_t get_number_of_unique_tokens()const;
+  size_t get_number_of_tokens() const;
+  std::vector<std::string> get_vocabulary() const;
+  std::vector<real_t> get_bag_of_words() const; 
+  std::vector<real_t> get_document_vector(const std::string&doc) const; 
+  const matrix<real_t>& get_matrix() const{ return _bow_matrix; } 
+  //clear
+  void clear();
+
+
   bag_of_words();
   //initialize with a vocabulary
   explicit bag_of_words(const std::vector<std::string>&);
@@ -451,6 +528,10 @@ class bag_of_words
     std::vector<real_t> predict(const std::string& doc);
     std::vector<std::vector<real_t>> predict(const provallo::matrix<real_t>&);
      ~bag_of_words()= default;
+  virtual void add_document(const std::string&);
+  virtual void process_document(const std::string&);
+  virtual void process_documents(const std::vector<std::string>&);  
+
   protected:
   //bag of words
   std::vector<std::string> _vocabulary;
@@ -460,16 +541,85 @@ class bag_of_words
 
   matrix<real_t> _bow_matrix;
 
-
+  size_t num_classes;
+  size_t num_features;
+  size_t num_words;
+  size_t num_docs;
+  size_t num_samples;
+  size_t num_tokens;
+  size_t num_unique_tokens;
+  
   //add document and process document helper functions 
-  virtual void add_document(const std::string&);
-  virtual void process_document(const std::string&);
-
 
 
 };
+//one hot vectorizer helper class
+class one_hot_vectorizer :   public vectorizer<std::string, real_t>
+{
+  public:
+  one_hot_vectorizer();
+  //initialize with a vocabulary
+  explicit one_hot_vectorizer(const std::vector<std::string>&); 
+  //copy constructor
+  one_hot_vectorizer(const one_hot_vectorizer &other);
+  one_hot_vectorizer(one_hot_vectorizer &&other); //move constructor
+  one_hot_vectorizer& operator= (const one_hot_vectorizer &other);
+  one_hot_vectorizer&
+      operator= (one_hot_vectorizer &&other);
+  //fit
+  //override vectorizer vtable : 
+      //fit:
+    virtual  std::vector<std::vector<real_t>> fit( const std::vector<std::vector<std::string>>&documents ); 
+    virtual  std::vector<real_t> fit( const std::vector<std::string>& data_);
+    virtual  std::vector<real_t> predict(const std::vector<std::string>& data_);//{DEFAULT_IMPL(data_);}
+    virtual  std::vector<real_t> transform(const std::vector<std::string>& data_);//{DEFAULT_IMPL(data_);}
+    virtual  std::vector<real_t> fit_transform(const std::vector<std::string>& data_);//{ DEFAULT_IMPL(data_);} 
+    //inverse:
+    virtual  std::vector<real_t> fit( const provallo::matrix<real_t>&data_ );//{DEFAULT_IMPL(data_);}
+    virtual  std::vector<real_t> predict(const provallo::matrix<real_t>& data_);//{ DEFAULT_IMPL(data_);}
+    virtual  std::vector<real_t> transform(const provallo::matrix<real_t>& data_);///{ DEFAULT_IMPL(data_);}
+    
+    virtual  std::vector<real_t> fit_transform(const provallo::matrix<real_t>& data_);//{ DEFAULT_IMPL(data_);}  
+    //inverse:
+    virtual  std::vector<std::string> inverse_transform(const std::vector<real_t>& data_);//{ DEFAULT_IMPL(data_);}
+    virtual  std::vector<std::string> inverse_transform(const provallo::matrix<real_t>& data_);//{ DEFAULT_IMPL(data_);}
+    //predict:
+  virtual   ~one_hot_vectorizer();
+  //helper functions : 
+  void clear();
+  size_t get_num_of_samples()const;
+  size_t get_num_of_tokens()const;
+  size_t get_num_of_unique_tokens()const;
+  size_t get_num_of_words()const;
+  size_t get_num_of_docs()const;
+  size_t get_num_of_features()const;
+  size_t get_num_of_classes()const;
 
+  protected:
+  //bag of words
+  bag_of_words _bow;
+  std::vector<std::string> _vocabulary;
+  size_t num_classes;
+  size_t num_features;
+  size_t num_words;
+  size_t num_docs;
+  size_t num_samples;
+  size_t num_tokens;
+  size_t num_unique_tokens;
 
+  matrix<real_t> _matrix;
+
+  //initialize 
+  void initialize(); 
+  //add document and process document helper functions 
+  virtual void add_document(const std::string& doc);
+  //override process document
+  virtual void process_document(const std::string& doc);
+  //override process_documents 
+  virtual void process_documents(const std::vector<std::string>& docs); 
+
+  virtual std::vector<real_t> fit(const std::string& single_doc);
+ };
 
 class principal_component_analysis
 {
@@ -1477,14 +1627,6 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   {
     
     public : 
-    enum data_type{ DATATYPE_NUMERIC,DATATYPE_TEXT,DATATYPE_IMAGE,DATATYPE_AUDIO,DATATYPE_VIDEO,DATATYPE_TIME_SERIES,DATATYPE_GENERIC } _data_type;
-    enum data_format{ TEXT,CSV,TSV,ARFF,LIBSVM,LIBFM,LIBFFM,TFRECORD,CAFFE2,TORCH,MXNET,ONNX,HDF5,NPY } _format; 
-    enum dataset_purpose{ BUILD_TRAIN,TRAIN,OPTIMIZE_TRAIN,TEST,OPTIMIZE_TEST,VALIDATE,XVALIDATE } _purpose;
-    enum dataset_type{ STATIC,DYNAMIC } _dataset_type;
-    enum dataset_source{ FILE,STREAM,GENERATOR } _dataset_source;
-    enum dataset_status{ UNINITIALIZED,INITIALIZED,LOADED,PROCESSED } _dataset_status;
-    enum dataset_mode{ READ,WRITE } _dataset_mode;
-
 
     dataset_stage();
 
@@ -1585,6 +1727,14 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::map<std::string,size_t> number_of_samples_per_attribute;
     std::map<std::string,size_t> number_of_samples_per_instance;
 
+    enum data_type _data_type;
+    enum data_format  _format; 
+    enum dataset_purpose  _purpose;
+    enum dataset_type  _dataset_type;
+    enum dataset_source  _dataset_source;
+    enum dataset_status  _dataset_status;
+    enum dataset_mode  _dataset_mode;
+    
      //data:
 
     matrix<real_t> _data;    //data matrix
@@ -1614,11 +1764,46 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     //additional data
 
     std::vector<std::string> additional_data; //[type,source,format,modes,labels,classes,attributes,rows,columns,values,classes,labels,attributes,rows,columns,values]
+    //helper functions 
+    matrix<real_t> load_csv(const std::string& file_name) ;
+    matrix<real_t> load_txt(const std::string& file_name);
+    matrix<real_t> load_libsvm(const std::string& file_name); 
+    matrix<real_t> load_libfm(const std::string& file_name);
+    matrix<real_t> load_libffm(const std::string& file_name);
+    matrix<real_t> load_tfrecord(const std::string& file_name);
+    matrix<real_t> load_tsv(const std::string& file_name);
+    matrix<real_t> load_torch(const std::string& file_name);
+    matrix<real_t> load_caffe2(const std::string& file_name);
+    matrix<real_t> load_mxnet(const std::string& file_name);
+    matrix<real_t> load_onnx(const std::string& file_name);
+    matrix<real_t> load_hdf5(const std::string& file_name);
+    matrix<real_t> load_npy(const std::string& file_name);
+    matrix<real_t> load_matrix(const std::string& file_name);
+    matrix<real_t> load_dataset(const std::string& file_name);
+    matrix<real_t> load_data(const std::string& file_name);
+    matrix<real_t> load(const std::string& file_name);
 
+    //dataset stage doesn't save in any of the formats
+    //it serializes to our own format 
+    //
     //information about the data:
     
     public:
-    void set_labels(const std::vector<std::string>& labels);
+    //set descriptive information about the data set 
+    void set_classes(const std::vector<std::string>& classes) { _classes = classes; }
+    void set_features(const std::vector<std::string>& features){_column_names = features;}
+    /*TODO sample information:
+      void set_number_of_samples_per_label(const std::vector<size_t>& number_of_samples_per_label) { _number_of_samples_per_label = number_of_samples_per_label; } 
+      void set_number_of_samples_per_class(const std::map<size_t,size_t>& number_of_samples_per_class) { _number_of_samples_per_class = number_of_samples_per_class; }
+      void set_number_of_samples_per_feature(const std::map<std::string,size_t>& number_of_samples_per_feature) { _number_of_samples_per_feature = number_of_samples_per_feature; }
+      void set_number_of_samples_per_column(const std::map<std::string,size_t>& number_of_samples_per_column) { _number_of_samples_per_column = number_of_samples_per_column; }
+      void set_number_of_samples_per_row(const std::map<std::string,size_t>& number_of_samples_per_row) { _number_of_samples_per_row = number_of_samples_per_row; }
+      void set_number_of_samples_per_attribute(const std::map<std::string,size_t>& number_of_samples_per_attribute) { _number_of_samples_per_attribute = number_of_samples_per_attribute; } 
+      void set_number_of_samples_per_instance(const std::map<std::string,size_t>& number_of_samples_per_instance) { _number_of_samples_per_instance = number_of_samples_per_instance; } 
+      void set_number_of_samples_per_sample(const std::map<std::string,size_t>& number_of_samples_per_sample) { _number_of_samples_per_sample = number_of_samples_per_sample; }
+      void set_number_of_samples_per_label(const std::map<std::string,size_t>& number_of_samples_per_label) { _number_of_samples_per_label = number_of_samples_per_label; }
+      */
+
 
   };
 
@@ -1652,11 +1837,11 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
   };  
   
-  class feature_extraction_paramters 
+  class feature_extraction_parameters 
   {
     //comprehensive list of feature extraction parameters.
   public :
-    feature_extraction_paramters() : features_length(0), parameters(""), feature_extraction_method(nullptr)
+    feature_extraction_parameters() : features_length(0), parameters(""), feature_extraction_method(nullptr)
      {
  
         //initialize the feature extraction method.
@@ -1666,13 +1851,13 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
         
      }
-    feature_extraction_paramters(const feature_extraction_paramters& cpy)
+    feature_extraction_parameters(const feature_extraction_parameters& cpy)
     {
       features_length = cpy.features_length;
       parameters = cpy.parameters;
       feature_extraction_method = cpy.feature_extraction_method;
     }
-    feature_extraction_paramters& operator=(const feature_extraction_paramters& cpy)
+    feature_extraction_parameters& operator=(const feature_extraction_parameters& cpy)
     {
       features_length = cpy.features_length;
       parameters = cpy.parameters;
@@ -1687,7 +1872,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     size_t get_features_length() const 
     { return features_length; }
 
-    virtual ~feature_extraction_paramters() {}
+    virtual ~feature_extraction_parameters() {}
 
   private: 
     //size_t method_id
@@ -1698,7 +1883,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::function< std::vector<real_t> (matrix<real_t> ) > feature_extraction_method  ;
 
   };
-  //end of feature_extraction_paramters class.
+  //end of feature_extraction_parameters class.
 
   //feature extraction methods :
 
@@ -1747,7 +1932,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       //extract features from a dataset: 
       virtual matrix<real_> extract_features(const matrix<real_>& data) const = 0;
     protected:
-    feature_extraction_paramters _feature_extraction_paramters;
+    feature_extraction_parameters _feature_extraction_parameters;
 
       //
   };
@@ -1865,16 +2050,16 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     void filter(const vec_src& src, matrix<real_>& dst) {  _filter!=nullptr?_filter.filter(src, dst):nops++; }
     void reduce(const vec_src& src, matrix<real_>& dst) { _reducer!=nullptr?_reducer.reduce(src, dst):nops++; }
     
-    void extract(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _extractor.extract(src, dst, params) ; }
-    void transform(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _transformer.transform(src, dst, params); }
-    void select(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _selector.select(src, dst, params); }
+    void extract(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _extractor.extract(src, dst, params) ; }
+    void transform(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _transformer.transform(src, dst, params); }
+    void select(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _selector.select(src, dst, params); }
 
-    void aggregate(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _aggregator.aggregate(src, dst, params); }
-    void normalize(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _normalizer.normalize(src, dst, params); }
-    void weight(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _weighter.weight(src, dst, params); }
-    void binarize(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _binarizer.binarize(src, dst, params); }
-    void filter(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _filter.filter(src, dst, params); }
-    void reduce(const vec_src& src, matrix<real_>& dst, const feature_extraction_paramters& params) { _reducer.reduce(src, dst, params); }
+    void aggregate(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _aggregator.aggregate(src, dst, params); }
+    void normalize(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _normalizer.normalize(src, dst, params); }
+    void weight(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _weighter.weight(src, dst, params); }
+    void binarize(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _binarizer.binarize(src, dst, params); }
+    void filter(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _filter.filter(src, dst, params); }
+    void reduce(const vec_src& src, matrix<real_>& dst, const feature_extraction_parameters& params) { _reducer.reduce(src, dst, params); }
     void extract(const vec_src& src, matrix<real_>& dst, const std::string& params) { _extractor.extract(src, dst, params); }
     void transform(const vec_src& src, matrix<real_>& dst, const std::string& params) { _transformer.transform(src, dst, params); }
     void select(const vec_src& src, matrix<real_>& dst, const std::string& params) { _selector.select(src, dst, params); }
@@ -1915,13 +2100,16 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::map<std::pair<std::string,std::string>,std::string> _feature_names_map;
     size_t nops = 0;
   };
-  //end of feature_extraction_paramters class.
+  //end of feature_extraction_parameters class.
   class feature_stage : public stage_descriptor
   {
     private :
 
-    feature_extraction_paramters _extraction_functors;
+    feature_extraction_parameters _extraction_functors;
     feature_engineering<std::string,real_t> _engineering_functors;
+    
+    std::vector<std::string> _functor_names; //initialize the feature 
+    //extractor methods here.
 
 
     template <typename T>
@@ -1957,6 +2145,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
         _extraction_functors.set_feature_extraction_method(fcp1_sum);
         _extraction_functors.set_features_length(1);
+        _functor_names.push_back("sum");
+
 
     } 
     feature_stage(const feature_stage& cpy) : stage_descriptor(cpy)
@@ -1966,7 +2156,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       _extraction_functors = cpy._extraction_functors;
 
     }
-    virtual ~feature_stage();
+    virtual ~feature_stage()=default;
     public:
     virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data);
@@ -2100,10 +2290,13 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     public : 
     
     classifier_stage();
+    classifier_stage(const std::string& name);
     virtual ~classifier_stage();
     protected:
     matrix<real_t> data;
     std::vector<size_t> labels;
+    typedef provallo::classifier classifier_t;
+    std::vector<classifier_t> classifiers;
 
     public:
     //loads data and labels
@@ -2113,7 +2306,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual void save_additional_data(std::string& data);
     
     static classifier_stage* build( );
-
+    protected:
+    classifier_factory* factory;
 
   };
   class regressor_stage : public stage_descriptor
@@ -2156,7 +2350,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
      static vectorizer_stage* build( );
          virtual void load_additional_data(const std::string& data);
     virtual void save_additional_data(std::string& data);
-    
+    void initialize();
+    private:
     vectorizer_type vtype;
     size_t ngram; //
     size_t min_df;//
@@ -2170,19 +2365,19 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     size_t sublinear_tf;//
 
     std::vector<vectorizer<std::string, real_t> *> vectorizers;
-    std::vector<feature_extractor<std::string, real_t> *> extractors;
-    std::vector<feature_transformer<std::string, real_t> *> transformers;
-    std::vector<feature_selector<std::string, real_t> *> selectors;
-    std::vector<feature_aggregator<std::string, real_t> *> aggregators;
-    std::vector<feature_normalizer<std::string, real_t> *> normalizers;
-    std::vector<feature_weighter<std::string, real_t> *> weighters;
-    std::vector<feature_binarizer<std::string, real_t> *> binarizers;
-    std::vector<feature_filter<std::string, real_t> *> filters;
-    std::vector<feature_reducer<std::string, real_t> *> reducers;
-    std::vector<feature_combiner<std::string, real_t> *> combiners;
+    feature_engineering<std::string,real_t> fe;
+    //feature info - for each feature, we have a vector of strings that describe the feature. 
+    //for example, for a word, we have the word itself, the part of speech, the lemma, the stem, etc. 
+    //for a number, we have the number itself, the number of digits, the number of letters, etc. 
+    //for a date, we have the date itself, the day of the week, the month, the year, etc.
+    //for a time, we have the time itself, the hour, the minute, the second, etc.
+    //for a currency, we have the currency itself, the currency code, the currency symbol, etc.
+    //for a location, we have the location itself, the country, the city, the state, the zip code, etc.
     
+    std::map<std::string,std::vector<std::string> > feature_info; 
+    int feature_engineering_type;
+    int feature_selection_type;
     
- 
   };
   class encoder_stage : public stage_descriptor
   {
@@ -2337,6 +2532,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       std::vector<real_t> rbf_distances(const matrix<real_t>& data);
       std::vector<real_t> spearman_distances(const matrix<real_t>& data);
       std::vector<real_t> kendall_distances(const matrix<real_t>& data);
+      std::vector<real_t> squared_sum_distances(const matrix<real_t>& data);
       //algorithm functions (cluster_t signature)
       /*
       std::vector<size_t> kmeans(const matrix<real_t>& data, size_t n_clusters, size_t n_init, size_t max_iter, real_t tol, int random_state, int verbose, bool precompute_distances, bool copy_x);
@@ -2433,7 +2629,9 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       metrics.insert(std::make_pair("correlation",metric_t(&cluster_stage::correlation_distances)));
       metrics.insert(std::make_pair("cosine",metric_t(&cluster_stage::cosine_distances)));
       metrics.insert(std::make_pair("haversine",metric_t(&cluster_stage::haversine_distances)));
-        
+      metrics.insert(std::make_pair("squared_sum",metric_t(&cluster_stage::squared_sum_distances))); 
+
+
       //algorithms to be mapped:
       algorithms.insert(std::make_pair("kmeans",cluster_t(&cluster_stage::kmeans)));
       //algorithms.insert(std::make_pair("kmeans++",cluster_t(&cluster_stage::kmeans_plus_plus)));
@@ -2466,7 +2664,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       
     }
 
-    virtual ~cluster_stage();
+    virtual ~cluster_stage()=default;
     //calculate distance matrix 
     //loads data and labels
     virtual void load_additional_data(const std::string& data);
@@ -2578,6 +2776,9 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     normalizer_stage();
     virtual ~normalizer_stage();
     static normalizer_stage* build( );
+    virtual void load_additional_data(const std::string& data);
+    virtual void save_additional_data(std::string& data);
+
   };
   //standardizer
   class standardizer_stage : public stage_descriptor
@@ -3145,6 +3346,18 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
     real_t transfer_accuracy_markedness(const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn); 
     real_t transfer_accuracy_gmean(const std::vector<real_t> &tp,const std::vector<real_t> &fp,const std::vector<real_t> &fn);
+    
+    real_t transfer_accuracy_score;
+    real_t transfer_f1_score;  
+    real_t transfer_precision_score ;
+    real_t transfer_recall_score ;
+    real_t transfer_tp_score ;
+    real_t transfer_fp_score ;
+    real_t transfer_fn_score ;
+    real_t transfer_tn_score ;
+
+    
+  
 
     };  
     //utility class to build stages using ::build() method mapped to stage type.
@@ -3348,9 +3561,10 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     pipeline* get_pipeline(const std::string& pipeline_name);
 
     private : 
+
     uint64_t _pipe_id; 
     std::string _pipe_name;
-    
+
 
   };
 
@@ -3460,6 +3674,17 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     pipeline* generate_pipeline(const std::string& pipeline_name, const std::string& input, std::string& output);
   private :
   //meta-parameters :
+
+  struct meta_weight{
+  //weights for the meta-parameters :
+  real_t accuracy; //accuracy of the pipeline
+  real_t loss; //loss of the pipeline
+  real_t cost; //cost of the pipeline
+  real_t complexity;//complexity of the pipeline
+  } _meta_weight, _meta_weight_step, _meta_weight_threshold;
+
+
+  //meta-parameters :
   //number of pipelines to generate
   uint64_t _number_of_pipelines;
   //number of threads per pipeline
@@ -3468,33 +3693,16 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   uint64_t _max_number_of_stages;
   //number of maximum stages per pipeline
   uint64_t _min_number_of_stages; // should be 2 at least, otherwise it is not a pipeline
-  //maximum numbers of aggregated pipelines to generate per pipeline  
+  //maximum numbers of aggregated pipelines to generate per pipeline
   uint64_t _max_number_of_aggregated_pipelines;
-
+  //learning task configuration
   learning_task _learning_task;
   std::map<std::string, auto_encoder<real_t>> _stage_output_autoencoders;
   std::map<std::string, auto_encoder<real_t>> _stage_input_autoencoders;
+  //
+  neural_helper _neural_helper; //helper for neural networks
   
-  real_t _accuracy; //accuracy of the pipeline
-  real_t _loss; //loss of the pipeline
-  real_t _cost; //cost of the pipeline
-  real_t _complexity;//complexity of the pipeline
 
-  real_t _accuracy_weight; //accuracy of the pipeline
-  real_t _loss_weight; //loss of the pipeline
-  real_t _cost_weight; //cost of the pipeline
-  real_t _complexity_weight;//complexity of the pipeline
-
-  real_t _accuracy_threshold; //accuracy of the pipeline
-  real_t _loss_threshold; //loss of the pipeline
-  real_t _cost_threshold; //cost of the pipeline
-  real_t _complexity_threshold;//complexity of the pipeline
-
-  real_t _accuracy_weight_step; //accuracy of the pipeline
-  real_t _loss_weight_step; //loss of the pipeline
-  real_t _cost_weight_step; //cost of the pipeline
-  real_t _complexity_weight_step;//complexity of the pipeline
-   
  };
 
 

@@ -1695,7 +1695,35 @@ namespace provallo
     {
       return &data_[i * size2_];
     }
+    friend std::ofstream & operator << (std::ofstream &out, const matrix<T> &mat)
+    {
+      out << mat.size1() << " " << mat.size2() << std::endl;
 
+      for (size_t i = 0; i < mat.size1(); i++)
+      {
+        for (size_t j = 0; j < mat.size2(); j++)
+        {
+          out << mat(i, j) << " ";
+        }
+        out << std::endl;
+      }
+      return out;
+    }
+    friend std::ifstream & operator >> (std::ifstream &in, matrix<T> &mat)
+    {
+      size_t size1, size2;
+      in >> size1 >> size2;
+      mat.resize(size1, size2);
+      for (size_t i = 0; i < mat.size1(); i++)
+      {
+        for (size_t j = 0; j < mat.size2(); j++)
+        {
+          in >> mat(i, j);
+        }
+      }
+      return in;
+    } 
+    
   private:
     size_type size1_;
     size_type size2_;

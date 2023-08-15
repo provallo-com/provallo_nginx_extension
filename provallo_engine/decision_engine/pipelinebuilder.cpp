@@ -10,7 +10,7 @@
 #include "../util/csv_file.h" //load csv into matrix_base*
 
 #include "matrix.h"
-
+#include "classifier.h"
 #include <iostream>
 
 #include <algorithm>
@@ -23,47 +23,98 @@ namespace provallo
   {
 
   }
-
+  std::vector<real_t> bag_of_words::get_bag_of_words() const
+  {
+    return _bow;
+  }
   // constructor from vocabulary
   bag_of_words::bag_of_words(const std::vector<std::string> &vocabulary) : _vocabulary(vocabulary), _bow(vocabulary.size(), 0.0)
   {
 
     // std::cout<<"vocabulary size: "<<_vocabulary.size()<<std::endl;
     // set bag of words values on the tokens
-    for (size_t i = 0; i < _vocabulary.size(); ++i)
+   
+    size_t token_count = 0;
+    size_t vocabulary_size = _vocabulary.size();
+    size_t number_of_documents = vocabulary_size;
+    size_t feature_count = 0;
+    size_t sample_count = vocabulary_size;
+    size_t sample_size = 1;
+ 
+
+    for (size_t i = 0; i < vocabulary_size; ++i)
     {
       std::string token = _vocabulary[i];
-
-      for (size_t j = i + 1; j < _vocabulary.size(); ++j)
+        for (size_t j = i + 1; j < _vocabulary.size(); ++j)
       {
+        //calculate the number of times the token appears in the vocabulary 
+        // and update the bow vector
+        //
         if (_vocabulary[j] == token)
         {
           _bow[i] += 1.0;
           _bow[j] = 0.0;
+         //set token index to zero
+    
+
         }
+        else
+        {
+          _bow[j] = 0.0;
+ 
+
+        }
+   
       }
       for (size_t j = 0; j < i; ++j)
       {
+        //calculate the number of times the token appears in the vocabulary
+        // and update the bow vector
+
         if (_vocabulary[j] == token)
         {
           _bow[i] += 1.0;
           _bow[j] = 0.0;
         }
+
       }
 
+
       _bow[i] = _bow[i] / _vocabulary.size();
+      //update samples,tokens,features counters 
+      feature_count++;
+      sample_count++;
+      sample_size++;
+         
+      // std::cout<<"token: "<<token<<std::endl;
+      // std::cout<<"token count: "<<token_count<<std::endl;
+      // std::cout<<"vocabulary size: "<<vocabulary_size<<std::endl;
+      // std::cout<<"feature count: "<<feature_count<<std::endl;
+      // std::cout<<"sample count: "<<sample_count<<std::endl;
+
     }
     // update the bow matrix
     // matrix is the number of components x samples
+    // 
+
     _bow_matrix = matrix<real_t>(_vocabulary.size(), 1);
     for (size_t i = 0; i < _vocabulary.size(); ++i)
     {
+      // std::cout<<"bow size: "<<_bow.size()<<std::endl; 
+
       _bow_matrix(i, 0) = _bow[i];
     }
+    this->num_tokens = token_count;
+    this->num_features = feature_count;
+    this->num_words = vocabulary_size;
+    this->num_docs = number_of_documents;
+    this->num_samples = sample_size;
 
+    
     // std::cout<<"bow size: "<<_bow.size()<<std::endl;
     // std::cout<<"bow: "<<_bow<<std::endl;
   }
+
   // copy constructor
   bag_of_words::bag_of_words(const bag_of_words &other)
   {
@@ -125,6 +176,45 @@ namespace provallo
     }
     return *this;
   }
+  //get vocabulary 
+  std::vector<std::string> bag_of_words::get_vocabulary() const
+  {
+    return _vocabulary;
+  }
+  //get_number_of_documents
+  size_t bag_of_words::get_number_of_documents() const
+  {
+    return _bow_matrix.size1()*_bow_matrix.size2() ;
+  }
+  //get_number_of_words 
+  size_t bag_of_words::get_number_of_words() const
+  {
+    return _vocabulary.size();
+  }
+  //get_number_of_tokens
+  size_t bag_of_words::get_number_of_tokens() const
+  {
+    return _bow.size();
+  }
+  size_t bag_of_words::get_number_of_unique_tokens() const
+  {
+    return _vocabulary.size();
+  } 
+  
+  //clear
+  void bag_of_words::clear()
+  {
+    _vocabulary.clear();
+    _bow.clear();
+    _bow_matrix.clear();
+    _bow_transformed.clear();
+    _bow_transformed_inverse.clear();
+
+    _vocabulary.shrink_to_fit();
+    _bow.shrink_to_fit();
+    _bow_transformed.shrink_to_fit();
+    _bow_transformed_inverse.shrink_to_fit();
+  }
   //process the documents
   //  virtual void add_document(const std::string&);
   void bag_of_words::add_document(const std::string & doc)  
@@ -132,6 +222,7 @@ namespace provallo
     // tokenize the document
     std::vector<std::string> tokens;
     tokenize(doc, tokens);
+    size_t token_count = 0;
     // update vocabulary and bow matrices
     for (auto token : tokens)
     {
@@ -150,6 +241,8 @@ namespace provallo
         _vocabulary.push_back(token);
         // update bow value
         _bow.push_back(1.0);
+        token_count++;
+
       }
     } // end for
     // update bow matrix
@@ -166,6 +259,11 @@ namespace provallo
     {
       _bow_matrix(i, 0) = _bow[i];
     }
+    this->num_features = _vocabulary.size()-1;
+    this->num_samples = 1;
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    this->num_words = _bow.size();
+    this->num_tokens+=token_count;
     // std::cout<<"bow matrix: "<<_bow_matrix<<std::endl;
     return ;
   }
@@ -174,6 +272,8 @@ namespace provallo
   {
     //same as add_document
     add_document(doc);
+    this->num_docs++;
+
     return ;
   }
   //  virtual void process_documents(const std::vector<std::string>&);
@@ -738,7 +838,14 @@ namespace provallo
 
   tfidf_vectorizer::tfidf_vectorizer(const std::vector<std::string> &corpus) : vectorizer(TFIDF)
   {
-    fit(corpus);
+    // fit :   
+    for (auto &doc : corpus)
+    {
+      _tfidf.add_document(doc);
+    }
+
+    _tfidf.process_documents();
+      
   }
 
   std::vector<std::string> tfidf::inverse_transform(const std::vector<std::vector<real_t>> &corpus)
@@ -2996,6 +3103,7 @@ namespace provallo
 
     return ret;
   }
+
   std::vector<real_t> cluster_stage::seuclidean_distances(const matrix<real_t> &data)
   {
     // calculate seuclidean distance of the data matrix
@@ -3367,12 +3475,19 @@ namespace provallo
     // return mahalanobis distance
     return ret;
   }
-
-  // matching
-
-  // dice
-
-  // jaccard
+ // squared sum distance 
+    std::vector<real_t> cluster_stage::squared_sum_distances(const matrix<real_t> &data) 
+    { 
+      matrix<real_t> sqsum;
+      std::vector<real_t> ret;
+      sqsum = data * transpose(data);
+      for (size_t i = 0; i < data.rows(); i++) {
+        for (size_t j = 0; j < data.rows(); j++) {
+          ret[i * data.rows() + j] = sqsum(i, i) + sqsum(j, j) - 2 * sqsum(i, j);
+        }
+      }
+      return ret;
+    }
 
   // calculate distance matrix
   std::vector<real_t> cluster_stage::calculate_distance_matrix(const matrix<real_t> &data, const std::string &m)
@@ -3611,34 +3726,134 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
   } 
   void pipeline_stage::save_additional_data(  std::string& filename)
   {
-    //empty
-    UNDEF_REFERENCE(filename);
-    //save pipeline
     std::ofstream file(filename);
     if (file.is_open())
     {
-      file<<*_pipeline;
+      file << *_pipeline;
       file.close();
     }
     else
     {
       std::cout << "Unable to open file " << filename << std::endl;
     }
-    //save pipeline
 
   }
  
+  //additional data for vectorizer_stage :
+  //vectorizer_stage::load_additional_data implementation:
+  void vectorizer_stage::load_additional_data(const std::string& file_name)
+  {
+    //empty 
+    UNDEF_REFERENCE(file_name);
+    //load vectorizer
+    std::ifstream file(file_name);
+    std::string tmp = "vectorizer_count:";
+    if (file.is_open())
+    {
+      std::string line;
+      std::getline(file, line);
+      size_t count;
+      if (line.find(tmp) != std::string::npos)
+      {
+        std::string scount = line.substr(tmp.size());
+        count = std::stoi(scount);
+      }
+      else
+      {
+        std::cout << "Unable to find vectorizer count in file " << file_name << std::endl;
+        file.close();
+        return;
+      }
+      if ( vectorizers.size() ) 
+      {
+        for (auto& vectorizer : vectorizers)
+        {
+          delete vectorizer;
+        }
+        vectorizers.clear();
+      }
 
-  //stage build functions vectorizer,feature_stage,cluster_stage,classifier_stage,regressor_stage ,etc..
+      vectorizers.resize(count);
+      for (  size_t i=0;i<count ;i++ ) 
+      {
+        
+        vectorizers[i] = new vectorizer<std::string,real_t>(UNKNOWN_VECTORIZER);        
+        
+        file>>*vectorizers[i];
+        
+      } 
+      //read feature engineering
+      std::getline(file, line);
+      tmp = "feature_engineering:";
+      if (line.find(tmp) != std::string::npos)
+      {
+        std::string sfeature_engineering = line.substr(tmp.size());
+        feature_engineering_type = std::stoi(sfeature_engineering);
+      }
+      else
+      {
+        std::cout << "Unable to find feature_engineering in file " << file_name << std::endl;
+        file.close();
+        return;
+      } 
+      //read feature selection
+      std::getline(file, line);
+      tmp  ="feature_selection:";
+      if (line.find(tmp) != std::string::npos)
+      {
+        std::string sfeature_selection = line.substr(tmp.size());
+        feature_selection_type = std::stoi(sfeature_selection);
+      }
+      else
+      {
+        std::cout << "Unable to find feature_selection in file " << file_name << std::endl;
+        file.close();
+        return;
+      } 
+      file.close();
+    }
+    else
+    {
+      std::cout << "Unable to open file " << file_name << std::endl;
+    }
+    //load vectorizer
+  }
+  
+  //vectorizer_stage::save_additional_data implementation:
+  //save vectorizer_stage additional data
+  void vectorizer_stage::save_additional_data(  std::string& filename)
+  {
+    std::ofstream file(filename);
+    //save vectorizers count
+    if (file.is_open())
+    {
+      file << "vectorizer_count:" << vectorizers.size() << std::endl;
+      for (auto& vectorizer : vectorizers)
+      {
+        file << *vectorizer;
+      }
+      file << "feature_engineering:" << feature_engineering_type << std::endl;
+      file << "feature_selection:" << feature_selection_type << std::endl;
+      file.close();
+    }
+    else
+    {
+      std::cout << "Unable to open file " << filename << std::endl;
+    } 
+    
+  }
+   //stage build functions vectorizer,feature_stage,cluster_stage,classifier_stage,regressor_stage ,etc..
  
   vectorizer_stage* vectorizer_stage::build()
-  {
-    //build vectorizer stage
-    vectorizer_stage* stage =  new vectorizer_stage;
-    //set vectorizer stage name
+  { 
+     //build vectorizer stage
+     vectorizer_stage* stage =  new vectorizer_stage;
+     //set vectorizer stage name
      //return stage
      stage->type = "vectorizer_stage";
-    return stage;
+     //make sure it's initialized 
+     stage->initialize();
+     return stage;  
 
   }
 
@@ -3752,6 +3967,25 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
 
 
   //filter
+
+  filter_stage::filter_stage()
+  {
+    name = "filter_stage";
+    //empty
+    //    this->_filter = new filter_base();
+
+    //_filter->set_filter_name("filter_stage");
+
+  }
+  //destructor
+  filter_stage::~filter_stage()
+  {
+    //empty
+  
+  }
+  //load additional data
+
+
   filter_stage* filter_stage::build()
   {
     //build filter stage
@@ -3762,6 +3996,133 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     stage->type = "filter_stage";
     return stage;
   } 
+  //load additional stage data 
+  void filter_stage::load_additional_data(const std::string& data)
+  {
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  void filter_stage::save_additional_data(  std::string& data)
+  {
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    
+    //empty
+
+  }
+  //normalizer stage 
+  normalizer_stage::normalizer_stage() 
+  {
+    name = "normalizer_stage";
+    //empty
+    //this->_normalizer = new normalizer_base();
+    //_normalizer->set_normalizer_name("normalizer_stage");
+  }
+  //destructor
+  normalizer_stage::~normalizer_stage()
+  {
+    //empty
+  }
+  //load additional data
+  void normalizer_stage::load_additional_data(const std::string& data)
+  {
+    //data contains parameters as of what to normalize.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  void normalizer_stage::save_additional_data(  std::string& data)
+  {
+    //data contains parameters as of what to normalize.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  //encoder stage
+  encoder_stage::encoder_stage()
+  {
+    name = "encoder_stage";
+    //empty
+    //this->_encoder = new encoder_base();
+    //_encoder->set_encoder_name("encoder_stage");
+  }
+  //destructor
+  encoder_stage::~encoder_stage()
+  {
+    //empty
+  }
+  //load additional data
+  void encoder_stage::load_additional_data(const std::string& data)
+  {
+    //data contains parameters as of what to encode.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  void encoder_stage::save_additional_data(  std::string& data)
+  {
+    //data contains parameters as of what to encode.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  //decoder stage
+  decoder_stage::decoder_stage()
+  {
+    name = "decoder_stage";
+    //empty
+    //this->_decoder = new decoder_base();
+    //_decoder->set_decoder_name("decoder_stage");
+  }
+  //destructor
+  decoder_stage::~decoder_stage()
+  {
+    //empty
+  }
+  //load additional data
+  void decoder_stage::load_additional_data(const std::string& data)
+  {
+    //data contains parameters as of what to decode.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  void decoder_stage::save_additional_data(  std::string& data)
+  {
+    //data contains parameters as of what to decode.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  //dimentionality reduction stage
+  dimentionality_reduction_stage::dimentionality_reduction_stage()
+  {
+    name = "dimentionality_reduction_stage";
+    //empty
+    //this->_dimentionality_reduction = new dimentionality_reduction_base();
+    //_dimentionality_reduction->set_dimentionality_reduction_name("dimentionality_reduction_stage");
+  }
+  //destructor
+  dimentionality_reduction_stage::~dimentionality_reduction_stage()
+  {
+    //empty
+  }
+  //load additional data
+  void dimentionality_reduction_stage::load_additional_data(const std::string& data)
+  {
+    //data contains parameters as of what to reduce.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  void dimentionality_reduction_stage::save_additional_data(  std::string& data)
+  {
+    //data contains parameters as of what to reduce.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
 
   //vectorizer_stage::build
   //dataset_stage constructor
@@ -3776,7 +4137,33 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
 
   }
 
-
+  regressor_stage::regressor_stage() 
+  {
+    name = "regressor_stage";
+    //empty
+    //this->_regressor = new regressor_base();
+    //_regressor->set_regressor_name("regressor_stage");
+  } 
+  //destructor
+  regressor_stage::~regressor_stage()
+  {
+    //empty
+  }
+  //load additional data
+  void regressor_stage::load_additional_data(const std::string& data)
+  {
+    //data contains parameters as of what to regress.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
+  void regressor_stage::save_additional_data(  std::string& data)
+  {
+    //data contains parameters as of what to regress.
+    UNDEF_REFERENCE(data);
+    UNDEF_REFERENCE2(data);
+    //empty
+  }
   //dataset_stage destructor
   dataset_stage::~dataset_stage()
   {
@@ -3837,21 +4224,6 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     //this->_vectorizer = new vectorizer_base();
     //_vectorizer->set_vectorizer_name("vectorizer_stage");
   }
-  //classifier_stage::classifier_stage
-  classifier_stage::classifier_stage() 
-  {
-    name = "classifier_stage";
-    //empty
-    //this->_classifier = new classifier_base();
-    //_classifier->set_classifier_name("classifier_stage");
-  } 
-  regressor_stage::regressor_stage() 
-  {
-    name = "regressor_stage";
-    //empty
-    //this->_regressor = new regressor_base();
-    //_regressor->set_regressor_name("regressor_stage");
-  } 
   knowledge_transfer_stage::knowledge_transfer_stage()   
   {
     name = "knowledge_transfer_stage";
@@ -3859,42 +4231,14 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     //this->_knowledge_transfer = new knowledge_transfer_base();
     //_knowledge_transfer->set_knowledge_transfer_name("knowledge_transfer_stage");
   } 
-  dimentionality_reduction_stage::dimentionality_reduction_stage()
+  //destructor
+  knowledge_transfer_stage::~knowledge_transfer_stage()
   {
-    name = "dimentionality_reduction_stage";
     //empty
-    //this->_dimentionality_reduction = new dimentionality_reduction_base();
-    //_dimentionality_reduction->set_dimentionality_reduction_name("dimentionality_reduction_stage");
-  }   
-  encoder_stage::encoder_stage() 
-  {
-    name = "encoder_stage";
-    //empty
-    //this->_encoder = new encoder_base();
-    //_encoder->set_encoder_name("encoder_stage");
   }
-  decoder_stage::decoder_stage() 
-  {
-    name = "decoder_stage";
-    //empty
-    //this->_decoder = new decoder_base();
-    //_decoder->set_decoder_name("decoder_stage");
-  }
-  normalizer_stage::normalizer_stage() 
-  {
-    name = "normalizer_stage";
-    //empty
-    //this->_normalizer = new normalizer_base();
-    //_normalizer->set_normalizer_name("normalizer_stage");
-  }
-  filter_stage::filter_stage() 
-  {
-    name = "filter_stage";
-    //empty
-    //this->_filter = new filter_base();
-    //_filter->set_filter_name("filter_stage");
-  } 
-  //cluster_stage::birch
+  //load additional data
+   
+     //cluster_stage::birch
   std::vector<size_t> cluster_stage::birch(const matrix<real_t>& data,size_t n_clusters ,size_t threshold,size_t branching_factor,size_t compute_labels,size_t copy)
   {
     //birch
@@ -4069,6 +4413,16 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     {
       ret.push_back(labels(i,0));
     }
+
+      this->cluster_centers = centroids;
+      //convert labels 
+      this->labels.resize(labels.rows(),1);
+      for(size_t i=0;i<ret.size();i++)
+      {
+        this->labels[i] = reinterpret_cast<size_t>( ret[i] );
+      } 
+      //return labels
+
     return ret;
   }
   //    void dataset_stage::set_data(const matrix <real_t>& data )      
@@ -4090,9 +4444,89 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
 
       
       std::vector<size_t> result(data.rows(),0);
-      
-      return result; //return labels
+      //initialize the centroids
+      matrix<real_t> centroids,distances,labels,clustering_feature;
 
+      matrix<real_t> covariance = data.covariance();
+
+
+      //calculate distances using the distance function and fill distance matrix
+      distances.resize(data.cols(),data.cols());
+      distances.fill(0.0);
+      //get the distance function from the map metrics
+       //std::map<std::string,metric_t> metrics;  
+      //all the distance functions should be mapped to the metrics map
+      metric_t distance_function =  metrics["squared_sum"] ;
+      //calculate distances
+      distances = covariance;
+      
+      //normalize distance
+      //distances =distances  / real_t(distance_functions.size());
+      //calculate distances
+      auto dist_ret = ((this->*distance_function)(covariance));
+
+      for  ( size_t i=0;i*distances.cols()<dist_ret.size();++i)
+      {
+        for(size_t j=0;j<distances.cols();j++)
+        {
+          distances(i,j) += dist_ret[i*distances.cols()+j];
+        }
+      }
+      //normalize distance
+      distances =distances  / real_t(1);
+      
+      //distances are now calculated
+      //now we can calculate the centroids
+      //use n_cluster to initialize clustering_feature matrix 
+
+      clustering_feature.resize(data.cols(),1);
+      clustering_feature.fill(0.0);
+      //initialize the clustering_feature matrix
+      for ( size_t i = 0; i < data.cols(); i++)
+      {
+        clustering_feature(i,0) = i % n_clusters;
+      }
+      //initialize the clustering_feature matrix
+
+      //calculate centroids
+      centroids.resize(data.cols(),data.cols());
+      centroids.fill(0.0);
+      //calculate centroids
+      //calculate the centroids
+      for ( size_t i = 0; i < data.cols(); i++)
+      {
+        for ( size_t j = 0; j < data.cols(); j++)
+        {
+          centroids(i,j) = clustering_feature(i,j);
+        }
+      }
+      //find the labels for the data
+       labels.resize(data.rows(),1);
+      labels.fill(0.0);
+      //find the labels for the data
+      for ( size_t i = 0; i < data.rows(); i++)
+      {
+        for ( size_t j = 0; j < data.cols(); j++)
+        {
+          labels(i,0) = clustering_feature(j,0);
+        }
+      }
+      //fill ret   labels
+      for ( size_t i = 0; i < labels.rows(); i++)
+      {
+        result.push_back(labels(i,0));
+      }
+      this->cluster_centers = centroids;
+      //convert labels 
+      this->labels.resize(labels.rows(),1);
+      for(size_t i=0;i<result.size();i++)
+      {
+        this->labels[i] = reinterpret_cast<size_t>( result[i] );
+      } 
+      //return labels
+
+      return result; //return labels
+      
    }  
    
   //dataset_stage::dataset_stage
@@ -4180,6 +4614,8 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     {
       ret.push_back(((data.rows() - intra[i]) * inter[i]) / ((intra[i] - 1) * intra[i]));
     }
+
+    this->cluster_centers = centroids;
     return ret;
 
   }
@@ -4241,6 +4677,7 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     {
       ret.push_back((intra[i] + inter[i]) / intra[i]);
     } 
+    this->cluster_centers = centroids;
 
     return ret;
   }// davies_bouldin_score
@@ -4255,7 +4692,7 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     UNDEF_REFERENCE2(sample_size);
     UNDEF_REFERENCE2(random_state);
     UNDEF_REFERENCE2(n_jobs);
-//adjusted rand score
+    //adjusted rand score
     //adjusted_rand_score(labels_true, labels_pred)
     //labels_true : int array, shape = [n_samples]
     //Ground truth class labels to be used as a reference`
@@ -4718,6 +5155,58 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
       return ret;
 
     }
+    void dataset_stage::process_data(  const std::vector<std::vector<real_t>>& data )
+    {
+        _data.resize(data.size(),data[0].size());
+        //process the data
+        for ( size_t i = 0; i < data.size(); i++)
+        {
+          for ( size_t j = 0; j < data[i].size(); j++)
+          {
+            _data(i,j) = data[i][j];
+          }
+        }
+
+        process_data(_data);
+    } 
+    void dataset_stage::set_additional_data(const std::string& data)
+    {
+        this->additional_data.push_back(data);  
+    }
+    void dataset_stage::process_data( const std::string& data)
+    {
+        UNDEF_REFERENCE(data);
+        UNDEF_REFERENCE2(data);
+
+        //load from file 'data' 
+        //create a matrix of data
+        //
+        //process the data and if labels exists , then process the labels
+
+        std::ifstream file(data);
+        std::string line;
+        std::vector<std::vector<real_t>> data_;
+        while (std::getline(file, line))
+        {
+          std::vector<real_t> row;
+          std::stringstream iss(line);
+          std::string val;
+          while (std::getline(iss, val, ','))
+          {
+            row.push_back(std::stod(val));
+          }
+          data_.push_back(row);
+        }
+        //process the data
+        process_data(data_);
+    }
+     void dataset_stage::process_data(  matrix_base& data )
+    {
+        //matrix   converts to and from matrix_base
+        _data = data;
+        //process the data
+        process_data(_data);
+    } 
     
     void dataset_stage::process_data(const matrix<real_t>& data )
     {
@@ -4830,5 +5319,1115 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
       this->_num_of_labelled = 0;
       
     }
+    //process the data
+    void dataset_stage::process_data( const std::vector<real_t>& data )
+    {
+        //in order to transform the data into a matrix 
+        //we need to know the number of features and the number of samples 
+        //the number of features is the size of the vector - 1
+        //the number of samples is the size of the vector 
+        //create temporary matrix m and fill it with the data 
+        
+        //find the number of samples and features from the sum of attributes 
+
+        size_t number_of_samples = 0;
+        size_t number_of_features = 0;
+        size_t symmetric = 0;
+        size_t asymetric = 0;
+        //create a symmetric matrix from the size of the vector and fill it with its value.
+        //a symmetric matrix would contain the number of samples and the number of features 
+        //the number of samples is the size of the vector 
+        //the number of features is the size of the vector - 1
+
+        size_t size_root = std::sqrt(data.size()); 
+        //check if the size is a perfect square
+        if ( size_root * size_root == data.size())
+        {
+            //the size is a perfect square
+            //the number of samples is the size of the vector 
+            //the number of features is the size of the vector - 1
+            number_of_samples = size_root;
+            number_of_features = size_root - 1;
+            symmetric = 1;
+        }
+        else
+        {
+            //the size is not a perfect square
+            //the number of samples is the size of the vector 
+            //the number of features is the size of the vector - 1
+            number_of_samples = data.size();
+            number_of_features = data.size() - 1;
+            asymetric = 1;
+        } 
+
+        //create a matrix from the size of the vector and fill it with its value.
+        //a matrix would contain the number of samples and the number of features
+
+        matrix<real_t> m(number_of_samples,number_of_features); 
+        //fill the matrix with the data
+        for ( size_t i = 0; i < number_of_samples; i++)
+        {
+            for ( size_t j = 0; j < number_of_features; j++)
+            {
+              //if symmetric then fill the matrix with the data 
+              //if asymetric then fill the matrix with the data 
+              if ( symmetric == 1)
+              {
+
+                //fill the matrix with the data
+                m(i,j) = data[i * number_of_features + j];
+              }
+              else if ( asymetric == 1)
+              {
+                //fill the matrix with the data
+                m(i,j) = data[i * number_of_features + j];
+              } 
+              else
+              {
+                //fill the matrix with the data
+                m(i,j) = data[i * number_of_features + j];
+              }
+             }
+        } 
+        //iterate over the data
+        //and try to find more information(labels,classes,samples,features,attributes)
+        process_data(_data);
+    } //process_data
+
+    //dataset_stage load data helpers :
+    /*    
+     matrix<real_t> load_libfm(const std::string& file_name);
+    matrix<real_t> load_libffm(const std::string& file_name);
+    matrix<real_t> load_tfrecord(const std::string& file_name);
+    matrix<real_t> load_tsv(const std::string& file_name);
+    matrix<real_t> load_torch(const std::string& file_name);
+    matrix<real_t> load_caffe2(const std::string& file_name);
+    matrix<real_t> load_mxnet(const std::string& file_name);
+    matrix<real_t> load_onnx(const std::string& file_name);
+    matrix<real_t> load_hdf5(const std::string& file_name);
+    matrix<real_t> load_npy(const std::string& file_name);
+    matrix<real_t> load_matrix(const std::string& file_name);
+    matrix<real_t> load_dataset(const std::string& file_name);
+    matrix<real_t> load_data(const std::string& file_name);
+    matrix<real_t> load(const std::string& file_name);
+    */
+    //dataset_stage load data helpers :
+    matrix<real_t> dataset_stage::load_txt(const std::string& file_name)
+    {
+      matrix<real_t> ret;
+      std::vector<std::vector<real_t> > collector;
+      std::vector<std::string> headers;
+      //open the file
+      std::ifstream file(file_name);
+      //check if the file is open
+      if ( file.is_open())
+      {
+        //read the file
+        std::string line;
+        //iterate over the file
+        while ( std::getline(file,line))
+        {
+          //check the line: 
+          if(!std::none_of(line.begin(),line.begin()+1 ,[](char x ) { return !((x=='#')||(x=='@')||(x=='?')||(x)=='%'||(x)=='$');}) )
+          {
+            headers.push_back(line);
+            //skip the line,save as headers 
+            continue;
+          }
+          //create a vector
+          std::vector<real_t> v;
+          //split the line
+          std::vector<std::string> tokens;
+          //split the line
+          tokenize(line,tokens," ,\t");
+          //iterate over the tokens
+          for ( size_t i = 0; i < tokens.size(); i++)
+          {
+            //convert the token to a real_t
+            real_t value = std::stod(tokens[i]);
+            //push the value to the vector
+            v.push_back(value);
+          }
+          //push the vector to the matrix
+          collector.push_back(v);
+        }
+      } 
+      //close the file
+      file.close();
+      //check if the collector is not empty
+      if ( collector.size() > 0)
+      {
+        //get the number of samples
+        size_t number_of_samples = collector.size();
+        //get the number of features
+        size_t number_of_features = collector[0].size();
+        //create a matrix
+        ret.resize(number_of_samples,number_of_features);
+        //fill the matrix
+        for ( size_t i = 0; i < number_of_samples; i++)
+        {
+          for ( size_t j = 0; j < number_of_features; j++)
+          {
+            //fill the matrix
+            ret(i,j) = collector[i][j];
+          }
+        }
+      }
+      //return the matrix
+      return ret;
+    }
+    matrix<real_t> dataset_stage::load_csv(const std::string& file_name) 
+    {
+      matrix<real_t> ret;
+      std::vector<sparse_ix> labels ;
+
+      std::vector<std::vector<real_t> > collector;
+      //open the file
+      std::ifstream file(file_name);
+      //check if the file is open
+      if ( file.is_open())
+      {
+        //read the file
+        std::string line;
+        //iterate over the file
+        while ( std::getline(file,line))
+        {
+          //create a vector
+          std::vector<real_t> v;
+          //split the line
+          std::vector<std::string> tokens;
+          //split the line
+          tokenize(line,tokens,",");
+          //iterate over the tokens
+          for ( size_t i = 0; i < tokens.size(); i++)
+          {
+            //convert the token to a real_t
+            real_t value = std::stod(tokens[i]);
+            //push the value to the vector
+            v.push_back(value);
+          }
+          //push the vector to the matrix
+          collector.push_back(v);
+        }
+      }   
+      //close the file
+      file.close();
+      //check if the collector is not empty
+      if ( collector.size() > 0)
+      {
+        //get the number of samples
+        size_t number_of_samples = collector.size();
+        //get the number of features
+        size_t number_of_features = collector[0].size();
+        //create a matrix
+        ret.resize(number_of_samples,number_of_features);
+        //fill the matrix
+        for ( size_t i = 0; i < number_of_samples; i++)
+        {
+          for ( size_t j = 0; j < number_of_features; j++)
+          {
+            //fill the matrix
+            ret(i,j) = collector[i][j];
+          }
+        }
+      } 
+      //return the matrix
+      return ret;
+      
+    }
+    matrix<real_t> dataset_stage::load_libsvm (const std::string& file_name)
+    {
+      //create a matrix
+      matrix<real_t> ret;
+      std::vector<std::vector<real_t>> collector;
+      //open the file
+      std::ifstream file(file_name);
+      //check if the file is open
+      if ( file.is_open())
+      {
+        //read the file
+        std::string line;
+        //iterate over the file
+        while ( std::getline(file,line))
+        {
+          //create a vector
+          std::vector<real_t> v;
+          //split the line
+          std::vector<std::string> tokens;
+          //split the line
+          tokenize(line,tokens," \t");
+          //iterate over the tokens
+          for ( size_t i = 0; i < tokens.size(); i++)
+          {
+            //check if the token is not empty
+            if ( !tokens[i].empty())
+            {
+              //push the token
+              v.push_back(std::stod(tokens[i]));
+            }
+          }
+          //push the vector
+          collector.push_back(v);
+         }
+         //close the file
+          file.close();
+          //update the matrix
+          ret.resize(collector.size(),collector[0].size());
+          //fill the matrix
+          for ( size_t i = 0; i < collector.size(); i++)
+          {
+            for ( size_t j = 0; j < collector[i].size(); j++)
+            {
+              //fill the matrix
+              ret(i,j) = collector[i][j];
+            }
+          } 
+          //return the matrix
+      } //end of if
+      //return the matrix
+     return ret;
+
+    }//end of load_libsvm
+  //load the data
+   matrix<real_t> dataset_stage::load_mxnet(const std::string& file_name)
+   {
+     //return csv load for now 
+      return load_csv(file_name);
+   }
+
+  //torch
+  matrix<real_t> dataset_stage::load_torch(const std::string& file_name)
+  {
+    //return csv load for now 
+    return load_csv(file_name);
+  }
+  //tf-record
+  matrix<real_t> dataset_stage::load_tfrecord(const std::string& file_name)
+  {
+    //return csv load for now 
+    return load_csv(file_name);
+  }
+
+  //TSV
+  matrix<real_t> dataset_stage::load_tsv(const std::string& file_name)
+  {
+    //return csv load for now 
+    return load_csv(file_name);
+  }
+  
+  //CAFFE2
+  matrix<real_t> dataset_stage::load_caffe2(const std::string& file_name)
+  {
+    //return csv load for now 
+    return load_csv(file_name);
+  } 
+  //NPY
+  matrix<real_t> dataset_stage::load_npy(const std::string& file_name)
+  {
+    //return csv load for now 
+    return load_csv(file_name);
+  } 
+  //load_hdf5
+  matrix<real_t> dataset_stage::load_hdf5(const std::string& file_name)
+  {
+    //return csv load for now 
+    return load_csv(file_name);
+  }
+
+  matrix<real_t>  dataset_stage::load_matrix(const std::string& file_name)
+  {
+    //load a raw matrix from the file.
+    //create a matrix
+    matrix<real_t> ret;
+    std::vector<std::vector<real_t>> collector;
+    //open the file
+    std::ifstream file(file_name);
+    //check if the file is open
+    if ( file.is_open())
+    { 
+      //read the file
+      std::string line;
+      //iterate over the file
+      while ( std::getline(file,line))
+      {
+        //create a vector
+        std::vector<real_t> v;
+        //split the line
+        std::vector<std::string> tokens;
+        //split the line
+        tokenize(line,tokens,",");
+        //iterate over the tokens
+        for ( size_t i = 0; i < tokens.size(); i++)
+        {
+          //convert the token to a real_t
+          real_t value = std::stod(tokens[i]);
+          //push the value to the vector
+          v.push_back(value);
+        }
+        //push the vector to the matrix
+        collector.push_back(v);
+      } 
+
+      //close the file
+      file.close();
+      //copy the data to the matrix
+      ret.resize(collector.size(),collector[0].size());
+      //fill the matrix
+      for ( size_t i = 0; i < collector.size(); i++)
+      {
+        for ( size_t j = 0; j < collector[i].size(); j++)
+        {
+          //fill the matrix
+          ret(i,j) = collector[i][j];
+        }
+      } 
+      
+      //return the matrix
+    } //end of if   
+
+    return ret;
+
+  }
+    matrix<real_t> dataset_stage::load_dataset(const std::string& file_name)
+    {
+      //load the dataset
+      //create a matrix
+      matrix<real_t> ret;
+      
+      //get the extension
+      std::string extension = file_name.substr(file_name.find_last_of(".") + 1);  
+      //check the extension
+
+      if ( extension == "csv")
+      {
+        //load the csv
+        ret = load_csv(file_name);
+      }
+      else if ( extension == "libsvm")
+      {
+        //load the libsvm
+        ret = load_libsvm(file_name);
+      }
+      else if ( extension == "mxnet")
+      {
+        //load the mxnet
+        ret = load_mxnet(file_name);
+      }
+      else if ( extension == "torch")
+      {
+        //load the torch
+        ret = load_torch(file_name);
+      }
+      else if ( extension == "tfrecord")
+      {
+        //load the tfrecord
+        ret = load_tfrecord(file_name);
+      }
+      else if ( extension == "tsv")
+      {
+        //load the tsv
+        ret = load_tsv(file_name);
+      }
+      else if ( extension == "caffe2")
+      {
+        //load the caffe2
+        ret = load_caffe2(file_name);
+      }
+      else if ( extension == "npy")
+      {
+        //load the npy
+        ret = load_npy(file_name);
+      }
+      else if ( extension == "hdf5")
+      {
+        //load the hdf5
+        ret = load_hdf5(file_name);
+      }
+      else if ( extension == "matrix")
+      {
+        //load the matrix
+        ret = load_matrix(file_name);
+      }
+      else
+      {
+        //throw an error
+        throw std::runtime_error("Unsupported file format");
+      }
+      //return the matrix
+      return ret; 
+    }
+    matrix<real_t> dataset_stage::load_data(const std::string& file_name)
+    {
+      //load the data
+      return dataset_stage::load_dataset(file_name);  
+    }
+    matrix<real_t> dataset_stage::load(const std::string& file_name)
+    {
+      //load the data
+      return dataset_stage::load_dataset(file_name);
+    }
+
+
+    //one-hot helper class implementation
+    //constructor:
+    one_hot_vectorizer::one_hot_vectorizer():vectorizer<std::string,real_t>(ONE_HOT_VECTORIZER) 
+    {
+      //initialize the one-hot vectorizer
+      this->initialize();
+    }
+    //destructor:
+    one_hot_vectorizer::~one_hot_vectorizer()
+    {
+      //clear the one-hot vectorizer
+      this->clear();
+    }
+    //initialize the one-hot vectorizer
+    void one_hot_vectorizer::initialize()
+    {
+      //initialize the one-hot vectorizer
+      //clear the one-hot vectorizer
+      this->clear();
+    }
+    //clear the one-hot vectorizer
+    void one_hot_vectorizer::clear()
+    {
+       this->_bow.clear(); //clear the bag of words
+      
+      //clear the one-hot vectorizer
+    }
+    //fit the one-hot vectorizer to the data
+    //transform the one-hot vectorizer
+    //fit_transform the one-hot vectorizer
+
+    //fit the one-hot vectorizer to the data
+    //add a single document add_document(const std::string& document)
+
+    void one_hot_vectorizer::add_document(const std::string& doc)
+    {
+      //add a single document to the one-hot vectorizer
+      this->_bow.add_document(doc);
+    }
+    //fit a single document : 
+    std::vector<real_t> one_hot_vectorizer::fit(const std::string& single_doc )
+    {
+        std::vector<real_t> ret;
+        //fit the data using the bag of words and update local variables
+        this->_bow.process_document(single_doc);
+        //copy the vocabulary
+        this->_vocabulary = this->_bow.get_vocabulary();
+        //get the bag of words
+        std::vector<real_t> bow = this->_bow.get_bag_of_words();
+        //get the number of documents
+        this->num_docs = this->_bow.get_number_of_documents();
+        //get the number of words
+        this->num_words = this->_bow.get_number_of_words();
+        //get the number of unique words
+        this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+        //  fill ret
+        ret.resize(this->num_unique_tokens);
+        //fill ret
+        for ( size_t i = 0; i < this->num_unique_tokens; i++)
+        {
+          //fill ret
+          ret[i] = bow[i];
+        }
+        //return ret
+        return ret;
+
+    }
+    //process_documents 
+    void one_hot_vectorizer::process_documents (const std::vector<std::string>& documents )
+    {
+      //process the documents
+      this->_bow.process_documents(documents);
+
+    }
+
+    //inverse transform 
+    std::vector<std::string> one_hot_vectorizer::inverse_transform(const matrix<real_t>& values )
+    {
+
+        return this->_bow.inverse_transform(values);
+    }
+    //transform the one-hot vectorizer from vector of strings
+
+    std::vector<std::string> one_hot_vectorizer::inverse_transform(const std::vector<real_t>& values )
+    {
+         return {this->_bow.inverse_transform(values)};
+    }
+
+    std::vector<real_t> one_hot_vectorizer::fit( const std::vector<std::string>& data_)
+    {
+      std::vector<real_t> ret; 
+      //fit the data using the bag of words and update local variables 
+      //
+      this->_bow.process_documents(data_);
+
+      //copy the vocabulary 
+      this->_vocabulary = this->_bow.get_vocabulary(); 
+      //get the bag of words
+       std::vector<real_t> bow =this->_bow.get_bag_of_words();
+      //get the number of documents
+      this->num_docs = this->_bow.get_number_of_documents(); 
+      //get the number of words
+      this->num_words = this->_bow.get_number_of_words();
+      //get the number of unique words
+      this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+      //
+      //get the one-hot vector
+      //transform bow to one-hot vector:
+      //create a one-hot vector
+      ret.resize(bow.size(),0.0);
+      //loop over the bag of words
+      for ( size_t i = 0; i < bow.size(); i++)
+      {
+        //check if the word is in the vocabulary
+        if ( bow[i] > 0.0)
+        {
+          //set the one-hot vector
+          ret[i] = 1.0;
+          
+
+        }  
+        else
+        {
+          ret[i]=0;
+        }
+       } 
+      //return the one-hot vector
+      return ret;
+    }
+
+
+    std::vector<real_t>  one_hot_vectorizer::fit( const provallo::matrix<real_t>&data_ )
+    {
+      std::vector<real_t> ret; 
+      //fit the one hot matrix
+      //-
+      //get the number of documents
+      this->num_docs = data_.rows();
+      //get the number of words
+      this->num_words = data_.cols();
+      //get the number of unique words
+      this->num_unique_tokens = data_.cols();
+      //get the vocabulary
+      this->_vocabulary = this->_bow.get_vocabulary();
+      //get the bag of words
+      std::vector<real_t> bow = this->_bow.get_bag_of_words();
+      //get the one-hot vector
+      //transform bow to one-hot vector:
+      //create a one-hot vector
+      ret.resize(this->num_unique_tokens,0.0);
+      //loop over the bag of words
+      for ( size_t i = 0; i < bow.size(); i++)
+      {
+        //check if the word is in the vocabulary
+        if ( bow[i] > 0.0)
+        {
+          //set the one-hot vector
+          ret[i] = 1.0;
+          
+
+        }  
+        else
+        {
+          ret[i]=0;
+        }
+      }
+      //return the one-hot vector
+      return ret;
+
+    }
+
+    std::vector<std::vector<real_t>> one_hot_vectorizer::fit( const std::vector<std::vector<std::string>>& data_)
+    {
+        std::vector<std::vector<real_t> > ret;
+
+        for ( auto& document  : data_ )
+        {
+            //  fit the one-hot vectorizer to the data
+            std::vector<real_t> one_hot_vector = this->fit(document); 
+            //push the one-hot vector to the vector
+            ret.push_back(one_hot_vector);
+            this->num_docs++;   
+        }
+        return ret;
+    }
+    //
+    /* fit_transform the one-hot vectorizer
+    std::vector<std::vector<real_t>> one_hot_vectorizer::fit_transform( const std::vector<std::string>& data_)
+    {
+        std::vector<std::vector<real_t> > ret;
+
+        for ( auto& document  : data_ )
+        {
+            //  fit the one-hot vectorizer to the data
+            std::vector<real_t> one_hot_vector = this->fit(document); 
+            //push the one-hot vector to the vector
+            ret.push_back(one_hot_vector);
+            this->num_docs++;   
+        }
+        return ret;
+    } 
+    //fit_transform the one-hot vectorizer
+    std::vector<std::vector<real_t>> one_hot_vectorizer::fit_transform( const provallo::matrix<real_t>& data_)
+    {
+        std::vector<std::vector<real_t> > ret;
+
+        for ( auto& document  : data_ )
+        {
+            //  fit the one-hot vectorizer to the data
+            std::vector<real_t> one_hot_vector = this->fit(document); 
+            //push the one-hot vector to the vector
+            ret.push_back(one_hot_vector);
+            this->num_docs++;   
+        }
+        return ret;
+    }
+    //fit_transform the one-hot vectorizer
+    std::vector<std::vector<real_t>> one_hot_vectorizer::fit_transform( const std::vector<std::vector<std::string>>& data_)
+    {
+        std::vector<std::vector<real_t> > ret;
+
+        for ( auto& document  : data_ )
+        {
+            //  fit the one-hot vectorizer to the data
+            std::vector<real_t> one_hot_vector = this->fit(document); 
+            //push the one-hot vector to the vector
+            ret.push_back(one_hot_vector);
+            this->num_docs++;   
+        }
+        return ret;
+    }*/
+    //fit_transform the one-hot vectorizer
+     std::vector<real_t> one_hot_vectorizer::fit_transform( const std::vector<std::string>& data_)
+    {
+        std::vector<real_t> ret;
+
+        for ( auto& document  : data_ )
+        {
+            //  fit the one-hot vectorizer to the data
+            std::vector<real_t> one_hot_vector = this->fit(document); 
+            //push the one-hot vector to the vector
+            for ( auto& val : one_hot_vector)
+                ret.push_back(val);
+             this->num_docs++;   
+        }
+        //return the one-hot vector
+           
+        return ret;
+
+    }
+    //fit transform matrix<real_t>     virtual  std::vector<real_t> fit_transform(const provallo::matrix<real_t>& data_);//{ DEFAULT_IMPL(data_);}  
+
+std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& data)
+{
+  std::vector<real_t> ret;
+  //fit the one hot matrix
+  //-
+  //get the number of documents
+  this->num_docs = data.rows();
+  //get the number of words
+  this->num_words = data.cols();
+  //get the number of unique words
+  this->num_unique_tokens = data.cols();
+  //get the vocabulary
+  this->_vocabulary = this->_bow.get_vocabulary();
+  //get the bag of words
+  std::vector<real_t> bow = this->_bow.get_bag_of_words();
+  //get the one-hot vector
+  //transform bow to one-hot vector:
+  //create a one-hot vector
+  ret.resize(this->num_unique_tokens,0.0);
+  //loop over the bag of words
+  for ( size_t i = 0; i < bow.size(); i++)
+  {
+    //check if the word is in the vocabulary
+    if ( bow[i] > 0.0)
+    {
+      //set the one-hot vector
+      ret[i] = 1.0;
+      
+
+    }  
+    else
+    {
+      ret[i]=0;
+    }
+  }
+  //return the one-hot vector
+  return ret;
+
+}
+ 
+
+    // document processing : 
+    void one_hot_vectorizer::process_document(const std::string& document)
+    {
+      //use bag of words results  to calculate onehot 
+      //values :
+      this->_bow.process_document (document );
+      //
+      //get the number of words
+      //size_t num_words = this->_bow.num_words();
+      //get the number of documents
+      //size_t num_docs = this->_bow.num_documents();
+      //get the number of classes
+      //size_t num_classes = this->_bow.num_classes();
+      //get the number of features
+      //size_t num_features = this->_bow.num_features();
+      //get the number of samples
+      //size_t num_samples = this->_bow.num_samples();
+      //get the number of tokens
+      //size_t num_tokens = this->_bow.num_tokens();
+
+      //begin: 
+      //get the number of rows
+      const matrix<real_t> & X = _bow.get_matrix()  ;
+
+      size_t rows = X.rows();
+      //get the number of columns
+      size_t cols = X.cols();
+      //create the one-hot matrix
+      matrix<real_t> ret(rows,cols * this->num_classes); 
+      //iterate over the rows
+      for ( size_t i = 0; i < rows; i++)
+      {
+        //get the class
+        size_t cls = X(i,cols-1);
+        //iterate over the columns
+        for ( size_t j = 0; j < cols; j++)
+        {
+          //get the value
+          real_t value = X(i,j);
+          //get the index
+          size_t index = j * this->num_classes + cls;
+          //set the value
+          ret(i,index) = value;
+        }
+      } 
+      //end:
+      //set the one-hot matrix
+      this->_matrix = ret;
+      return;
+     } 
+    
+    //predict the one-hot vectorizer
+    std::vector<real_t> one_hot_vectorizer::predict(const std::vector<std::string>& documents)
+    {
+        //get the one-hot vector
+        std::vector<real_t> one_hot_vector = this->fit_transform(documents); 
+        //return the one-hot vector
+        return one_hot_vector;
+    }
+    //predict the one-hot vectorizer
+    std::vector<real_t> one_hot_vectorizer::predict(const matrix<real_t>& data)
+    {
+        //get the one-hot vector
+        std::vector<real_t> one_hot_vector = this->fit_transform(data); 
+        //return the one-hot vector
+        return one_hot_vector;
+    }
+    //transform the one-hot vectorizer 
+    std::vector<real_t> one_hot_vectorizer::transform(const std::vector<std::string>& documents)
+    {
+        //get the one-hot vector
+        std::vector<real_t> one_hot_vector = this->fit_transform(documents); 
+        //return the one-hot vector
+        return one_hot_vector;  
+    }
+    //transform the one-hot vectorizer
+    std::vector<real_t> one_hot_vectorizer::transform(const matrix<real_t>& data)
+    {
+        //get the one-hot vector
+        std::vector<real_t> one_hot_vector = this->fit_transform(data); 
+        //return the one-hot vector
+        return one_hot_vector;  
+    }
+
+    
+    //complete the one-hot helper class implementation
+    
+
+
+
+    void vectorizer_stage::initialize()
+    {
+     
+        //fill in the vectorizers 
+
+        vectorizers.push_back(new tfidf_vectorizer);
+        vectorizers.push_back(new one_hot_vectorizer); 
+        vectorizers.push_back(new pca_vectorizer); 
+
+        //vectorizers.push_back(std::make_shared<lda_vectorizer>()); 
+        //vectorizers.push_back(std::make_shared<word2vec_vectorizer>()); 
+
+    }
+    vectorizer_stage::~vectorizer_stage()
+    {
+    }
+    //complete the vectorizer_stage implementation
+    void bag_of_words::process_documents (const std::vector<std::string>& documents )
+    {
+          for ( auto& doc : documents )
+            process_document(doc);
+        //  this->number_of_documents += documents.size();
+
+    }
+    //global ifstream/ofstream vector<real_t> operators 
+    std::ifstream& operator >>  (std::ifstream& iff,std::vector<real_t>& in)
+    {
+      size_t size=0;
+      std::istringstream ss;
+      std::string line,tmp="size:";
+
+      size_t index=0;
+      
+      //get line 
+      std::getline(iff, line);
+      //parse line
+      if(line.length()<7) 
+        throw std::runtime_error("wrong file format. vectors must declare size");
+      
+      if (line.find(tmp) != std::string::npos)
+      {
+        std::string scount = line.substr(tmp.size());
+        size = std::stoul(scount);
+      }
+      in.clear();
+      in.resize(size);
+
+      while(index<size)
+      {
+        iff>>tmp;
+        if(tmp=="\n") break;
+        real_t value = std::stod(tmp);
+        in.push_back(value);
+        index++;
+      }
+      return iff;
+    }
+    std::ofstream& operator << (std::ofstream& out,const std::vector<real_t>&in)
+    {
+      size_t size = in.size();
+      out<<"size:"<<std::to_string(size).c_str()<<std::endl;
+      for ( size_t i=0;i<in.size();++i)
+      {
+          out<<std::to_string(in[i]).c_str()<<" ";
+      }
+      out<<std::endl;
+      return out;
+    }
+     //global ifstream/ofstream vector<std::string> operators
+    std::ifstream& operator >> (std::ifstream& iff,std::vector<std::string>& in)
+    {
+      size_t size=0;
+      std::istringstream ss;
+      std::string line,tmp="size:";
+
+      size_t index=0;
+      
+      //get line 
+      std::getline(iff, line);
+      //parse line
+      if(line.length()<7) 
+        throw std::runtime_error("wrong file format. vectors must declare size");
+      
+      if (line.find(tmp) != std::string::npos)
+      {
+        std::string scount = line.substr(tmp.size());
+        size = std::stoul(scount);
+      }
+      in.clear();
+      in.resize(size);
+
+      while(index<size)
+      {
+        std::getline(iff, line);
+        if(line=="\n") break;
+        in.push_back(line);
+        index++;
+      }
+      return iff;
+    }
+    std::ofstream& operator << (std::ofstream& out,const std::vector<std::string>&in)
+    {
+      size_t size = in.size();
+      out<<"size:"<<std::to_string(size).c_str()<<std::endl;
+      for ( size_t i=0;i<in.size();++i)
+      {
+          out<<in[i].c_str()<<std::endl;
+      }
+      out<<std::endl;
+      return out;
+    }
+    //global ifstream/ofstream vector<std::pair<std::string,std::string>> operators
+    std::ifstream& operator >> (std::ifstream& iff,std::vector<std::pair<std::string,std::string>>& in)
+    {
+      size_t size=0;
+      std::istringstream ss;
+      std::string line,tmp="size:";
+
+      size_t index=0;
+      
+      //get line 
+      std::getline(iff, line);
+      //parse line
+      if(line.length()<7) 
+        throw std::runtime_error("wrong file format. vectors must declare size");
+      
+      if (line.find(tmp) != std::string::npos)
+      {
+        std::string scount = line.substr(tmp.size());
+        size = std::stoul(scount);
+      }
+      in.clear();
+      in.resize(size);
+
+      while(index<size)
+      {
+        std::getline(iff, line);
+        if(line=="\n") break;
+        std::string first,second;
+        std::istringstream ss(line);
+        std::getline(ss,first,' ');
+        std::getline(ss,second,' ');
+        in.push_back(std::make_pair(first,second));
+        index++;
+      }
+      return iff;
+    }
+    std::ofstream& operator << (std::ofstream& out,const std::vector<std::pair<std::string,std::string>>&in)
+    {
+      size_t size = in.size();
+      out<<"size:"<<std::to_string(size).c_str()<<std::endl;
+      for ( size_t i=0;i<in.size();++i)
+      {
+          out<<in[i].first.c_str()<<" "<<in[i].second.c_str()<<std::endl;
+      }
+      out<<std::endl;
+      return out;
+    }
+
+    //feature_stage missing methods
+
+    //complete the feature_stage implementation
+    //process_data
+     void feature_stage::process_data(const std::string& data)
+    {
+        //process the document
+        matrix<real_t> m = extract_features(data);
+        //concatenate the matrices
+        
+        this->data = m;
+ 
+    }
+     void feature_stage::process_data(const matrix<real_t>& data)
+     {
+          extract_features(data);
+     }
+     void feature_stage::process_data(const std::vector<real_t>& data)
+     {
+          extract_features(data);
+     }
+     void feature_stage::process_data(const std::vector<std::vector<real_t> >& data)
+     {
+          extract_features(data);
+     }
+      void feature_stage::load_additional_data(const std::string& data)
+      {
+        UNDEF_REFERENCE(data)
+        UNDEF_REFERENCE2(data)
+        //load data and labels
+        //load the feature engineering functor names
+        //std::istringstream iss(data);
+        //iss>>_functor_names;
+        //load the functors
+        //for ( size_t i=0;i<_functor_names.size();++i)
+        //{
+        //          _engineering_functors.push_back(feature_engineering_functor::get(_functor_names[i]));
+        //  }
+        
+      }
+      void feature_stage::save_additional_data(std::string& data)
+      {
+        UNDEF_REFERENCE(data)
+        UNDEF_REFERENCE2(data)
+        //save data and labels
+        //std::ostringstream oss;
+        //oss<<_functor_names;
+        //data = oss.str();
+      }
+      //clasifier stage missing implementations:
+  
+      //constructor 
+      classifier_stage::classifier_stage(const std::string& name): factory(nullptr)
+      {
+        this->name = name;
+ 
+      } 
+      classifier_stage::classifier_stage():factory(nullptr) 
+      {
+        this->name="classifier_stage";
+       }  
+      classifier_stage::~classifier_stage()
+      {
+        if(factory)
+          delete factory;
+
+      }
+
+      void classifier_stage::load_additional_data(const std::string& data)
+      {
+        UNDEF_REFERENCE(data)
+        UNDEF_REFERENCE2(data)
+        //load data and labels
+        //load the feature engineering functor names
+        //std::istringstream iss(data);
+        //iss>>_functor_names;
+        //load the functors
+        //for ( size_t i=0;i<_functor_names.size();++i)
+        //{
+        //          _engineering_functors.push_back(feature_engineering_functor::get(_functor_names[i]));
+        //  }
+        
+      }
+      void classifier_stage::save_additional_data(std::string& data)
+      {
+        UNDEF_REFERENCE(data)
+        UNDEF_REFERENCE2(data)
+        //save data and labels
+        //std::ostringstream oss;
+        //oss<<_functor_names;
+        //data = oss.str();
+      }
+
+     /*
+    nice to have later
+    void feature_stage::process_data(const std::vector<std::string>& documents)
+    {
+        //process the documents
+        std::vector<matrix<real_t>> m;
+
+        for ( auto& doc : documents )
+          m.push_back(extract_features(doc));
+
+        //concatenate the matrices
+        if (m.size()>0)
+        {
+          matrix<real_t> tmp(m[0].rows(),m[0].cols());  
+          tmp.fill(1.0);
+
+          for(auto& mat : m)
+          {
+            tmp = tmp* mat;
+          }
+        }
+        this->_data = m;
+
+    }
+    */
+    //process_data
 
  } // namespace provallo

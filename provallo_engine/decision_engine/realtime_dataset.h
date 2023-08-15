@@ -66,7 +66,7 @@ namespace provallo
         addData(const std::string& data, const std::string& label) ; //add data to the dataset
 };
 
-
+    
 }
 
 
