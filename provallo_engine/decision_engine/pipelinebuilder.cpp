@@ -947,7 +947,7 @@ namespace provallo
     {
       for (size_t j = 0; j < data.cols(); ++j)
       {
-        _fitted_data(i, j) = (data(i, j) - _mean.at(j)) / _variance.at(j);
+        _fitted_data[i*data.size2()+j] = (data(i, j) - _mean.at(j)) / _variance.at(j);
       }
     }
 
@@ -1998,18 +1998,25 @@ namespace provallo
     // get the number of rows and columns
     size_t rows = data_matrix.rows();
     size_t cols = data_matrix.cols();
-    matrix<real_t> _std = _fitted_data.std();
+    matrix<real_t> fitted_data(_fitted_data.size(),1);
+    //copy the data 
+    std::copy(fitted_data.begin(), fitted_data.end(), _fitted_data.begin()); 
     // initialize the transformed data
+    //get mean, std, covariance matrix 
+    matrix<real_t> _std = data_matrix.std();
+    matrix<real_t> _cov = data_matrix.covariance();
+    real_t _mean = data_matrix.mean();
+
     matrix<real_t> transformed_data(rows, cols);
     // transform the data
     for (size_t i = 0; i < rows; ++i)
     {
       for (size_t j = 0; j < cols; ++j)
       {
-        transformed_data(i, j) = (data_matrix(i, j) - _mean[j]) / _std(i, j);
+        transformed_data(i, j) = (data_matrix(i, j) - _mean) / _std(i, j);
       }
     }
-    // return the transformed data
+     // return the transformed data
     return std::vector<real_t>(transformed_data.begin(), transformed_data.end());
   }
 
@@ -2021,11 +2028,16 @@ namespace provallo
 
     // initialize the transformed data
     matrix<real_t> transformed_data(rows, 1);
+    matrix<real_t> fitted(_fitted_data.size(),1);
+    //copy the data
+    std::copy(fitted.begin(), fitted.end(), _fitted_data.begin());
+
     // transform the data
-    matrix<real_t> _std = _fitted_data.std();
+    matrix<real_t> _std = fitted.std();
+    real_t _mean = fitted.mean();
     for (size_t i = 0; i < rows; ++i)
     {
-      transformed_data(i, 0) = (std::stod(documents[i]) - _mean[0]) / _std(0, 0);
+      transformed_data(i, 0) = (std::stod(documents[i]) - _mean) / _std(0, 0);
     }
 
     // return the transformed data
@@ -2039,12 +2051,18 @@ namespace provallo
     size_t rows = documents.size();
 
     // initialize the transformed data
-    matrix<real_t> transformed_data(rows, 1);
+    matrix<real_t> fitted(_fitted_data.size(),1);
+    //copy the data
+    std::copy(fitted.begin(), fitted.end(), _fitted_data.begin());
+
+    
+     matrix<real_t> transformed_data(rows, 1);
     // transform the data
-    matrix<real_t> _std = _fitted_data.std();
+    matrix<real_t> _std = fitted.std();
+    real_t _mean = fitted.mean();
     for (size_t i = 0; i < rows; ++i)
     {
-      transformed_data(i, 0) = (std::stod(documents[i]) - _mean[0]) / _std(0, 0);
+      transformed_data(i, 0) = (std::stod(documents[i]) - _mean) / _std(0, 0);
     }
 
     // return the transformed data
@@ -2062,8 +2080,12 @@ namespace provallo
     // initialize the transformed data
     matrix<real_t> transformed_data(matrix<real_t>::Zero(rows, 1));
     // transform the data
-    matrix<real_t> _std = _fitted_data.std();
-    real_t _mean = _fitted_data.mean();
+    matrix<real_t> fitted ( _fitted_data.size(),1);
+    std::copy(fitted.begin(), fitted.end(), _fitted_data.begin());
+
+
+    matrix<real_t> _std = fitted.std();
+    real_t _mean = fitted.mean();
 
     for (size_t i = 0; i < rows; ++i)
     {
@@ -5831,6 +5853,8 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
           //fill ret
           ret[i] = bow[i];
         }
+
+        _transformed_data = ret;
         //return ret
         return ret;
 
@@ -5894,6 +5918,7 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
           ret[i]=0;
         }
        } 
+       _transformed_data = ret;
       //return the one-hot vector
       return ret;
     }
@@ -5934,6 +5959,8 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
           ret[i]=0;
         }
       }
+       _transformed_data = ret;
+
       //return the one-hot vector
       return ret;
 

@@ -121,7 +121,7 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
     vectorizer_type _type;
     vector_src _data;
     std::vector<real_x> _transformed_data;
-    matrix<real_x> _fitted_data;
+    std::vector<real_x> _fitted_data;
     std::vector<real_x> _predicted_data;
     //avoid incomplete type
     template <typename vector_src2, typename real_x2> friend class vectorizer;
@@ -174,6 +174,10 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
       return _data;
 
     }
+    virtual void add_document(const vector_src& doc)
+    {
+      _data+=doc;
+    }
     vector_src& get_data() 
     {
       return _data;
@@ -191,12 +195,22 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
     {
       _type=type;
     }
- 
-
+    virtual void fit()
+    {
+      _fitted_data=fit({_data});
+    }
+    size_t get_output_size()const
+    {
+      return _fitted_data.size();
+    }
     virtual  vectorizer_type get_type()const
     {
       return _type;
     }
+
+    //predict single source 
+     virtual  std::vector<real_x> predict(const vector_src& data_){DEFAULT_IMPL(data_);}
+
     //fit:
     virtual  std::vector<real_x> fit( const std::vector<vector_src>& data_){DEFAULT_IMPL(data_);}
     virtual  std::vector<real_x> predict(const std::vector<vector_src>& data_){DEFAULT_IMPL(data_);}

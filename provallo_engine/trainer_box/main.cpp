@@ -1018,14 +1018,76 @@ bool benchmark_classifiers (const std::string benchmark_folder )
     } //end for description_files
     return ret;
 }// end benchmark_classifiers
+ const char* vectorizer_types[] ={ "TFIDF",
+      "STANDARD_SCALER",
+      "MIN_MAX_SCALER",
+      "PCA",
+      "ONE_HOT_VECTORIZER",
+      "NEURAL_TRANSFORMER",
+      "AERONATIC_QARTERION", // tensor operator pitch/yaw/roll matrices
+      "SVD_OPERATOR",
+      "HPLANE_TRANSFORMER",
+      "HUFFMAN_TRANSFORMER",
+      "HMM_TRANSFORMER","REGRESSION_TRANSFORMER",
+      "UNKNOWN_VECTORIZER"  //for initialization of serialized objects
+      };
+      
+std::vector<std::string> get_files_recursively (const std::string folder)
+{
+  std::vector<std::string> files;
+  std::vector<std::string> subfolders;
+  std::vector<std::string> subfiles;
+  std::vector<std::string> ret;
 
 
+  DIR *dir;
+  struct dirent *ent;
+
+  if ((dir = opendir (folder.c_str())) != NULL) {
+    /* print all the files and directories within directory */
+    while ((ent = readdir (dir)) != NULL) {
+      //check if entry is a file or a subfolder
+      if ( ent->d_type == DT_DIR)
+      {
+        std::string subfolder = ent->d_name;
+        if (subfolder != "." && subfolder != "..")
+        {
+          subfolders.push_back(folder+"/"+subfolder);
+        }
+      }
+      else if (ent->d_type == DT_REG)
+      {
+        std::string file_name = ent->d_name;
+           files.push_back(folder+"/"+file_name);
+       } 
+      else
+      {
+        std::cout<<"[-] skipping  "<< std::string(ent->d_name)<< std::endl;
+      }
+    }
+    closedir (dir);
+  } else {
+    /* could not open directory */
+    perror ("could not open directory");
+    return ret;
+  }
+
+   for(auto subfolder : subfolders)
+  {
+    subfiles = get_files_recursively(subfolder);
+    files.insert(files.end(),subfiles.begin(),subfiles.end());
+  }
+  return files;
+} 
 bool fit_fuzzsb ( const std::string& fit_fuzzsb_folder)
 {
  
   bool ret = false;
-  std::vector<std::string> files = getFilesInFolder(fit_fuzzsb_folder);
+  std::vector<std::string> files = get_files_recursively(fit_fuzzsb_folder);
   std::vector<std::string> string_files;
+  std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers;
+  std::vector<provallo::auto_encoder<real_t,real_t>*> autoencoders;
+
   for (auto file : files)
   {
     if (file.find(".txt") != std::string::npos)
@@ -1033,18 +1095,93 @@ bool fit_fuzzsb ( const std::string& fit_fuzzsb_folder)
       string_files.push_back(file);
     }
   } 
-  //iterate over the txt files,
-  // load them, vectorize them, train autoencoder,
-  // create matrix, create dataset, create classifier, train classifier, test classifier, save results to disk 
-  // repeat for all the files in the folder
-  //autoencoder has 2 outputs, one for the features, one for the classes 
-  //autoencoder has multiple inputs for the features, one input for the classes
-  //the features are used to train the classifier, the classes are used to test the classifier
-  //the classifier is trained on the features, and tested on the classes
-  //the results are saved to disk
-  //the results are compared to the expected results
-  //the results are saved to disk
+  std::cout<<"[+] found "<<string_files.size()<<" files in folder "<<fit_fuzzsb_folder<<std::endl;
+  std::cout<<"[+] found "<<files.size()<<" files in folder "<<fit_fuzzsb_folder<<std::endl;
+  
+  //feed the files to the pipeline, 
+  //the pipeline will load the files, vectorize them, train the autoencoder, 
 
+  //first we want to verify the vectorizers and autoencoders work properly 
+  
+  //create vectorizers:
+    vectorizers.push_back(new provallo::pca_vectorizer);
+    vectorizers.push_back(new provallo::one_hot_vectorizer);
+    vectorizers.push_back(new provallo::tfidf_vectorizer);
+    //vectorizers.push_back(new provallo::word2vec_vectorizer);
+
+  for (auto & fuzz_file : string_files )
+  {
+    std::ifstream fuzz(fuzz_file);
+    std::string fuzz_string((std::istreambuf_iterator<char>(fuzz)),
+    std::istreambuf_iterator<char>());
+    std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
+    for (auto & vectorizer : vectorizers)
+    {
+      
+      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
+      if ( vectorizer->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
+      {
+        vectorizer_type = vectorizer_types[vectorizer->get_type()];
+      } 
+      std::cout<<"[+] vectorizing with "<<vectorizer_type<<std::endl;
+      vectorizer->add_document(fuzz_string);
+      std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
+
+    }
+    
+    //process ( fit all documents )
+  }
+
+   //now that we have all the documents hopefull fitted into the vectorizers, we can train the autoencoders 
+   for ( auto& vectorizer : vectorizers)
+   {
+      vectorizer->fit();
+      autoencoders.push_back(new provallo::auto_encoder<real_t,real_t>( vectorizer->get_output_size() , vectorizer->get_output_size()*2 , 2));  //making binary output.
+
+   }
+    //now that we have the autoencoders, we can train them
+    //reiterate on the files and train the autoencoders 
+    for (auto & fuzz_file : string_files )
+    {
+      std::ifstream fuzz(fuzz_file);
+      std::string fuzz_string((std::istreambuf_iterator<char>(fuzz)),
+      std::istreambuf_iterator<char>());
+      std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
+      size_t vectr=0;
+      for (auto & autoencoder : autoencoders   )
+      {
+        auto & vectorizer = vectorizers[vectr++];
+
+        std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type(); 
+        if ( vectorizer->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
+        {
+          vectorizer_type = vectorizer_types[vectorizer->get_type()];
+        }
+        std::cout<<"[+] vectorizing with "<<vectorizer_type<<std::endl;
+        std::vector<real_t> input =vectorizer->predict(fuzz_string);
+        std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
+        std::cout<<"[+] training autoencoder"<<std::endl;
+        double output[2]={0,0};
+
+        autoencoder->train((real_t*)input.data(),output,size_t(input.size() )  );
+
+        std::cout<<"[+] training autoencoder done"<<ret<<std::endl;
+      }
+    } 
+    
+  //then we want to fit the documents into the vectorizers
+  //for each vectorizer, we want to train an autoencoder
+  //for each autoencoder, we want to train a weak classifier
+  //first we iterate the files and fill the dictionaries of the vectorizers :
+
+  //create autoencoders:
+    //autoencoders.push_back(new provallo::autoencoder);
+    //train auto encoders on the output of the vectorizers
+    //autoencoders[0]->train(vectorizers[0]->get_output());
+    //autoencoders[1]->train(vectorizers[1]->get_output());
+    //autoencoders[2]->train(vectorizers[2]->get_output());
+
+      
   //load or generate a pipeline: 
   // 1) load the pipeline from disk
    //provallo::meta_builder meta("fuzzdb_meta",fit_fuzzsb_folder+"/fuzzdb_meta.json");
