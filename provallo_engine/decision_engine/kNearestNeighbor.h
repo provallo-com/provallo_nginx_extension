@@ -82,8 +82,8 @@ namespace provallo
         {
           data->pos(i,j)=train(i,j);
         }
-        data->label(i)=labels[i];
-
+        if(labels.size()>i)
+          data->label(i)=labels[i];
       }
      }
     kNN_result

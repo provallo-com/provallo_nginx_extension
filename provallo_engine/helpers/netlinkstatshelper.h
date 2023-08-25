@@ -303,8 +303,7 @@ namespace provallo
 
 
 			static std::string lastdecision = "normal";
-
-
+ 
 			std::cout << "[+] classify_stats thread started";
 
 			netlink_stats_helper *_thisctx = this;

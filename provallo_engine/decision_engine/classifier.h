@@ -64,16 +64,16 @@ namespace provallo
   {
     ColType col_type = NotUsed;
     size_t col_num = 0;
-    double num_split = 0.;
+    real_t num_split = 0.;
     std::vector<char> cat_split;
     int chosen_cat = 0;
     size_t tree_left = 0;
     size_t tree_right = 0;
-    double pct_tree_left = 0.;
-    double score = 0.00000001; /* will not be integer when there are weights or early stop */
-    double range_low = -HUGE_VAL;
-    double range_high = HUGE_VAL;
-    double remainder; /* only used for distance/similarity */
+    real_t pct_tree_left = 0.;
+    real_t score = 0.00000001; /* will not be integer when there are weights or early stop */
+    real_t range_low = -HUGE_VAL;
+    real_t range_high = HUGE_VAL;
+    real_t remainder; /* only used for distance/similarity */
 
     iso_tree_struct() = default;
 
@@ -87,8 +87,8 @@ namespace provallo
     MissingAction missing_action;
     ScoringMetric scoring_metric;
 
-    double exp_avg_depth;
-    double exp_avg_sep;
+    real_t exp_avg_depth;
+    real_t exp_avg_sep;
     size_t orig_sample_size;
     bool has_range_penalty;
 
@@ -107,8 +107,8 @@ namespace provallo
     MissingAction missing_action;
     ScoringMetric scoring_metric;
 
-    double exp_avg_depth;
-    double exp_avg_sep;
+    real_t exp_avg_depth;
+    real_t exp_avg_sep;
     size_t orig_sample_size;
     bool has_range_penalty;
 
@@ -125,15 +125,15 @@ namespace provallo
     size_t ncols_categ;
     std::vector<int> ncat;
     std::vector<std::vector<ImputeNode>> imputer_tree;
-    std::vector<double> col_means;
+    std::vector<real_t> col_means;
     std::vector<int> col_modes;
   } Imputer;
 
   typedef struct SingleTreeIndex
   {
     std::vector<size_t> terminal_node_mappings;
-    std::vector<double> node_distances;
-    std::vector<double> node_depths;
+    std::vector<real_t> node_distances;
+    std::vector<real_t> node_depths;
     std::vector<size_t> reference_points;
     std::vector<size_t> reference_indptr;
     std::vector<size_t> reference_mapping;
@@ -285,14 +285,22 @@ namespace provallo
       {
         _offsets.push_back(_offsets.back() + data.get_sorted_indices()[i].size());
       }
+      if(_split_factory == nullptr)
+      {
+       _split_factory = new split_method_factory(data, ra);
+       this->_factory_allocated = true;
+
+      }
+      else _factory_allocated = false;
     }
 
     // A classifier should be constructed from a data set and a parameter object
     classifier( const classifier& other) : _attributes_info(other._attributes_info), _split_factory(other._split_factory),_rand(),_offsets(other._offsets),_name(other._name), _data(other._data),_parameters(other._parameters)  {
+      this->_factory_allocated = false;
     } 
-    classifier ( classifier&& other) : _attributes_info(other._attributes_info), _split_factory(other._split_factory), _rand(),_offsets(other._offsets), _name(other._name),_data(other._data), _parameters(other._parameters) 
-    {
-    }      
+    classifier ( classifier&& other): _attributes_info(other._attributes_info), _split_factory(other._split_factory),_rand(),_offsets(other._offsets),_name(other._name), _data(other._data),_parameters(other._parameters)  {
+      this->_factory_allocated = false;
+    } 
 
     // Construct classifier from buffer
     classifier(const classifier *deserial) : _attributes_info(deserial->_attributes_info), _split_factory(deserial->_split_factory),_rand(), _offsets(deserial->_offsets), _name(deserial->_name), _data(deserial->_data), _parameters(deserial->_parameters)
@@ -328,7 +336,7 @@ namespace provallo
       return buildClassifier(input);
     }
 
-    // Classify a case
+    // Classify a set of attributes
     virtual attribute
     classify(dataset::attribute_iterator begin,
              dataset::attribute_iterator end) const = 0;
@@ -394,6 +402,18 @@ namespace provallo
     get_name();
 
     virtual ~classifier();
+    bool delete_factory()
+    {
+      if (_split_factory && _factory_allocated)
+      {
+        delete _split_factory;
+        _split_factory = nullptr;
+        _factory_allocated = false;
+        return true;
+      }
+      return false;
+    }
+    bool _factory_allocated = false;
   };
   
   template <class itype>
@@ -439,7 +459,7 @@ namespace provallo
     //bool has_same_int_size = false;
     //bool lacks_indexer = false;
 
-    //bool has_same_double = false;
+    //bool has_same_real_t = false;
     //bool has_incomplete_watermark = false;
     // TODO -> rewrite serialization layer : s
     //return_to_position(serialized_bytes, saved_position); 
@@ -1030,12 +1050,12 @@ namespace provallo
                      size_t max_depth, size_t ncols_per_tree, bool limit_depth,
                      bool penalize_range, bool standardize_datam,
                      provallo::ScoringMetric scoring_metric, bool fast_bratio,
-                     bool weigh_by_kurt, double prob_pick_by_gain_pl,
-                     double prob_pick_by_gain_avg,
-                     double prob_pick_by_full_gain, double prob_pick_by_dens,
-                     double prob_pick_col_by_range,
-                     double prob_pick_col_by_var, double prob_pick_col_by_kurt,
-                     double min_gain, provallo::MissingAction missing_action,
+                     bool weigh_by_kurt, real_t prob_pick_by_gain_pl,
+                     real_t prob_pick_by_gain_avg,
+                     real_t prob_pick_by_full_gain, real_t prob_pick_by_dens,
+                     real_t prob_pick_col_by_range,
+                     real_t prob_pick_col_by_var, real_t prob_pick_col_by_kurt,
+                     real_t min_gain, provallo::MissingAction missing_action,
                      provallo::CategSplit cat_split_type,
                      provallo::NewCategAction new_cat_action, bool all_perm,
                      bool build_imputer, size_t min_imp_obs,
@@ -1053,8 +1073,8 @@ namespace provallo
                     int nthreads, bool standardize,
                     provallo::iso_forest *model_outputs,
                     provallo::ext_iso_forest *model_outputs_ext,
-                    double output_depths[], sparse_ix tree_num[],
-                    double per_tree_depths[], provallo::TreesIndexer *indexer);
+                    real_t output_depths[], sparse_ix tree_num[],
+                    real_t per_tree_depths[], provallo::TreesIndexer *indexer);
 
     static int
     fit_iforest(provallo::iso_forest *model_outputs,
@@ -1070,20 +1090,20 @@ namespace provallo
                 size_t sample_size, size_t ntrees, size_t max_depth,
                 size_t ncols_per_tree, bool limit_depth, bool penalize_range,
                 bool standardize_data, provallo::ScoringMetric scoring_metric,
-                bool fast_bratio, bool standardize_dist, double tmat[],
-                double output_depths[], bool standardize_depth,
+                bool fast_bratio, bool standardize_dist, real_t tmat[],
+                real_t output_depths[], bool standardize_depth,
                 real_t col_weights[],
-                bool weigh_by_kurt, double prob_pick_by_gain_pl,
-                double prob_pick_by_gain_avg, double prob_pick_by_full_gain,
-                double prob_pick_by_dens, double prob_pick_col_by_range,
-                double prob_pick_col_by_var, double prob_pick_col_by_kurt,
-                double min_gain, provallo::MissingAction missing_action,
+                bool weigh_by_kurt, real_t prob_pick_by_gain_pl,
+                real_t prob_pick_by_gain_avg, real_t prob_pick_by_full_gain,
+                real_t prob_pick_by_dens, real_t prob_pick_col_by_range,
+                real_t prob_pick_col_by_var, real_t prob_pick_col_by_kurt,
+                real_t min_gain, provallo::MissingAction missing_action,
                 provallo::CategSplit cat_split_type,
                 provallo::NewCategAction new_cat_action, bool all_perm,
                 Imputer *imputer, size_t min_imp_obs,
                 provallo::UseDepthImp depth_imp,
                 provallo::WeighImpRows weigh_imp_rows, bool impute_at_fit,
-                uint64_t random_seed, bool use_long_double, int nthreads);
+                uint64_t random_seed, bool use_long_real_t, int nthreads);
     
     
     isolation_forest(size_t ndim =3, size_t ntrees = 100,
@@ -1095,10 +1115,10 @@ namespace provallo
     }
     
     void
-    fit(double X[], size_t nrows, size_t ncols);
+    fit(real_t X[], size_t nrows, size_t ncols);
 
 
-    inline void fit ( matrix<double> &X  )
+    inline void fit ( matrix<real_t> &X  )
     {
       fit(X.data(), X.size1(), X.size2());
     }
@@ -1110,13 +1130,13 @@ namespace provallo
     // attribute_information: 0 for numeric, 1 for categorical
     // attribute_weights: 0 for uniform, 1 for weighted
     /*
-    void fit (matrix<double> numeric , matrix<int> categorical,
-              matrix<double> weights)
+    void fit (matrix<real_t> numeric , matrix<int> categorical,
+              matrix<real_t> weights)
               {
 
-                double *numeric_data = &numeric.data()[0];
+                real_t *numeric_data = &numeric.data()[0];
                 int *categorical_data = &categorical.data()[0];
-                double *weights_data = &weights.data()[0];
+                real_t *weights_data = &weights.data()[0];
 
                 size_t nrows = numeric.rows();
 
@@ -1135,105 +1155,105 @@ namespace provallo
                 
 
     void
-    fit(double numeric_data[], size_t ncols_numeric, size_t nrows,
+    fit(real_t numeric_data[], size_t ncols_numeric, size_t nrows,
         int categ_data[], size_t ncols_categ, int ncat[],
-        double sample_weights[], double col_weights[]);
+        real_t sample_weights[], real_t col_weights[]);
 
     void
-    fit(double Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
+    fit(real_t Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
         size_t ncols_numeric, size_t nrows, int categ_data[],
-        size_t ncols_categ, int ncat[], double sample_weights[],
-        double col_weights[]);
+        size_t ncols_categ, int ncat[], real_t sample_weights[],
+        real_t col_weights[]);
 
-    std::vector<double>
-    predict(double X[], size_t nrows, bool standardize);
+    std::vector<real_t>
+    predict(real_t X[], size_t nrows, bool standardize);
 
-    std::vector<double>
-    predict(const std::string &); // comma delimited<--><double>
+    std::vector<real_t>
+    predict(const std::string &); // comma delimited<--><real_t>
 
     void
-    predict(double numeric_data[], int categ_data[], bool is_col_major,
+    predict(real_t numeric_data[], int categ_data[], bool is_col_major,
             size_t nrows, size_t ld_numeric, size_t ld_categ, bool standardize,
-            double output_depths[], sparse_ix tree_num[],
-            double per_tree_depths[]);
+            real_t output_depths[], sparse_ix tree_num[],
+            real_t per_tree_depths[]);
 
     void
-    predict(double X_sparse[], sparse_ix X_ind[], sparse_ix X_indptr[],
+    predict(real_t X_sparse[], sparse_ix X_ind[], sparse_ix X_indptr[],
             bool is_csc, int categ_data[], bool is_col_major, size_t ld_categ,
-            size_t nrows, bool standardize, double output_depths[],
+            size_t nrows, bool standardize, real_t output_depths[],
             sparse_ix tree_num[],
-            double per_tree_depths[]);
+            real_t per_tree_depths[]);
 
 
-    void predict (matrix<double> &X, std::vector<double> &out)
+    void predict (matrix<real_t> &X, std::vector<real_t> &out)
     {
       out = predict(X.data(), X.rows(), X.cols());
     }
 
-    std::vector<double> predict (matrix<double> &X)
+    std::vector<real_t> predict (matrix<real_t> &X)
     {
       return predict(X.data(), X.rows(), X.cols());
     } 
-    std::vector<double> predict ( matrix<double>& X, matrix<uint32_t>& cat)
+    std::vector<real_t> predict ( matrix<real_t>& X, matrix<uint32_t>& cat)
     {
         // TODO: check if cat is categorical
         //if (cat.cols() == 0)
           //return predict(X);
         //else
-           //return predict( (double*)X.data(), X.rows(), X.cols(), cat.data(), cat.rows(), cat.cols()); 
+           //return predict( (real_t*)X.data(), X.rows(), X.cols(), cat.data(), cat.rows(), cat.cols()); 
           //return predict( X.data(), X.rows(), X.cols(), cat.data(), cat.rows(), cat.cols());    }
         
         //for now ignore:
-        matrix<double> y(cat.rows(), cat.cols());
+        matrix<real_t> y(cat.rows(), cat.cols());
 
         for ( size_t i = 0; i < cat.rows(); i++) {
           for ( size_t j = 0; j < cat.cols(); j++)
-            y(i,j) = (double) cat(i,j);
+            y(i,j) = (real_t) cat(i,j);
         }
         y =  X+y;
 
         return predict(y.array(), y.rows(),true );
     }
 
-    std::vector<double>
-    predict_distance(double X[], size_t nrows, bool as_kernel,
+    std::vector<real_t>
+    predict_distance(real_t X[], size_t nrows, bool as_kernel,
                      bool assume_full_distr, bool standardize,
                      bool triangular);
 
     void
-    predict_distance(double numeric_data[], int categ_data[], size_t nrows,
+    predict_distance(real_t numeric_data[], int categ_data[], size_t nrows,
                      bool as_kernel, bool assume_full_distr, bool standardize,
-                     bool triangular, double dist_matrix[]);
+                     bool triangular, real_t dist_matrix[]);
     //sparse_ix version. 
     //TODO: check if it works insead of int Xc_indptr[] and Xc_ind[]
     void
-    predict_distance(double Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
+    predict_distance(real_t Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
                      int categ_data[], size_t nrows, bool as_kernel,
                      bool assume_full_distr, bool standardize, bool triangular,
-                     double dist_matrix[]);
+                     real_t dist_matrix[]);
 
     void
-    impute(double X[], size_t nrows);
+    impute(real_t X[], size_t nrows);
 
     void
-    impute(double numeric_data[], int categ_data[], bool is_col_major,
+    impute(real_t numeric_data[], int categ_data[], bool is_col_major,
            size_t nrows);
 
     void
-    impute(double Xr[], sparse_ix Xr_ind[], sparse_ix Xr_indptr[],
+    impute(real_t Xr[], sparse_ix Xr_ind[], sparse_ix Xr_indptr[],
            int categ_data[], bool is_col_major, size_t nrows);
 
     void
     build_indexer(const bool with_distances);
 
     void
-    set_as_reference_points(double Xc[], sparse_ix Xc_ind[],
+    set_as_reference_points(real_t Xc[], sparse_ix Xc_ind[],
                             sparse_ix Xc_indptr[],
                             int categ_data[], size_t nrows,
                             const bool with_distances);
 
     void
-    set_as_reference_points(double numeric_data[], int categ_data[],
+    set_as_reference_points(real_t numeric_data[], int categ_data[],
                             bool is_col_major, size_t nrows, size_t ld_numeric,
                             size_t ld_categ, const bool with_distances);
 
@@ -1241,12 +1261,12 @@ namespace provallo
     get_num_reference_points() const noexcept;
 
     void
-    predict_distance_to_ref_points(double numeric_data[], int categ_data[],
-                                   double Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
+    predict_distance_to_ref_points(real_t numeric_data[], int categ_data[],
+                                   real_t Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
                                    size_t nrows, bool is_col_major,
                                    size_t ld_numeric, size_t ld_categ,
                                    bool as_kernel, bool standardize,
-                                   double dist_matrix[]);
+                                   real_t dist_matrix[]);
 
     void
     serialize(FILE *out) const;
@@ -1309,14 +1329,14 @@ namespace provallo
     enum provallo::ScoringMetric scoring_metric = Depth;
     bool fast_bratio = true;
     bool weigh_by_kurt = false;
-    double prob_pick_by_gain_pl = 0.;
-    double prob_pick_by_gain_avg = 0.;
-    double prob_pick_by_full_gain = 0.;
-    double prob_pick_by_dens = 0.;
-    double prob_pick_col_by_range = 0.;
-    double prob_pick_col_by_var = 0.;
-    double prob_pick_col_by_kurt = 0.;
-    double min_gain = 0.;
+    real_t prob_pick_by_gain_pl = 0.;
+    real_t prob_pick_by_gain_avg = 0.;
+    real_t prob_pick_by_full_gain = 0.;
+    real_t prob_pick_by_dens = 0.;
+    real_t prob_pick_col_by_range = 0.;
+    real_t prob_pick_col_by_var = 0.;
+    real_t prob_pick_col_by_kurt = 0.;
+    real_t min_gain = 0.;
     enum provallo::MissingAction missing_action = Impute;
 
     enum provallo::CategSplit cat_split_type = SubSet;
@@ -1374,12 +1394,12 @@ namespace provallo
   
   };
 
-  template <typename ldouble_safe = double>
+  template <typename lreal_t_safe = real_t>
   class column_sampler
   {
   public:
     std::vector<size_t> col_indices;
-    std::vector<double> tree_weights;
+    std::vector<real_t> tree_weights;
     size_t curr_pos;
     size_t curr_col;
     size_t last_given;
@@ -1427,63 +1447,63 @@ namespace provallo
   std::istream &
   operator>>(std::istream &ist, isolation_forest &model);
 
-  template <class ldouble_safe = long double, class real_t_ = real_t>
+  template <class lreal_t_safe = long real_t, class real_t_ = real_t>
   class SingleNodeColumnSampler
   {
   public:
-    double *weights_orig;
+    real_t *weights_orig;
     std::vector<bool> inifinite_weights;
-    ldouble_safe cumw;
+    lreal_t_safe cumw;
     size_t n_inf;
     size_t *col_indices;
     size_t curr_pos;
     bool using_tree;
 
     bool backup_weights;
-    std::vector<double> weights_own;
+    std::vector<real_t> weights_own;
     size_t n_left;
 
-    std::vector<double> tree_weights;
+    std::vector<real_t> tree_weights;
     size_t offset;
     size_t tree_levels;
-    std::vector<double> used_weights;
+    std::vector<real_t> used_weights;
     std::vector<size_t> mapped_indices;
     std::vector<size_t> mapped_inf_indices;
 
     bool
-    initialize(double *weights, std::vector<size_t> *col_indices,
+    initialize(real_t *weights, std::vector<size_t> *col_indices,
                size_t curr_pos, size_t n_sample, bool backup_weights);
 
     bool
     sample_col(size_t &col_chosen, RNG_engine &rnd_generator);
 
     void
-    backup(SingleNodeColumnSampler<ldouble_safe, real_t> &other,
+    backup(SingleNodeColumnSampler<lreal_t_safe, real_t> &other,
            size_t ncols_tot);
 
     void
-    restore(const SingleNodeColumnSampler<ldouble_safe, real_t> &other);
+    restore(const SingleNodeColumnSampler<lreal_t_safe, real_t> &other);
   };
-  template <class ldouble_safe, class real_t_>
+  template <class lreal_t_safe, class real_t_>
   class density_estimator
   {
   public:
-    std::vector<ldouble_safe> multipliers;
-    double xmin;
-    double xmax;
+    std::vector<lreal_t_safe> multipliers;
+    real_t xmin;
+    real_t xmax;
     std::vector<size_t> counts;
     int n_present;
     int n_left;
-    std::vector<double> box_low;
-    std::vector<double> box_high;
-    std::vector<double> queue_box;
+    std::vector<real_t> box_low;
+    std::vector<real_t> box_high;
+    std::vector<real_t> queue_box;
     bool fast_bratio;
-    std::vector<ldouble_safe> ranges;
+    std::vector<lreal_t_safe> ranges;
     std::vector<int> ncat;
     std::vector<int> queue_ncat;
     std::vector<int> ncat_orig;
-    std::vector<double> vals_ext_box;
-    std::vector<double> queue_ext_box;
+    std::vector<real_t> vals_ext_box;
+    std::vector<real_t> queue_ext_box;
 
     void
     initialize(size_t max_depth, int max_categ, bool reserve_counts,
@@ -1496,19 +1516,19 @@ namespace provallo
     initialize_bdens(const InputData &input_data,
                      const ModelParams &model_params,
                      std::vector<size_t> &ix_arr,
-                     column_sampler<ldouble_safe> &col_sampler);
+                     column_sampler<lreal_t_safe> &col_sampler);
     template <class InputData>
     void
     initialize_bdens_ext(const InputData &input_data,
                          const ModelParams &model_params,
                          std::vector<size_t> &ix_arr,
-                         column_sampler<ldouble_safe> &col_sampler,
+                         column_sampler<lreal_t_safe> &col_sampler,
                          bool col_sampler_is_fresh);
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
     void
-    push_density(double xmin, double xmax, double split_point);
+    push_density(real_t xmin, real_t xmax, real_t split_point);
     void
     push_density(size_t counts[], int ncat);
     void
@@ -1518,8 +1538,8 @@ namespace provallo
     void
     push_density();
     void
-    push_adj(double xmin, double xmax, double split_point,
-             double pct_tree_left, ScoringMetric scoring_metric);
+    push_adj(real_t xmin, real_t xmax, real_t split_point,
+             real_t pct_tree_left, ScoringMetric scoring_metric);
     void
     push_adj(signed char *categ_present, size_t *counts, int ncat,
              ScoringMetric scoring_metric);
@@ -1527,9 +1547,9 @@ namespace provallo
     push_adj(size_t *counts, int ncat, int chosen_cat,
              ScoringMetric scoring_metric);
     void
-    push_adj(double pct_tree_left, ScoringMetric scoring_metric);
+    push_adj(real_t pct_tree_left, ScoringMetric scoring_metric);
     void
-    push_bdens(double split_point, size_t col);
+    push_bdens(real_t split_point, size_t col);
     void
     push_bdens(int ncat_branch_left, size_t col);
     void
@@ -1541,9 +1561,9 @@ namespace provallo
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
     void
-    push_bdens_fast_route(double split_point, size_t col);
+    push_bdens_fast_route(real_t split_point, size_t col);
     void
-    push_bdens_internal(double split_point, size_t col);
+    push_bdens_internal(real_t split_point, size_t col);
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
@@ -1600,56 +1620,56 @@ namespace provallo
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    double
-    calc_density(ldouble_safe remainder, size_t sample_size);
-    ldouble_safe
+    real_t
+    calc_density(lreal_t_safe remainder, size_t sample_size);
+    lreal_t_safe
     calc_adj_depth();
-    double
+    real_t
     calc_adj_density();
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    ldouble_safe
+    lreal_t_safe
     calc_bratio_log();
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    ldouble_safe
+    lreal_t_safe
     calc_bratio_inv_log();
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    double
+    real_t
     calc_bratio();
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    double
-    calc_bdens(ldouble_safe remainder, size_t sample_size);
+    real_t
+    calc_bdens(lreal_t_safe remainder, size_t sample_size);
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    double
-    calc_bdens2(ldouble_safe remainder, size_t sample_size);
+    real_t
+    calc_bdens2(lreal_t_safe remainder, size_t sample_size);
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    ldouble_safe
+    lreal_t_safe
     calc_bratio_log_ext();
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    double
+    real_t
     calc_bratio_ext();
 #ifndef _FOR_R
     [[gnu::optimize("no-trapping-math"), gnu::optimize("no-math-errno")]]
 #endif
-    double
-    calc_bdens_ext(ldouble_safe remainder, size_t sample_size);
+    real_t
+    calc_bdens_ext(lreal_t_safe remainder, size_t sample_size);
     void
-    save_range(double xmin, double xmax);
+    save_range(real_t xmin, real_t xmax);
     void
-    restore_range(double &xmin, double &xmax);
+    restore_range(real_t &xmin, real_t &xmax);
     void
     save_counts(size_t *cat_counts, int ncat);
     void
@@ -1658,7 +1678,7 @@ namespace provallo
     save_n_present(size_t *cat_counts, int ncat);
   };
 
-  template <class ImputedData, class ldouble_safe = long double,
+  template <class ImputedData, class lreal_t_safe = long real_t,
             class real_t_ =real_t>
   struct WorkerMemory
   {
@@ -1671,47 +1691,47 @@ namespace provallo
     size_t st_NA;
     size_t end_NA;
     size_t split_ix;
-    hashed_map<size_t, double> weights_map;
-    std::vector<double> weights_arr; /* when not ignoring NAs and when using weights as dty */
+    hashed_map<size_t, real_t> weights_map;
+    std::vector<real_t> weights_arr; /* when not ignoring NAs and when using weights as dty */
     bool changed_weights;            /* when using 'missing_action'='Divide' or density weights */
-    double xmin;
-    double xmax;
+    real_t xmin;
+    real_t xmax;
     size_t npresent; /* 'npresent' and 'ncols_tried' are used interchangeable and for unrelated things */
     bool unsplittable;
     std::vector<bool> is_repeated;
     std::vector<signed char> categs;
     size_t ncols_tried; /* 'npresent' and 'ncols_tried' are used interchangeable and for unrelated things */
     int ncat_tried;
-    std::vector<double> btree_weights;        /* only when using weights for sampling */
-    column_sampler<ldouble_safe> col_sampler; /* columns can get eliminated, keep a copy for each thread */
-    SingleNodeColumnSampler<ldouble_safe, real_t_> node_col_sampler;
-    SingleNodeColumnSampler<ldouble_safe, real_t_> node_col_sampler_backup;
+    std::vector<real_t> btree_weights;        /* only when using weights for sampling */
+    column_sampler<lreal_t_safe> col_sampler; /* columns can get eliminated, keep a copy for each thread */
+    SingleNodeColumnSampler<lreal_t_safe, real_t_> node_col_sampler;
+    SingleNodeColumnSampler<lreal_t_safe, real_t_> node_col_sampler_backup;
 
     /* for split criterion */
-    std::vector<double> buffer_dbl;
+    std::vector<real_t> buffer_dbl;
     std::vector<size_t> buffer_szt;
     std::vector<signed char> buffer_chr;
-    double prob_split_type;
+    real_t prob_split_type;
     ColCriterion col_criterion;
     GainCriterion criterion;
-    double this_gain;
-    double this_split_point;
+    real_t this_gain;
+    real_t this_split_point;
     int this_categ;
     std::vector<signed char> this_split_categ;
     bool determine_split;
-    std::vector<double> imputed_x_buffer;
-    double saved_xmedian;
-    double best_xmedian;
+    std::vector<real_t> imputed_x_buffer;
+    real_t saved_xmedian;
+    real_t best_xmedian;
     int saved_cat_mode;
     int best_cat_mode;
     std::vector<size_t> col_indices; /* only for full gain calculation */
 
     /* for weighted column choices */
-    std::vector<double> node_col_weights;
-    std::vector<double> saved_stat1;
-    std::vector<double> saved_stat2;
+    std::vector<real_t> node_col_weights;
+    std::vector<real_t> saved_stat1;
+    std::vector<real_t> saved_stat2;
     bool has_saved_stats;
-    double *tree_kurtoses; /* only when mixing 'weight_by_kurt' with 'prob_pick_col*' */
+    real_t *tree_kurtoses; /* only when mixing 'weight_by_kurt' with 'prob_pick_col*' */
 
     /* for the extended model */
     size_t ntry;
@@ -1721,48 +1741,48 @@ namespace provallo
     bool try_all;
     size_t col_chosen; /* also used as placeholder in the single-variable model */
     ColType col_type;
-    double ext_sd;
-    std::vector<double> comb_val;
+    real_t ext_sd;
+    std::vector<real_t> comb_val;
     std::vector<size_t> col_take;
     std::vector<ColType> col_take_type;
-    std::vector<double> ext_offset;
-    std::vector<double> ext_coef;
-    std::vector<double> ext_mean;
-    std::vector<double> ext_fill_val;
-    std::vector<double> ext_fill_new;
+    std::vector<real_t> ext_offset;
+    std::vector<real_t> ext_coef;
+    std::vector<real_t> ext_mean;
+    std::vector<real_t> ext_fill_val;
+    std::vector<real_t> ext_fill_new;
     std::vector<int> chosen_cat;
-    std::vector<std::vector<double>> ext_cat_coef;
-    std::uniform_real_distribution<double> coef_unif;
-    std::normal_distribution<double> coef_norm;
-    std::vector<double> sample_weights; /* when using weights and split criterion */
+    std::vector<std::vector<real_t>> ext_cat_coef;
+    std::uniform_real_distribution<real_t> coef_unif;
+    std::normal_distribution<real_t> coef_norm;
+    std::vector<real_t> sample_weights; /* when using weights and split criterion */
 
     /* for similarity/distance calculations */
-    std::vector<double> tmat_sep;
+    std::vector<real_t> tmat_sep;
 
     /* when calculating average depth on-the-fly */
-    std::vector<double> row_depths;
+    std::vector<real_t> row_depths;
 
     /* when imputing NAs on-the-fly */
     std::vector<ImputedData> impute_vec;
     hashed_map<size_t, ImputedData> impute_map;
 
     /* for non-depth scoring metric */
-    density_estimator<ldouble_safe, real_t> density_calculator;
+    density_estimator<lreal_t_safe, real_t> density_calculator;
   
   };
   void
   check_interrupt_switch(signal_switcher &ss);
   inline bool
-  has_long_double()
+  has_long_real_t()
   {
-    return sizeof(double) < sizeof(long double);
+    return sizeof(real_t) < sizeof(long real_t);
   }
   int return_EXIT_SUCCESS();
   int return_EXIT_FAILURE();
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::initialize(double weights[],
+  provallo::column_sampler<lreal_t_safe>::initialize(real_t weights[],
                                                      size_t n_cols)
   {
 
@@ -1794,9 +1814,9 @@ namespace provallo
     this->n_dropped = 0;
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::initialize(size_t n_cols)
+  provallo::column_sampler<lreal_t_safe>::initialize(size_t n_cols)
   {
     if (!this->has_weights())
     {
@@ -1808,9 +1828,9 @@ namespace provallo
     }
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::drop_weights()
+  provallo::column_sampler<lreal_t_safe>::drop_weights()
   {
 
     this->tree_weights.clear();
@@ -1819,9 +1839,9 @@ namespace provallo
     this->n_dropped = 0;
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::leave_m_cols(size_t m,
+  provallo::column_sampler<lreal_t_safe>::leave_m_cols(size_t m,
                                                        RNG_engine &rnd_generator)
   {
     if (m == 0 || m >= this->n_cols)
@@ -1841,7 +1861,7 @@ namespace provallo
         }
       }
 
-      else if ((ldouble_safe)m >= (ldouble_safe)(3. / 4.) * (ldouble_safe)this->n_cols)
+      else if ((lreal_t_safe)m >= (lreal_t_safe)(3. / 4.) * (lreal_t_safe)this->n_cols)
       {
         for (this->curr_pos = this->n_cols - 1;
              this->curr_pos > this->n_cols - m; this->curr_pos--)
@@ -1864,11 +1884,11 @@ namespace provallo
 
     else
     {
-      std::vector<double> curr_weights = this->tree_weights;
+      std::vector<real_t> curr_weights = this->tree_weights;
       std::fill(this->tree_weights.begin(), this->tree_weights.end(),
                 0.);
-      double rnd_subrange, w_left;
-      double curr_subrange;
+      real_t rnd_subrange, w_left;
+      real_t curr_subrange;
       size_t curr_ix;
 
       for (size_t col = 0; col < m; col++)
@@ -1892,7 +1912,7 @@ namespace provallo
 
         for (size_t lev = 0; lev < this->tree_levels; lev++)
         {
-          rnd_subrange = std::uniform_real_distribution<double>(
+          rnd_subrange = std::uniform_real_distribution<real_t>(
               0., curr_subrange)(rnd_generator);
           w_left = curr_weights[ix_child(curr_ix)];
           curr_ix = ix_child(curr_ix) + (rnd_subrange >= w_left);
@@ -1919,9 +1939,9 @@ namespace provallo
     }
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline bool
-  provallo::column_sampler<ldouble_safe>::sample_col(size_t &col,
+  provallo::column_sampler<lreal_t_safe>::sample_col(size_t &col,
                                                      RNG_engine &rnd_generator)
   {
     if (!this->has_weights())
@@ -1952,14 +1972,14 @@ namespace provallo
        and then subtract from it as it goes down every level. Would have less precision
        but should still work fine. */
       size_t curr_ix = 0;
-      double rnd_subrange, w_left;
-      double curr_subrange = this->tree_weights[0];
+      real_t rnd_subrange, w_left;
+      real_t curr_subrange = this->tree_weights[0];
       if (curr_subrange <= 0)
         return false;
 
       for (size_t lev = 0; lev < tree_levels; lev++)
       {
-        rnd_subrange = std::uniform_real_distribution<double>(
+        rnd_subrange = std::uniform_real_distribution<real_t>(
             0., curr_subrange)(rnd_generator);
         w_left = this->tree_weights[ix_child(curr_ix)];
         curr_ix = ix_child(curr_ix) + (rnd_subrange >= w_left);
@@ -1971,9 +1991,9 @@ namespace provallo
     }
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::prepare_full_pass()
+  provallo::column_sampler<lreal_t_safe>::prepare_full_pass()
   {
     this->curr_col = 0;
 
@@ -1990,9 +2010,9 @@ namespace provallo
     }
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline bool
-  provallo::column_sampler<ldouble_safe>::sample_col(size_t &col)
+  provallo::column_sampler<lreal_t_safe>::sample_col(size_t &col)
   {
     if (this->curr_pos == this->curr_col || this->curr_pos == 0)
       return false;
@@ -2001,9 +2021,9 @@ namespace provallo
     return true;
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::drop_col(size_t col,
+  provallo::column_sampler<lreal_t_safe>::drop_col(size_t col,
                                                    size_t nobs_left)
   {
 
@@ -2051,23 +2071,23 @@ namespace provallo
     }
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::drop_col(size_t col)
+  provallo::column_sampler<lreal_t_safe>::drop_col(size_t col)
   {
     this->drop_col(col, SIZE_MAX);
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::drop_from_tail(size_t col)
+  provallo::column_sampler<lreal_t_safe>::drop_from_tail(size_t col)
   {
     std::swap(this->col_indices[col], this->col_indices[--this->curr_pos]);
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::shuffle_remainder(
+  provallo::column_sampler<lreal_t_safe>::shuffle_remainder(
       RNG_engine &rnd_generator)
   {
     if (!this->has_weights())
@@ -2081,15 +2101,15 @@ namespace provallo
     {
       if (this->tree_weights[0] <= 0)
         return;
-      std::vector<double> curr_weights = this->tree_weights;
+      std::vector<real_t> curr_weights = this->tree_weights;
       this->curr_pos = 0;
       this->curr_col = 0;
 
       if (this->col_indices.size() < this->n_cols)
         this->col_indices.resize(this->n_cols);
 
-      double rnd_subrange, w_left;
-      double curr_subrange;
+      real_t rnd_subrange, w_left;
+      real_t curr_subrange;
       size_t curr_ix;
 
       for (this->curr_pos = 0; this->curr_pos < this->n_cols;
@@ -2102,7 +2122,7 @@ namespace provallo
 
         for (size_t lev = 0; lev < this->tree_levels; lev++)
         {
-          rnd_subrange = std::uniform_real_distribution<double>(
+          rnd_subrange = std::uniform_real_distribution<real_t>(
               0., curr_subrange)(rnd_generator);
           w_left = curr_weights[ix_child(curr_ix)];
           curr_ix = ix_child(curr_ix) + (rnd_subrange >= w_left);
@@ -2122,16 +2142,16 @@ namespace provallo
     }
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline bool
-  provallo::column_sampler<ldouble_safe>::has_weights()
+  provallo::column_sampler<lreal_t_safe>::has_weights()
   {
     return !this->tree_weights.empty();
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline size_t
-  provallo::column_sampler<ldouble_safe>::get_remaining_cols()
+  provallo::column_sampler<lreal_t_safe>::get_remaining_cols()
   {
 
     if (!this->has_weights())
@@ -2140,9 +2160,9 @@ namespace provallo
       return this->n_cols - this->n_dropped;
   }
 
-  template <typename ldouble_safe>
+  template <typename lreal_t_safe>
   inline void
-  provallo::column_sampler<ldouble_safe>::get_array_remaining_cols(
+  provallo::column_sampler<lreal_t_safe>::get_array_remaining_cols(
       std::vector<size_t> &cols)
   {
     if (!this->has_weights())
@@ -2164,10 +2184,10 @@ namespace provallo
       }
     }
   }
-  template <class ldouble_safe>
+  template <class lreal_t_safe>
   template <class other_t>
-  inline provallo::column_sampler<ldouble_safe> &
-  provallo::column_sampler<ldouble_safe>::operator=(
+  inline provallo::column_sampler<lreal_t_safe> &
+  provallo::column_sampler<lreal_t_safe>::operator=(
       const column_sampler<other_t> &other)
   {
 
@@ -2183,10 +2203,10 @@ namespace provallo
     return *this;
   }
 
-  template <class ldouble_safe, class real_t_>
+  template <class lreal_t_safe, class real_t_>
   inline bool
-  provallo::SingleNodeColumnSampler<ldouble_safe, real_t_>::initialize(
-      double *weights, std::vector<size_t> *col_indices, size_t curr_pos,
+  provallo::SingleNodeColumnSampler<lreal_t_safe, real_t_>::initialize(
+      real_t *weights, std::vector<size_t> *col_indices, size_t curr_pos,
       size_t n_sample, bool backup_weights)
   {
 
@@ -2317,9 +2337,9 @@ namespace provallo
   }
   size_t
   get_number_of_reference_points(const TreesIndexer &indexer) noexcept;
-  template <class ldouble_safe, class real_t_>
+  template <class lreal_t_safe, class real_t_>
   inline bool
-  provallo::SingleNodeColumnSampler<ldouble_safe, real_t_>::sample_col(
+  provallo::SingleNodeColumnSampler<lreal_t_safe, real_t_>::sample_col(
       size_t &col_chosen, RNG_engine &rnd_generator)
   {
     if (!this->using_tree)
@@ -2361,9 +2381,9 @@ namespace provallo
       }
 
       /* if there are no infinites, choose a column according to weight */
-      ldouble_safe chosen = std::uniform_real_distribution<ldouble_safe>(
-          (ldouble_safe)0, this->cumw)(rnd_generator);
-      ldouble_safe cumw_ = 0;
+      lreal_t_safe chosen = std::uniform_real_distribution<lreal_t_safe>(
+          (lreal_t_safe)0, this->cumw)(rnd_generator);
+      lreal_t_safe cumw_ = 0;
       for (size_t col = 0; col < this->curr_pos; col++)
       {
         cumw_ += this->weights_orig[this->col_indices[col]];
@@ -2406,14 +2426,14 @@ namespace provallo
         if (!this->n_left)
           return false;
         size_t curr_ix = 0;
-        double rnd_subrange, w_left;
-        double curr_subrange = this->tree_weights[0];
+        real_t rnd_subrange, w_left;
+        real_t curr_subrange = this->tree_weights[0];
         if (curr_subrange <= 0)
           return false;
 
         for (size_t lev = 0; lev < tree_levels; lev++)
         {
-          rnd_subrange = std::uniform_real_distribution<double>(
+          rnd_subrange = std::uniform_real_distribution<real_t>(
               0., curr_subrange)(rnd_generator);
           w_left = this->tree_weights[ix_child(curr_ix)];
           curr_ix = ix_child(curr_ix) + (rnd_subrange >= w_left);
@@ -2435,10 +2455,10 @@ namespace provallo
     }
   }
 
-  template <class ldouble_safe, class real_t_>
+  template <class lreal_t_safe, class real_t_>
   inline void
-  provallo::SingleNodeColumnSampler<ldouble_safe, real_t_>::backup(
-      SingleNodeColumnSampler<ldouble_safe, double> &other, size_t ncols_tot)
+  provallo::SingleNodeColumnSampler<lreal_t_safe, real_t_>::backup(
+      SingleNodeColumnSampler<lreal_t_safe, real_t> &other, size_t ncols_tot)
   {
 
     other.n_inf = this->n_inf;
@@ -2484,10 +2504,10 @@ namespace provallo
     }
   }
 
-  template <class ldouble_safe, class real_t_>
+  template <class lreal_t_safe, class real_t_>
   inline void
-  provallo::SingleNodeColumnSampler<ldouble_safe, real_t_>::restore(
-      const SingleNodeColumnSampler<ldouble_safe, double> &other)
+  provallo::SingleNodeColumnSampler<lreal_t_safe, real_t_>::restore(
+      const SingleNodeColumnSampler<lreal_t_safe, real_t> &other)
   {
     this->n_inf = other.n_inf;
     this->n_left = other.n_left;
@@ -4585,7 +4605,7 @@ namespace provallo
     // Accumulator for continuous attributes
     class ContinuousAccumulator : public Accumulator
     {
-      double _accum;
+      real_t _accum;
       size_t _count;
 
     public:
@@ -5469,7 +5489,7 @@ namespace provallo
 
 	  	  clock_t vla = clock();
 	  	  out << "[+] Total Tree construction CPU time elapsed in s: "
-	  				  << (double) ( vla-c) / CLOCKS_PER_SEC << std::endl;
+	  				  << (real_t) ( vla-c) / CLOCKS_PER_SEC << std::endl;
 
   
 		  // Push error (so all weights are equal to one)
@@ -5480,7 +5500,7 @@ namespace provallo
 	  	    _error[i] = 0.0000001;
 
 	  	  }
-		  std::vector<real_t> class_importance (sf->getSize (), 0); // The "variable" is actually a split method
+		  std::vector<real_t> class_importance (sf->getSize (), 0);  
       // Get OOB set
 		  // OOB set
 		  dataset &oob_set (*random_set.second);
@@ -5496,12 +5516,27 @@ namespace provallo
 
         attribute test_attr(oob_set.getattribute (k, target_tag));
 
-		   
-            // Classify the data
-		     attribute class_attr (
-			  _classifiers[i]->classify (oob_set.begin(k), oob_set.end(k)));
 
-		 
+        // Classify the data
+
+        std::vector<attribute> set_clas;
+        
+        //push the attributes to the vector
+        for (uint32_t j = 0; j < oob_set.getattribute_info().getSize(); ++j)
+        {
+          if (j != target_tag)
+          {
+            set_clas.push_back (oob_set.getattribute (k, j));
+          }
+        }
+        
+        attribute class_attr (
+            _classifiers[i]->classify (set_clas.begin(), set_clas.end () ));
+
+        
+ 
+
+          // Check if the classification is correct 
 
 		      if (  test_attr.discrete() != class_attr.discrete ()) {
 			    { // Accumulate OOB error (for importance estimation)
@@ -5568,13 +5603,13 @@ namespace provallo
 		  // Print some feedback to the caller
 			  out << "[#] Classifier number " << i << " finished." << std::endl;
 			  out << "[#]   OOB samples =  " << oob_set.size () << " / "
-			      << data.size () << " (%" << 100 * double(oob_set.size ()-data.size()) /double( data.size ())
+			      << data.size () << " (%" << 100 * real_t(oob_set.size ()-data.size()) /real_t( data.size ())
 			      << ")" << std::endl;
 			  out << "[#]   OOB error = % "
-			      <<( 100.0 * (double) oob_error / (double) oob_set.size ())
+			      <<( 100.0 * (real_t) oob_error / (real_t) oob_set.size ())
 			      << std::endl;
         out << "[#]   CPU time elapsed in s: "  
-            << (double) (clock() - c) / CLOCKS_PER_SEC << std::endl;  
+            << (real_t) (clock() - c) / CLOCKS_PER_SEC << std::endl;  
                       // Delete data
 
         
@@ -5601,7 +5636,7 @@ namespace provallo
 
     std::cout << "[+] All classifiers finished." << std::endl;
     std::cout << "[+] Total CPU time elapsed in s: "  
-            << (double) (clock() - c) / CLOCKS_PER_SEC << std::endl;
+            << (real_t) (clock() - c) / CLOCKS_PER_SEC << std::endl;
 
 
   }
@@ -5654,7 +5689,19 @@ namespace provallo
     matrix<attribute_tag> _matrix;
     // Information about attributes
     std::vector<attribute_value> _class_values;
+    // Number of errors
+    size_t _fp;
+    size_t _fn;
+    size_t _tp;
+    size_t _tn;
 
+    size_t _total;
+    size_t _error;
+
+    real_t _accuracy, _precision, _recall, _f1;
+
+
+  
     // Friendly printer
     friend std::ostream &
     operator<<(std::ostream &out, const confusion_matrix &q);
@@ -5662,27 +5709,71 @@ namespace provallo
   public:
     confusion_matrix(const dataset &data, const classifier &_classifier);
 
+
+    //copy constructor
+    confusion_matrix(const confusion_matrix &other);
+    //move constructor
+    confusion_matrix(confusion_matrix &&other);
+    //copy assignment
+    confusion_matrix &operator=(const confusion_matrix &other);
+    //move assignment
+    confusion_matrix &operator=(confusion_matrix &&other);
+
+    //comparison operator
+    inline bool operator==(const confusion_matrix &other) const
+    {
+      if (_fp!=other._fp||_fn!=other._fn||_tp!=other._tp||_tn!=other._tn||_precision!=other._precision||_recall!=other._recall||_error!=other._error || _total!=other._total )
+			 return false;
+		if(_matrix.size1()!=other._matrix.size1() || _matrix.size2()!=other._matrix.size2())
+			return false;
+		
+		for(size_t i=0;i<_matrix.size1();++i)
+			for(size_t j=0;j<_matrix.size2();++j)
+				if(_matrix(i,j)!=other._matrix(i,j))
+					return false;
+		return true;		
+    }
+
     // Get total number of errors
     size_t
     getError() const;
 
-    // Comparison operator
-    bool
-    operator==(const confusion_matrix &other) const
-    {
-      if (_matrix != other._matrix)
-        return false;
-      return true;
-    }
-
+ 
     size_t getMatrixDim() const
     {
       return _matrix.size1();
     }
-  
+    size_t get_false_positive() const
+    {
+      return _fp;
+    }
+    size_t get_false_negative() const
+    {
+      return _fn;
+    }
+    size_t get_true_positive() const
+    {
+      return _tp;
+    }
+    size_t get_true_negative() const
+    {
+      return _tn;
+    }
+    size_t get_total() const
+    {
+      return _total;
+    }
+    size_t get_error() const
+    {
+      return _error;
+    }
+
     virtual ~confusion_matrix()
     {
-      _matrix.clear();  
+      
+      this->_class_values.clear();
+      this->_matrix.clear();
+
     }
   };
 
@@ -5712,6 +5803,14 @@ namespace provallo
     {
       _matrix.clear();  
     }
+
+
+    std::vector<std::pair<real_t, real_t>> get_points()const 
+    {
+      return _roc_points;
+    }
+
+
   };
 
   class lightgbm_classifier: public ensemble_classifier 
@@ -5734,19 +5833,104 @@ namespace provallo
     uint32_t _bins;
     // Number of iterations
     uint32_t _iterations;
+    // Number of early stopping rounds
+    uint32_t _early_stopping_rounds;
+    // Learning rate
+    real_t _learning_rate;
+    // Number of boosting iterations
+    uint32_t _boosting_iterations;
+    // Bagging fraction
+    real_t _bagging_fraction;
+    // Bagging frequency
+    uint32_t _bagging_freq;
+    // Bagging seed
+    uint32_t _bagging_seed;
+    // Feature fraction
+    real_t _feature_fraction;
+    // Feature fraction seed
+    uint32_t _feature_fraction_seed;
+     // Minimum sum of instance weight in one leaf
+    real_t _min_sum_hessian_in_leaf;
+    // L1 regularization
+    real_t _lambda_l1;
+    // L2 regularization
+    real_t _lambda_l2;
+    // Minimum gain to perform split
+    real_t _min_gain_to_split;
+    // Maximum number of leaves
+    uint32_t _max_leaves;
+    // Maximum depth
+    uint32_t _max_depth;
+    // Maximum bin
+    uint32_t _max_bin;
+    // Number of data points to construct feature histogram
+    uint32_t _bin_construct_sample_cnt;
+    // Number of data points to use for finding splits
+    uint32_t _num_leaves;
+    // Number of data points to use for finding splits
+    uint32_t _min_data_in_bin;
+    // Number of data points to use for finding splits
+    uint32_t _min_data_in_leaf;
+    // Minimum number of data points in one node
+    uint32_t _min_data_per_group;
+    // Minimum number of data points in one node
+    uint32_t _max_cat_threshold;
+    // Minimum number of data points in one node
+    uint32_t _cat_l2;
+    // Minimum number of data points in one node
+    uint32_t _cat_smooth;
+    // Minimum number of data points in one node
+    uint32_t _max_cat_to_onehot;
+    // Minimum number of data points in one node
+    uint32_t _top_k;
+    // Minimum number of data points in one node
+    uint32_t _monotone_constraints;
+    // Minimum number of data points in one node
+    uint32_t _feature_contri;
+    // Minimum number of data points in one node
+    uint32_t _forcedsplits_filename;
+    // Minimum number of data points in one node
+    uint32_t _verbosity;
+
+    
+   
     public:
-      lightgbm_classifier(const dataset &data);
+      
+     lightgbm_classifier(const dataset &data, const parameter_base &parameters,
+      const std::random_device &random, std::ostream &out=std::cout, split_method_factory *factory=nullptr);  
+
       virtual ~lightgbm_classifier();
       
-      virtual class_dist  classify(const std::vector<attribute> &sample) const;
-      
 
-      virtual void
-      print(std::ostream &out) const;     
+    //pure virtual functions:
+        // Classify a set of attributes
+    virtual attribute
+    classify(dataset::attribute_iterator begin,
+             dataset::attribute_iterator end) const ;
+    virtual attribute
+    classify(std::vector<attribute>::const_iterator begin,
+             std::vector<attribute>::const_iterator end) const;
+
+    // Get distribution of outcomes
+    virtual class_dist
+    posterior(dataset::attribute_iterator begin,
+              dataset::attribute_iterator end) const;
+    virtual class_dist
+    posterior(std::vector<attribute>::const_iterator begin,
+              std::vector<attribute>::const_iterator end) const;
+
+
+    //helpers for the above:
+    virtual class_dist  classify(const std::vector<attribute> &sample) const;
       
-      virtual void  print(std::ostream &out, const dataset &data) const;    
+    virtual class_dist posterior (const std::vector<attribute> &sample) const ; 
+
+    virtual void
+    
+    print(std::ostream &out) const;     
       
-      virtual void  print(std::ostream &out, const dataset &data, const std::vector<attribute> &predictions) const;
+ 
+
   };
   class xgboost_classifier: public ensemble_classifier 
   {
@@ -5782,6 +5966,8 @@ namespace provallo
       
       virtual class_dist  classify(const std::vector<attribute> &sample) const;
       //posteriors
+      //posterior probabilities
+      virtual class_dist posterior (const std::vector<attribute> &sample) const ; 
 
 
 
@@ -5828,7 +6014,7 @@ namespace provallo
         //create isolation forest 
         _isoforest = new isolation_forest();
         //set parameters
-        matrix<double> data_matrix = transform_data(); 
+        matrix<real_t> data_matrix = transform_data(); 
         _isoforest->fit(data_matrix) ; 
 
       }
@@ -5856,12 +6042,12 @@ namespace provallo
       virtual void
       print(std::ostream &out) const;     
 
-      //transform current dataset to matrix<double> 
-      matrix<double> transform_data() const;
+      //transform current dataset to matrix<real_t> 
+      matrix<real_t> transform_data() const;
 
 
       //print
-      matrix<double> get_importance() const;
+      matrix<real_t> get_importance() const;
       //print
       virtual void  print(std::ostream &out, const dataset &data) const;    
       //print
@@ -6037,9 +6223,9 @@ namespace provallo
       t_end = std::chrono::high_resolution_clock::now();
 
     std::cout << "[+] CPU time elapsed in s: "
-              << (double)(c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+              << (real_t)(c_end - c_start) / CLOCKS_PER_SEC << std::endl;
     std::cout << "[+] Wall time elapsed in s: "
-              << std::chrono::duration<double>(t_end - t_start).count()
+              << std::chrono::duration<real_t>(t_end - t_start).count()
               << std::endl;
      std::cout << "[+]Number of errors = " << error << std::endl;
     std::cout << "[+]Number of test samples = " << test_data.size()

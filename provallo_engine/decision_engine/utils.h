@@ -3259,14 +3259,146 @@ namespace provallo
 	return 0.0;
       return x * log<Base> (x);
     }
+	
+	 
+  
+  	
+	inline uint64_t
+	fnv1a (const std::string &text)
+	{
+	 constexpr const  real_t fnv_prime = 16777619;
+  	 constexpr const real_t fnv_offset_basis = 2166136261;
 
-  const std::string
+	  uint64_t hash = fnv_offset_basis;
+	  for (size_t i = 0; i < text.size (); i++)
+	    {
+	      hash ^= text[i];
+	      hash *= fnv_prime;
+	    }
+	  return hash;
+	}	
+	constexpr std::uint64_t wang64(const std::uint64_t &x) {
+  		std::uint64_t y(x);
+		y = (~y) + (y << 21);  // y = (y << 21) - y - 1;
+		y = y ^ (y >> 24);
+		y = (y + (y << 3)) + (y << 8);  // y * 265
+		y = y ^ (y >> 14);
+		y = (y + (y << 2)) + (y << 4);  // y * 21
+		y = y ^ (y >> 28);
+		y = y + (y << 31);
+		return y;
+	}
+	constexpr std::uint32_t wang32(const std::uint32_t &x) {
+  		std::uint32_t y(x);
+		y = (~y) + (y << 15);  // y = (y << 15) - y - 1;
+		y = y ^ (y >> 12);
+		y = (y + (y << 2)) + (y << 4);  // y * 21
+		y = y ^ (y >> 9);
+		y = (y + (y << 3)) + (y << 4);  // y * 28
+		y = y ^ (y >> 23);
+		y = y + (y << 1) + (y << 4);  // y * 21 * 5
+		return y;
+	}
+	constexpr std::uint16_t wang16(const std::uint16_t &x) {
+  		std::uint16_t y(x);
+		y = (~y) + (y << 7);  // y = (y << 7) - y - 1;
+		y = y ^ (y >> 4);
+		y = (y + (y << 3)) + (y << 4);  // y * 21
+		y = y ^ (y >> 10);
+		y = y + (y << 1) + (y << 4);  // y * 21 * 5
+		return y;
+	}
+	template <typename UIntType>
+	constexpr bool is_even(const UIntType val) {
+  		return val & 1;
+	}
+	template <typename UIntType>
+	inline bool is_pow2(const UIntType val) {
+	if (val < 0) {  // safety against signed ints.
+		std::stringstream ss;
+		ss << "error: is_pow2 argument " << val << " should be nonnegative.";
+		throw std::invalid_argument(ss.str());
+	}
+	return !(val == 0) && !(val & (val - 1));
+	}
+	template <typename UIntType>
+	inline UIntType next_pow2(const UIntType val) {
+	if (val < 0) {  // safety against signed ints.
+
+		std::stringstream ss;
+		ss << "error: next_pow2 argument " << val << " should be nonnegative.";
+		throw std::invalid_argument(ss.str());
+	}
+	if (is_pow2(val)) {
+		return val;
+	}
+	UIntType next_pow2 = 1;
+	while (next_pow2 < val) {
+		next_pow2 <<= 1;
+	}
+	return next_pow2;
+	}
+	template <typename UIntType>
+	inline UIntType prev_pow2(const UIntType val) {
+	if (val < 0) {  // safety against signed ints.
+		std::stringstream ss;
+		ss << "error: prev_pow2 argument " << val << " should be nonnegative.";
+		throw std::invalid_argument(ss.str());
+	}
+	if (is_pow2(val)) {
+		return val;
+	}
+	UIntType prev_pow2 = 1;
+	while (prev_pow2 < val) {
+		prev_pow2 <<= 1;
+	}
+	return prev_pow2 >> 1;
+	}
+	template <typename UIntType>
+	inline UIntType log2(const UIntType val) {
+	if (val < 0) {  // safety against signed ints.
+
+		std::stringstream ss;
+		ss << "error: log2 argument " << val << " should be nonnegative.";
+		throw std::invalid_argument(ss.str());
+	}
+	if (val == 0) {
+		return 0;
+	}
+	UIntType log2 = 0;
+	UIntType value = val;
+	while (value >>= 1) {
+		++log2;
+	}
+	return log2;
+	}
+	template <typename UIntType>
+	inline UIntType log2_ceil(const UIntType val) {
+	if (val < 0) {  // safety against signed ints.
+
+		std::stringstream ss;
+
+		ss << "error: log2_ceil argument " << val << " should be nonnegative.";
+		throw std::invalid_argument(ss.str());
+	}
+	if (val == 0) {
+		return 0;
+	}
+	UIntType log2 = 0;
+	UIntType value = val - 1;
+	while (value >>= 1) {
+		++log2;
+	}
+	return log2 + 1;
+	}
+
+
+
+  	const std::string
   trim (const std::string &pString, const std::string &pWhitespace);
   const std::string
   reduce (const std::string &pString, const std::string &pFill,
 	  const std::string &pWhitespace = "");
-}
-;
-//namespace
+}//namespace
 #endif /* DECISION_ENGINE_UTILS_H_ */
 

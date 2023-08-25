@@ -23,6 +23,7 @@
 #include <sstream>
 #include <atomic>
 #include "utils.h"
+#include "matrix.h"
 #include "../glue/glueprocessinfo.h"
 
 
@@ -30,7 +31,7 @@ namespace provallo
 {
 
   // types:
-  typedef unsigned int tag;
+  typedef size_t tag;
   typedef size_t count;
   typedef tag attribute_tag;
   typedef std::string attribute_name;
@@ -530,8 +531,12 @@ namespace provallo
       //ignore value
        if ( value.size() == 0)
         return 0;
-
-       return this->_index;
+      //return index from value
+      if (value == "?")
+        return 0;
+      else
+        return std::stoul(value);
+        
 
     }
 
@@ -600,11 +605,14 @@ namespace provallo
     continous_attribute(const attribute_definition *deserial) : attribute_definition(deserial)
     {
     }
+    continous_attribute(const continous_attribute &other) : attribute_definition(other)
+    {
+    }
 
     attribute_definition *
     clone() const
     {
-      return new continous_attribute(getName(), getTag());
+      return new continous_attribute(*this);
     }
 
     void
@@ -660,7 +668,7 @@ namespace provallo
     attribute_definition *
     clone() const
     {
-      return new ignored_attribute(getName(), getTag());
+      return new ignored_attribute(*this);
     }
 
     void
@@ -717,25 +725,17 @@ namespace provallo
     virtual attribute_value
     _getValue(const attribute &value) const
     {
-      if ( value.discrete() < _values_map.size()  ) 
-        return _values_map[value.discrete()];
-      else if (value.discrete()==_values_map.size())
+      if (_values_map.size()==0) 
       {
-        return  _values_map[value.discrete() -1];
-      } 
-      else{
-        std::cerr<<"[-]"<<"discrete_attribute::_getValue: value out of range : "<<value.discrete()<<" "<<_values_map.size()<<std::endl; 
-        std::cerr<<"[-] values map : "<<std::endl;
-        for(auto v : _values_map)
-        {
-          std::cerr<<v<<std::endl;
-        }
-        std::cerr<<"[-] "<<std::endl;
+        std::cerr<<"[-]"<<"discrete_attribute::_getValue: values map is empty"<<this->getName().c_str()<<std::endl; 
         return "0";
-        //throw std::runtime_error(std::string("discrete_attribute::_getValue: value out of range : ")+std::to_string(value.discrete())+" "+std::to_string(_values_map.size()))  ;  
       }
-     }
+      else if ( value.discrete() < _values_map.size()  ) 
+        return _values_map[value.discrete()];
+      else
+      return "0";
 
+    }
     bool
     _compare(const attribute_definition &other) const;
 
@@ -747,12 +747,26 @@ namespace provallo
     discrete_attribute(const attribute_name &name, const attribute_tag &tag,
                        const std::vector<attribute_value> &attribute_values);
     discrete_attribute(const attribute_definition *deserial);
+    discrete_attribute(const discrete_attribute &other) : attribute_definition(other), _name_map(other._name_map), _values_map(other._values_map)
+    {
+      
+      //validate we copied the values 
+
+      for (auto& value : other._values_map)
+      {
+        if( _name_map.find(value) == _name_map.end() )
+        {
+          std::cerr<<"[-]"<<"discrete_attribute::discrete_attribute: value not found"<<std::endl;
+        } 
+
+      }
+    }
+  
 
     attribute_definition *
     clone() const
     {
-      return new discrete_attribute(getName(), getTag(), _name_map,
-                                    _values_map);
+      return new discrete_attribute( *this);
     }
 
     void
@@ -763,6 +777,24 @@ namespace provallo
     {
       return DISCRETE;
     }
+    void add_value(const attribute_name &name, const discrete_value &discrete)
+    {
+ 
+        if ( _name_map.find(name) == _name_map.end() )
+        {
+              // Add value to the map
+          _name_map[name] = discrete;
+          // Add value to the vector
+          _values_map.push_back(name);
+          
+
+        }
+        else
+        {
+          std::cerr<<"[-]"<<"discrete_attribute::add_value: value already exists"<<std::endl;
+        } 
+
+     } 
 
     attribute_type
     get_type() const
@@ -808,6 +840,25 @@ namespace provallo
     {
       return other._tag == _tag&& other._name == _name; 
     }
+    virtual attribute_type
+    get_type() const = 0;
+    virtual size_t
+    getCount() const = 0;
+    virtual attribute_descriptor *
+    clone() const = 0;
+    virtual void
+    print(std::ostream &out) const = 0;
+    const attribute_name &
+    getName() const
+    {
+      return _name;
+    }
+    const attribute_tag &
+    getTag() const
+    {
+      return _tag;
+    }
+
 
     friend std::ostream &
     operator<<(std::string &out, const attribute_descriptor &attr);
@@ -820,7 +871,13 @@ namespace provallo
   class attribute_groups
   {
   public:
-    attribute_groups()
+
+    explicit attribute_groups(const size_t size) : _groups(0,size), _split_type(size), _type(size)
+    {
+
+    }
+  
+    attribute_groups() : _groups(), _split_type(), _type()
     {
     }
     attribute_groups(const attribute_groups *deserial);
@@ -872,10 +929,31 @@ namespace provallo
       return *this;
     }
 
+    void clear()
+    {
+      if (_groups.size1() !=0)
+      {
+      
+         _groups.clear();
+      }
+      if (_split_type.size() !=0)
+      {
+
+      _split_type.clear();
+      }
+      if (_type.size() !=0)
+      {
+        _type.clear();
+      }
+    }
+
     virtual ~attribute_groups()
     {
-#ifdef DEBUG_ATTRIBUTE_DESTRUCTOR_CALLS
 
+      clear();
+
+#ifdef DEBUG_ATTRIBUTE_DESTRUCTOR_CALLS
+      
       static std::atomic_uint64_t count = 0;
       count++;
 
@@ -884,13 +962,20 @@ namespace provallo
     }
 
     // Access to group of attributes
-    const std::vector<attribute_tag> &
+    std::vector<attribute_tag>
     getGroup(uint32_t i) const
     {
-      assert(i < _groups.size());
-      return _groups[i];
-    }
 
+      assert(i < _groups.size1());
+      std::vector<attribute_tag> group;
+      for (uint32_t j = 0; j < _groups.size2(); j++)
+      {
+        group.push_back(_groups(i, j));
+      }
+      return group;
+
+    }
+     
     // Get split type of a group
     split_type
     getsplit_type(uint32_t i) const
@@ -922,7 +1007,7 @@ namespace provallo
     size_t
     size() const
     {
-      return _groups.size();
+      return _groups.size1();
     }
 
     // Push attribute group with the split type
@@ -930,16 +1015,54 @@ namespace provallo
     push(const std::vector<attribute_tag> &group, split_type type,
          attribute_type attr_type)
     {
-      _groups.push_back(group);
-      _split_type.push_back(type);
-      _type.push_back(attr_type);
-    }
+      if(group.size() == 0)
+      {
+        //cant push empty group 
 
+      throw std::runtime_error("cant push empty group");
+      }
+      //copy old groups
+      if(_groups.size1() != 0)
+      {
+        
+        provallo::matrix<attribute_tag> temp = _groups;
+        //merge new group with old groups 
+        _groups.resize(temp.size1() + 1,temp.size2());
+        //copy old groups
+        for (size_t i = 0; i < temp.size1(); i++)
+        {
+          for (size_t j = 0; j < temp.size2(); j++)
+          {
+            _groups(i,j) = temp(i,j);
+          }
+        }
+        //copy new group
+        for (size_t j = 0; j < group.size(); j++)
+        { 
+          _groups(temp.size1(),j) = group[j];
+        }
+        //push split type and attribute type
+        _split_type.push_back(type);
+        _type.push_back(attr_type);
+      }
+      else
+      {
+        //push new group
+        _groups.resize(1,group.size());
+        for (size_t j = 0; j < group.size(); j++)
+        { 
+          _groups(0,j) = group[j];
+        }
+        //push split type and attribute type
+        _split_type.push_back(type);
+        _type.push_back(attr_type);
+      } 
+
+     }
     // Comparison operator
     bool
     operator==(const attribute_groups &other) const
     {
-
       return (other._groups == _groups && other._type == _type && other._split_type == _split_type);
     }
     bool operator!=(const attribute_groups &other) const
@@ -947,25 +1070,19 @@ namespace provallo
       return other._groups != _groups || other._type != _type || other._split_type != _split_type;
     }
 
-    //
-    void clear()
-    {
-      _groups.clear();
-      _split_type.clear();
-      _type.clear();
-    }
-
     // Serialize attribute information into the buffer
     void
     serialize(attribute_groups *serial) const;
 
   private:
+    // TODO: combine groups,attribute_type and split_type into a single matrix
     // Array of grouped attributes
-    std::vector<std::vector<attribute_tag>> _groups;
+    provallo::matrix<attribute_tag> _groups;
     // Split methods for each group
     std::vector<split_type> _split_type;
     // Type of each *effective* attribute
     std::vector<attribute_type> _type;
+
   };
 
   // This class defines a set of attributes on a sample set. Once an object
@@ -1003,7 +1120,7 @@ namespace provallo
     //copy constructor
     attribute_information(const attribute_information &right);
     //move constructor
-    attribute_information(attribute_information &&right);
+    attribute_information(attribute_information &&right)  noexcept;
     //copy assignment
     attribute_information &operator=(const attribute_information &right);
     //move assignment
@@ -1237,12 +1354,37 @@ namespace provallo
       else
       return attribute(value).discrete();
     }
-
-    //destruct
-    ~attribute_information()
+    virtual void clear () 
     {
-      for (uint32_t i = 0; i < _definition_map.size(); ++i)
-        delete _definition_map[i];
+      if ( _definition_map.size() )
+       {
+        for (size_t i = 0; i < _definition_map.size(); ++i)
+          if( _definition_map[i] )
+            delete _definition_map[i];
+
+       }
+
+      _definition_map.clear();
+      
+      _name_map.clear();
+      
+      _tag_map.clear();
+      
+      _type.clear();
+      
+      _count.clear();
+      
+      _target_pos = 0;
+      
+      _groups.clear();
+ 
+    }
+    //destruct
+    virtual ~attribute_information()
+    {
+      clear();
+      std::cout<<"attribute_information destructor[0x"<<std::hex<<std::to_string(ptrdiff_t(this))<<std::dec<<"]"<<std::endl;
+      
     } 
 
   private:

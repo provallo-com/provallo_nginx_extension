@@ -126,7 +126,9 @@ namespace decision_engine {
     template<typename T>
     void neural_urn<T>::train() {
         for(auto& nn : neural_networks) {
+            
             nn->train();
+
         }
     }
     template<typename T>

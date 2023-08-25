@@ -11,7 +11,120 @@
 #include "utils.h"
 namespace provallo
 {
+	namespace filters 
+	{
 
+		class base_filter
+		{
+		public:
+			virtual ~base_filter() {}
+			virtual void filter(matrix<double>& m) = 0;
+		};
+		class mean_filter : public base_filter
+		{
+			size_t _window;
+		public:
+			mean_filter(size_t window) : _window(window) {}
+			void filter(matrix<double>& m) override
+			{
+				for (size_t i = 0; i < m.rows(); ++i)
+				{
+					for (size_t j = 0; j < m.cols(); ++j)
+					{
+						double sum = 0.0;
+						for (size_t k = 0; k < _window; ++k)
+						{
+							sum += m(i, j + k);
+						}
+						m(i, j) = sum / _window;
+					}
+				}
+			}
+		};	
+		
+		class median_filter : public base_filter
+		{
+			size_t _window;	
+		public:
+			median_filter(size_t window) : _window(window) {}
+			void filter(matrix<double>& m) override
+			{
+				for (size_t i = 0; i < m.rows(); ++i)
+				{
+					for (size_t j = 0; j < m.cols(); ++j)
+					{
+						std::vector<double> tmp;
+						for (size_t k = 0; k < _window; ++k)
+						{
+							tmp.push_back(m(i, j + k));
+						}
+						std::sort(tmp.begin(), tmp.end());
+						m(i, j) = tmp[tmp.size() / 2];
+					}
+				}
+			}
+		};	
+		class max_filter : public base_filter
+		{
+			size_t _window;
+		public:
+			max_filter(size_t window) : _window(window) {}
+			void filter(matrix<double>& m) override
+			{
+				for (size_t i = 0; i < m.rows(); ++i)
+				{
+					for (size_t j = 0; j < m.cols(); ++j)
+					{
+						double max = std::numeric_limits<double>::min();
+						for (size_t k = 0; k < _window; ++k)
+						{
+							if (m(i, j + k) > max)
+							{
+								max = m(i, j + k);
+							}
+						}
+						m(i, j) = max;
+					}
+				}
+			}
+		};	
+		//bloom filter
+		class bloom_filter : public base_filter
+		{
+			size_t _window; //window size
+			std::function<uint64_t(const std::string&)> _hash;
+			std::vector<bool> _bloom;
+
+		public:
+			bloom_filter(size_t window) : _window(window),_hash(fnv1a),_bloom(window) {}
+			void filter (const std::vector<std::string> &v)
+			{
+				for (auto e : v)
+				{
+					uint64_t h = _hash(e);
+					_bloom[h % _bloom.size()] = true;
+				}
+			}
+			void filter(matrix<double>& m) override
+			{
+				for (size_t i = 0; i < m.rows(); ++i)
+				{
+					for (size_t j = 0; j < m.cols(); ++j)
+					{
+						double sum = 0.0;
+						for (size_t k = 0; k < _window; ++k)
+						{
+							sum += m(i, j + k);
+						}
+						m(i, j) = sum / _window;
+					}
+				}
+			}
+		};		
+
+
+
+	}//namespace filters
 	 	
 	namespace QN
 	{

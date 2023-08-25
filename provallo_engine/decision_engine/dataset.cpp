@@ -84,10 +84,10 @@ namespace provallo
   dataset::print(std::ostream &out) const
   {
     // Print each sample in a CSV format
-    for (uint32_t i = 0; i < size(); ++i)
+    for (size_t i = 0; i < size(); ++i)
     {
       // Loop over attributes
-      for (uint32_t j = 0; j < getattributesNumber(); ++j)
+      for (size_t j = 0; j < getattributesNumber(); ++j)
       {
         // Get attribute
         attribute att = getattribute(i, j);
@@ -438,7 +438,8 @@ namespace provallo
 
         if (j == target_tag) {
           //get the value index 
-          attribute value_index(_attributes_info.getValueIndex(target_tag,value)); 
+          attribute value_index(discrete_value(_attributes_info.getValueIndex(target_tag,value))); 
+          
           if(value_index.discrete()<new_set->_distribution.size())
             new_set->_distribution.accum(value_index.discrete());
           else if (value.discrete()<new_set->_distribution.size() )
@@ -522,7 +523,7 @@ namespace provallo
       {
 
         attribute value(  getattribute(i, target_tag));
-        attribute value_index(_attributes_info.getValueIndex(target_tag,value));  
+        attribute value_index(discrete_value(_attributes_info.getValueIndex(target_tag,value))); 
         // Sum contribution into the distribution
         if ( value_index.discrete()<distribution.size() )
           distribution.accum(value_index.discrete());
@@ -1201,7 +1202,7 @@ namespace provallo
   real_t kurtosis(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<real_t> probs(data.getattributes().getCount(tag), 0);
+    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0);
     for (size_t i = 0; i < data.size(); ++i)
 
     {
@@ -1446,7 +1447,7 @@ namespace provallo
 
   // static debug counters:
   std::atomic_uint64_t dataset::id_counter(0);
-  std::atomic_uint64_t dataset::dest_counter(0);
+  std::atomic_uint64_t dataset::dest_counter(1);
   std::atomic_uint64_t dataset::attribute_iterator::_instance_counter(0);
 
 } /* namespace provallo */

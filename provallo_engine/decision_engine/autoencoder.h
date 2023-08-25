@@ -1342,13 +1342,15 @@ namespace provallo
         }
         virtual void train(T *input, size_t inputSize, size_t batchSize)
         {
-            //train the model
+            //Train the model
             //get the batch
             T *batch = getBatch(input, inputSize, batchSize);
             //train the model
             train(batch, batchSize);
+
             //delete the batch ?
             delete [] batch;
+            
         }
         virtual void train(T *input, size_t inputSize, size_t batchSize, size_t epoch)
         {
@@ -1384,6 +1386,7 @@ namespace provallo
         {
             //test the model
             //get the output
+            predict(input, inputSize, output, outputSize);
 
             
         }
@@ -1464,6 +1467,17 @@ namespace provallo
         bias1GradPrevPrev = new T[hiddenDim];
         bias2GradPrevPrev = new T[outputDim];
         
+        //initialize the biases.
+        memset(bias1, 0, sizeof(T) * hiddenDim);
+        memset(bias2, 0, sizeof(T) * outputDim);
+        memset(bias1Grad, 0, sizeof(T) * hiddenDim);
+        memset(bias2Grad, 0, sizeof(T) * outputDim);
+        memset(bias1Momentum, 0, sizeof(T) * hiddenDim);
+        memset(bias2Momentum, 0, sizeof(T) * outputDim);
+        memset(bias1Update, 0, sizeof(T) * hiddenDim);
+        memset(bias2Update, 0, sizeof(T) * outputDim);
+        memset(bias1Decay, 0, sizeof(T) * hiddenDim);
+        memset(bias2Decay, 0, sizeof(T) * outputDim);
 
         initializeWeight();
         initializeBias();
@@ -1863,6 +1877,11 @@ namespace provallo
     template <typename T, typename real_x>
     void auto_encoder<T,real_x>::train(T *input, T *output, size_t size)
     {
+        if ( input==nullptr || output==nullptr)
+        {
+            std::cout << "[-] autoencoder - error in training - no input." << std::endl;
+            return;
+        }
         feedforward(input, output, size);
         backprop(input, output, size);
         //done
@@ -3617,8 +3636,95 @@ namespace provallo
 
         }
     };
+ 
+    template <class T,class real_x>
+    class softmax_classifier
+    {
+       size_t n_classes;
+       size_t n_dimensions;
 
-    
+       matrix<real_t> weight;
+       real_t alpha;
+       real_t lambda;
+
+
+        softmax_classifier(size_t n_classes,size_t n_dimensions,real_t alpha,real_t lambda)
+        {
+            this->n_classes = n_classes;
+            this->n_dimensions = n_dimensions;
+            this->alpha = alpha;
+            this->lambda = lambda;
+            //init random weight
+            weight = matrix<real_t>::Random(n_classes,n_dimensions);
+            
+        } 
+        //forward
+        void forward(const matrix<real_t>& input,matrix<real_t>& output)
+        {
+            //softmax
+            output = input * weight.transpose();
+            output = output.unaryExpr([](real_t x) { return std::exp(x); });
+            output = output.rowwise([](real_t x) {return x;}) / output.sum();
+        }
+        //backward
+        void backward(const matrix<real_t>& input,const matrix<real_t>& output,const matrix<real_t>& target,matrix<real_t>& grad)
+        {
+            //softmax
+            grad = output - target;
+            //weight
+            grad = grad.transpose() * input;
+            //regularization
+            grad = grad + lambda * weight;
+        }   
+        //update
+        void update(const matrix<real_t>& grad)
+        {
+            weight = weight - alpha * grad;
+        }
+        //train
+        void train(const matrix<real_t>& input,const matrix<real_t>& target)
+        {
+            matrix<real_t> output;
+            matrix<real_t> grad;
+            forward(input,output);
+            backward(input,output,target,grad);
+            update(grad);
+        }
+        //predict
+        void predict(const matrix<real_t>& input,matrix<real_t>& output)
+        {
+            forward(input,output);
+        }
+
+        //save
+        void save(const std::string filename)
+        {
+            std::ofstream out(filename, std::ios::binary); 
+            if (!out.is_open()) {
+                std::cout << "Cannot open file to write: " << filename << std::endl;
+                return;
+            }
+            //dont use tensorflow namespace and dependencies, just save weights and biases as binary file,no python
+            //save weights and biases
+            out.write((char*)weight.data(), sizeof(real_x) * n_classes * n_dimensions);
+            out.close();
+        }
+        //load
+        void load(const std::string filename)
+        {
+            std::ifstream in(filename, std::ios::binary); 
+            if (!in.is_open()) {
+                std::cout << "Cannot open file to read: " << filename << std::endl;
+                return;
+            }
+            //dont use tensorflow namespace and dependencies, just save weights and biases as binary file,no python
+            //save weights and biases
+            in.read((char*)weight.data(), sizeof(real_x) * n_classes * n_dimensions);
+            in.close();
+        }
+    }; 
+
+
 
 } // namespace provallo
 

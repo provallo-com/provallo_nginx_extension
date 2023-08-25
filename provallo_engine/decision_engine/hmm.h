@@ -60,14 +60,16 @@ namespace provallo
               sample->clear ();
 
         if (_observation_sampler)
-            delete[] _observation_sampler;
-            _observation_sampler = nullptr;
+            {delete[] _observation_sampler;}
+        
+        _observation_sampler = nullptr;
 
         if (_initial_sampler)
-            delete[] _initial_sampler;
-            _initial_sampler = nullptr;
+            {delete[] _initial_sampler;}
+        
+        _initial_sampler = nullptr;
 
-            }
+      }
 
     };
 
@@ -176,6 +178,7 @@ namespace provallo
     sanity ();
     if (i >= _nstates || j >= _nstates) throw std::runtime_error ("hmm: invalid state");
     return _observation (i, j);
+    //
   } 
 
 }

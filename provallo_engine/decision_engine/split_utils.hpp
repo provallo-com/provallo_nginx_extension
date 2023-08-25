@@ -1366,16 +1366,16 @@ namespace provallo
 
 		// Check if the array of attributes belongs to some branch
 		virtual bool
-		isInBranch(const attribute_iterator &begin, uint32_t nbranch) const = 0;
+		isInBranch(const attribute_iterator &begin, size_t nbranch) const = 0;
 		virtual bool
 		isInBranch(const std::vector<attribute>::const_iterator &begin,
-				   uint32_t nbranch) const = 0;
+				   size_t nbranch) const = 0;
 
 		// Return the branch that this arrays belongs
 
-		virtual uint32_t
+		virtual size_t
 		getBranch(const attribute_iterator &begin) const = 0;
-		virtual uint32_t
+		virtual size_t
 		getBranch(const std::vector<attribute>::const_iterator &begin) const = 0;
 
 		virtual split_method *
@@ -1393,18 +1393,19 @@ namespace provallo
 		void
 		printBranch(std::ostream &out,
 					const attribute_information &attributes_info,
-					uint32_t nbranch) const
+					size_t nbranch) const
 		{
 			// Print branch description
-			attribute branch(nbranch);
+			const discrete_value branch_= discrete_value(nbranch);
 
-			out << attributes_info.getValue(get_tag(0), branch);
+			attribute branchbranch_(branch_); // Create attribute with the branch 
+			out << attributes_info.getValue(get_tag(0), branchbranch_);
+
 		}
 
 		virtual ~split_method()
 		{
-
-			split_method::_instance_counter--;
+ 			split_method::_instance_counter--;
 			attributes.clear();
 		}
 
@@ -1480,7 +1481,7 @@ namespace provallo
 		/*
 	   template<class InputIterator>
 		 bool
-		 isInBranch (const InputIterator& b, uint32_t nbranch) const
+		 isInBranch (const InputIterator& b, size_t nbranch) const
 		 {
 			size_t n = get_tag(0);
 
@@ -1491,7 +1492,7 @@ namespace provallo
 
 	   // Return the branch that this arrays belongs
 	   template<class InputIterator>
-		 uint32_t
+		 size_t
 		 getBranch (const InputIterator& b) const
 		 {
 		size_t n = get_tag(0);
@@ -1500,7 +1501,7 @@ namespace provallo
 		 */
 		template < class InputIterator >
 		bool
-		isInBranch(const InputIterator &b, uint32_t nbranch) const
+		isInBranch(const InputIterator &b, size_t nbranch) const
 		{
 			size_t n = get_tag(0);
 
@@ -1508,7 +1509,7 @@ namespace provallo
 			//  return isInBranch<std::vector<attribute>::const_iterator> (b, nbranch);
 		}
 		template < class InputIterator >
-		uint32_t
+		size_t
 		getBranch(const InputIterator &b) const
 		{
 			size_t n = get_tag(0);
@@ -1516,26 +1517,26 @@ namespace provallo
 		}	
 
 		virtual bool
-		isInBranch(const attribute_iterator &b, uint32_t nbranch) const
+		isInBranch(const attribute_iterator &b, size_t nbranch) const
 		{
 			return isInBranch<attribute_iterator>(b, nbranch);
 
  		}
 		virtual bool
 		isInBranch(const std::vector<attribute>::const_iterator &b,
-				   uint32_t nbranch) const
+				   size_t nbranch) const
 		{
 			return isInBranch<const std::vector<attribute>::const_iterator>(b, nbranch);
 			//  return isInBranch<std::vector<attribute>::const_iterator> (b, nbranch);
 		}
 
-		virtual uint32_t
+		virtual size_t
 		getBranch(const attribute_iterator &b) const
 		{
 			return getBranch<attribute_iterator>(b);
 		}
 
-		virtual uint32_t
+		virtual size_t
 		getBranch(const std::vector<attribute>::const_iterator &b) const
 		{
 			return getBranch<const std::vector<attribute>::const_iterator>(b);
@@ -1586,30 +1587,30 @@ namespace provallo
 		// if all the data on the interval belongs to the same class)
 		// Output -> cut_pair : first = index of the cut point, second = value of the cut point
 		bool
-		binarySplit(const dataset &data, uint32_t begin, uint32_t end,
+		binarySplit(const dataset &data, size_t begin, size_t end,
 					const attribute_tag &tag,
-					std::pair<uint32_t, Float> &cut_pair) const;
+					std::pair<size_t, real_t> &cut_pair) const;
 		// Calculate the gain of a given continuous attribute
 		void
 		split(const dataset &data, const attribute_tag &tag,
-			  std::vector<Float> &interval) const;
+			  std::vector<real_t> &interval) const;
 
 
 		void seed(const std::random_device& seed) { _seed = (std::random_device*)( ptrdiff_t( &seed)) ;}
 	protected:
 		// Accept or reject splitting
 		virtual bool
-		checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
-					   uint32_t cut_point, const attribute_tag &tag) const = 0;
+		checkSplitting(const dataset &data, size_t begin, size_t end,
+					   size_t cut_point, const attribute_tag &tag) const = 0;
 		// Select cut point
-		virtual uint32_t
-		selectPoint(std::vector<std::pair<Float, uint32_t>>::iterator begin,
-					std::vector<std::pair<Float, uint32_t>>::iterator end) const;
+		virtual size_t
+		selectPoint(std::vector<std::pair<real_t, size_t>>::iterator begin,
+					std::vector<std::pair<real_t, size_t>>::iterator end) const;
 		// Recursively split an interval
 		void
-		splitInterval(const dataset &data, uint32_t begin, uint32_t end,
+		splitInterval(const dataset &data, size_t begin, size_t end,
 					  const attribute_tag &tag,
-					  std::vector<Float> &interval) const;
+					  std::vector<real_t> &interval) const;
 
 		std::random_device * _seed;
 
@@ -1624,8 +1625,8 @@ namespace provallo
 
 		// Accept or reject splitting
 		bool
-		checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
-					   uint32_t cut_point, const attribute_tag &tag) const
+		checkSplitting(const dataset &data, size_t begin, size_t end,
+					   size_t cut_point, const attribute_tag &tag) const
 		{
 
 			// Never split halfways
@@ -1660,8 +1661,8 @@ namespace provallo
 
 		// Accept or reject splitting
 		bool
-		checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
-					   uint32_t cut_point, const attribute_tag &tag) const
+		checkSplitting(const dataset &data, size_t begin, size_t end,
+					   size_t cut_point, const attribute_tag &tag) const
 		{
 			// Always return true
 			if (   begin==end)
@@ -1691,8 +1692,8 @@ namespace provallo
 
 		// Accept or reject splitting
 		bool
-		checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
-					   uint32_t cut_point, const attribute_tag &tag) const
+		checkSplitting(const dataset &data, size_t begin, size_t end,
+					   size_t cut_point, const attribute_tag &tag) const
 		{
 			// Always return true
 			if (   begin==end)
@@ -1737,14 +1738,14 @@ namespace provallo
 		random_split(const random_split &other) : _ran(std::move(other._ran))
 		{
 		}
-		uint32_t
-		selectPoint(std::vector<std::pair<Float, uint32_t>>::iterator begin,
-					std::vector<std::pair<Float, uint32_t>>::iterator end) const;
+		size_t
+		selectPoint(std::vector<std::pair<real_t, size_t>>::iterator begin,
+					std::vector<std::pair<real_t, size_t>>::iterator end) const;
 
 		// Accept or reject splitting
 		bool
-		checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
-					   uint32_t cut_point, const attribute_tag &tag) const
+		checkSplitting(const dataset &data, size_t begin, size_t end,
+					   size_t cut_point, const attribute_tag &tag) const
 		{
 			// Like binary split
 			std::random_device dev;
@@ -1764,9 +1765,9 @@ namespace provallo
 
 
 		}
-		bool binarySplit (const dataset &data, uint32_t begin,
-			       uint32_t end, const attribute_tag &tag,
-			       std::pair<uint32_t, Float> &cut_pair) const;
+		bool binarySplit (const dataset &data, size_t begin,
+			       size_t end, const attribute_tag &tag,
+			       std::pair<size_t, real_t> &cut_pair) const;
 				   		//serialize and deserialize
 
 		
@@ -1785,8 +1786,8 @@ namespace provallo
 	{
 		// Accept or reject splitting
 		bool
-		checkSplitting(const provallo::dataset &data, uint32_t begin, uint32_t end,
-					   uint32_t cut_point, const attribute_tag &tag) const;
+		checkSplitting(const provallo::dataset &data, size_t begin, size_t end,
+					   size_t cut_point, const attribute_tag &tag) const;
 
 		split_type
 		get_type() const
@@ -1833,7 +1834,7 @@ namespace provallo
 	class cont1d : public split_method, public SplittingPolicy
 	{
 		// Set of points that defines the intervals
-		std::vector<Float> _interval;
+		std::vector<real_t> _interval;
 
 		// Internal method to compare a split method
 		bool
@@ -1881,7 +1882,7 @@ namespace provallo
 		}
 
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
-			   const dataset &data_set, std::vector<Float> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
+			   const dataset &data_set, std::vector<real_t> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
 		{
 			SplittingPolicy::set_interval(interval);	
 			
@@ -1898,7 +1899,7 @@ namespace provallo
 		// Extra constructor to use on splitting policy
 		template <class SplittingArg>
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
-			   const dataset &data_set, SplittingArg split_arg, std::vector<Float> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), SplittingPolicy(split_arg), _interval(interval)
+			   const dataset &data_set, SplittingArg split_arg, std::vector<real_t> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), SplittingPolicy(split_arg), _interval(interval)
 		{
 			SplittingPolicy::set_interval(interval);	
 		}	
@@ -1915,7 +1916,7 @@ namespace provallo
 		}	
 		// Extran constructor with random_device
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
-			   const dataset &data_set, std::random_device &dev, std::vector<Float> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
+			   const dataset &data_set, std::random_device &dev, std::vector<real_t> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
 		{
 			SplittingPolicy::set_interval(interval);	
 		}	
@@ -1957,12 +1958,12 @@ namespace provallo
 		// Check if the array of attributes belongs to some branch
 		template <class InputIterator>
 		bool
-		isInBranch(const InputIterator &begin, uint32_t nbranch) const
+		isInBranch(const InputIterator &begin, size_t nbranch) const
 		{
 			// Get value
 			if (_interval.size() > nbranch)
 			{
-				Float value = (*(begin + get_tag(0))).continous();
+				real_t value = (*(begin + get_tag(0))).continous();
 				return (value > _interval[nbranch] && value <= _interval[nbranch + 1]);
 			}
 			return false;
@@ -1970,36 +1971,36 @@ namespace provallo
 
 		// Return the branch that this arrays belongs
 		template <class InputIterator>
-		uint32_t
+		size_t
 		getBranch(const InputIterator &begin) const
 		{
 			if (_interval.size() == 0)
 				return 0;
 			// Value
-			Float value = (*(begin + get_tag(0))).continous();
+			real_t value = (*(begin + get_tag(0))).continous();
 			// Binary search
 			return std::lower_bound(_interval.begin(), _interval.end(), value) - _interval.begin() - 1;
 		}
 
 		bool
-		isInBranch(const attribute_iterator &begin, uint32_t nbranch) const
+		isInBranch(const attribute_iterator &begin, size_t nbranch) const
 		{
 			return isInBranch<attribute_iterator>(begin, nbranch);
 		}
 		bool
 		isInBranch(const std::vector<attribute>::const_iterator &begin,
-				   uint32_t nbranch) const
+				   size_t nbranch) const
 		{
 			return isInBranch<std::vector<attribute>::const_iterator>(begin,
 																	  nbranch);
 		}
 
-		uint32_t
+		size_t
 		getBranch(const attribute_iterator &begin) const
 		{
 			return getBranch<attribute_iterator>(begin);
 		}
-		uint32_t
+		size_t
 		getBranch(const std::vector<attribute>::const_iterator &begin) const
 		{
 			return getBranch<std::vector<attribute>::const_iterator>(begin);
@@ -2016,7 +2017,7 @@ namespace provallo
 		void
 		printBranch(std::ostream &out,
 					const attribute_information &attributes_info,
-					uint32_t nbranch) const
+					size_t nbranch) const
 		{
 			// Print branch description
 
@@ -2079,7 +2080,7 @@ namespace provallo
 		void serialize(std::ostream &out) const
 		{
 			out << get_type() << ":" << get_tag(0) << ":" << _interval.size() << " ";
-			for (uint32_t i = 0; i < _interval.size(); ++i)
+			for (size_t i = 0; i < _interval.size(); ++i)
 				out <<std::to_string( _interval[i] ) << std::string( (i==_interval.size()-1)?" ":",");
 			out<<std::endl;
 			SplittingPolicy::serialize(out);
@@ -2101,15 +2102,15 @@ namespace provallo
 			//	throw std::runtime_error("Error deserializing split method");
 
 
-			uint32_t tag = std::stoi(tokens[1].c_str());
-			uint32_t nintervals = std::stoi(tokens[2].c_str());
+			size_t tag = std::stoi(tokens[1].c_str());
+			size_t nintervals = std::stoi(tokens[2].c_str());
 			std::getline(in, line);	
 			std::vector<std::string> tokens2;
 			provallo::tokenize(line,tokens2, std::string(","));
 			if (tokens2.size() != nintervals)
 				throw std::runtime_error("Error deserializing split method");
-			std::vector<Float> intervals;
-			for (uint32_t i = 0; i < nintervals; ++i)
+			std::vector<real_t> intervals;
+			for (size_t i = 0; i < nintervals; ++i)
 				intervals.push_back(std::stof(tokens2[i].c_str())); 
 
 			this->_interval = intervals;
@@ -2129,7 +2130,7 @@ namespace provallo
 			SplittingPolicy> *>(&other);
 		if (get_tag(0) != method.get_tag(0))
 			return false;
-		for (uint32_t i = 0; i < _interval.size(); ++i)
+		for (size_t i = 0; i < _interval.size(); ++i)
 			if (_interval[i] != method._interval[i])
 				return false;
 
@@ -2169,13 +2170,13 @@ namespace provallo
 
 		split_method_factory(const split_method_factory &other) : _split_methods(other._split_methods),
 																  _target_method(other._target_method ? other._target_method->clone() : nullptr),
-																  r_dataset(other.r_dataset),override_split_method(false),override_split_type(CONE_RANDOM)
+																  r_dataset(std::ref(other.r_dataset)),override_split_method(false),override_split_type(CONE_RANDOM)
 		{
 
 		}
 		split_method_factory(split_method_factory &&other) : _split_methods(std::move(other._split_methods)),
-															 _target_method(other._target_method),
-															 r_dataset(other.r_dataset),override_split_method(other.override_split_method),override_split_type(other.override_split_type)
+															 _target_method(std::move(other._target_method)),
+															 r_dataset(std::move(std::ref(other.r_dataset))),override_split_method(other.override_split_method),override_split_type(other.override_split_type)
 		{
 			other._target_method = nullptr;
 		}
@@ -2221,7 +2222,7 @@ namespace provallo
 		{
 			if (not(*_target_method == *other._target_method))
 				return false;
-			for (uint32_t i = 0; i < _split_methods.size(); ++i)
+			for (size_t i = 0; i < _split_methods.size(); ++i)
 				if (not(*_split_methods[i] == *other._split_methods[i]))
 					return false;
 			return true;
@@ -2268,7 +2269,7 @@ namespace provallo
 	struct EntropyGain
 	{
 		// Calculate the gain of a given attribute
-		Float
+		real_t
 		gain(const dataset &data, const split_method &selector);
 	};
 
@@ -2276,7 +2277,7 @@ namespace provallo
 	struct GainRatio
 	{
 		// Calculate the gain of a given attribute
-		Float
+		real_t
 		gain(const dataset &data, const split_method &selector);
 	};
 
@@ -2284,14 +2285,14 @@ namespace provallo
 	struct ChiSquare
 	{
 		// Calculate the gain of a given attribute
-		Float
+		real_t
 		gain(const dataset &data, const split_method &selector);
 	};
 
 	// distance  metrics
 	struct Euclidean
 	{
-		Float
+		real_t
 		distance(const attribute &a, const attribute &b) const
 		{
 			// Return square distance
@@ -2308,7 +2309,7 @@ namespace provallo
 	// Basic overlap metric
 	struct Overlap
 	{
-		Float
+		real_t
 		distance(const attribute &a, const attribute &b) const
 		{
 			//return overlap condition
@@ -2334,14 +2335,14 @@ namespace provallo
 		// Calculate the distance between two samples
 		template <class DataLeftIterator, class DataRightIterator,
 				  class TypeIterator, class WeightIterator>
-		Float
+		real_t
 		distance(DataLeftIterator a_begin, DataLeftIterator a_end,
 				 DataRightIterator b_begin, DataRightIterator b_end,
 				 TypeIterator t_begin, WeightIterator w_begin) const
 		{
 
 
-			Float dist(0.0);
+			real_t dist(0.0);
  			// same sample, no distance ?
 			if (a_begin == b_begin ||b_begin == b_end)
 				return dist;
@@ -2351,7 +2352,7 @@ namespace provallo
 				attribute a (*a_begin);
 				attribute b (*b_begin);
 				attribute_type t (*t_begin);
-				Float w (*w_begin);
+				real_t w (*w_begin);
 
 				// skip ignored attributes.
 
@@ -2388,7 +2389,7 @@ namespace provallo
 	};
 
 	// Calculate entropy of a data set
-	Float
+	real_t
 	entropy(const dataset &data);
 
 	// Get best class on a data set
@@ -2396,7 +2397,7 @@ namespace provallo
 	getBestClass(const dataset &data);
 
 	// Calculate the gini index of a data set
-	Float gini(const dataset& data);
+	real_t gini(const dataset& data);
 
 }
 

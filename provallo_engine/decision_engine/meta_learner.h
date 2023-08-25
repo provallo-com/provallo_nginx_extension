@@ -50,12 +50,14 @@ public:
             });
             
         }
+
         void evaluate(const matrix<double>& data) {
+        
             for(auto& e: evaluator_desc) {
                  e.second(data);
             }
         }   
-        
+ 
         void add_evaluator(std::string name, std::function< matrix<real_t> (const matrix<double>&)> evaluator) {
 
             evaluator_desc.push_back(std::make_pair(name,evaluator));
@@ -80,42 +82,6 @@ public:
                 std::cout << e.first <<  e.second(data)<<std::endl;
             }
         }
-        //evaluator functions for each stage in the pipeline
-        //the evaluator functions are used to determine the accuracy and cost of each stage in the pipeline
-        //accuracy of vectorizer  = number of correct predictions / total number of predictions 
-        //cost of vectorizer = number of floating point operations required to process a single sample
-        //complexity of vectorizer = number of elements in the vectorizer + number of attributes/samples associated with each element + number of connections between elements
-
-        //acciuracy of neural network = number of correct predictions / total number of predictions
-        //cost of neural network = number of floating point operations required to process a single sample
-        //complexity of neural network = number of elements in the neural network + number of attributes/samples associated with each element + number of connections between elements
-
-        //accuracy of autoencoder = number of correct predictions / total number of predictions
-        //cost of autoencoder = number of floating point operations required to process a single sample
-        //complexity of autoencoder = number of elements in the autoencoder + number of attributes/samples associated with each element + number of connections between elements
-
-        //accuracy of classifier = number of correct predictions / total number of predictions
-        //cost of classifier = number of floating point operations required to process a single sample
-        //complexity of classifier = number of elements in the classifier + number of attributes/samples associated with each element + number of connections between elements
-
-        //accuracy of regressor = number of correct predictions / total number of predictions
-        //cost of regressor = number of floating point operations required to process a single sample
-        //complexity of regressor = number of elements in the regressor + number of attributes/samples associated with each element + number of connections between elements
-
-        //accuracy of normalizer = number of correct predictions / total number of predictions
-        //cost of normalizer = number of floating point operations required to process a single sample
-        //complexity of normalizer = number of elements in the normalizer + number of attributes/samples associated with each element + number of connections between elements  
-
-        //accuracy of denormalizer = number of correct predictions / total number of predictions
-        //cost of denormalizer = number of floating point operations required to process a single sample
-        //complexity of denormalizer = number of elements in the denormalizer + number of attributes/samples associated with each element + number of connections between elements
-
-        //metrics for the entire pipeline 
-        //accuracy of pipeline = number of correct predictions / total number of predictions
-        //cost of pipeline = number of floating point operations required to process a single sample
-        //complexity of pipeline = number of elements in the pipeline + number of attributes/samples associated with each element + number of connections between elements
-
-        
         
     };
 
@@ -133,7 +99,7 @@ public:
     
         
     public: 
-        meta_learner():id(urn_count++) {}
+        meta_learner(): builder(std::string("meta_learner")+std::to_string(urn_count+1),"./db/meta_learner") ,id(urn_count++) {}
         virtual ~meta_learner() {}
         virtual void setup(const matrix<double>& data) = 0; 
         virtual void train() = 0;
@@ -147,17 +113,5 @@ public:
     
 }//namespace provallo
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+  
 #endif 

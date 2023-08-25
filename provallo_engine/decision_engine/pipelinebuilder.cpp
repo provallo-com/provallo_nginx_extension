@@ -23,6 +23,7 @@ namespace provallo
   {
 
   }
+
   std::vector<real_t> bag_of_words::get_bag_of_words() const
   {
     return _bow;
@@ -267,6 +268,15 @@ namespace provallo
     // std::cout<<"bow matrix: "<<_bow_matrix<<std::endl;
     return ;
   }
+  //transform a doc to a vec
+  void bag_of_words::process_documents() 
+  {
+    //add_document
+    //already processed.
+    
+    return ;
+
+  }
   //  virtual void process_document(const std::string&);
   void bag_of_words::process_document(const std::string & doc) 
   {
@@ -387,6 +397,7 @@ namespace provallo
     }
     return result;
   }
+
   std::vector<real_t> bag_of_words::fit(const std::string& doc)
   {
     std::vector<real_t> result;
@@ -414,6 +425,7 @@ namespace provallo
     }
     return result;  
   }
+
   std::vector<real_t> bag_of_words::transform(const std::string &doc)
   {
     std::vector<real_t> result;
@@ -530,8 +542,126 @@ namespace provallo
     return inverse_transform(fit(mat));
   }
   // inverse_transform end
+  // bag_of_words dump
+  void bag_of_words::dump(std::ostream &out) const
+  {
+    out << "vocabulary: " << std::endl;
+    for (auto &word : _vocabulary)
+    {
+      out << word << std::endl;
+    }
+    out << "bow: " << std::endl;
+    for (auto &b : _bow)
+    {
+      out << b << std::endl;
+    }
+    out << "bow matrix: " << std::endl;
+    out << _bow_matrix << std::endl;
+    out << "bow transformed: " << std::endl;
+    out << _bow_transformed << std::endl;
+    out << "bow transformed inverse: " << std::endl;
+    out << _bow_transformed_inverse << std::endl;
+  }
+  
+  // bag_of_words load
+   void bag_of_words::load(std::ifstream& is)
+   {
+      //load vocabulary
+      std::string line;
+      while(std::getline(is,line))
+      {
+        if (line.empty()||line=="\n"||line=="\r"||line=="\r\n")
+          break;
+        _vocabulary.push_back(line);
+      }
+      //load bow
+      while(std::getline(is,line))
+      {
+        _bow.push_back(std::stod(line));
+      }
+      //load bow matrix
+      is>>_bow_matrix;
+      //load bow transformed
+
+
+      //load the number of vectors in the bow transformed 
+      size_t num_vectors;
+      is>>num_vectors;
+
+      //load each vector in the bow transformed
+      for(size_t i=0;i<num_vectors;++i)
+      {
+        std::vector<real_t> vec;
+        for(size_t j=0;j<_vocabulary.size();++j)
+        {
+          real_t value;
+          is>>value;
+          vec.push_back(value);
+        }
+        _bow_transformed.push_back(vec);
+      } 
+      //load bow transformed inverse
+
+      is>>num_vectors;
+      for (size_t i=0;i<num_vectors ;++i)
+      {
+        std::vector<real_t> vec;
+        for(size_t j=0;j<_vocabulary.size();++j)
+        {
+          real_t value;
+          is>>value;
+          vec.push_back(value);
+        }
+        _bow_transformed_inverse.push_back(vec);
+      }
+
+      //done
+   }
+  //explicit save
+   void bag_of_words::save(std::ofstream& os) const
+   {
+      //save vocabulary
+      for(auto& word:_vocabulary)
+      {
+        os<<word<<std::endl;
+      } 
+      //save bow
+      for(auto& b:_bow)
+      {
+        os<<b<<std::endl;
+      }
+      //save bow matrix
+      os<<_bow_matrix<<std::endl;
+      //save bow transformed
+      os<<_bow_transformed.size()<<std::endl;
+      for(auto& vec:_bow_transformed)
+      {
+        for(auto& value:vec)
+        {
+          os<<value<<" ";
+        }
+        os<<std::endl;
+      }
+      //save bow transformed inverse
+      os<<_bow_transformed_inverse.size()<<std::endl;
+      for(auto& vec:_bow_transformed_inverse)
+      {
+        for(auto& value:vec)
+        {
+          os<<value<<" ";
+        }
+        os<<std::endl;
+      }
+      //done
+
+
+   }
+
+  
+  
   // bag of words end
   
+
   tfidf::tfidf(const tfidf &other) : _tf(other._tf), _idf(other._idf)
   {
   }
@@ -2296,8 +2426,26 @@ namespace provallo
       // add the stage to the pipeline
       _stages.push_back(new_stage);
     }
-    else
-      throw std::runtime_error("stage not found");
+    else { 
+      //create stage from category and name
+      stage_descriptor stage;
+      stage.name = name;
+      stage.type = category;
+      stage.stage_id = std::chrono::system_clock::now().time_since_epoch().count();
+      stage.input = "";
+      stage.output = "";
+      stage.input_type = "";
+      stage.output_type = "";
+      stage.input_parameters = "";
+      stage.output_parameters = "";
+      stage.parameters = "";
+      // create a stage from the stage descriptor with empty initialization
+      stage_descriptor *new_stage = stage_factory_singleton::get_instance()->build_stage(stage);
+      if (new_stage == nullptr)
+         throw std::runtime_error("stage not found");
+      // add the stage to the pipeline  
+      _stages.push_back(new_stage);
+     }
     
   }
   // add a stage to the pipeline
@@ -6456,5 +6604,301 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     }
     */
     //process_data
+  //lda_vectorizer implementation
+  //constructor:
+  lda_vectorizer::lda_vectorizer():vectorizer<std::string,real_t>(LDA_VECTORIZER)
+  {
+    //initialize the lda vectorizer
+    this->initialize();
+  }
+  //destructor:
+  lda_vectorizer::~lda_vectorizer()
+  {
+    //clear the lda vectorizer
+    this->clear();
+  }
+  //initialize the lda vectorizer
+  void lda_vectorizer::initialize()
+  {
+    //initialize the lda vectorizer
+    //clear the lda vectorizer
+    this->clear();
+  } 
+  //clear the lda vectorizer
+  void lda_vectorizer::clear()
+  {
+    //clear the lda vectorizer
+    this->_bow.clear();
+  }
+  //fit the lda vectorizer to the data
+  std::vector<real_t> lda_vectorizer::fit(const std::string& single_doc )
+  {
+    //fit the data using the bag of words and update local variables
+    this->_bow.process_document(single_doc);
+    //copy the vocabulary
+    this->_vocabulary = this->_bow.get_vocabulary();
+    //get the bag of words
+    std::vector<real_t> bow = this->_bow.get_bag_of_words();
+    //get the number of documents
+    this->_num_docs = this->_bow.get_number_of_documents();
+    //get the number of words
+    this->_num_words = this->_bow.get_number_of_words();
+    //get the number of unique words
+    this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+    //  fill ret
+    std::vector<real_t> ret;
+    //fill ret
+    for ( size_t i = 0; i < this->num_unique_tokens; i++)
+    {
+      //fill ret
+      ret.push_back(bow[i]);
+    }
+    //return ret
+    return ret;
+  } 
 
+  //process_documents
+  void lda_vectorizer::process_documents (const std::vector<std::string>& documents )
+  {
+    //process the documents
+    this->_bow.process_documents(documents);
+  }
+  //fit a single document :
+  std::vector<real_t> lda_vectorizer::fit( const std::vector<std::string>& data_)
+  {
+    //fit the data using the bag of words and update local variables
+    this->_bow.process_documents(data_);
+    //copy the vocabulary
+    this->_vocabulary = this->_bow.get_vocabulary();
+    //get the bag of words
+    std::vector<real_t> bow = this->_bow.get_bag_of_words();
+    //get the number of documents
+    this->_num_docs = this->_bow.get_number_of_documents();
+    //get the number of words
+    this->_num_words = this->_bow.get_number_of_words();
+    //get the number of unique words
+    this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+    //  fill ret
+    std::vector<real_t> ret;
+    //fill ret
+    for ( size_t i = 0; i < this->num_unique_tokens; i++)
+    {
+      //fill ret
+      ret.push_back(bow[i]);
+    }
+    //return ret
+    return ret;
+  }
+  //fit_transform the lda vectorizer
+  std::vector<real_t> lda_vectorizer::fit_transform( const std::vector<std::string>& data_)
+  {
+      this->_bow.process_documents(data_); 
+      //copy the vocabulary
+      this->_vocabulary = this->_bow.get_vocabulary();
+      //get the bag of words
+      std::vector<real_t> bow = this->_bow.get_bag_of_words();
+      //get the number of documents
+      this->_num_docs = this->_bow.get_number_of_documents();
+      //get the number of words
+      this->_num_words = this->_bow.get_number_of_words();
+      //get the number of unique words
+      this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+      //  fill ret
+      std::vector<real_t> ret(this->num_unique_tokens,0.0) ;
+
+      //fill ret  
+      for ( size_t i = 0; i < this->num_unique_tokens; i++)
+      {
+        //fill ret
+        ret[i] = bow[i];
+      }
+      return ret;
+     
+      //return ret
+      return ret;
+
+  }
+
+  ///usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo14lda_vectorizerE[_ZTVN8provallo14lda_vectorizerE]+0x28): undefined reference to `provallo::lda_vectorizer::fit(provallo::matrix<double> const&)'
+  //fit(matrix)
+  std::vector<real_t> lda_vectorizer::fit(const matrix<real_t>& data_)
+  {
+
+    const auto & docs =_bow.inverse_transform(data_);
+    //fit the data using the bag of words and update local variables
+     this->_bow.process_documents(docs);    
+    //return the one-hot vector
+    return this->fit(docs);
+    //copy the vocabulary
+
+  }
+
+  //usr/bin/ld: CMakeFiles/provallo_engine.dir/decision_engine/pipelinebuilder.cpp.o:(.data.rel.ro._ZTVN8provallo14lda_vectorizerE[_ZTVN8provallo14lda_vectorizerE]+0xa0): undefined reference to `provallo::lda_vectorizer::save(std::basic_ofstream<char, std::char_traits<char> >&)'
+
+
+  //fit_transform the lda vectorizer
+  std::vector<std::vector<real_t>> lda_vectorizer::fit_transform( const provallo::matrix<real_t>& data_)
+  {
+    //fit the data using the bag of words and update local variables
+    //transform the matrix into a vector of strings
+    
+    UNDEF_REFERENCE(data_)
+    UNDEF_REFERENCE2(data_)
+
+    //inverse transform the matrix into a vector of strings 
+    std::vector<std::vector<real_t>> ret; 
+    std::vector<std::string>  docs;
+    for(size_t i=0;i<data_.rows();++i)
+    { 
+      std::string row_doc;
+
+      for (size_t j = 0; j <data_.cols(); j++)
+      {
+        //get the value
+        real_t value = data_(i,j);
+        //get the index
+        size_t index = (size_t)value;
+        //check if the index is in the vocabulary
+        if(index< this->_vocabulary.size())
+        {
+          //get the word
+          std::string word = this->_vocabulary[index]; 
+          row_doc+=word+" ";
+        }
+        else
+        {
+          row_doc+="UNK ";
+        }
+        
+        
+      }//end for j
+      
+      docs.push_back(row_doc);
+      
+    }//end for i
+     //return ret
+    //now process the documents
+    ret = this->_bow.fit_transform(docs);
+    
+    return ret;
+
+  } 
+  //lda dump:
+  void lda_vectorizer::dump(std::ostream& out) const
+  {
+    //dump the lda vectorizer
+    //dump the bag of words
+    this->_bow.dump(out);
+    //dump the vocabulary
+    out<<this->_vocabulary;
+    //dump the number of documents
+    out<<this->_num_docs;
+    //dump the number of words
+    out<<this->_num_words;
+    //dump the number of unique tokens
+    out<<this->num_unique_tokens;
+
+  }
+  //lda load:
+  void lda_vectorizer::load(std::ifstream& in)
+  {
+    //load the lda vectorizer
+    //load the bag of words
+    this->_bow.load(in);
+    //load the vocabulary
+    in>>this->_vocabulary;
+    //load the number of documents
+    in>>this->_num_docs;
+    //load the number of words
+    in>>this->_num_words;
+    //load the number of unique tokens
+    in>>this->num_unique_tokens;
+  }
+
+  //lda save:
+  void lda_vectorizer::save(std::ofstream& out) const
+  {
+    //save the lda vectorizer
+    //save the bag of words
+    this->_bow.save(out);
+    //save the vocabulary
+    out<<this->_vocabulary;
+    //save the number of documents
+    out<<this->_num_docs;
+    //save the number of words
+    out<<this->_num_words;
+    //save the number of unique tokens
+    out<<this->num_unique_tokens;
+  } 
+  
+  //lda predict:
+  std::vector<real_t> lda_vectorizer::predict(const std::vector<std::string>& documents)
+  {
+    //predict the lda vectorizer
+    //get the one-hot vector
+    std::vector<real_t> one_hot_vector = this->fit_transform(documents); 
+    //return the one-hot vector
+    return one_hot_vector;
+  } 
+  //lda predict:
+  std::vector<real_t> lda_vectorizer::predict(const matrix<real_t>& data)
+  {
+    //predict the lda vectorizer
+    //get the one-hot vector
+    std::vector<real_t> ret;
+    auto ft  = _bow.predict(data); 
+    //return the one-hot vector
+    for(auto& vec: ft)
+    {
+      for(auto& val: vec)
+      {
+        ret.push_back(val);
+      }
+    }
+
+    //return the one-hot vector
+    return ret;
+  }
+  //lda transform:
+  std::vector<real_t> lda_vectorizer::transform(const std::vector<std::string>& documents)
+  {
+    //transform the lda vectorizer
+    //get the one-hot vector
+    std::vector<real_t> one_hot_vector = this->fit_transform(documents); 
+    //return the one-hot vector
+    return one_hot_vector;  
+  }
+  //lda transform:
+  std::vector<real_t> lda_vectorizer::transform(const matrix<real_t>& data)
+  {
+    //transform the lda vectorizer
+    //get the one-hot vector
+    std::vector<real_t> ret;
+    auto vector_of_vectors = this->fit_transform(data); 
+    for ( auto& v:vector_of_vectors)
+    {
+      for ( auto& val:v)
+      {
+        ret.push_back(val);
+      }
+    }
+    //return the one-hot vector
+    return  ret;  
+  }
+  //lda transform:
+  std::vector<real_t> lda_vectorizer::transform(const std::vector<std::vector<std::string>>& data)
+  { 
+    std::vector<real_t> one_hot_vector;
+    for ( auto& doc : data )
+    {
+        std::vector<real_t> tmp= this->transform(doc); 
+        for ( auto& val : tmp)
+          one_hot_vector.push_back(val);
+      //push the one-hot vector to the vector
+      this->_num_docs++;   
+    }
+    //return the one-hot vector
+    return one_hot_vector;  
+  }
+  
  } // namespace provallo

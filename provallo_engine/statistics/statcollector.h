@@ -45,7 +45,7 @@ namespace provallo
     // data_field have a name
     std::string _name;
     // An absolute time stamp (measure from a monotonic clock source)
-    float _timestamp;
+    real_t _timestamp;
     // Type of field (i.e continuous, discrete or ignore)
     std::string _type;
 
@@ -61,13 +61,13 @@ namespace provallo
 
     // Set time stamp of this field (this value should be updated each time the field value is collected)
     void
-    setTimeStamp(const float &timestamp)
+    setTimeStamp(const real_t &timestamp)
     {
       _timestamp = timestamp;
     }
 
     // Get time stamp
-    float
+    real_t
     getTimeStamp() const
     {
       return _timestamp;
@@ -275,13 +275,13 @@ namespace provallo
     {
       static std::string ret_;
 
-      float deriv(0.0);
+      real_t deriv(0.0);
       // Sanity check
       if ((l.getTimeStamp() - r.getTimeStamp()) < 1E-06)
         deriv = 0.0;
       else
         deriv =
-            ((float)static_cast<const data_field<InternalClass> *>(&l)->getdata_field() - (float)static_cast<const data_field<InternalClass> *>(&r)->getdata_field()) / (l.getTimeStamp() - r.getTimeStamp());
+            ((real_t)static_cast<const data_field<InternalClass> *>(&l)->getdata_field() - (real_t)static_cast<const data_field<InternalClass> *>(&r)->getdata_field()) / (l.getTimeStamp() - r.getTimeStamp());
 
       ret_ = std::to_string(deriv);
 
@@ -420,7 +420,7 @@ namespace provallo
     std::map<size_t, std::pair<uint16_t, std::string>> _type_exception_pair_map; // map indice to type :
     friend std::ostream &
     operator<<(std::ostream &out, const stat_collector &q);
-    float
+    real_t
     getTimeStamp() const;
 
   public:

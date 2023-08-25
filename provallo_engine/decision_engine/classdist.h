@@ -31,8 +31,7 @@ namespace provallo
     operator<< (std::ostream &out, const class_dist &q);
 
   public:
-    class_dist () :
-	_sum (0.) //, _histogram ()
+    class_dist () :_histogram (), _sum (0.) 
     {
     }
     class_dist (size_t nbins) :
@@ -91,7 +90,7 @@ namespace provallo
       return true;
     }
     
-
+    real_t* array() {return _histogram.data();}
     //mode and percentage
     std::pair<attribute,real_t> mode_and_percentage () const;
     std::pair<attribute,real_t> mode_and_percentage (const std::vector<discrete_value>& exclude) const;

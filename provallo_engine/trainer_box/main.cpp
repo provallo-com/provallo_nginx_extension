@@ -41,9 +41,7 @@ provallo::isolation_forest* isoforest_single(const provallo::attribute_informati
 
 bool benchmark_classifiers (const std::string benchmark_folder = "./db/benchmarks");
 
-bool fit_fuzzsb(const std::string& benchmark_folder = "/home/kardon/eclipse-workspace/fuzzdb/fuzzdb/attack/");
-
-
+bool fit_fuzzsb(const std::string& benchmark_folder = "/home/kardon/eclipse-workspace/fuzzdb");
  
 ssize_t
 which_max (std::vector<double> &v)
@@ -85,6 +83,7 @@ test_fit_iso_forest ()
 
   return true;
 }
+     // fitting ISO FORESTS
 
 provallo::isolation_forest* isoforest_single(const provallo::attribute_information& attributes)
 {
@@ -214,10 +213,8 @@ kNNQueryThread(uint64_t start, uint64_t end,
       ++correctCount;
       else {
       ++errorsCount;
-        
-        std::cout << "Error: " << p.second << " " << pred << std::endl;
-
-      }
+         std::cout << "Error: " << p.second << " " << pred << std::endl;
+       }
     if (numQueriesProcessed % 500 == 0)
       std::cout << numQueriesProcessed << std::endl;
     queryLock.unlock();
@@ -751,7 +748,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
     }
   
     //iterate all the description files, build 'collector' and 'classifiers' for each of them
-    bool sanity_check = false;
+    //bool sanity_check = false;
     for(auto description_file : description_files)
     { 
         std::string file_stem = description_file.substr(0,description_file.find(".names"));
@@ -771,8 +768,13 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         const provallo::attribute_information& attributes = collector.getAttributes ();
         provallo::auto_encoder<double,double> encoder( collector.getAttributes().getSize(),collector.getAttributes().getSize()*collector.getAttributes().getSize(),collector.getAttributes().getTargetClassCount() );
 
+        std::cout<<"-- attribute info : "<<std::endl<<std::endl;
+        std::cout<< attributes <<std::endl<<std::endl;
+        char x =      std::getchar();
+      
+        std::cout<< attributes <<std::endl<<std::endl;
 
-
+       // x+= std::getchar();
         //checking zero knowledge distributed kmeans 
 
 
@@ -796,7 +798,6 @@ bool benchmark_classifiers (const std::string benchmark_folder )
           }
 
 
-
         std::cout<<"attributes size : "<<std::to_string(attributes.getSize())<<std::endl; 
         /*std::cout<<"-- weights : "<<std::endl<<std::endl;
         for (const auto& weight : weights)
@@ -816,6 +817,9 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         provallo::matrix<provallo::attribute> data = set.get_matrix();
         std::cout<<"-- training set matrix size : "<<std::to_string(data.size1()*data.size2())<<std::endl; 
         std::cout<<"-- training set matrix size1 : "<<std::to_string(data.size1())<<std::endl;
+        std::cout<<"-- attribute info : "<<std::endl<<std::endl;
+        std::cout<<set.getattribute_info()<<std::endl<<std::endl;
+        x+=      std::getchar();
         //train encoders 
         provallo::class_dist ds(set.getattribute_info().getTargetClassCount());
         provallo::matrix<double> mdata(data.size1(),data.size2());
@@ -826,9 +830,10 @@ bool benchmark_classifiers (const std::string benchmark_folder )
             mdata(i,j) = data(i,j).continous();
           }
         }
-
+        
         encoder.train(mdata,ds);
 
+      
         std::cout<<"-- encoder trained, classdist size : "<<std::to_string(ds.size())<<std::endl; 
         std::cout<<"-- classdist: "<<ds<<std::endl;
 
@@ -839,22 +844,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         std::cout<<"-- encoder output size : "<<std::to_string(encoder.getOutputDim())<<std::endl;
         std::cout<<"-- encoder hidden size : "<<std::to_string(encoder.getHiddenDim())<<std::endl;  
       
-      if(!sanity_check )
-      {
-          std::cout<<"[+] sanity check for vectorizers"<<std::endl;
- 
-        if(  test_vectorizers(set) )
-          {
-             std::cout<<"[+] sanity check for vectorizers OK"<<std::endl;
-             sanity_check = true;
-          }
-          else
-          {
-            std::cout<<"[+] sanity check for vectorizers FAILED"<<std::endl;
-            exit(-1);
-          }
-
-      }
+      std::cout<<"-- building classifiers "<<std::endl<<std::endl;
       typedef provallo::metric<provallo::Euclidean,provallo::Overlap> over_euc;
       typedef provallo::Kmeans<over_euc> km_classifier;
       typedef provallo::random_tree<provallo::GainRatio> egain_tree;
@@ -869,15 +859,15 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       //std::cout <<"-- allocating factory .... "<<std::endl<<std::endl;
       //provallo::split_method_factory* factory = new provallo::split_method_factory(set,rd ) ; 
       //factory->set_override_split_method(provallo::split_type::CONE_RANDOM);
-      provallo::split_method_factory* random_factory = new provallo::split_method_factory(set,rd);    
+      provallo::split_method_factory* random_factory = new provallo::split_method_factory(set,rd);
       random_factory->set_override_split_method(provallo::split_type::CONE_RANDOM);
+      
       provallo::isoforest_param isoparam(500/*ntrees*/,  1000 ,10,
                     256,129,10,
                     0.,50, std::chrono::system_clock::now().time_since_epoch().count()   );
  
       provallo::split_method_factory* factory = nullptr;
       provallo::dataset_ptr dataset_ptr1(nullptr);
-
       std::cout<<"-- training classifiers .... "<<std::endl<<std::endl; 
   
       if(buse_random_forest) 
@@ -890,18 +880,19 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       classifiers.push_back(new provallo::decision_tree<provallo::EntropyGain> (set,provallo::none(),rd,factory ));
       classifiers.push_back(new provallo::decision_tree<provallo::ChiSquare> (set,provallo::none(),rd,factory ));
 
-
       std::cout<<"-- training UF classifiers  .... "<<std::endl<<std::endl; 
-    
-
+     
       for(auto & class_ : classifiers)
       { 
+          std::cout<<set.getattribute_info()<<std::endl<<std::endl;
+
           print_classifier_summary(file_stem,set,*class_);
       }
-     
-
+      
+      std::cout<<"-- attribute info : "<<std::endl<<std::endl;
+      std::cout<<set.getattribute_info()<<std::endl<<std::endl;
       std::cout<<"-- press enter to continue .... "<<std::endl<<std::endl;
-      std::getchar();
+      x += std::getchar();
   
       std::cout<<"-- building neural network .... "<<std::endl<<std::endl;
       std::cout<<"-- training classifiers .... "<<std::endl<<std::endl;
@@ -983,18 +974,18 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       std::cout<<"-- deleting description file .... "<<std::endl<<std::endl;
       description_file.clear();
       ret = true;
-      std::cout<<"-- deleting dataset .... "<<std::endl<<std::endl;
-      if(dataset_ptr1)
-      delete dataset_ptr1.get();
+      std::cout<<"-- clearing training set .... "<<std::endl<<std::endl;
 
-    
+      set.clear();
 
-      std::cout<<"-- deleting random factory .... "<<std::endl<<std::endl;
-      if(random_factory)
-        delete random_factory;
-      std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
-      if(factory)
-        delete factory;
+      //clean up
+      //delete factory
+      //std::cout<<"-- deleting random factory .... "<<std::endl<<std::endl;
+      //if(random_factory)
+       // delete random_factory;
+      //std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
+      //if(factory)
+        //   delete factory;
 
 /*
       std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
@@ -1018,19 +1009,22 @@ bool benchmark_classifiers (const std::string benchmark_folder )
     } //end for description_files
     return ret;
 }// end benchmark_classifiers
- const char* vectorizer_types[] ={ "TFIDF",
-      "STANDARD_SCALER",
-      "MIN_MAX_SCALER",
-      "PCA",
-      "ONE_HOT_VECTORIZER",
-      "NEURAL_TRANSFORMER",
-      "AERONATIC_QARTERION", // tensor operator pitch/yaw/roll matrices
-      "SVD_OPERATOR",
-      "HPLANE_TRANSFORMER",
-      "HUFFMAN_TRANSFORMER",
-      "HMM_TRANSFORMER","REGRESSION_TRANSFORMER",
-      "UNKNOWN_VECTORIZER"  //for initialization of serialized objects
-      };
+ 
+ const char* vectorizer_types[] ={ 
+          "TFIDF",
+          "STANDARD_SCALER",
+          "MIN_MAX_SCALER",
+          "PCA,ONE_HOT_VECTORIZER",
+          "NEURAL_TRANSFORMER",
+          "AERONATIC_QARTERION", 
+          "SVD_OPERATOR",
+          "NGRAM_HMM_TRANSFORMER",
+          "HPLANE_TRANSFORMER",
+          "HUFFMAN_TRANSFORMER",
+          "HMM_TRANSFORMER","REGRESSION_TRANSFORMER",
+          "UMAP_VECTORIZER","TSNE_VECTORIZER","AUTOENCODER_VECTORIZER",
+          "LDA_VECTORIZER","UNKNOWN_VECTORIZER","ERROR_INDEX"
+          };
       
 std::vector<std::string> get_files_recursively (const std::string folder)
 {
@@ -1050,14 +1044,20 @@ std::vector<std::string> get_files_recursively (const std::string folder)
       if ( ent->d_type == DT_DIR)
       {
         std::string subfolder = ent->d_name;
-        if (subfolder != "." && subfolder != "..")
+        if (subfolder != "." && subfolder != ".." )
         {
+          if(subfolder[subfolder.length()-1]=='/')
+          subfolders.push_back(folder+subfolder);
+          else
           subfolders.push_back(folder+"/"+subfolder);
         }
       }
       else if (ent->d_type == DT_REG)
       {
         std::string file_name = ent->d_name;
+          if(folder[folder.length()-1]=='/')
+          files.push_back(folder+file_name);
+          else
            files.push_back(folder+"/"+file_name);
        } 
       else
@@ -1071,8 +1071,8 @@ std::vector<std::string> get_files_recursively (const std::string folder)
     perror ("could not open directory");
     return ret;
   }
-
-   for(auto subfolder : subfolders)
+  std::cout<<"\t[+] total sub-folders : "<<subfolders.size()<<std::endl;
+  for(auto subfolder : subfolders)
   {
     subfiles = get_files_recursively(subfolder);
     files.insert(files.end(),subfiles.begin(),subfiles.end());
@@ -1082,18 +1082,56 @@ std::vector<std::string> get_files_recursively (const std::string folder)
 bool fit_fuzzsb ( const std::string& fit_fuzzsb_folder)
 {
  
-  bool ret = false;
+  bool ret = true;
   std::vector<std::string> files = get_files_recursively(fit_fuzzsb_folder);
   std::vector<std::string> string_files;
-  std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers;
+  
+  //std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers;
+ 
+  std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers_attacks;
+  std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers_normal;
   std::vector<provallo::auto_encoder<real_t,real_t>*> autoencoders;
 
+  std::vector<std::string>  exclude_list;
+  exclude_list.push_back("COPYRIGHT");
+  exclude_list.push_back("LICENSE");
+  exclude_list.push_back("README");
+  exclude_list.push_back("README.md");
+  exclude_list.push_back("README.txt");
+  exclude_list.push_back("README.rst");
+  exclude_list.push_back("README.html");
+  exclude_list.push_back("README.pdf");
+  exclude_list.push_back(".JPEG");
+  exclude_list.push_back(".png");
+  exclude_list.push_back(".jpg");
+  exclude_list.push_back(".jpeg");
+  exclude_list.push_back(".gif");
+  exclude_list.push_back("_copyright.txt");
+exclude_list.push_back(".gitignore");
+exclude_list.push_back(".git");
+
+  
   for (auto file : files)
   {
-    if (file.find(".txt") != std::string::npos)
-    {
+ 
+      bool skip = false;
+      for (auto exclude : exclude_list)
+      {
+        std::string exclude_me = file.substr(file.find_last_of("/")+1);
+        if ( exclude_me.find(exclude) == std::string::npos)
+        {
+          skip = false;
+        }
+        else
+        {
+          skip = true;
+          break;            
+        }
+      }
+      if (skip)
+        continue;
       string_files.push_back(file);
-    }
+
   } 
   std::cout<<"[+] found "<<string_files.size()<<" files in folder "<<fit_fuzzsb_folder<<std::endl;
   std::cout<<"[+] found "<<files.size()<<" files in folder "<<fit_fuzzsb_folder<<std::endl;
@@ -1102,23 +1140,37 @@ bool fit_fuzzsb ( const std::string& fit_fuzzsb_folder)
   //the pipeline will load the files, vectorize them, train the autoencoder, 
 
   //first we want to verify the vectorizers and autoencoders work properly 
+  vectorizers_attacks.push_back(new provallo::tfidf_vectorizer);
+  vectorizers_attacks.push_back(new provallo::one_hot_vectorizer);
   
+  vectorizers_normal.push_back(new provallo::tfidf_vectorizer);
+  vectorizers_normal.push_back(new provallo::one_hot_vectorizer);
+  //vectorizers_normal.push_back(new provallo::auto_encoder_vectorizer<real_t,real_t>(autoencoders)); 
   //create vectorizers:
-    vectorizers.push_back(new provallo::pca_vectorizer);
-    vectorizers.push_back(new provallo::one_hot_vectorizer);
-    vectorizers.push_back(new provallo::tfidf_vectorizer);
+//  vectorizers.push_back(new provallo::pca_vectorizer);
     //vectorizers.push_back(new provallo::word2vec_vectorizer);
+  clock_t c_start, c_end;
+  std::chrono::high_resolution_clock::time_point t_start, t_end;
+  c_start = clock ();
+  t_start = std::chrono::high_resolution_clock::now ();
 
+  size_t total =string_files.size();
+  size_t cur =  0;
   for (auto & fuzz_file : string_files )
   {
     std::ifstream fuzz(fuzz_file);
     std::string fuzz_string((std::istreambuf_iterator<char>(fuzz)),
     std::istreambuf_iterator<char>());
-    std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
-    for (auto & vectorizer : vectorizers)
+    bool is_attack = false;
+    if(fuzz_file.find("attack")!=std::string::npos||fuzz_file.find("door")!=std::string::npos )
+      is_attack = true;
+    
+   // std::cout<<"[+] fuzzing "<<fuzz_file<< "("<<std::to_string(cur)+"/"+std::to_string(total)<<")"<<std::endl;
+    if ( is_attack ){
+    for (auto & vectorizer : vectorizers_attacks )
     {
       
-      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
+      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//= vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
       if ( vectorizer->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
       {
         vectorizer_type = vectorizer_types[vectorizer->get_type()];
@@ -1126,48 +1178,137 @@ bool fit_fuzzsb ( const std::string& fit_fuzzsb_folder)
       std::cout<<"[+] vectorizing with "<<vectorizer_type<<std::endl;
       vectorizer->add_document(fuzz_string);
       std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
+      std::cout<<"[+] finished "<<fuzz_file<<std::to_string(cur)+"/"+std::to_string(total)<<std::endl; 
 
-    }
-    
-    //process ( fit all documents )
-  }
-
-   //now that we have all the documents hopefull fitted into the vectorizers, we can train the autoencoders 
-   for ( auto& vectorizer : vectorizers)
-   {
-      vectorizer->fit();
-      autoencoders.push_back(new provallo::auto_encoder<real_t,real_t>( vectorizer->get_output_size() , vectorizer->get_output_size()*2 , 2));  //making binary output.
-
-   }
-    //now that we have the autoencoders, we can train them
-    //reiterate on the files and train the autoencoders 
-    for (auto & fuzz_file : string_files )
+    }}//if is_attack
+    else
     {
-      std::ifstream fuzz(fuzz_file);
-      std::string fuzz_string((std::istreambuf_iterator<char>(fuzz)),
-      std::istreambuf_iterator<char>());
-      std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
-      size_t vectr=0;
-      for (auto & autoencoder : autoencoders   )
+      for(auto& vectorizer : vectorizers_normal)
       {
-        auto & vectorizer = vectorizers[vectr++];
-
-        std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type(); 
+        std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//= vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
         if ( vectorizer->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
         {
           vectorizer_type = vectorizer_types[vectorizer->get_type()];
-        }
+        } 
         std::cout<<"[+] vectorizing with "<<vectorizer_type<<std::endl;
-        std::vector<real_t> input =vectorizer->predict(fuzz_string);
+        vectorizer->add_document(fuzz_string);
         std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
-        std::cout<<"[+] training autoencoder"<<std::endl;
-        double output[2]={0,0};
-
-        autoencoder->train((real_t*)input.data(),output,size_t(input.size() )  );
-
-        std::cout<<"[+] training autoencoder done"<<ret<<std::endl;
+        std::cout<<"[+] finished "<<fuzz_file<<std::to_string(cur)+"/"+std::to_string(total)<<std::endl;
       }
-    } 
+    }//normal case
+  
+    cur++;
+
+  }//for fuzz_file
+  std::cout<<"[+] finished vectorizing "<<std::endl;
+  c_end = clock ();
+  t_end = std::chrono::high_resolution_clock::now ();
+  std::cout << "[+] Test CPU time elapsed in s: "
+    << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+  std::cout << "[+] Test Wall time elapsed in s: "
+    << std::chrono::duration<double> (t_end - t_start).count ()
+    << std::endl;
+  
+  //now that we have the vectorizers, we can train the autoencoders
+  for ( auto& v : vectorizers_attacks) 
+        v->fit();
+  for ( auto& v : vectorizers_normal ) 
+        v->fit();
+          
+  //now that we have the autoencoders, we can train them
+  //reiterate on the files and train the autoencoders 
+  //print total time 
+  c_end = clock ();
+  t_end = std::chrono::high_resolution_clock::now ();
+  std::cout << "[+] Test CPU time elapsed in s: "
+    << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;  
+  std::cout << "[+] Test Wall time elapsed in s: "
+    << std::chrono::duration<double> (t_end - t_start).count ()
+    << std::endl; 
+ 
+  for ( auto & vectorizer : vectorizers_attacks)
+  {
+ 
+    bool is_attack = false;
+    std::string random_file = string_files[t_end.time_since_epoch().count()%string_files.size()]; 
+    while(!is_attack&&(random_file.find("attack")==std::string::npos||random_file.find("door")==std::string::npos))
+    {
+        random_file = string_files[t_end.time_since_epoch().count()%string_files.size()]; 
+    }
+    is_attack = true;
+
+    std::cout<<"[+] loading random file : "<<random_file<<std::endl;
+    
+    std::ifstream ifrandom(random_file);
+       std::string fit_file((std::istreambuf_iterator<char>(ifrandom)),
+    std::istreambuf_iterator<char>());
+ 
+    std::vector<real_t> input =vectorizer->predict(fit_file);
+    size_t input_size = input.size();
+
+     std::cout<<"[+] creating autoencoder for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << "input size:"<<std::to_string(input_size)<<std::endl;
+    if( input_size==0)
+      input_size=1; //avoid zero size input
+    c_start = clock ();
+    t_start = std::chrono::high_resolution_clock::now ();
+  
+    autoencoders.push_back(new provallo::auto_encoder<real_t,real_t>(input_size,input_size*(2*std::log2(input_size)),1));//input,hidden,output 
+    c_end = clock ();
+    t_end = std::chrono::high_resolution_clock::now ();
+    std::cout << "[+] auto encoder init Test CPU time elapsed in s: " << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;    
+
+  }
+
+  for (auto & fuzz_file : string_files )
+  {
+    std::ifstream fuzz(fuzz_file);
+    std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+    std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
+    size_t vectr=0;
+    for (auto & enc : autoencoders   )
+    {
+      auto & vectorizer = vectorizers_attacks[vectr++];
+
+      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type(); 
+      if ( vectorizer->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
+      {
+        vectorizer_type = vectorizer_types[vectorizer->get_type()];
+      }
+      std::cout<<"[+] vectorizing with "<<vectorizer_type<<std::endl;
+      std::vector<real_t> input =vectorizer->predict(data_string);
+      std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
+      std::cout<<"[+] training / loading autoencoder"<<std::endl;
+      double output[2]={1,1};
+
+      enc->train((real_t*)input.data(),output,1 );
+
+      //evaluate the autoencoder
+      std::vector<real_t> output_vector(output,output+2);
+      std::cout<<"[+] evaluating autoencoder"<<std::endl;
+      enc->test(input.data(),output,1);
+
+
+      std::cout<<"[+] evaluating autoencoder done"<<std::endl;
+      std::cout<<"[+] output[0] : "<<std::to_string(output[0])<<std::endl;
+       
+      std::cout<<"[+] training autoencoder done"<<std::endl;
+      std::cout<<"[+] training autoencoder done"<<std::endl;
+      enc->save("encoder_fuzzdb_"+vectorizer_type+".json");
+      enc->load ("encoder_fuzzdb_"+vectorizer_type+".json");
+     }
+
+
+
+     c_start = clock ();
+    t_start = std::chrono::high_resolution_clock::now ();
+    std::cout << "[+] Test CPU time elapsed in s: "
+    << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+    std::cout << "[+] Test Wall time elapsed in s: "
+    << std::chrono::duration<double> (t_end - t_start).count ()
+    << std::endl;
+    std::cout<<"[+] finished "<<fuzz_file<<std::endl;
+
+  } 
     
   //then we want to fit the documents into the vectorizers
   //for each vectorizer, we want to train an autoencoder
@@ -1180,149 +1321,23 @@ bool fit_fuzzsb ( const std::string& fit_fuzzsb_folder)
     //autoencoders[0]->train(vectorizers[0]->get_output());
     //autoencoders[1]->train(vectorizers[1]->get_output());
     //autoencoders[2]->train(vectorizers[2]->get_output());
-
-      
-  //load or generate a pipeline: 
-  // 1) load the pipeline from disk
-   //provallo::meta_builder meta("fuzzdb_meta",fit_fuzzsb_folder+"/fuzzdb_meta.json");
-  // 
-  // 2) if the pipeline is not found, create a new one
-    provallo::pipeline_builder builder("fuzzdb_meta",false); 
   
-    if(builder.get_number_of_stages()<2 ||builder.get_number_of_pipelines()<1)
-    {
-        builder.add_pipeline("fuzzdb_pipeline",false);
-        provallo::pipeline* new_pipeline =  builder.get_pipeline("fuzzdb_pipeline");
-        // data set load may or may not parse columns or split the data set into train and test
-        // if the data set is not split into train and test, the pipeline will do it on the training load 
-        // if the stages contain a classifier, the pipeline will train the classifier on the training data set 
-        if(new_pipeline!=nullptr)
-        {
-
-          //let's make the pipeline a pipeline of pipelines
-          //get each pipeline by name from the new pipeline to set the stages
-          new_pipeline->add_stage("pipeline","data_pipeline");
-          new_pipeline->add_stage("pipeline","feature_pipeline");
-          new_pipeline->add_stage("pipeline","autoencoder_pipeline");
-          new_pipeline->add_stage("pipeline","classifier_pipeline");
-          new_pipeline->add_stage("pipeline","train_pipeline");
-          new_pipeline->add_stage("pipeline","evaluation_pipeline");
-          new_pipeline->add_stage("pipeline","test_pipeline");
-          new_pipeline->add_stage("pipeline","save_pipeline");
-          new_pipeline->add_stage("pipeline","load_pipeline");
-          new_pipeline->add_stage("pipeline","compare_pipeline");
-          new_pipeline->add_stage("pipeline","save_results_pipeline");
-
-          provallo::pipeline* data_pipeline =  new_pipeline->get_pipeline("data_pipeline");
-          provallo::pipeline* feature_pipeline =  new_pipeline->get_pipeline("feature_pipeline");
-          provallo::pipeline* autoencoder_pipeline =  new_pipeline->get_pipeline("autoencoder_pipeline");
-          provallo::pipeline* classifier_pipeline =  new_pipeline->get_pipeline("classifier_pipeline");
-          provallo::pipeline* train_pipeline =  new_pipeline->get_pipeline("train_pipeline");
-          provallo::pipeline* evaluation_pipeline =  new_pipeline->get_pipeline("evaluation_pipeline");
-          provallo::pipeline* test_pipeline =  new_pipeline->get_pipeline("test_pipeline");
-          provallo::pipeline* save_pipeline =  new_pipeline->get_pipeline("save_pipeline");
-          provallo::pipeline* load_pipeline =  new_pipeline->get_pipeline("load_pipeline");
-          provallo::pipeline* compare_pipeline =  new_pipeline->get_pipeline("compare_pipeline");
-          provallo::pipeline* save_results_pipeline =  new_pipeline->get_pipeline("save_results_pipeline");
-            
-            //push stages into pipelines : 
-            data_pipeline->add_stage("dataset","load_train_dataset");
-            data_pipeline->add_stage("dataset","load_test_dataset");
-            feature_pipeline->add_stage("feature_engineering","tfidf_vectorizer");
-            feature_pipeline->add_stage("feature_engineering","bow_vectorizer");
-            feature_pipeline->add_stage("feature_engineering","pca_vectorizer");
-            feature_pipeline->add_stage("feature_engineering","autoencoder");
-            feature_pipeline->add_stage("feature_engineering","select_k_best");
-            feature_pipeline->add_stage("feature_engineering","tsne");
-            feature_pipeline->add_stage("feature_engineering","pca");
-            feature_pipeline->add_stage("feature_engineering","ica");
-            feature_pipeline->add_stage("feature_engineering","nmf");
-            feature_pipeline->add_stage("feature_engineering","lda");
-            autoencoder_pipeline->add_stage("autoencoder","autoencoder");
-            classifier_pipeline->add_stage("classifier","classifier");
-            train_pipeline->add_stage("train","train");
-            evaluation_pipeline->add_stage("evaluation","roc_auc");
-            evaluation_pipeline->add_stage("evaluation","pr_auc");
-
-            test_pipeline->add_stage("test","test");
-            save_pipeline->add_stage("save","save");
-            load_pipeline->add_stage("load","load");
-            compare_pipeline->add_stage("compare","compare");
-            save_results_pipeline->add_stage("save_results","save_results");
-            
-    }
-    else  //if the pipeline is found, load it
-    {
-      //build the pipeline from disk
-      builder.build();
-
-
-    }
-    //iterate all the files in the folder, if it's a txt file, vectorize it and add to the dataset matrix 
-    std::vector<std::string> files = getFilesInFolder(fit_fuzzsb_folder);
-    std::vector<std::string> txt_files;
-    //test vectorizers independently of the pipeline
-   
-    std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers;
-    vectorizers.push_back(new provallo::tfidf_vectorizer());
-    vectorizers.push_back(new provallo::pca_vectorizer());
-    
-
-
-
-   
- 
-    for (auto file : files)
-    {
-      if (file.find(".txt") != std::string::npos)
-      {
-        txt_files.push_back(file);
-
-        std::cout<<"-- found txt file : "<<file<<std::endl;
-
-      }
-    }
-    std::vector<std::string> documents;
-
-    for ( auto & txt_file : txt_files)
-    {
-        //TODO: add the files to the dataset
-        //vectorize the documents
-
-      
-        //read file and vectorize it
-        std::ifstream ifs(txt_file);
-        std::string content( (std::istreambuf_iterator<char>(ifs) ),
-                       (std::istreambuf_iterator<char>()    ) );
-        ifs.close();
-        std::vector<std::string> documents;
-        documents.push_back(content);
-
-        for (auto vectorizer : vectorizers)
-        {
-          vectorizer->fit (documents);
-          vectorizer->transform(documents);
-
-        }
-
-        //extract number of features from the pipeline
-        //extract number of classes from the pipeline 
-        //activate the pipeline
-
-
-    }
-    documents.clear();
-    //TODO: add the files to the dataset
-    //TODO: vectorize the documents
-    //extract number of features from the pipeline
-    //extract number of classes from the pipeline
-    //activate the pipeline 
-
-      ret = true;
-  }//if 
-  else
+  for(auto& vectorizer : vectorizers_attacks)
   {
-    std::cout<<"-- benchmark folder not found : "<<fit_fuzzsb_folder<<std::endl;
+    delete vectorizer;
+  }
+  for(auto& vectorizer : vectorizers_normal)
+  {
+    delete vectorizer;
+  } 
+  for ( auto& ec : autoencoders)
+  {
+    delete ec;
   }
   return ret;
-}//fit_fuzzdb
+ 
+ }//  end of fit_fuzzdb
+ //-----------------------------------------------------------------------------
+
+
+ 

@@ -9,67 +9,68 @@ namespace provallo
 {
 
 	uint64_t split_method::_instance_counter = 0;
+	typedef dataset *datasetptr;
+
 	// Select cut point
-	uint32_t
+	size_t
 	continous_base::selectPoint(
-		std::vector<std::pair<Float, uint32_t>>::iterator begin,
-		std::vector<std::pair<Float, uint32_t>>::iterator end) const
+		std::vector<std::pair<real_t, size_t>>::iterator begin,
+		std::vector<std::pair<real_t, size_t>>::iterator end) const
 	{
 		return (*min_element(begin, end)).second;
 	}
 
-	uint32_t
+	size_t
 	random_split::selectPoint(
-		std::vector<std::pair<Float, uint32_t>>::iterator begin,
-		std::vector<std::pair<Float, uint32_t>>::iterator end) const
+		std::vector<std::pair<real_t, size_t>>::iterator begin,
+		std::vector<std::pair<real_t, size_t>>::iterator end) const
 	{
 		int size = end - begin;
 		std::random_device dev;
 		std::mt19937 gen(dev());
 
-		std::uniform_int_distribution<uint32_t> uniform(0, size);
+		std::uniform_int_distribution<size_t> uniform(0, size);
 
-		std::vector<std::pair<Float, uint32_t>>::iterator it = begin + (uniform(gen) % size);
+		std::vector<std::pair<real_t, size_t>>::iterator it = begin + (uniform(gen) % size);
 		return (*it).second;
 	}
-	static float
-	entropy_diff(uint32_t ni, Float l, Float r, Float li, Float ri)
+	static real_t
+	entropy_diff(size_t ni, real_t l, real_t r, real_t li, real_t ri)
 	{
 		return (xlog<2>(r) - xlog<2>(l) + xlog<2>(li) + xlog<2>(l + ni) - xlog<2>(li + ni) - xlog<2>(ri) - xlog<2>(r + ni) + xlog<2>(ri + ni));
 	}
 
 	bool
-	continous_base::binarySplit(const dataset &data, uint32_t begin,
-								uint32_t end, const attribute_tag &tag,
-								std::pair<uint32_t, Float> &cut_pair) const
+	continous_base::binarySplit(const dataset &data, size_t begin,
+								size_t end, const attribute_tag &tag,
+								std::pair<size_t, real_t> &cut_pair) const
 	{
 		// Check for discrete attributes
-
 		/*refactor:*/
 		if (data.getattributes().getType(tag) == attribute_type::DISCRETE)
 			return false;
 		else
 		{
 			// Initialize auxiliary variables
-			uint32_t tleft(0);			  // Total samples on the left
-			uint32_t tright(end - begin); // Total samples on the right
+			size_t tleft(0);			  // Total samples on the left
+			size_t tright(end - begin); // Total samples on the right
 
 			// Target tag
 			attribute_tag target_tag = data.getattributes().get_target_tag();
 			// Target count (i.e. number of classes)
-			uint32_t target_count = data.getattributes().getCount(target_tag);
+			size_t target_count = data.getattributes().getCount(target_tag);
 
 			// Container of sample of each class (right and left)
-			std::vector<uint32_t> left(target_count, 0);
-			std::vector<uint32_t> right(target_count, 0);
+			std::vector<size_t> left(target_count, 0);
+			std::vector<size_t> right(target_count, 0);
 
 			// Initial position of the iterator on the target attribute
 			dataset::sorted_iterator initial_target(data.begin_sorted(tag));
 
 			// Number of consecutive sample of the same class
-			uint32_t consecutive(1);
+			size_t consecutive(1);
 			// Current class
-			uint32_t current_class((*(initial_target + begin)).discrete());
+			size_t current_class((*(initial_target + begin)).discrete());
 			if (current_class >= target_count)
 			{
 				if (discrete_value((*(initial_target + begin)).continous()) < target_count)
@@ -79,7 +80,7 @@ namespace provallo
 			}
 
 			// Current position
-			uint32_t current_position(begin);
+			size_t current_position(begin);
 
 			// Iterate over the samples
 			for (dataset::sorted_iterator it(initial_target + begin);
@@ -96,7 +97,7 @@ namespace provallo
 					if (current_class >= left.size() || current_class >= right.size())
 						return false;
 					// Calculate the entropy difference
-					Float diff = entropy_diff(consecutive, tleft, tright,
+					real_t diff = entropy_diff(consecutive, tleft, tright,
 											  left[current_class], right[current_class]);
 					// If the difference is greater than the current one
 					if (diff > cut_pair.second)
@@ -134,7 +135,7 @@ namespace provallo
 			if (current_class >= target_count)
 				return false;
 
-			Float diff = entropy_diff(consecutive, tleft, tright,
+			real_t diff = entropy_diff(consecutive, tleft, tright,
 									  left[current_class], right[current_class]);
 			// If the difference is greater than the current one
 			if (diff > cut_pair.second)
@@ -144,14 +145,22 @@ namespace provallo
 				// Update the cut point
 				cut_pair.first = current_position;
 			}
+			// If the entropy difference is zero
+			if (cut_pair.second == 0)
+				return false;
+
+			// Return true
+
 			return true;
 		} // else
+		// Return false
+		return false;
 	}	  // binarySplit
 
 	bool
-	random_split::binarySplit(const dataset &data, uint32_t begin,
-							  uint32_t end, const attribute_tag &tag,
-							  std::pair<uint32_t, Float> &cut_pair) const
+	random_split::binarySplit(const dataset &data, size_t begin,
+							  size_t end, const attribute_tag &tag,
+							  std::pair<size_t, real_t> &cut_pair) const
 	{
 
 		// Check for discrete attributes
@@ -160,37 +169,37 @@ namespace provallo
 		else
 		{
 			// Initialize auxiliary variables
-			uint32_t tleft(0);			  // Total samples on the left
-			uint32_t tright(end - begin); // Total samples on the right
+			size_t tleft(0);			  // Total samples on the left
+			size_t tright(end - begin); // Total samples on the right
 
 			// Target tag
 			attribute_tag target_tag = data.getattributes().get_target_tag();
 			// Target count (i.e. number of classes)
-			uint32_t target_count = data.getattributes().getCount(target_tag);
+			size_t target_count = data.getattributes().getCount(target_tag);
 
 			// Container of sample of each class (right and left)
-			std::vector<uint32_t> left(target_count, 0);
-			std::vector<uint32_t> right(target_count, 0);
+			std::vector<size_t> left(target_count, 0);
+			std::vector<size_t> right(target_count, 0);
 
 			// Initial position of the iterator on the target attribute
 			dataset::sorted_iterator initial_target(data.begin_sorted(tag));
 
 			// Number of consecutive sample of the same class
-			uint32_t consecutive(1);
+			size_t consecutive(1);
 			// Current class
-			uint32_t current_class((*(initial_target + begin)).discrete());
+			size_t current_class((*(initial_target + begin)).discrete());
 			if (current_class > target_count)
 				current_class = discrete_value((*(initial_target + begin)).continous());
 
 			// Current position
-			uint32_t current_position(begin);
+			size_t current_position(begin);
 
 			// Iterate over the samples
 			for (dataset::sorted_iterator it(initial_target + begin);
 				 it != initial_target + end; ++it)
 			{
 				// If the class is the same of the previous sample
-				if (((*it).discrete() == current_class) || discrete_value((*it).continous()) == current_class)
+				if (((*it).discrete() == current_class)   ) 
 				{
 					// Increment the number of consecutive samples
 					++consecutive;
@@ -198,7 +207,7 @@ namespace provallo
 				else
 				{
 					// Calculate the entropy difference
-					Float diff = entropy_diff(consecutive, tleft, tright,
+					real_t diff = entropy_diff(consecutive, tleft, tright,
 											  left[current_class], right[current_class]);
 					// If the difference is greater than the current one
 					if (diff > cut_pair.second)
@@ -232,7 +241,7 @@ namespace provallo
 				}
 			} // for
 			// Calculate the entropy difference
-			Float diff = entropy_diff(consecutive, tleft, tright,
+			real_t diff = entropy_diff(consecutive, tleft, tright,
 									  left[current_class], right[current_class]);
 			// If the difference is greater than the current one
 			if (diff > cut_pair.second)
@@ -244,24 +253,27 @@ namespace provallo
 			}
 			return true;
 		} // else
+				// Split is not possible (all data is of the same class)
+		return false;
+
 	}	  // binarySplit
 
 	/*refactor:
 			// Calculate initial entropy
-			Float entropy (0.0);
-			for (uint32_t i = 0; i < right.size (); ++i)
+			real_t entropy (0.0);
+			for (size_t i = 0; i < right.size (); ++i)
 			{
-				Float prob = right[i] / (Float) data.size ();
+				real_t prob = right[i] / (real_t) data.size ();
 				if (prob != 0.0)
 				entropy += -prob * log<2> (prob);
 			}
 
 			// Number of consecutive sample of the same class
-			uint32_t consecutive (1);
+			size_t consecutive (1);
 			// Current class
-			uint32_t current_class ((initial_target + begin)->discrete ());
+			size_t current_class ((initial_target + begin)->discrete ());
 			// Current position
-			uint32_t current_position (begin);
+			size_t current_position (begin);
 
 			// Iterate over the samples
 			for (dataset::sorted_iterator it (initial_target + begin);
@@ -276,7 +288,7 @@ namespace provallo
 				else
 				{
 					// Calculate the entropy difference
-					Float diff = entropy_diff (consecutive, tleft, tright,
+					real_t diff = entropy_diff (consecutive, tleft, tright,
 					left[current_class], right[current_class]);
 					// If the difference is greater than the current one
 					if (diff > cut_pair
@@ -284,17 +296,17 @@ namespace provallo
 		#/
 
 		// Initialize auxiliary variables
-		uint32_t tleft (0);            // Total samples on the left
-		uint32_t tright (end - begin); // Total samples on the right
+		size_t tleft (0);            // Total samples on the left
+		size_t tright (end - begin); // Total samples on the right
 
 		// Target tag
 		attribute_tag target_tag = data.getattributes ().get_target_tag ();
 		// Target count (i.e. number of classes)
-		uint32_t target_count = data.getattributes ().getCount (target_tag);
+		size_t target_count = data.getattributes ().getCount (target_tag);
 
 		// Container of sample of each class (right and left)
-		std::vector<uint32_t> left (target_count, 0);
-		std::vector<uint32_t> right (target_count,0);
+		std::vector<size_t> left (target_count, 0);
+		std::vector<size_t> right (target_count,0);
 
 		// Initial position of the iterator on the target attribute
 		dataset::sorted_iterator initial_target (data.begin_sorted (tag));
@@ -307,18 +319,18 @@ namespace provallo
 		  }
 
 		// Calculate initial entropy
-		Float entropy (0.0);
-		for (uint32_t i = 0; i < right.size (); ++i)
+		real_t entropy (0.0);
+		for (size_t i = 0; i < right.size (); ++i)
 		  {
-		Float prob = right[i] / (Float) data.size ();
+		real_t prob = right[i] / (real_t) data.size ();
 		if (prob != 0.0)
 		  entropy += -prob * log<2> (prob);
 		  }
 
 		// Number of consecutive sample of the same class
-		uint32_t nssc (0);
+		size_t nssc (0);
 		// Split entropy
-		std::vector<std::pair<Float, uint32_t> > split_entropy;
+		std::vector<std::pair<real_t, size_t> > split_entropy;
 
 		// Loop over the sample and check potential cut points (i.e. boundary points)
 		for (dataset::sorted_iterator it = initial_target + begin;
@@ -326,14 +338,14 @@ namespace provallo
 		  {
 			attribute_iterator at = it.begin();
 			// Get class of this and next sample class
-			uint32_t this_class = (at + target_tag)->discrete ();
-			uint32_t next_class = ((it + 1).begin () + target_tag)->discrete ();
+			size_t this_class = (at + target_tag)->discrete ();
+			size_t next_class = ((it + 1).begin () + target_tag)->discrete ();
 
 			// Increment counter
 			++nssc;
 
 		// Position of the iterator
-		uint32_t offset (it - initial_target);
+		size_t offset (it - initial_target);
 
 		// Check if this is a boundary point (i.e. potential cut point)
 		if (this_class != next_class)
@@ -354,7 +366,7 @@ namespace provallo
 					// Compute entropy of the split
 					entropy += entropy_diff (nssc, tleft, tright, left[this_class],
 								right[this_class])
-						/ (Float) data.size ();
+						/ (real_t) data.size ();
 					// Reset counter
 					nssc = 0;
 					// Push data of this boundary point
@@ -366,14 +378,14 @@ namespace provallo
 		if (split_entropy.size () > 0)
 		  {
 				// Get minimum entropy
-				uint32_t cut_point = selectPoint (split_entropy.begin (),
+				size_t cut_point = selectPoint (split_entropy.begin (),
 								split_entropy.end ());
 				// Get attribute value at the cut point
-				Float left_value =
+				real_t left_value =
 					((initial_target + cut_point).begin () + tag)->continous ();
-				Float right_value =
+				real_t right_value =
 					((initial_target + cut_point).begin () + tag)->continous ();
-				Float cut_value = (right_value + left_value) / 2;
+				real_t cut_value = (right_value + left_value) / 2;
 				// Push cut point
 				cut_pair = std::make_pair (cut_point, cut_value);
 				// Can split interval
@@ -385,15 +397,15 @@ namespace provallo
 	  }
 	*/
 	void
-	continous_base::splitInterval(const dataset &data, uint32_t begin,
-								  uint32_t end, const attribute_tag &tag,
-								  std::vector<Float> &interval) const
+	continous_base::splitInterval(const dataset &data, size_t begin,
+								  size_t end, const attribute_tag &tag,
+								  std::vector<real_t> &interval) const
 	{
 		// Check if we can split the interval
 
 		if (begin == end)
 			return;
-		std::pair<uint32_t, Float> cut_pair(0, 0.0);
+		std::pair<size_t, real_t> cut_pair(0, 0.0);
 		cut_pair.first = begin;
 		cut_pair.second = (*(data.begin_sorted(tag) + begin)).continous();
 
@@ -401,8 +413,8 @@ namespace provallo
 		{
 
 			//
-			uint32_t cut_point = cut_pair.first;
-			Float cut_value = cut_pair.second;
+			size_t cut_point = cut_pair.first;
+			real_t cut_value = cut_pair.second;
 			// Split left interval
 			if (begin != end)
 			{
@@ -420,7 +432,7 @@ namespace provallo
 	}
 	void
 	continous_base::split(const dataset &data, const attribute_tag &tag,
-						  std::vector<Float> &interval) const
+						  std::vector<real_t> &interval) const
 	{
 		// Set first value of the interval
 		interval.push_back(-std::numeric_limits<float>::infinity());
@@ -431,18 +443,18 @@ namespace provallo
 	}
 
 	bool
-	mdlp_split::checkSplitting(const dataset &data, uint32_t begin, uint32_t end,
-							   uint32_t cut_point,
+	mdlp_split::checkSplitting(const dataset &data, size_t begin, size_t end,
+							   size_t cut_point,
 							   const attribute_tag &tag) const
 	{
 		// Target tag
 		attribute_tag target_tag = data.getattributes().get_target_tag();
 		// Target count (i.e. number of classes)
-		uint32_t target_count = data.getattributes().getCount(target_tag);
+		size_t target_count = data.getattributes().getCount(target_tag);
 
 		// Container of sample of each class (right and left)
-		std::vector<uint32_t> left(target_count);
-		std::vector<uint32_t> right(target_count);
+		std::vector<size_t> left(target_count);
+		std::vector<size_t> right(target_count);
 
 		// Initial position of the iterator on the target attribute
 		dataset::sorted_iterator initial_target = data.begin_sorted(tag);
@@ -451,8 +463,8 @@ namespace provallo
 		for (dataset::sorted_iterator it(initial_target + begin);
 			 it != initial_target + end; ++it)
 		{
-			uint32_t j(it - initial_target);
-			uint32_t class_attr((it.begin() + target_tag)->discrete());
+			size_t j(it - initial_target);
+			size_t class_attr((it.begin() + target_tag)->discrete());
 			// Accumulate class value
 			if (j < cut_point + 1)
 				left[class_attr]++;
@@ -460,38 +472,38 @@ namespace provallo
 				right[class_attr]++;
 		}
 		// Size of each interval
-		uint32_t size_left(cut_point + 1 - begin);
-		uint32_t size_right(end - (cut_point + 1));
+		size_t size_left(cut_point + 1 - begin);
+		size_t size_right(end - (cut_point + 1));
 
 		// Calculate entropy
-		Float entropy_right(0.0);
-		Float entropy_left(0.0);
-		Float entropy(0.0);
+		real_t entropy_right(0.0);
+		real_t entropy_left(0.0);
+		real_t entropy(0.0);
 		// Count of different classes on each interval
-		Float kl(target_count);
-		Float kr(target_count);
-		for (uint32_t i = 0; i < right.size(); ++i)
+		real_t kl(target_count);
+		real_t kr(target_count);
+		for (size_t i = 0; i < right.size(); ++i)
 		{
 			// Calculate entropy of the sets defined by the partition
-			Float prob = right[i] / (Float)size_right;
+			real_t prob = right[i] / (real_t)size_right;
 			if (prob != 0.0)
 				entropy_right += -prob * log<2>(prob);
 			else
 				kr--;
-			prob = left[i] / (Float)size_left;
+			prob = left[i] / (real_t)size_left;
 			if (prob != 0.0)
 				entropy_left += -prob * log<2>(prob);
 			else
 				kl--;
 			// Calculate total entropy
-			prob = (right[i] + left[i]) / (Float)data.size();
+			prob = (right[i] + left[i]) / (real_t)data.size();
 			if (prob != 0.0)
 				entropy += -prob * log<2>(prob);
 		}
 		// Check criteria
-		Float delta = log<2>(pow(3, (Float)target_count) - 2) - ((Float)target_count * entropy - kl * entropy_left - kr * entropy_right);
-		Float gain = entropy - ((Float)size_left / data.size()) * entropy_left - ((Float)size_right / data.size()) * entropy_right;
-		Float test = log<2>(data.size() - 1) / (Float)data.size() + delta / (Float)data.size();
+		real_t delta = log<2>(pow(3, (real_t)target_count) - 2) - ((real_t)target_count * entropy - kl * entropy_left - kr * entropy_right);
+		real_t gain = entropy - ((real_t)size_left / data.size()) * entropy_left - ((real_t)size_right / data.size()) * entropy_right;
+		real_t test = log<2>(data.size() - 1) / (real_t)data.size() + delta / (real_t)data.size();
 
 		// Accept the split
 		if (gain > test)
@@ -558,18 +570,20 @@ namespace provallo
 	{
 
 		static std::recursive_mutex _mute;
-
+		
 		std::lock_guard<std::recursive_mutex> guard(_mute);
+		
 		std::pair<size_t, size_t> lookup = std::make_pair(factory_tag, tag);
+		
 		split_method *ret = nullptr;
-		//hardcode caching mechanis:
+		//hardcode caching mechanism:
 		bool use_cache = false;
 		// Check attribute
 		if (type == DISC)
 		{
-
-			// do we really need to create? or just return from cache...
+ 			// do we really need to create? or just return from cache...
 			if( use_cache) {
+
 			if (factory._split_cache.size() && factory._split_cache.find(lookup) != factory._split_cache.end())
 			{
 
@@ -694,39 +708,51 @@ namespace provallo
 		}
 		return ret;
 	}
-
-	typedef dataset *datasetptr;
+	
 
 	split_method_factory::split_method_factory(const dataset &data_set,
 											   const std::random_device &r) : _split_methods(), _target_method(nullptr), r_dataset(*datasetptr(&data_set)),
 																			  override_split_method(false), override_split_type(CONE_RANDOM)
 	{
 		// Get attribute information
-		const attribute_information &info(data_set.getattributes());
-		// Target tag
-		attribute_tag target_tag = info.get_target_tag();
+ 		// Target tag
+		attribute_tag target_tag = data_set.getattributes().get_target_tag();
 		// Create target method
 		// get number of classes
-		size_t num_classes = info.getTargetClassCount();
+		size_t num_classes = data_set.getattributes().getTargetClassCount();
+		if ( num_classes == 0) throw std::runtime_error("No classes found in dataset");
+		// Create context
+		
+		split_method_factory * context = this;
 
 		// resize vector
 
-		_split_methods.resize(info.getSize());
+		_split_methods.resize(data_set.getattributes().getSize(),nullptr);
 
 		_target_method = split_method_factory::createMethod(r, DISC, data_set,
-															target_tag, num_classes,*this);
+															target_tag, num_classes, *context);
 		// Create split methods
 		// Get group of attributes (the group define the effective number of attributes)
-		const attribute_groups &groups(info.getGroups());
+		size_t group_size(data_set.getattributes().getGroups().size());
 
+		//set the target method just in case.
+
+		_split_methods[target_tag] = _target_method;
+ 
 		// Initialize the map with split methods
+																	   
+		for (size_t i = 0; i < group_size; ++i)
+		{
+			//make sure the groups are not empty
+			if (data_set.getattributes().getGroups().getGroup(i).size() == 0) continue; 
+			// Create split method
 
-		for (size_t i = 0; i < groups.size(); ++i)
-			_split_methods.push_back(
-				split_method_factory::createMethod(r, override_split_method ? override_split_type : groups.getsplit_type(i),
-												   data_set, groups.getGroup(i)[0],
-												   i,*this));
-
+			split_method* ps = 	split_method_factory::createMethod(r, override_split_method ? override_split_type :data_set.getattributes().getGroups().getsplit_type(i),
+												   data_set, data_set.getattributes().getGroups().getGroup(i)[0],
+												   i,*context);
+			// Add split method to vector
+ 				_split_methods[ i] = ps;
+		}
 		std::cout << "[+] created [[" << split_method::_instance_counter << "]] splits" << std::endl;
 	}
 	const split_method *
@@ -738,9 +764,9 @@ namespace provallo
 			std::cout << "[+] no splits created" << std::endl;
 			return nullptr;
 		}
-		
-		// Find tag
-		if (tag < _split_methods.size())
+		if(_target_method&& tag == r_dataset.getattributes().get_target_tag() )
+			return _target_method;
+		else if (tag < _split_methods.size())
 			return _split_methods[tag];
 		else
 		{
@@ -751,10 +777,17 @@ namespace provallo
 
 	split_method_factory::~split_method_factory()
 	{
-		for (split_method *p : _split_methods)
-			delete p;
-
-		delete _target_method;
+		// Delete split methods
+		for (size_t i=0;i<_split_methods.size();++i)
+			if(_split_methods[i]!=nullptr)
+				{delete _split_methods[i];_split_methods[i]=nullptr;}
+		
+		
+	
+		_split_methods.clear();
+		_split_cache.clear();
+		if(_target_method!=nullptr)
+			delete _target_method;
 		_target_method = nullptr;
 	}
 
@@ -780,34 +813,34 @@ namespace provallo
 		// not implemented
 	}
 
-	Float
+	real_t
 	EntropyGain::gain(const dataset &data, const split_method &selector)
 	{
 		// Target tag
 		attribute_tag target_tag = data.getattributes().get_target_tag();
 		// Number of different values of the attribute
-		uint32_t attr_count = selector.size();
+		size_t attr_count = selector.size();
 		if (attr_count <= 2)
 			return 0.0;
 		// Number of different outcomes
-		uint32_t target_count = data.getattributes().getCount(target_tag);
+		size_t target_count = data.getattributes().getCount(target_tag);
 
-		std::vector<std::vector<uint32_t>> freqs(
-			target_count+1,std::vector<uint32_t>(attr_count+1, 0));
+		std::vector<std::vector<size_t>> freqs(
+			target_count+1,std::vector<size_t>(attr_count+1, 0));
 		
 		// Number of samples where the attribute takes some value
-		std::vector<uint32_t> count(attr_count, 0);
+		std::vector<size_t> count(attr_count, 0);
 		// Target attribute counter
-		std::vector<uint32_t> target_probs(target_count, 0);
+		std::vector<size_t> target_probs(target_count, 0);
 
 		// Loop over the data set
-		for (uint32_t i = 0; i < data.size(); ++i)
+		for (size_t i = 0; i < data.size(); ++i)
 		{
 			// sanity check:
 			if (data.begin(i) != data.end(i))
 			{
 				// Get attribute "branch"
-				uint32_t attr_value = selector.getBranch(data.begin(i));
+				size_t attr_value = selector.getBranch(data.begin(i));
 				// Get target value
 				discrete_value target_value =
 					data.getattribute(i, target_tag).discrete();
@@ -822,35 +855,35 @@ namespace provallo
 		}
 
 		// Entropy
-		Float entropy = 0.0;
+		real_t entropy = 0.0;
 		// Total count
-		uint32_t total_count = std::accumulate(count.begin(), count.end(), 0);
+		size_t total_count = std::accumulate(count.begin(), count.end(), 0);
 
 		// Check if the data set contain at least one known value
 		if (total_count == 0)
 			return 0.0; // No gain
 
 		// Subset entropies (for different values of the attribute)
-		std::vector<Float> attr_entropy(attr_count, 0.0);
-		for (uint32_t i = 0; i < target_probs.size(); ++i)
+		std::vector<real_t> attr_entropy(attr_count, 0.0);
+		for (size_t i = 0; i < target_probs.size(); ++i)
 		{
-			Float prob = (Float)target_probs[i] / (Float)total_count;
+			real_t prob = (real_t)target_probs[i] / (real_t)total_count;
 			if (prob != 0.0)
 				entropy += -prob * log<2>(prob);
-			for (uint32_t j = 0; j < attr_entropy.size(); ++j)
+			for (size_t j = 0; j < attr_entropy.size(); ++j)
 			{
 				if (count[j] != 0.0)
 				{
-					Float attr_prob = (Float)freqs[i][j] / (Float)count[j];
+					real_t attr_prob = (real_t)freqs[i][j] / (real_t)count[j];
 					attr_entropy[j] -= xlog<2>(attr_prob);
 				}
 			}
 		}
 
 		// Gain
-		Float gain = entropy;
-		for (uint32_t i = 0; i < count.size(); ++i)
-			gain -= ((Float)count[i] / (Float)data.size()) * attr_entropy[i];
+		real_t gain = entropy;
+		for (size_t i = 0; i < count.size(); ++i)
+			gain -= ((real_t)count[i] / (real_t)data.size()) * attr_entropy[i];
 
 		// Check for NAN
 		assert(gain == gain);
@@ -859,7 +892,7 @@ namespace provallo
 		return gain;
 	}
 
-	Float
+	real_t
 	GainRatio::gain(const dataset &data, const split_method &selector)
 	{
 		// Target tag
@@ -867,22 +900,22 @@ namespace provallo
 		// Number of different values of the attribute
 				
 		
-		uint32_t attr_count = selector.size();
+		size_t attr_count = selector.size();
 		if (attr_count == 1)
 			return 0.0;
 		// Number of different outcomes
-		uint32_t target_count = data.getattributes().getCount(target_tag);
+		size_t target_count = data.getattributes().getCount(target_tag);
 		// Proportion of instances (for each attribute value) in the data set that take
 		// the a value of the target
-		std::vector<std::vector<uint32_t>> freqs(
-			target_count, std::vector<uint32_t>(attr_count, 0));
+		std::vector<std::vector<size_t>> freqs(
+			target_count, std::vector<size_t>(attr_count, 0));
 		// Number of samples where the attribute takes some value
-		std::vector<uint32_t> count(attr_count, 0);
+		std::vector<size_t> count(attr_count, 0);
 		// Target attribute counter
-		std::vector<uint32_t> target_probs(target_count, 0);
+		std::vector<size_t> target_probs(target_count, 0);
 
 		// Loop over the data set
-		for (uint32_t i = 0; i < data.size(); ++i)
+		for (size_t i = 0; i < data.size(); ++i)
 		{
 
 			// sanity check:
@@ -891,7 +924,7 @@ namespace provallo
 				// Get attribute "branch"
 
 				// Get attribute "branch"
-				uint32_t attr_value = selector.getBranch(data.begin(i));
+				size_t attr_value = selector.getBranch(data.begin(i));
 				// Get target value
 				discrete_value target_value =
 					data.getattribute(i, target_tag).discrete();
@@ -904,39 +937,39 @@ namespace provallo
 			}
 		}
 		// Entropy
-		Float entropy = 0.0;
+		real_t entropy = 0.0;
 		// Total count
-		uint32_t total_count = std::accumulate(count.begin(), count.end(), 0);
+		size_t total_count = std::accumulate(count.begin(), count.end(), 0);
 
 		// Check if the data set contain at least one known value
 		if (total_count == 0)
 			return 0.0; // No gain
 
 		// Subset entropies (for different values of the attribute)
-		std::vector<Float> attr_entropy(attr_count, 0.0);
-		for (uint32_t i = 0; i < target_probs.size(); ++i)
+		std::vector<real_t> attr_entropy(attr_count, 0.0);
+		for (size_t i = 0; i < target_probs.size(); ++i)
 		{
-			Float prob = (Float)target_probs[i] / (Float)total_count;
+			real_t prob = (real_t)target_probs[i] / (real_t)total_count;
 			if (prob != 0.0)
 				entropy += -prob * log<2>(prob);
-			for (uint32_t j = 0; j < attr_entropy.size(); ++j)
+			for (size_t j = 0; j < attr_entropy.size(); ++j)
 			{
 				if (count[j] != 0.0)
 				{
-					Float attr_prob = (Float)freqs[i][j] / (Float)count[j];
+					real_t attr_prob = (real_t)freqs[i][j] / (real_t)count[j];
 					attr_entropy[j] -= xlog<2>(attr_prob);
 				}
 			}
 		}
 
 		// Gain
-		Float gain = entropy;
+		real_t gain = entropy;
 		// Split information
-		Float split = 0.0;
-		for (uint32_t i = 0; i < count.size(); ++i)
+		real_t split = 0.0;
+		for (size_t i = 0; i < count.size(); ++i)
 		{
 			// Probability
-			Float pi = (Float)count[i] / (Float)data.size();
+			real_t pi = (real_t)count[i] / (real_t)data.size();
 			// Accumulate gain
 			gain -= pi * attr_entropy[i];
 			// Split information
@@ -947,7 +980,7 @@ namespace provallo
 			split -= (data.size() - total_count) * log<2>(data.size() - total_count);
 
 		// Gain ratio
-		Float gain_ratio = gain / split;
+		real_t gain_ratio = gain / split;
 
 		// If gain and split are zero, set gain_ratio to zero
 		if (gain == 0 && split == 0)
@@ -960,34 +993,34 @@ namespace provallo
 		return gain_ratio;
 	}
 
-	Float
+	real_t
 	ChiSquare::gain(const dataset &data, const split_method &selector)
 	{
 		// Target tag
 		attribute_tag target_tag = data.getattributes().get_target_tag();
 		// Number of different values of the attribute
-		uint32_t attr_count = selector.size();
+		size_t attr_count = selector.size();
 		if (attr_count == 1)
 			return 0.0;
 		// Number of different outcomes
-		uint32_t target_count = data.getattributes().getCount(target_tag);
+		size_t target_count = data.getattributes().getCount(target_tag);
 
 		// Proportion of instances (for each attribute value) in the data set that take
 		// the a value of the target
-		std::vector<std::vector<uint32_t>> freqs(
-			target_count, std::vector<uint32_t>(attr_count, 0));
+		std::vector<std::vector<size_t>> freqs(
+			target_count, std::vector<size_t>(attr_count, 0));
 		// Total in rows
-		std::vector<uint32_t> row_total(target_count);
+		std::vector<size_t> row_total(target_count);
 		// Total in columns
-		std::vector<uint32_t> column_total(attr_count);
+		std::vector<size_t> column_total(attr_count);
 		// Total samples
-		uint32_t total(0);
+		size_t total(0);
 
 		// Loop over the data set
-		for (uint32_t i = 0; i < data.size(); ++i)
+		for (size_t i = 0; i < data.size(); ++i)
 		{
 			// Get attribute "branch"
-			uint32_t attr_value = selector.getBranch(data.begin(i));
+			size_t attr_value = selector.getBranch(data.begin(i));
 			// Get target value
 			discrete_value target_value =
 				data.getattribute(i, target_tag).discrete();
@@ -1003,19 +1036,19 @@ namespace provallo
 		}
 
 		// Compute CHI square
-		Float chi(0.0);
+		real_t chi(0.0);
 
 		// Loop over target values
-		for (uint32_t i = 0; i < target_count; ++i)
+		for (size_t i = 0; i < target_count; ++i)
 		{
-			for (uint32_t j = 0; j < attr_count; ++j)
+			for (size_t j = 0; j < attr_count; ++j)
 			{
 				// Numerator
-				Float num = row_total[i] * column_total[j];
+				real_t num = row_total[i] * column_total[j];
 				if (num != 0.0 && total != 0.0)
 				{
 					// Compute expected value
-					Float expected = num / total;
+					real_t expected = num / total;
 					// Sum contribution to CHI square
 					chi += (freqs[i][j] - expected) * (freqs[i][j] - expected) / expected;
 				}

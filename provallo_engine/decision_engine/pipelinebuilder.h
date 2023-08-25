@@ -9,6 +9,8 @@
 #define DECISION_ENGINE_PIPELINEBUILDER_H_
 #include "matrix.h"
 #include "classifier.h"
+#include "hmm.h"
+
 #include "../parsers/parser.h" //for the encoders/decoders
 #include "../util/singleton.h"//for
 #include "autoencoder.h"
@@ -16,6 +18,7 @@
 #include <vector>
 #include <iostream>
 #include <set>
+
 namespace provallo
 {
 
@@ -32,19 +35,26 @@ namespace provallo
 
   //python style estimators (fit/predict)
   enum vectorizer_type  : uint8_t {
-      TFIDF,
-      STANDARD_SCALER,
-      MIN_MAX_SCALER,
-      PCA,
-      ONE_HOT_VECTORIZER,
-      NEURAL_TRANSFORMER,
-      AERONATIC_QARTERION, // tensor operator pitch/yaw/roll matrices
-      SVD_OPERATOR,
-      HPLANE_TRANSFORMER,
-      HUFFMAN_TRANSFORMER,
-      HMM_TRANSFORMER,REGRESSION_TRANSFORMER,
-      UNKNOWN_VECTORIZER  //for initialization of serialized objects
-  };
+          TFIDF=0,
+          STANDARD_SCALER,
+          MIN_MAX_SCALER,
+          PCA,
+          ONE_HOT_VECTORIZER,
+          NEURAL_TRANSFORMER,
+          AERONATIC_QARTERION, 
+          SVD_OPERATOR,
+          NGRAM_HMM_TRANSFORMER,
+          HPLANE_TRANSFORMER,
+          HUFFMAN_TRANSFORMER,
+          HMM_TRANSFORMER,
+          REGRESSION_TRANSFORMER,
+          UMAP_VECTORIZER,
+          TSNE_VECTORIZER,
+          AUTOENCODER_VECTORIZER,
+          LDA_VECTORIZER,
+          UNKNOWN_VECTORIZER,
+          NULL_VECTORIZER
+          };
   //forward declaration
   template <typename vector_src, typename real_x>   class vectorizer;
   template < typename real_x>
@@ -510,6 +520,7 @@ class bag_of_words
   //clear
   void clear();
 
+  void process_documents();
 
   bag_of_words();
   //initialize with a vocabulary
@@ -545,6 +556,18 @@ class bag_of_words
   virtual void add_document(const std::string&);
   virtual void process_document(const std::string&);
   virtual void process_documents(const std::vector<std::string>&);  
+  //dump
+  virtual void dump(std::ostream& os) const;
+    //dump
+  friend std::ostream& operator<<(std::ostream& os, const bag_of_words& bow); 
+  //save
+  friend std::ofstream& operator<<(std::ofstream& os, const bag_of_words& bow); 
+  //load
+  friend std::istream& operator>>(std::istream& is, bag_of_words& bow);
+  //explicit load
+  virtual void load(std::ifstream& is);
+  //explicit save
+  virtual void save(std::ofstream& os) const;
 
   protected:
   //bag of words
@@ -563,7 +586,6 @@ class bag_of_words
   size_t num_tokens;
   size_t num_unique_tokens;
   
-  //add document and process document helper functions 
 
 
 };
@@ -849,7 +871,7 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
 {
   protected: 
 
-
+  void initialize();
 
   public:
   lda_vectorizer();
@@ -858,23 +880,35 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   lda_vectorizer&
       operator= (lda_vectorizer &&other);
 
-  
+//fit single  document
+  std::vector<real_t> fit(const std::string& single_doc );
+  void process_document(const std::string& single_doc ); 
+  void process_documents(const std::vector<std::string>& documents );
+
   
   virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
   virtual  std::vector<real_t> predict(const std::vector<std::string>&documents );
   virtual  std::vector<real_t> transform(const std::vector<std::string>&documents);
-  virtual  std::vector<real_t> fit_transform(const std::vector<std::string>&documents);
- 
+  
   //for use with inverse transformation matrices 
   
   virtual std::vector<real_t> fit( const provallo::matrix<real_t>& );
   virtual std::vector<real_t> predict(const provallo::matrix<real_t>& );
   virtual std::vector<real_t> transform(const provallo::matrix<real_t>& );
- 
+   virtual  std::vector<real_t> transform(const std::vector<std::vector<std::string>>&documents);
 
+  //fit_transform 
+  std::vector<real_t> fit_transform( const std::vector<std::string>& data_);
+  std::vector<std::vector<real_t>> fit_transform( const provallo::matrix<real_t>& data_);
+
+
+  //virtual std::vector<real_t> fit_transform(const std::vector<std::string>&documents); 
+  //virtual std::vector<std::vector<real_t>> fit_transform(const matrix<real_t>&documents); 
+  virtual void clear();
   virtual ~lda_vectorizer();
   private:
-  //labels 
+  bag_of_words  _bow;
+  std::vector<std::string> _vocabulary;
   std::vector<std::string> _labels;
   real_t _alpha;
   real_t _beta;
@@ -897,11 +931,12 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   size_t _max_doc_update_iter;
   size_t _total_samples;
   real_t _mean_change_tol;
-  
-
-
-
-  friend std::ostream& operator<<(std::ostream& os, const lda_vectorizer& lda)
+  size_t _num_docs;
+  size_t _num_words;
+  size_t  num_unique_tokens;
+  size_t _verbose;
+ 
+   friend std::ostream& operator<<(std::ostream& os, const lda_vectorizer& lda)
   {
     // write out individual members of s with an end of line between each one 
     os <<"[lda_vectorizer]"<<std::endl;
@@ -935,7 +970,16 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   //inverse_transform_matrix
   //inverse_transform_matrix_
   
-};
+  //print
+  
+  virtual void dump(std::ostream& out) const;
+  //
+
+  virtual void load(std::ifstream& in);
+  //load additional parameters
+  virtual void save(std::ofstream& out)const;
+
+  };
 
 //helper class for tsne 
 class tsne
@@ -1015,6 +1059,59 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
  
   virtual ~tsne_vectorizer();
 };
+
+  //uniform manifold approximation and projection 
+  //helper class for umap
+  class umap : public vectorizer<std::string, real_t> 
+  {
+    private:
+    std::vector<real_t> _umap_data;
+    std::vector<real_t> _umap_components;
+    std::vector<real_t> _umap_explained_variance;
+    std::vector<real_t> _umap_explained_variance_ratio;
+    std::vector<real_t> _umap_singular_values;
+    std::vector<real_t> _umap_noise_variance;
+    std::vector<real_t> _umap_mean;
+    std::vector<real_t> _umap_n_components;
+    std::vector<real_t> _umap_n_features;
+    std::vector<real_t> _umap_n_samples;
+    std::vector<real_t> _umap_n_components_;
+    std::vector<real_t> _umap_n_features_;
+    std::vector<real_t> _umap_n_samples_;
+
+    public:
+    umap();
+    umap(umap &&other); //move constructor
+    umap& operator= (const umap &other);
+    umap&
+        operator= (umap &&other);
+    virtual ~umap();
+    //fit 
+
+    virtual std::vector<real_t> fit( const std::vector<std::string>&documents ); 
+    //transform 
+    virtual std::vector<real_t> transform(const std::vector<std::string>&documents); 
+
+    //fit_transform
+    virtual std::vector<real_t> fit_transform(const std::vector<std::string>&documents); 
+    //get_params
+
+    //inverse_transform
+    virtual std::vector<std::string> inverse_transform(const std::vector<real_t>& data);
+    virtual std::vector<std::string> inverse_transform(const provallo::matrix<real_t>& data); 
+
+    //override vectorizer vtable :
+    //predict
+    virtual std::vector<real_t> predict(const std::vector<std::string>&documents );
+
+    //set_params
+
+    //get type
+    virtual vectorizer_type get_type() const ;
+
+
+   };
+
   enum regressor_type :  uint16_t{ LINEAR_REGRESSION, LDA_REGRESSION, BAYESIAN_REGRESSION, RIDGE_REGRESSION, LASSO_REGRESSION, ELASTIC_NET_REGRESSION, SGD_REGRESSION, PASSIVE_AGGRESSIVE_REGRESSION, RANSAC_REGRESSION, HUBER_REGRESSION, THEIL_SEN_REGRESSION, POLYNOMIAL_REGRESSION, STOCHASTIC_REGRESSION, PERCEPTRON_REGRESSION, LOGISTIC_REGRESSION, SGD_CLASSIFIER, PASSIVE_AGGRESSIVE_CLASSIFIER, PERCEPTRON_CLASSIFIER, KNN_CLASSIFIER, NEAREST_CENTROID_CLASSIFIER, GAUSSIAN_NAIVE_BAYES_CLASSIFIER, MULTINOMIAL_NAIVE_BAYES_CLASSIFIER, BERNOULLI_NAIVE_BAYES_CLASSIFIER, DECISION_TREE_CLASSIFIER, RANDOM_FOREST_CLASSIFIER, EXTRA_TREES_CLASSIFIER, GRADIENT_BOOSTING_CLASSIFIER, ADABOOST_CLASSIFIER, SUPPORT_VECTOR_CLASSIFIER, SUPPORT_VECTOR_REGRESSION,NEURAL_NETWORK_AUTOENCODER_VECTOR_TO_SEQUENCE, NEURAL_NETWORK_AUTOENCODER_VECTOR_TO_VECTOR, NEURAL_NETWORK_AUTOENCODER_SEQUENCE_TO_SEQUENCE };
   //regressor 
   //============================================================================
@@ -2095,7 +2192,10 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     void binarize(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _binarizer.binarize(src, dst, params); }
     void filter(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _filter.filter(src, dst, params); }
     void reduce(const vec_src& src, matrix<real_>& dst, const std::vector<std::string>& params) { _reducer.reduce(src, dst, params); }
+    
+    
     private :
+
     feature_extractor<vec_src,real_>* _extractor;
     feature_transformer<vec_src,real_>* _transformer;
     feature_selector<vec_src,real_>* _selector;
@@ -2113,6 +2213,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::set<std::string> _feature_names;
     std::map<std::pair<std::string,std::string>,std::string> _feature_names_map;
     size_t nops = 0;
+
   };
   //end of feature_extraction_parameters class.
   class feature_stage : public stage_descriptor
@@ -2124,9 +2225,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     
     std::vector<std::string> _functor_names; //initialize the feature 
     //extractor methods here.
-
-
-    template <typename T>
+     template <typename T>
     std::vector<T> parse_string(const std::string& d) const
     {
       std::vector<T> v;
@@ -2156,12 +2255,10 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
           ret[i] = sum / ds.size1();
         } return ret;
         };
-
         _extraction_functors.set_feature_extraction_method(fcp1_sum);
         _extraction_functors.set_features_length(1);
         _functor_names.push_back("sum");
-
-
+ 
     } 
     feature_stage(const feature_stage& cpy) : stage_descriptor(cpy)
     {
@@ -2825,6 +2922,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
 
   };
+
   class join_stage : public stage_descriptor
   {
     public : 

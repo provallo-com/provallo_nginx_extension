@@ -38,10 +38,10 @@ namespace provallo
 		std::vector<size_t> ix_arr;
 		size_t st;
 		size_t end;
-		std::vector<double> weights_arr;
-		std::vector<double> comb_val;
-		std::vector<double> tmat_sep;
-		std::vector<double> rmat;
+		std::vector<real_t> weights_arr;
+		std::vector<real_t> comb_val;
+		std::vector<real_t> tmat_sep;
+		std::vector<real_t> rmat;
 		size_t n_from;
 		bool assume_full_distr; /* doesn't need to have one copy per worker */
 	} WorkerForSimilarity;
@@ -51,9 +51,9 @@ namespace provallo
 		std::vector<size_t> ix_arr;
 		size_t st;
 		size_t end;
-		std::vector<double> comb_val;
-		std::vector<double> weights_arr;
-		std::vector<double> depths;
+		std::vector<real_t> comb_val;
+		std::vector<real_t> weights_arr;
+		std::vector<real_t> depths;
 	} WorkerForPredictCSC;
 
 	/* Structs that are only used internally */
@@ -75,28 +75,28 @@ namespace provallo
 		sparse_ix *Xc_indptr;					/* only for sparse matrices */
 		size_t log2_n;							/* only when using weights for sampling */
 		size_t btree_offset;					/* only when using weights for sampling */
-		std::vector<double> btree_weights_init; /* only when using weights for sampling */
+		std::vector<real_t> btree_weights_init; /* only when using weights for sampling */
 		std::vector<char> has_missing;			/* only used when producing missing imputations on-the-fly */
 		size_t n_missing;						/* only used when producing missing imputations on-the-fly */
 		void *preinitialized_col_sampler;		/* only when using column weights */
-		double *range_low;						/* only when calculating variable ranges or boxed densities with no sub-sampling */
-		double *range_high;						/* only when calculating variable ranges or boxed densities with no sub-sampling */
+		real_t *range_low;						/* only when calculating variable ranges or boxed densities with no sub-sampling */
+		real_t *range_high;						/* only when calculating variable ranges or boxed densities with no sub-sampling */
 		int *ncat_;								/* only when calculating boxed densities with no sub-sampling */
-		std::vector<double> all_kurtoses;		/* only when using 'prob_pick_col_by_kurtosis' or mixing 'weigh_by_kurt' with 'prob_pick_col*' with no sub-sampling */
-		std::vector<double> X_row_major;		/* created by this library, only used when calculating full gain */
-		std::vector<double> Xr;					/* created by this library, only used when calculating full gain */
+		std::vector<real_t> all_kurtoses;		/* only when using 'prob_pick_col_by_kurtosis' or mixing 'weigh_by_kurt' with 'prob_pick_col*' with no sub-sampling */
+		std::vector<real_t> X_row_major;		/* created by this library, only used when calculating full gain */
+		std::vector<real_t> Xr;					/* created by this library, only used when calculating full gain */
 		std::vector<size_t> Xr_ind;				/* created by this library, only used when calculating full gain */
 		std::vector<size_t> Xr_indptr;			/* created by this library, only used when calculating full gain */
 	};
 	// Impute generate/replaces N/A values
 	struct ImputedData
 	{
-		std::vector<double> num_sum;
-		std::vector<double> num_weight;
-		std::vector<std::vector<double>> cat_sum;
-		std::vector<double> cat_weight;
-		std::vector<double> sp_num_sum;
-		std::vector<double> sp_num_weight;
+		std::vector<real_t> num_sum;
+		std::vector<real_t> num_weight;
+		std::vector<std::vector<real_t>> cat_sum;
+		std::vector<real_t> cat_weight;
+		std::vector<real_t> sp_num_sum;
+		std::vector<real_t> sp_num_weight;
 
 		std::vector<size_t> missing_num;
 		std::vector<size_t> missing_cat;
@@ -116,127 +116,127 @@ namespace provallo
 	size_t
 	move_NAs_to_front(size_t ix_arr[], size_t st, size_t end, real_t x[]);
 	template <class xreal, class real_t_, class mapping>
-	double
+	real_t
 	find_split_rel_gain_weighted_t(xreal *x, xreal xmean, size_t *ix_arr,
-								   size_t st, size_t end, double &split_point,
+								   size_t st, size_t end, real_t &split_point,
 								   size_t &split_ix, mapping &w);
 	template <class InputData, class WorkerMemory>
 	void
 	add_separation_step(WorkerMemory &workspace, InputData &data,
-						double remainder);
+						real_t remainder);
 	size_t
-	divide_subset_split(size_t ix_arr[], double x[], size_t st, size_t end,
-						double split_point) noexcept;
+	divide_subset_split(size_t ix_arr[], real_t x[], size_t st, size_t end,
+						real_t split_point) noexcept;
 
 	template <class xreal /*=real_t*/, class sparse_ix_ /*= sparse_ix*/,
-			  class ldouble_safe /*= long double*/>
-	double
+			  class lreal_t_safe /*= long real_t*/>
+	real_t
 	eval_guided_crit(size_t ix_arr[], size_t st, size_t end, size_t col_num,
 					 xreal Xc[], sparse_ix_ Xc_ind[], sparse_ix_ Xc_indptr[],
-					 double buffer_arr[], size_t buffer_pos[],
-					 bool as_relative_gain, double *saved_xmedian,
-					 double &split_point, double &xmin, double &xmax,
-					 GainCriterion criterion, double min_gain,
+					 real_t buffer_arr[], size_t buffer_pos[],
+					 bool as_relative_gain, real_t *saved_xmedian,
+					 real_t &split_point, real_t &xmin, real_t &xmax,
+					 GainCriterion criterion, real_t min_gain,
 					 MissingAction missing_action, size_t *cols_use,
 					 size_t ncols_use, bool force_cols_use,
-					 double *X_row_major, size_t ncols, double *Xr,
+					 real_t *X_row_major, size_t ncols, real_t *Xr,
 					 size_t *Xr_ind, size_t *Xr_indptr);
 
-	template <class ldouble_safe>
-	double
-	eval_guided_crit_weighted(double *x, size_t n, GainCriterion criterion,
-							  double min_gain, bool as_relative_gain,
-							  double *buffer_sd, double &split_point,
-							  double &xmin, double &xmax, double *w,
+	template <class lreal_t_safe>
+	real_t
+	eval_guided_crit_weighted(real_t *x, size_t n, GainCriterion criterion,
+							  real_t min_gain, bool as_relative_gain,
+							  real_t *buffer_sd, real_t &split_point,
+							  real_t &xmin, real_t &xmax, real_t *w,
 							  size_t *buffer_indices, size_t *ix_arr_plus_st,
 							  size_t *cols_use, size_t ncols_use,
-							  bool force_cols_use, double *X_row_major,
-							  size_t ncols, double *Xr, size_t *Xr_ind,
+							  bool force_cols_use, real_t *X_row_major,
+							  size_t ncols, real_t *Xr, size_t *Xr_ind,
 							  size_t *Xr_indptr);
 
-	template <class mapping, class ldouble_safe>
-	double
+	template <class mapping, class lreal_t_safe>
+	real_t
 	eval_guided_crit_weighted(size_t *ix_arr, size_t st, size_t end, int *x,
 							  int ncat, int *saved_cat_mode,
-							  size_t *buffer_pos, double *buffer_prob,
+							  size_t *buffer_pos, real_t *buffer_prob,
 							  int &chosen_cat, signed char *split_categ,
 							  signed char *buffer_split,
-							  GainCriterion criterion, double min_gain,
+							  GainCriterion criterion, real_t min_gain,
 							  bool all_perm, MissingAction missing_action,
 							  CategSplit cat_split_type, mapping &w);
 
 	template <class xreal, class yreal>
-	double
+	real_t
 	find_split_std_gain_t(xreal *x, yreal xmean, size_t ix_arr[], size_t st,
-						  size_t end, double *sd_arr, GainCriterion criterion,
-						  double min_gain, double &split_point,
+						  size_t end, real_t *sd_arr, GainCriterion criterion,
+						  real_t min_gain, real_t &split_point,
 						  size_t &split_ix);
 
 	void
 	todense(size_t *ix_arr, size_t st, size_t end, size_t col_num, real_t *Xc,
 			sparse_ix *Xc_ind,
-			sparse_ix *Xc_indptr, double *buffer_arr);
+			sparse_ix *Xc_indptr, real_t *buffer_arr);
 	void
 	fill_NAs_with_median(size_t *ix_arr, size_t st_orig, size_t st, size_t end,
 						 real_t *x,
-						 double *buffer_imputed_x, double *xmedian);
+						 real_t *buffer_imputed_x, real_t *xmedian);
 
-	template <class InputData, class WorkerMemory, class ldouble_safe>
+	template <class InputData, class WorkerMemory, class lreal_t_safe>
 	void
 	calc_var_all_cols(InputData &input_data, WorkerMemory &workspace,
-					  ModelParams &model_params, double *variances,
-					  double *saved_xmin, double *saved_xmax,
-					  double *saved_means, double *saved_sds);
+					  ModelParams &model_params, real_t *variances,
+					  real_t *saved_xmin, real_t *saved_xmax,
+					  real_t *saved_means, real_t *saved_sds);
 
-	template <class ldouble_safe>
-	double
-	eval_guided_crit(double *x, size_t n, GainCriterion criterion,
-					 double min_gain, bool as_relative_gain, double *buffer_sd,
-					 double &split_point, double &xmin, double &xmax,
+	template <class lreal_t_safe>
+	real_t
+	eval_guided_crit(real_t *x, size_t n, GainCriterion criterion,
+					 real_t min_gain, bool as_relative_gain, real_t *buffer_sd,
+					 real_t &split_point, real_t &xmin, real_t &xmax,
 					 size_t *ix_arr_plus_st, size_t *cols_use,
 					 size_t ncols_use, bool force_cols_use,
-					 double *X_row_major, size_t ncols, double *Xr,
+					 real_t *X_row_major, size_t ncols, real_t *Xr,
 					 size_t *Xr_ind, size_t *Xr_indptr);
-	template <class ldouble_safe>
-	double
-	eval_guided_crit_weighted(double *x, size_t n, GainCriterion criterion,
-							  double min_gain, bool as_relative_gain,
-							  double *buffer_sd, double &split_point,
-							  double &xmin, double &xmax, double *w,
+	template <class lreal_t_safe>
+	real_t
+	eval_guided_crit_weighted(real_t *x, size_t n, GainCriterion criterion,
+							  real_t min_gain, bool as_relative_gain,
+							  real_t *buffer_sd, real_t &split_point,
+							  real_t &xmin, real_t &xmax, real_t *w,
 							  size_t *buffer_indices, size_t *ix_arr_plus_st,
 							  size_t *cols_use, size_t ncols_use,
-							  bool force_cols_use, double *X_row_major,
-							  size_t ncols, double *Xr, size_t *Xr_ind,
+							  bool force_cols_use, real_t *X_row_major,
+							  size_t ncols, real_t *Xr, size_t *Xr_ind,
 							  size_t *Xr_indptr);
-	template <class real_t_, class ldouble_safe>
-	double
+	template <class real_t_, class lreal_t_safe>
+	real_t
 	eval_guided_crit(size_t *ix_arr, size_t st, size_t end, real_t_ *x,
-					 double *buffer_sd, bool as_relative_gain,
-					 double *buffer_imputed_x, double *saved_xmedian,
-					 size_t &split_ix, double &split_point, double &xmin,
-					 double &xmax, GainCriterion criterion, double min_gain,
+					 real_t *buffer_sd, bool as_relative_gain,
+					 real_t *buffer_imputed_x, real_t *saved_xmedian,
+					 size_t &split_ix, real_t &split_point, real_t &xmin,
+					 real_t &xmax, GainCriterion criterion, real_t min_gain,
 					 MissingAction missing_action, size_t *cols_use,
 					 size_t ncols_use, bool force_cols_use,
-					 double *X_row_major, size_t ncols, double *Xr,
+					 real_t *X_row_major, size_t ncols, real_t *Xr,
 					 size_t *Xr_ind, size_t *Xr_indptr);
-	template <class real_t_, class mapping, class ldouble_safe>
-	double
+	template <class real_t_, class mapping, class lreal_t_safe>
+	real_t
 	eval_guided_crit_weighted(size_t *ix_arr, size_t st, size_t end,
-							  real_t_ *x, double *buffer_sd,
-							  bool as_relative_gain, double *buffer_imputed_x,
-							  double *saved_xmedian, size_t &split_ix,
-							  double &split_point, double &xmin, double &xmax,
-							  GainCriterion criterion, double min_gain,
+							  real_t_ *x, real_t *buffer_sd,
+							  bool as_relative_gain, real_t *buffer_imputed_x,
+							  real_t *saved_xmedian, size_t &split_ix,
+							  real_t &split_point, real_t &xmin, real_t &xmax,
+							  GainCriterion criterion, real_t min_gain,
 							  MissingAction missing_action, size_t *cols_use,
 							  size_t ncols_use, bool force_cols_use,
-							  double *X_row_major, size_t ncols, double *Xr,
+							  real_t *X_row_major, size_t ncols, real_t *Xr,
 							  size_t *Xr_ind, size_t *Xr_indptr, mapping &w);
 
 	void
-	weighted_shuffle(size_t *outp, size_t n, real_t *weights, double *buffer_arr,
+	weighted_shuffle(size_t *outp, size_t n, real_t *weights, real_t *buffer_arr,
 					 RNG_engine &rnd_generator);
-	double
-	sample_random_uniform(double xmin, double xmax, RNG_engine &rng) noexcept;
+	real_t
+	sample_random_uniform(real_t xmin, real_t xmax, RNG_engine &rng) noexcept;
 
 	size_t
 	move_NAs_to_front(size_t ix_arr[], size_t st, size_t end, real_t x[])
@@ -342,11 +342,11 @@ namespace provallo
 		return curr_pos;
 	}
 
-	template <class InputData, class WorkerMemory, class ldouble_safe>
+	template <class InputData, class WorkerMemory, class lreal_t_safe>
 	void
 	calc_kurt_all_cols(InputData &data, WorkerMemory &workspace,
-					   ModelParams &model_params, double *kurtosis,
-					   double *saved_xmin, double *saved_xmax);
+					   ModelParams &model_params, real_t *kurtosis,
+					   real_t *saved_xmin, real_t *saved_xmax);
 
 	inline bool
 	is_boxed_metric(const ScoringMetric scoring_metric)
@@ -438,11 +438,11 @@ namespace provallo
 			col_is_taken_s.insert(col_num);
 	}
 
-	double
+	real_t
 	midpoint(real_t x, real_t y)
 	{
 		real_t m = x + (y - x) / (real_t)2;
-		if (likely((double)m < (double)y))
+		if (likely((real_t)m < (real_t)y))
 			return m;
 		else
 		{
@@ -457,12 +457,12 @@ namespace provallo
 	template <class real_t_>
 	void
 	get_range(size_t ix_arr[], real_t_ *x, size_t st, size_t end,
-			  MissingAction missing_action, double &xmin, double &xmax,
+			  MissingAction missing_action, real_t &xmin, real_t &xmax,
 			  bool &unsplittable) noexcept
 	{
 		xmin = HUGE_VAL;
 		xmax = -HUGE_VAL;
-		double xval;
+		real_t xval;
 		
 		
 		if (missing_action == Fail)
@@ -490,8 +490,8 @@ namespace provallo
 
 	template <class real_t_>
 	void
-	get_range(real_t_ *x, size_t n, MissingAction missing_action, double &xmin,
-			  double &xmax, bool &unsplittable) noexcept
+	get_range(real_t_ *x, size_t n, MissingAction missing_action, real_t &xmin,
+			  real_t &xmax, bool &unsplittable) noexcept
 	{
 		xmin = HUGE_VAL;
 		xmax = -HUGE_VAL;
@@ -521,7 +521,7 @@ namespace provallo
 	void
 	get_range(size_t *ix_arr, size_t st, size_t end, size_t col_num,
 			  real_t_ *Xc, sparse_ix_ *Xc_ind, sparse_ix_ *Xc_indptr,
-			  MissingAction missing_action, double &xmin, double &xmax,
+			  MissingAction missing_action, real_t &xmin, real_t &xmax,
 			  bool &unsplittable) noexcept
 	{
 		/* ix_arr must already be sorted beforehand */
@@ -623,7 +623,7 @@ namespace provallo
 	void
 	get_range(size_t col_num, size_t nrows, real_t_ *Xc, sparse_ix_ *Xc_ind,
 			  sparse_ix_ *Xc_indptr, MissingAction missing_action,
-			  double &xmin, double &xmax, bool &unsplittable) noexcept
+			  real_t &xmin, real_t &xmax, bool &unsplittable) noexcept
 	{
 		UNDEF_REFERENCE(Xc_ind)
 		UNDEF_REFERENCE2(Xc_indptr)
@@ -764,20 +764,20 @@ namespace provallo
 	}
 
 	// FW:
-	template <class real_t_, class mapping, class ldouble_safe>
-	double
+	template <class real_t_, class mapping, class lreal_t_safe>
+	real_t
 	eval_guided_crit_weighted(size_t *ix_arr, size_t st, size_t end,
-							  real_t_ *x, double *buffer_sd,
-							  bool as_relative_gain, double *buffer_imputed_x,
-							  double *saved_xmedian, size_t &split_ix,
-							  double &split_point, double &xmin, double &xmax,
-							  GainCriterion criterion, double min_gain,
+							  real_t_ *x, real_t *buffer_sd,
+							  bool as_relative_gain, real_t *buffer_imputed_x,
+							  real_t *saved_xmedian, size_t &split_ix,
+							  real_t &split_point, real_t &xmin, real_t &xmax,
+							  GainCriterion criterion, real_t min_gain,
 							  MissingAction missing_action, size_t *cols_use,
 							  size_t ncols_use, bool force_cols_use,
-							  double *X_row_major, size_t ncols, double *Xr,
+							  real_t *X_row_major, size_t ncols, real_t *Xr,
 							  size_t *Xr_ind, size_t *Xr_indptr, mapping &w);
 
-	template <class InputData, class WorkerMemory, class ldouble_safe>
+	template <class InputData, class WorkerMemory, class lreal_t_safe>
 	void
 	fit_itree(std::vector<IsoTree> *tree_root,
 			  std::vector<IsoHPlane> *hplane_root, WorkerMemory &workspace,
@@ -842,14 +842,14 @@ namespace provallo
 		imputer_tree.shrink_to_fit();
 	}
 
-	template <class InputData, class WorkerMemory, class ldouble_safe>
+	template <class InputData, class WorkerMemory, class lreal_t_safe>
 	void
 	split_itree_recursive(std::vector<IsoTree> &trees, WorkerMemory &workspace,
 						  InputData &data, ModelParams &model_params,
 						  std::vector<ImputeNode> *impute_nodes,
 						  size_t curr_depth)
 	{
-		ldouble_safe sum_weight = -HUGE_VAL;
+		lreal_t_safe sum_weight = -HUGE_VAL;
 
 		/* calculate imputation statistics if desired */
 		if (impute_nodes != NULL)
@@ -857,7 +857,7 @@ namespace provallo
 			if (data.Xc_indptr != NULL)
 				std::sort(workspace.ix_arr.begin() + workspace.st,
 						  workspace.ix_arr.begin() + workspace.end + 1);
-			build_impute_node<decltype(data), decltype(workspace), ldouble_safe>(
+			build_impute_node<decltype(data), decltype(workspace), lreal_t_safe>(
 				impute_nodes->back(), workspace, data, model_params,
 				*impute_nodes, curr_depth, model_params.min_imp_obs);
 		}
@@ -869,7 +869,7 @@ namespace provallo
 		/* when using weights, the split should stop when the sum of weights is <= 1 */
 		if (workspace.changed_weights)
 		{
-			sum_weight = calculate_sum_weights<ldouble_safe>(
+			sum_weight = calculate_sum_weights<lreal_t_safe>(
 				workspace.ix_arr, workspace.st, workspace.end, curr_depth,
 				workspace.weights_arr, workspace.weights_map);
 			if (curr_depth > 0 && sum_weight <= 1)
@@ -992,7 +992,7 @@ namespace provallo
 		{
 			workspace.col_criterion = ByVar;
 			workspace.has_saved_stats = workspace.criterion == NoCrit;
-			calc_var_all_cols<InputData, WorkerMemory, ldouble_safe>(
+			calc_var_all_cols<InputData, WorkerMemory, lreal_t_safe>(
 				data, workspace, model_params, workspace.node_col_weights.data(),
 				workspace.has_saved_stats ? workspace.saved_stat1.data() : NULL,
 				workspace.has_saved_stats ? workspace.saved_stat2.data() : NULL,
@@ -1004,7 +1004,7 @@ namespace provallo
 		{
 			workspace.col_criterion = ByKurt;
 			workspace.has_saved_stats = workspace.criterion == NoCrit;
-			calc_kurt_all_cols<decltype(data), decltype(workspace), ldouble_safe>(
+			calc_kurt_all_cols<decltype(data), decltype(workspace), lreal_t_safe>(
 				data, workspace, model_params, workspace.node_col_weights.data(),
 				workspace.has_saved_stats ? workspace.saved_stat1.data() : NULL,
 				workspace.has_saved_stats ? workspace.saved_stat2.data() : NULL);
@@ -1139,7 +1139,7 @@ namespace provallo
 			hashed_set<size_t> col_is_taken_s;
 			if (model_params.ntry < workspace.col_sampler.get_remaining_cols() && workspace.col_criterion == Uniformly)
 			{
-				if (data.ncols_tot < 1e5 || ((ldouble_safe)model_params.ntry / (ldouble_safe)workspace.col_sampler.get_remaining_cols()) > .25)
+				if (data.ncols_tot < 1e5 || ((lreal_t_safe)model_params.ntry / (lreal_t_safe)workspace.col_sampler.get_remaining_cols()) > .25)
 				{
 					col_is_taken.resize(data.ncols_tot, false);
 				}
@@ -1204,7 +1204,7 @@ namespace provallo
 								workspace.this_gain = eval_guided_crit<
 									typename std::remove_pointer<
 										decltype(data.numeric_data)>::type,
-									ldouble_safe>(
+									lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1226,7 +1226,7 @@ namespace provallo
 								workspace.this_gain = eval_guided_crit_weighted<
 									typename std::remove_pointer<
 										decltype(data.numeric_data)>::type,
-									decltype(workspace.weights_arr), ldouble_safe>(
+									decltype(workspace.weights_arr), lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1248,7 +1248,7 @@ namespace provallo
 								workspace.this_gain = eval_guided_crit_weighted<
 									typename std::remove_pointer<
 										decltype(data.numeric_data)>::type,
-									decltype(workspace.weights_map), ldouble_safe>(
+									decltype(workspace.weights_map), lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1277,7 +1277,7 @@ namespace provallo
 											decltype(data.Xc)>::type,
 										typename std::remove_pointer<
 											decltype(data.Xc_indptr)>::type,
-										ldouble_safe>(
+										lreal_t_safe>(
 										workspace.ix_arr.data(),
 										workspace.st,
 										workspace.end,
@@ -1310,7 +1310,7 @@ namespace provallo
 										typename std::remove_pointer<
 											decltype(data.Xc_indptr)>::type,
 										decltype(workspace.weights_arr),
-										ldouble_safe>(
+										lreal_t_safe>(
 										workspace.ix_arr.data(),
 										workspace.st,
 										workspace.end,
@@ -1343,7 +1343,7 @@ namespace provallo
 										typename std::remove_pointer<
 											decltype(data.Xc_indptr)>::type,
 										decltype(workspace.weights_map),
-										ldouble_safe>(
+										lreal_t_safe>(
 										workspace.ix_arr.data(),
 										workspace.st,
 										workspace.end,
@@ -1375,7 +1375,7 @@ namespace provallo
 					{
 						if (!workspace.changed_weights)
 							workspace.this_gain =
-								eval_guided_crit<ldouble_safe>(
+								eval_guided_crit<lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1395,7 +1395,7 @@ namespace provallo
 						else if (!workspace.weights_arr.empty())
 							workspace.this_gain =
 								eval_guided_crit_weighted<
-									decltype(workspace.weights_arr), ldouble_safe>(
+									decltype(workspace.weights_arr), lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1415,7 +1415,7 @@ namespace provallo
 						else
 							workspace.this_gain =
 								eval_guided_crit_weighted<
-									decltype(workspace.weights_map), ldouble_safe>(
+									decltype(workspace.weights_map), lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1558,7 +1558,7 @@ namespace provallo
 							workspace.this_gain = eval_guided_crit<
 								typename std::remove_pointer<
 									decltype(data.numeric_data)>::type,
-								ldouble_safe>(
+								lreal_t_safe>(
 								workspace.ix_arr.data(),
 								workspace.st,
 								workspace.end,
@@ -1580,7 +1580,7 @@ namespace provallo
 							workspace.this_gain = eval_guided_crit_weighted<
 								typename std::remove_pointer<
 									decltype(data.numeric_data)>::type,
-								decltype(workspace.weights_arr), ldouble_safe>(
+								decltype(workspace.weights_arr), lreal_t_safe>(
 								workspace.ix_arr.data(),
 								workspace.st,
 								workspace.end,
@@ -1602,7 +1602,7 @@ namespace provallo
 							workspace.this_gain = eval_guided_crit_weighted<
 								typename std::remove_pointer<
 									decltype(data.numeric_data)>::type,
-								decltype(workspace.weights_map), ldouble_safe>(
+								decltype(workspace.weights_map), lreal_t_safe>(
 								workspace.ix_arr.data(),
 								workspace.st,
 								workspace.end,
@@ -1652,7 +1652,7 @@ namespace provallo
 									typename std::remove_pointer<decltype(data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(data.Xc_indptr)>::type,
-									ldouble_safe>(
+									lreal_t_safe>(
 									workspace.ix_arr.data(), workspace.st,
 									workspace.end, trees.back().col_num, data.Xc,
 									data.Xc_ind, data.Xc_indptr,
@@ -1675,7 +1675,7 @@ namespace provallo
 									typename std::remove_pointer<decltype(data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(data.Xc_indptr)>::type,
-									decltype(workspace.weights_arr), ldouble_safe>(
+									decltype(workspace.weights_arr), lreal_t_safe>(
 									workspace.ix_arr.data(), workspace.st,
 									workspace.end, trees.back().col_num, data.Xc,
 									data.Xc_ind, data.Xc_indptr,
@@ -1699,7 +1699,7 @@ namespace provallo
 									typename std::remove_pointer<decltype(data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(data.Xc_indptr)>::type,
-									decltype(workspace.weights_map), ldouble_safe>(
+									decltype(workspace.weights_map), lreal_t_safe>(
 									workspace.ix_arr.data(), workspace.st,
 									workspace.end, trees.back().col_num, data.Xc,
 									data.Xc_ind, data.Xc_indptr,
@@ -1803,7 +1803,7 @@ namespace provallo
 						{
 							if (!workspace.changed_weights)
 								workspace.this_gain = eval_guided_crit<
-									ldouble_safe>(
+									lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1823,7 +1823,7 @@ namespace provallo
 							else if (!workspace.weights_arr.empty())
 								workspace.this_gain = eval_guided_crit_weighted<
 									decltype(workspace.weights_arr),
-									ldouble_safe>(
+									lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1843,7 +1843,7 @@ namespace provallo
 							else
 								workspace.this_gain = eval_guided_crit_weighted<
 									decltype(workspace.weights_map),
-									ldouble_safe>(
+									lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -1925,7 +1925,7 @@ namespace provallo
 								data.ncat[trees.back().col_num]);
 							if (!workspace.changed_weights)
 								workspace.this_gain =
-									eval_guided_crit<ldouble_safe>(
+									eval_guided_crit<lreal_t_safe>(
 										workspace.ix_arr.data(),
 										workspace.st,
 										workspace.end,
@@ -1947,7 +1947,7 @@ namespace provallo
 								workspace.this_gain =
 									eval_guided_crit_weighted<
 										decltype(workspace.weights_arr),
-										ldouble_safe>(
+										lreal_t_safe>(
 										workspace.ix_arr.data(),
 										workspace.st,
 										workspace.end,
@@ -1969,7 +1969,7 @@ namespace provallo
 								workspace.this_gain =
 									eval_guided_crit_weighted<
 										decltype(workspace.weights_map),
-										ldouble_safe>(
+										lreal_t_safe>(
 										workspace.ix_arr.data(),
 										workspace.st,
 										workspace.end,
@@ -2030,7 +2030,7 @@ namespace provallo
 	{
 		/* add another round of separation depth for distance */
 		if (model_params.calc_dist && curr_depth > 0)
-			add_separation_step(workspace, data, (double)(-1));
+			add_separation_step(workspace, data, (real_t)(-1));
 
 		/* if it split by a categorical variable with only 2 values,
 		 the column will no longer be splittable in either branch */
@@ -2075,7 +2075,7 @@ namespace provallo
 
 			if (!workspace.changed_weights)
 			{
-				trees.back().pct_tree_left = (ldouble_safe)(workspace.st_NA - workspace.st) / (ldouble_safe)(workspace.end - workspace.st + 1 - (workspace.end_NA - workspace.st_NA));
+				trees.back().pct_tree_left = (lreal_t_safe)(workspace.st_NA - workspace.st) / (lreal_t_safe)(workspace.end - workspace.st + 1 - (workspace.end_NA - workspace.st_NA));
 
 				if (model_params.missing_action == Divide && workspace.st_NA < workspace.end_NA)
 				{
@@ -2103,8 +2103,8 @@ namespace provallo
 
 			else
 			{
-				ldouble_safe sum_weight_left = 0;
-				ldouble_safe sum_weight_right = 0;
+				lreal_t_safe sum_weight_left = 0;
+				lreal_t_safe sum_weight_right = 0;
 
 				if (!workspace.weights_arr.empty())
 				{
@@ -2170,7 +2170,7 @@ namespace provallo
 
 		else
 		{
-			trees.back().pct_tree_left = (ldouble_safe)(workspace.split_ix - workspace.st) / (ldouble_safe)(workspace.end - workspace.st + 1);
+			trees.back().pct_tree_left = (lreal_t_safe)(workspace.split_ix - workspace.st) / (lreal_t_safe)(workspace.end - workspace.st + 1);
 			workspace.end = workspace.split_ix - 1;
 		}
 
@@ -2419,7 +2419,7 @@ namespace provallo
 		trees.emplace_back();
 		if (impute_nodes != NULL)
 			impute_nodes->emplace_back(tree_from);
-		split_itree_recursive<InputData, WorkerMemory, ldouble_safe>(
+		split_itree_recursive<InputData, WorkerMemory, lreal_t_safe>(
 			trees, workspace, data, model_params, impute_nodes,
 			curr_depth + 1);
 
@@ -2501,7 +2501,7 @@ namespace provallo
 		trees.emplace_back();
 		if (impute_nodes != NULL)
 			impute_nodes->emplace_back(tree_from);
-		split_itree_recursive<InputData, WorkerMemory, ldouble_safe>(
+		split_itree_recursive<InputData, WorkerMemory, lreal_t_safe>(
 			trees, workspace, data, model_params, impute_nodes,
 			curr_depth + 1);
 		if (is_boxed_metric(model_params.scoring_metric))
@@ -2528,7 +2528,7 @@ namespace provallo
 		if (workspace.changed_weights)
 		{
 			if (sum_weight <= -HUGE_VAL)
-				sum_weight = calculate_sum_weights<ldouble_safe>(
+				sum_weight = calculate_sum_weights<lreal_t_safe>(
 					workspace.ix_arr, workspace.st, workspace.end, curr_depth,
 					workspace.weights_arr, workspace.weights_map);
 		}
@@ -2538,10 +2538,10 @@ namespace provallo
 		case Depth:
 		{
 			if (!workspace.changed_weights)
-				trees.back().score = curr_depth + expected_avg_depth<ldouble_safe>(
+				trees.back().score = curr_depth + expected_avg_depth<lreal_t_safe>(
 													  workspace.end - workspace.st + 1);
 			else
-				trees.back().score = curr_depth + expected_avg_depth<ldouble_safe>(sum_weight);
+				trees.back().score = curr_depth + expected_avg_depth<lreal_t_safe>(sum_weight);
 			break;
 		}
 
@@ -2549,11 +2549,11 @@ namespace provallo
 		{
 			if (!workspace.changed_weights)
 				trees.back().score =
-					workspace.density_calculator.calc_adj_depth() + expected_avg_depth<ldouble_safe>(
+					workspace.density_calculator.calc_adj_depth() + expected_avg_depth<lreal_t_safe>(
 																		workspace.end - workspace.st + 1);
 			else
 				trees.back().score =
-					workspace.density_calculator.calc_adj_depth() + expected_avg_depth<ldouble_safe>(sum_weight);
+					workspace.density_calculator.calc_adj_depth() + expected_avg_depth<lreal_t_safe>(sum_weight);
 			break;
 		}
 
@@ -2618,11 +2618,11 @@ namespace provallo
 		trees.back().cat_split.shrink_to_fit();
 
 		trees.back().remainder =
-			workspace.changed_weights ? (double)sum_weight : (double)(workspace.end - workspace.st + 1);
+			workspace.changed_weights ? (real_t)sum_weight : (real_t)(workspace.end - workspace.st + 1);
 
 		/* for distance, assume also the elements keep being split */
 		if (model_params.calc_dist)
-			add_remainder_separation_steps<InputData, WorkerMemory, ldouble_safe>(
+			add_remainder_separation_steps<InputData, WorkerMemory, lreal_t_safe>(
 				workspace, data, sum_weight);
 
 		/* add this depth right away if requested */
@@ -2656,7 +2656,7 @@ namespace provallo
 	}
 	}
 
-	template <class InputData, class WorkerMemory, class ldouble_safe>
+	template <class InputData, class WorkerMemory, class lreal_t_safe>
 	void
 	split_hplane_recursive(std::vector<IsoHPlane> &hplanes,
 						   WorkerMemory &workspace, InputData &input_data,
@@ -3006,39 +3006,39 @@ namespace provallo
 		initialize_impute_calc(*this, input_data, row);
 	}
 
-	double
+	real_t
 	expected_separation_depth(size_t n);
-	double
-	expected_separation_depth_hotstart(double curr, size_t n_curr,
+	real_t
+	expected_separation_depth_hotstart(real_t curr, size_t n_curr,
 									   size_t n_final);
-	template <class ldouble_safe>
-	double
-	expected_separation_depth(ldouble_safe n)
+	template <class lreal_t_safe>
+	real_t
+	expected_separation_depth(lreal_t_safe n)
 	{
 		if (n >= THRESHOLD_EXACT_S)
 			return 3;
-		double s_l = expected_separation_depth((size_t)std::floor(n));
-		ldouble_safe u = std::ceil(n);
-		double s_u = s_l + (-s_l * u + 3. * u - 4.) / (u * (u - 1.));
-		double diff = n - std::floor(n);
+		real_t s_l = expected_separation_depth((size_t)std::floor(n));
+		lreal_t_safe u = std::ceil(n);
+		real_t s_u = s_l + (-s_l * u + 3. * u - 4.) / (u * (u - 1.));
+		real_t diff = n - std::floor(n);
 		return s_l + diff * s_u;
 	}
 	void
 	increase_comb_counter(size_t ix_arr[], size_t st, size_t end, size_t n,
-						  double counter[], double exp_remainder);
+						  real_t counter[], real_t exp_remainder);
 
-	double
+	real_t
 	expected_separation_depth(size_t n);
-	double
-	expected_separation_depth_hotstart(double curr, size_t n_curr,
+	real_t
+	expected_separation_depth_hotstart(real_t curr, size_t n_curr,
 									   size_t n_final);
-	template <class ldouble_safe>
-	double
-	expected_separation_depth(ldouble_safe n);
+	template <class lreal_t_safe>
+	real_t
+	expected_separation_depth(lreal_t_safe n);
 
 	void
 	increase_comb_counter(size_t ix_arr[], size_t st, size_t end, size_t n,
-						  double counter[], double exp_remainder)
+						  real_t counter[], real_t exp_remainder)
 	{
 		size_t i, j;
 		size_t ncomb = calc_ncomb(n);
@@ -3067,7 +3067,7 @@ namespace provallo
 
 	void
 	increase_comb_counter(size_t ix_arr[], size_t st, size_t end, size_t n,
-						  double *counter, double *weights, double exp_remainder)
+						  real_t *counter, real_t *weights, real_t exp_remainder)
 	{
 		size_t i, j;
 		size_t ncomb = calc_ncomb(n);
@@ -3094,8 +3094,8 @@ namespace provallo
 	}
 	void
 	increase_comb_counter(size_t ix_arr[], size_t st, size_t end, size_t n,
-						  double counter[], hashed_map<size_t, double> &weights,
-						  double exp_remainder)
+						  real_t counter[], hashed_map<size_t, real_t> &weights,
+						  real_t exp_remainder)
 	{
 		size_t i, j;
 		size_t ncomb = calc_ncomb(n);
@@ -3123,8 +3123,8 @@ namespace provallo
 
 	void
 	increase_comb_counter_in_groups(size_t ix_arr[], size_t st, size_t end,
-									size_t split_ix, size_t n, double counter[],
-									double exp_remainder)
+									size_t split_ix, size_t n, real_t counter[],
+									real_t exp_remainder)
 	{
 		size_t *ptr_split_ix = std::lower_bound(ix_arr + st, ix_arr + end + 1,
 												split_ix);
@@ -3143,8 +3143,8 @@ namespace provallo
 
 	void
 	increase_comb_counter_in_groups(size_t ix_arr[], size_t st, size_t end,
-									size_t split_ix, size_t n, double *counter,
-									double *weights, double exp_remainder)
+									size_t split_ix, size_t n, real_t *counter,
+									real_t *weights, real_t exp_remainder)
 	{
 		size_t *ptr_split_ix = std::lower_bound(ix_arr + st, ix_arr + end + 1,
 												split_ix);
@@ -3164,7 +3164,7 @@ namespace provallo
 	}
 
 	void
-	tmat_to_dense(double *tmat, double *dmat, size_t n, double fill_diag);
+	tmat_to_dense(real_t *tmat, real_t *dmat, size_t n, real_t fill_diag);
 
 	void
 	sample_random_rows(std::vector<size_t> &ix_arr, size_t nrows,
@@ -3172,13 +3172,13 @@ namespace provallo
 					   RNG_engine &rnd_generator,
 					   std::vector<size_t> &ix_all,
 					   real_t *sample_weights,
-					   std::vector<double> &btree_weights, size_t log2_n,
+					   std::vector<real_t> &btree_weights, size_t log2_n,
 					   size_t btree_offset, std::vector<bool> &is_repeated);
 
 	template <class real_t_>
 	void
 	colmajor_to_rowmajor(real_t_ *X, size_t nrows, size_t ncols,
-						 std::vector<double> &X_row_major)
+						 std::vector<real_t> &X_row_major)
 	{
 
 		X_row_major.resize(nrows * ncols);
@@ -3191,7 +3191,7 @@ namespace provallo
 	void
 	colmajor_to_rowmajor(real_t_ *Xc, sparse_ix_ *Xc_ind,
 						 sparse_ix_ *Xc_indptr, size_t nrows, size_t ncols,
-						 std::vector<double> &Xr, std::vector<size_t> &Xr_ind,
+						 std::vector<real_t> &Xr, std::vector<size_t> &Xr_ind,
 						 std::vector<size_t> &Xr_indptr)
 	{
 		size_t nnz = Xc_indptr[ncols];
@@ -3407,10 +3407,10 @@ namespace provallo
 	calc_similarity(real_t numeric_data[], int categ_data[],
 					real_t Xc[],
 					sparse_ix Xc_ind[], sparse_ix Xc_indptr[], size_t nrows,
-					bool use_long_double, int nthreads, bool assume_full_distr,
+					bool use_long_real_t, int nthreads, bool assume_full_distr,
 					bool standardize_dist, bool as_kernel,
 					IsoForest *model_outputs, ExtIsoForest *model_outputs_ext,
-					double tmat[], double rmat[], size_t n_from,
+					real_t tmat[], real_t rmat[], size_t n_from,
 					bool use_indexed_references, TreesIndexer *indexer,
 					bool is_col_major, size_t ld_numeric, size_t ld_categ);
 
@@ -3418,10 +3418,10 @@ namespace provallo
 	calc_similarity(real_t numeric_data[], int categ_data[],
 					real_t Xc[],
 					int Xc_ind[], int Xc_indptr[], size_t nrows,
-					bool use_long_double, int nthreads, bool assume_full_distr,
+					bool use_long_real_t, int nthreads, bool assume_full_distr,
 					bool standardize_dist, bool as_kernel,
 					IsoForest *model_outputs, ExtIsoForest *model_outputs_ext,
-					double tmat[], double rmat[], size_t n_from,
+					real_t tmat[], real_t rmat[], size_t n_from,
 					bool use_indexed_references, TreesIndexer *indexer,
 					bool is_col_major, size_t ld_numeric, size_t ld_categ);
 
@@ -3430,13 +3430,13 @@ namespace provallo
 						  bool is_col_major,
 						  real_t Xr[],
 						  sparse_ix Xr_ind[], sparse_ix Xr_indptr[],
-						  size_t nrows, bool use_long_double, int nthreads,
+						  size_t nrows, bool use_long_real_t, int nthreads,
 						  IsoForest *model_outputs,
 						  ExtIsoForest *model_outputs_ext, Imputer &imputer);
 	template <class ImputedData>
 	void
 	add_from_impute_node(ImputeNode &imputer, ImputedData &imputed_data,
-						 double w)
+						 real_t w)
 	{
 		size_t col;
 		for (size_t ix = 0; ix < imputed_data.n_missing_num; ix++)
@@ -3475,7 +3475,7 @@ namespace provallo
 					if (input_data.has_missing[workspace.ix_arr[row]])
 						add_from_impute_node(
 							imputer, workspace.impute_vec[workspace.ix_arr[row]],
-							(double)1);
+							(real_t)1);
 			}
 
 			else if (workspace.weights_arr.size())
@@ -3504,7 +3504,7 @@ namespace provallo
 					if (input_data.has_missing[workspace.ix_arr[row]])
 						add_from_impute_node(
 							imputer, workspace.impute_map[workspace.ix_arr[row]],
-							(double)1);
+							(real_t)1);
 			}
 
 			else if (workspace.weights_arr.size())
@@ -3994,22 +3994,22 @@ namespace provallo
 
 	void
 	traverse_hplane(std::vector<IsoHPlane> &hplane, ExtIsoForest &model_outputs,
-					PredictionData &prediction_data, double &output_depth,
+					PredictionData &prediction_data, real_t &output_depth,
 					std::vector<ImputeNode> *impute_nodes,
 					ImputedData *imputed_data,
 					sparse_ix *tree_num,
-					double *tree_depth, size_t row) noexcept;
+					real_t *tree_depth, size_t row) noexcept;
 	void
 	batched_csc_predict(prediction_data &prediction_data, int nthreads,
 						IsoForest *model_outputs,
-						ExtIsoForest *model_outputs_ext, double *output_depths,
+						ExtIsoForest *model_outputs_ext, real_t *output_depths,
 						sparse_ix *tree_num,
-						double *per_tree_depths);
+						real_t *per_tree_depths);
 
 	void
 	add_csc_range_penalty(WorkerForPredictCSC &workspace, PredictionData &data,
-						  double *weights_arr, size_t col_num, double range_low,
-						  double range_high)
+						  real_t *weights_arr, size_t col_num, real_t range_low,
+						  real_t range_high)
 	{
 		std::sort(workspace.ix_arr.begin() + workspace.st,
 				  workspace.ix_arr.begin() + workspace.end + 1);
@@ -4063,7 +4063,7 @@ namespace provallo
 					   std::vector<IsoTree> &trees, IsoForest &model_outputs,
 					   prediction_data &data,
 					   sparse_ix *tree_num,
-					   double *per_tree_depths, size_t curr_tree,
+					   real_t *per_tree_depths, size_t curr_tree,
 					   bool has_range_penalty)
 	{
 		if (unlikely(trees[curr_tree].tree_left == 0))
@@ -4173,7 +4173,7 @@ namespace provallo
 				workspace.end = split_ix - 1;
 
 				if (has_range_penalty && trees[curr_tree].col_type == Numeric)
-					add_csc_range_penalty(workspace, data, (double *)NULL,
+					add_csc_range_penalty(workspace, data, (real_t *)NULL,
 										  trees[curr_tree].col_num,
 										  trees[curr_tree].range_low,
 										  trees[curr_tree].range_high);
@@ -4189,7 +4189,7 @@ namespace provallo
 				workspace.end = orig_end;
 
 				if (has_range_penalty && trees[curr_tree].col_type == Numeric)
-					add_csc_range_penalty(workspace, data, (double *)NULL,
+					add_csc_range_penalty(workspace, data, (real_t *)NULL,
 										  trees[curr_tree].col_num,
 										  trees[curr_tree].range_low,
 										  trees[curr_tree].range_high);
@@ -4206,7 +4206,7 @@ namespace provallo
 		missing_action_divide:
 			/* TODO: maybe here it shouldn't copy the whole ix_arr,
 			 but then it'd need to re-generate it from outside too */
-			std::vector<double> weights_arr;
+			std::vector<real_t> weights_arr;
 			std::vector<size_t> ix_arr;
 			if (end_NA > workspace.st)
 			{
@@ -4290,7 +4290,7 @@ namespace provallo
 						ExtIsoForest &model_outputs,
 						prediction_data &prediction_data,
 						sparse_ix *tree_num,
-						double *per_tree_depths, size_t curr_tree,
+						real_t *per_tree_depths, size_t curr_tree,
 						bool has_range_penalty);
 
 	void
@@ -4298,7 +4298,7 @@ namespace provallo
 				 ExtIsoForest *ext_other, Imputer *imputer, Imputer *iother,
 				 TreesIndexer *indexer, TreesIndexer *ind_other);
 
-	template <class InputData, class ldouble_safe>
+	template <class InputData, class lreal_t_safe>
 	void
 	initialize_imputer(Imputer &imputer, InputData &input_data, size_t ntrees,
 					   int nthreads)
@@ -4338,7 +4338,7 @@ namespace provallo
 						(!is_na_or_inf(input_data.numeric_data[row + offset])) ? input_data.numeric_data[row + offset] : 0;
 					cnt -= is_na_or_inf(input_data.numeric_data[row + offset]);
 				}
-				imputer.col_means[col] /= (ldouble_safe)cnt;
+				imputer.col_means[col] /= (lreal_t_safe)cnt;
 			}
 		}
 		else if (input_data.Xc_indptr != NULL)
@@ -4354,7 +4354,7 @@ namespace provallo
 						(!is_na_or_inf(input_data.Xc[ix])) ? input_data.Xc[ix] : 0;
 					cnt -= is_na_or_inf(input_data.Xc[ix]);
 				}
-				imputer.col_means[col] /= (ldouble_safe)cnt;
+				imputer.col_means[col] /= (lreal_t_safe)cnt;
 			}
 		}
 		if (input_data.categ_data != NULL)
@@ -4401,7 +4401,7 @@ namespace provallo
 		}
 	}
 	//
-	double
+	real_t
 	extract_spC(PredictionData &data, size_t row, size_t col_num) noexcept
 	{
 		decltype(data.Xc_indptr) search_res = std::lower_bound(
@@ -4412,7 +4412,7 @@ namespace provallo
 		else
 			return data.Xc[search_res - data.Xc_ind];
 	}
-	static inline double
+	static inline real_t
 	extract_spR(PredictionData &data, sparse_ix *row_st, sparse_ix *row_end,
 				size_t col_num, size_t lb, size_t ub) noexcept
 	{
@@ -4425,7 +4425,7 @@ namespace provallo
 		else
 			return data.Xr[search_res - data.Xr_ind];
 	}
-	double
+	real_t
 	extract_spR(PredictionData &data, sparse_ix *row_st, sparse_ix *row_end,
 				size_t col_num) noexcept
 	{
@@ -4442,12 +4442,12 @@ namespace provallo
 	void
 	traverse_itree_fast(std::vector<IsoTree> &tree, IsoForest &model_outputs,
 						real_t *row_numeric_data,
-						double &output_depth,
+						real_t &output_depth,
 						sparse_ix *tree_num,
-						double *tree_depth, size_t row) noexcept
+						real_t *tree_depth, size_t row) noexcept
 	{
 		size_t curr_lev = 0;
-		double xval;
+		real_t xval;
 		while (true)
 		{
 			if (unlikely(tree[curr_lev].tree_left == 0))
@@ -4483,12 +4483,12 @@ namespace provallo
 	void
 	traverse_itree_no_recurse(std::vector<IsoTree> &tree,
 							  IsoForest &model_outputs, PredictionData &data,
-							  double &output_depth,
+							  real_t &output_depth,
 							  sparse_ix *tree_num,
-							  double *tree_depth, size_t row) noexcept
+							  real_t *tree_depth, size_t row) noexcept
 	{
 		size_t curr_lev = 0;
-		double xval;
+		real_t xval;
 		int cval;
 		while (true)
 		{
@@ -4604,16 +4604,16 @@ namespace provallo
 		SparseCSC
 	};
 
-	double
+	real_t
 	traverse_itree(std::vector<IsoTree> &tree, IsoForest &model_outputs,
 				   prediction_data &data, std::vector<ImputeNode> *impute_nodes,
-				   ImputedData *imputed_data, double curr_weight, size_t row,
+				   ImputedData *imputed_data, real_t curr_weight, size_t row,
 				   sparse_ix *tree_num,
-				   double *tree_depth, size_t curr_lev) noexcept
+				   real_t *tree_depth, size_t curr_lev) noexcept
 	{
-		double xval = 0.;
+		real_t xval = 0.;
 		int cval;
-		double range_penalty = 0;
+		real_t range_penalty = 0;
 
 		NumericConfig numeric_config(NumericConfig::DenseRowMajor);
 
@@ -4921,12 +4921,12 @@ namespace provallo
 	void
 	traverse_hplane_fast_colmajor(std::vector<IsoHPlane> &hplane,
 								  ExtIsoForest &model_outputs,
-								  prediction_data &data, double &output_depth,
+								  prediction_data &data, real_t &output_depth,
 								  sparse_ix *tree_num,
-								  double *tree_depth, size_t row) noexcept
+								  real_t *tree_depth, size_t row) noexcept
 	{
 		size_t curr_lev = 0;
-		double hval;
+		real_t hval;
 
 		UNDEF_REFERENCE(model_outputs)
 		UNDEF_REFERENCE2(data)
@@ -4971,12 +4971,12 @@ namespace provallo
 	traverse_hplane_fast_rowmajor(std::vector<IsoHPlane> &hplane,
 								  ExtIsoForest &model_outputs,
 								  real_t *row_numeric_data,
-								  double &output_depth,
+								  real_t &output_depth,
 								  sparse_ix *tree_num,
-								  double *tree_depth, size_t row) noexcept
+								  real_t *tree_depth, size_t row) noexcept
 	{
 		size_t curr_lev = 0;
-		double hval;
+		real_t hval;
 
 	UNDEF_REFERENCE(model_outputs)
 	UNDEF_REFERENCE2(row_numeric_data)
@@ -5007,16 +5007,16 @@ namespace provallo
 
 	void
 	traverse_hplane(std::vector<IsoHPlane> &hplane, ExtIsoForest &model_outputs,
-					prediction_data &data, double &output_depth,
+					prediction_data &data, real_t &output_depth,
 					std::vector<ImputeNode> *impute_nodes,
 					ImputedData *imputed_data,
 					sparse_ix *tree_num,
-					double *tree_depth, size_t row) noexcept
+					real_t *tree_depth, size_t row) noexcept
 	{
 		size_t curr_lev = 0;
-		double xval = 0.;
+		real_t xval = 0.;
 		int cval = 0;
-		double hval = 0.;
+		real_t hval = 0.;
 
 		size_t ncols_numeric = 0, ncols_categ = 0;
 
@@ -5052,7 +5052,7 @@ namespace provallo
 				if (unlikely(imputed_data != NULL))
 				{
 					add_from_impute_node((*impute_nodes)[curr_lev], *imputed_data,
-										 (double)1);
+										 (real_t)1);
 				}
 				return;
 			}
@@ -5210,10 +5210,10 @@ namespace provallo
 
 	template <class real_t_ = real_t>
 	void
-	add_linear_comb(size_t ix_arr[], size_t st, size_t end, double *res,
-					real_t_ *x, double &coef, double x_sd, double x_mean,
-					double &fill_val, MissingAction missing_action,
-					double *buffer_arr, size_t *buffer_NAs, bool first_run);
+	add_linear_comb(size_t ix_arr[], size_t st, size_t end, real_t *res,
+					real_t_ *x, real_t &coef, real_t x_sd, real_t x_mean,
+					real_t &fill_val, MissingAction missing_action,
+					real_t *buffer_arr, size_t *buffer_NAs, bool first_run);
 	/* for regular numerical */
 
 	/* for sparse numerical */
@@ -5227,14 +5227,14 @@ namespace provallo
 									   bool standardize_data,
 									   provallo::ScoringMetric scoring_metric,
 									   bool fast_bratio, bool weigh_by_kurt,
-									   double prob_pick_by_gain_pl,
-									   double prob_pick_by_gain_avg,
-									   double prob_pick_by_full_gain,
-									   double prob_pick_by_dens,
-									   double prob_pick_col_by_range,
-									   double prob_pick_col_by_var,
-									   double prob_pick_col_by_kurt,
-									   double min_gain,
+									   real_t prob_pick_by_gain_pl,
+									   real_t prob_pick_by_gain_avg,
+									   real_t prob_pick_by_full_gain,
+									   real_t prob_pick_by_dens,
+									   real_t prob_pick_col_by_range,
+									   real_t prob_pick_col_by_var,
+									   real_t prob_pick_col_by_kurt,
+									   real_t min_gain,
 									   provallo::MissingAction missing_action,
 									   provallo::CategSplit cat_split_type,
 									   provallo::NewCategAction new_cat_action,
@@ -5247,7 +5247,7 @@ namespace provallo
 	}
 	
 	void
-	isolation_forest::fit(double X[], size_t nrows, size_t ncols)
+	isolation_forest::fit(real_t X[], size_t nrows, size_t ncols)
 	{
 		this->check_params();
 		this->override_previous_fit();
@@ -5255,17 +5255,17 @@ namespace provallo
 		auto retcode = fit_iforest((this->ndim == 1) ? &this->model : nullptr,
 								   (this->ndim != 1) ? &this->model_ext : nullptr,
 								   X, ncols, (int *)nullptr, (size_t)0,
-								   (int *)nullptr, (double *)nullptr,
+								   (int *)nullptr, (real_t *)nullptr,
 								   (int64_t *)nullptr, (int64_t *)nullptr,
 								   this->ndim, this->ntry, this->coef_type,
-								   this->coef_by_prop, (double *)nullptr,
+								   this->coef_by_prop, (real_t *)nullptr,
 								   this->with_replacement, this->weight_as_sample,
 								   nrows, this->sample_size, this->ntrees,
 								   this->max_depth, this->ncols_per_tree,
 								   this->limit_depth, this->penalize_range,
 								   this->standardize_data, this->scoring_metric,
-								   this->fast_bratio, false, (double *)nullptr,
-								   (double *)nullptr, true, (double *)nullptr,
+								   this->fast_bratio, false, (real_t *)nullptr,
+								   (real_t *)nullptr, true, (real_t *)nullptr,
 								   this->weigh_by_kurt, this->prob_pick_by_gain_pl,
 								   this->prob_pick_by_gain_avg,
 								   this->prob_pick_by_full_gain,
@@ -5284,10 +5284,10 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::fit(double numeric_data[], size_t ncols_numeric,
+	isolation_forest::fit(real_t numeric_data[], size_t ncols_numeric,
 						  size_t nrows, int categ_data[], size_t ncols_categ,
-						  int ncat[], double sample_weights[],
-						  double col_weights[])
+						  int ncat[], real_t sample_weights[],
+						  real_t col_weights[])
 	{
 		this->check_params();
 		this->override_previous_fit();
@@ -5295,7 +5295,7 @@ namespace provallo
 		auto retcode = fit_iforest((this->ndim == 1) ? &this->model : nullptr,
 								   (this->ndim != 1) ? &this->model_ext : nullptr,
 								   numeric_data, ncols_numeric, categ_data,
-								   ncols_categ, ncat, (double *)nullptr,
+								   ncols_categ, ncat, (real_t *)nullptr,
 								   (sparse_ix *)nullptr, (sparse_ix *)nullptr,
 								   this->ndim, this->ntry, this->coef_type,
 								   this->coef_by_prop, sample_weights,
@@ -5304,8 +5304,8 @@ namespace provallo
 								   this->max_depth, this->ncols_per_tree,
 								   this->limit_depth, this->penalize_range,
 								   this->standardize_data, this->scoring_metric,
-								   this->fast_bratio, false, (double *)nullptr,
-								   (double *)nullptr, true, col_weights,
+								   this->fast_bratio, false, (real_t *)nullptr,
+								   (real_t *)nullptr, true, col_weights,
 								   this->weigh_by_kurt, this->prob_pick_by_gain_pl,
 								   this->prob_pick_by_gain_avg,
 								   this->prob_pick_by_full_gain,
@@ -5324,17 +5324,17 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::fit(double Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
+	isolation_forest::fit(real_t Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
 						  size_t ncols_numeric, size_t nrows, int categ_data[],
 						  size_t ncols_categ, int ncat[],
-						  double sample_weights[], double col_weights[])
+						  real_t sample_weights[], real_t col_weights[])
 	{
 		this->check_params();
 		this->override_previous_fit();
 
 		auto retcode = fit_iforest((this->ndim == 1) ? &this->model : nullptr,
 								   (this->ndim != 1) ? &this->model_ext : nullptr,
-								   (double *)nullptr, ncols_numeric, categ_data,
+								   (real_t *)nullptr, ncols_numeric, categ_data,
 								   ncols_categ, ncat, Xc, Xc_ind, Xc_indptr,
 								   this->ndim, this->ntry, this->coef_type,
 								   this->coef_by_prop, sample_weights,
@@ -5343,8 +5343,8 @@ namespace provallo
 								   this->max_depth, this->ncols_per_tree,
 								   this->limit_depth, this->penalize_range,
 								   this->standardize_data, this->scoring_metric,
-								   this->fast_bratio, false, (double *)nullptr,
-								   (double *)nullptr, true, col_weights,
+								   this->fast_bratio, false, (real_t *)nullptr,
+								   (real_t *)nullptr, true, col_weights,
 								   this->weigh_by_kurt, this->prob_pick_by_gain_pl,
 								   this->prob_pick_by_gain_avg,
 								   this->prob_pick_by_full_gain,
@@ -5362,38 +5362,38 @@ namespace provallo
 		this->is_fitted = true;
 	}
 
-	std::vector<double>
-	isolation_forest::predict(double X[], size_t nrows, bool standardize)
+	std::vector<real_t>
+	isolation_forest::predict(real_t X[], size_t nrows, bool standardize)
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
-		std::vector<double> out(nrows);
+		std::vector<real_t> out(nrows);
 		predict_iforest(
-			X, (int *)nullptr, true, (size_t)0, (size_t)0, (double *)nullptr,
-			(int64_t *)nullptr, (int64_t *)nullptr, (double *)nullptr,
+			X, (int *)nullptr, true, (size_t)0, (size_t)0, (real_t *)nullptr,
+			(int64_t *)nullptr, (int64_t *)nullptr, (real_t *)nullptr,
 			(int64_t *)nullptr, (int64_t *)nullptr, nrows, this->nthreads,
 			standardize, (!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
-			out.data(), (int64_t *)nullptr, (double *)nullptr,
+			out.data(), (int64_t *)nullptr, (real_t *)nullptr,
 			(TreesIndexer *)nullptr);
 		return out;
 	}
 
-	std::vector<double>
+	std::vector<real_t>
 	isolation_forest::predict(const std::string &string_of_real_data_)
 	{
-		std::vector<double> ret;
+		std::vector<real_t> ret;
 		std::vector<std::string> token_values;
 
-		double *token_ = nullptr;
+		real_t *token_ = nullptr;
 
 		tokenize(string_of_real_data_, token_values, ",");
-		token_ = new double[token_values.size()];
+		token_ = new real_t[token_values.size()];
 
 		for (size_t i = 0; i < token_values.size(); ++i)
 		{
 
-			double val = atof(token_values[i].c_str());
+			real_t val = atof(token_values[i].c_str());
 
 			if ((val == val) == false) // isNAN/-inf,+inf
 				token_[i] = 0.;
@@ -5407,11 +5407,11 @@ namespace provallo
 		return ret;
 	}
 	void
-	isolation_forest::predict(double numeric_data[], int categ_data[],
+	isolation_forest::predict(real_t numeric_data[], int categ_data[],
 							  bool is_col_major, size_t nrows, size_t ld_numeric,
 							  size_t ld_categ, bool standardize,
-							  double output_depths[], sparse_ix tree_num[],
-							  double per_tree_depths[])
+							  real_t output_depths[], sparse_ix tree_num[],
+							  real_t per_tree_depths[])
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
@@ -5420,8 +5420,8 @@ namespace provallo
 				"Cannot predict tree numbers/depths with this model.\n");
 		predict_iforest(
 			numeric_data, categ_data, is_col_major, ld_numeric, ld_categ,
-			(double *)nullptr, (int64_t *)nullptr, (int64_t *)nullptr,
-			(double *)nullptr, (int64_t *)nullptr, (int64_t *)nullptr, nrows,
+			(real_t *)nullptr, (int64_t *)nullptr, (int64_t *)nullptr,
+			(real_t *)nullptr, (int64_t *)nullptr, (int64_t *)nullptr, nrows,
 			this->nthreads, standardize,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
@@ -5430,25 +5430,25 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::predict(double X_sparse[], sparse_ix X_ind[],
+	isolation_forest::predict(real_t X_sparse[], sparse_ix X_ind[],
 							  sparse_ix X_indptr[],
 							  bool is_csc, int categ_data[], bool is_col_major,
 							  size_t ld_categ, size_t nrows, bool standardize,
-							  double output_depths[], sparse_ix tree_num[],
-							  double per_tree_depths[])
+							  real_t output_depths[], sparse_ix tree_num[],
+							  real_t per_tree_depths[])
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
 		if ((tree_num || per_tree_depths) && !this->check_can_predict_per_tree())
 			throw std::runtime_error(
 				"Cannot predict tree numbers/depths with this model.\n");
-		std::vector<double> out(nrows);
+		std::vector<real_t> out(nrows);
 		predict_iforest(
-			(double *)nullptr, categ_data, is_col_major, (size_t)0, ld_categ,
-			is_csc ? X_sparse : (double *)nullptr,
+			(real_t *)nullptr, categ_data, is_col_major, (size_t)0, ld_categ,
+			is_csc ? X_sparse : (real_t *)nullptr,
 			is_csc ? X_ind : (sparse_ix *)nullptr,
 			is_csc ? X_indptr : (sparse_ix *)nullptr,
-			is_csc ? (double *)nullptr : X_sparse,
+			is_csc ? (real_t *)nullptr : X_sparse,
 			is_csc ? (sparse_ix *)nullptr : X_ind,
 			is_csc ? (sparse_ix *)nullptr : X_indptr, nrows, this->nthreads,
 			standardize, (!this->model.trees.empty()) ? &this->model : nullptr,
@@ -5457,27 +5457,27 @@ namespace provallo
 			(!this->indexer.indices.empty()) ? &this->indexer : nullptr);
 	}
 
-	std::vector<double>
-	isolation_forest::predict_distance(double X[], size_t nrows, bool as_kernel,
+	std::vector<real_t>
+	isolation_forest::predict_distance(real_t X[], size_t nrows, bool as_kernel,
 									   bool assume_full_distr, bool standardize,
 									   bool triangular)
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
-		std::vector<double> tmat(calc_ncomb(nrows));
-		std::vector<double> dmat(triangular ? square(nrows) : 0);
+		std::vector<real_t> tmat(calc_ncomb(nrows));
+		std::vector<real_t> dmat(triangular ? square(nrows) : 0);
 
 		calc_similarity(
-			X, (int *)nullptr, (double *)nullptr, (sparse_ix *)nullptr, (sparse_ix *)nullptr,
+			X, (int *)nullptr, (real_t *)nullptr, (sparse_ix *)nullptr, (sparse_ix *)nullptr,
 			nrows, false, this->nthreads, assume_full_distr, standardize, as_kernel,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
-			tmat.data(), (double *)nullptr, (size_t)0, false,
+			tmat.data(), (real_t *)nullptr, (size_t)0, false,
 			(!this->indexer.indices.empty()) ? &this->indexer : nullptr, true,
 			(size_t)0, (size_t)0);
 		if (!triangular)
 		{
-			double diag_filler;
+			real_t diag_filler;
 			if (as_kernel)
 			{
 				if (standardize)
@@ -5491,7 +5491,7 @@ namespace provallo
 				if (standardize)
 					diag_filler = 0;
 				else
-					diag_filler = std::numeric_limits<double>::infinity();
+					diag_filler = std::numeric_limits<real_t>::infinity();
 			}
 			tmat_to_dense(tmat.data(), dmat.data(), nrows, diag_filler);
 		}
@@ -5499,27 +5499,27 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::predict_distance(double numeric_data[], int categ_data[],
+	isolation_forest::predict_distance(real_t numeric_data[], int categ_data[],
 									   size_t nrows, bool as_kernel,
 									   bool assume_full_distr, bool standardize,
-									   bool triangular, double dist_matrix[])
+									   bool triangular, real_t dist_matrix[])
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
-		std::vector<double> tmat(triangular ? 0 : calc_ncomb(nrows));
+		std::vector<real_t> tmat(triangular ? 0 : calc_ncomb(nrows));
 
 		calc_similarity(
-			numeric_data, categ_data, (double *)nullptr, (sparse_ix *)nullptr,
+			numeric_data, categ_data, (real_t *)nullptr, (sparse_ix *)nullptr,
 			(sparse_ix *)nullptr, nrows, false, this->nthreads, assume_full_distr,
 			standardize, as_kernel,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
-			triangular ? dist_matrix : tmat.data(), (double *)nullptr, (size_t)0,
+			triangular ? dist_matrix : tmat.data(), (real_t *)nullptr, (size_t)0,
 			false, (!this->indexer.indices.empty()) ? &this->indexer : nullptr,
 			true, (size_t)0, (size_t)0);
 		if (!triangular)
 		{
-			double diag_filler;
+			real_t diag_filler;
 			if (as_kernel)
 			{
 				if (standardize)
@@ -5533,18 +5533,18 @@ namespace provallo
 				if (standardize)
 					diag_filler = 0;
 				else
-					diag_filler = std::numeric_limits<double>::infinity();
+					diag_filler = std::numeric_limits<real_t>::infinity();
 			}
 			tmat_to_dense(tmat.data(), dist_matrix, nrows, diag_filler);
 		}
 	}
 
 	void
-	isolation_forest::predict_distance(double Xc[], sparse_ix Xc_ind[],
+	isolation_forest::predict_distance(real_t Xc[], sparse_ix Xc_ind[],
 									   sparse_ix Xc_indptr[], int categ_data[],
 									   size_t nrows, bool as_kernel,
 									   bool assume_full_distr, bool standardize,
-									   bool triangular, double dist_matrix[])
+									   bool triangular, real_t dist_matrix[])
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
@@ -5553,19 +5553,19 @@ namespace provallo
 		UNDEF_REFERENCE(categ_data);
 		UNDEF_REFERENCE2(categ_data);
 			
- 		std::vector<double> tmat(triangular ? 0 : calc_ncomb(nrows));
+ 		std::vector<real_t> tmat(triangular ? 0 : calc_ncomb(nrows));
 
 		calc_similarity(
-			(double *)nullptr, (int *)nullptr, Xc, Xc_ind, Xc_indptr, nrows, false,
+			(real_t *)nullptr, (int *)nullptr, Xc, Xc_ind, Xc_indptr, nrows, false,
 			this->nthreads, assume_full_distr, standardize, as_kernel,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
-			triangular ? dist_matrix : tmat.data(), (double *)nullptr, (size_t)0,
+			triangular ? dist_matrix : tmat.data(), (real_t *)nullptr, (size_t)0,
 			false, (!this->indexer.indices.empty()) ? &this->indexer : nullptr,
 			true, (size_t)0, (size_t)0);
 		if (!triangular)
 		{
-			double diag_filler;
+			real_t diag_filler;
 			if (as_kernel)
 			{
 				if (standardize)
@@ -5579,7 +5579,7 @@ namespace provallo
 				if (standardize)
 					diag_filler = 0;
 				else
-					diag_filler = std::numeric_limits<double>::infinity();
+					diag_filler = std::numeric_limits<real_t>::infinity();
 			}
 
 			tmat_to_dense(tmat.data(), dist_matrix, nrows, diag_filler);
@@ -5588,7 +5588,7 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::impute(double X[], size_t nrows)
+	isolation_forest::impute(real_t X[], size_t nrows)
 	{
 
 		this->check_is_fitted();
@@ -5597,7 +5597,7 @@ namespace provallo
 			throw std::runtime_error(
 				"Model was built without imputation capabilities.\n");
 		impute_missing_values(
-			X, (int *)nullptr, true, (double *)nullptr, (long int *)nullptr,
+			X, (int *)nullptr, true, (real_t *)nullptr, (long int *)nullptr,
 			(long int *)nullptr, nrows, false, this->nthreads,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
@@ -5605,7 +5605,7 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::impute(double numeric_data[], int categ_data[],
+	isolation_forest::impute(real_t numeric_data[], int categ_data[],
 							 bool is_col_major, size_t nrows)
 	{
 		this->check_is_fitted();
@@ -5624,7 +5624,7 @@ namespace provallo
 		///
 	        	
 		provallo::impute_missing_values(
-			numeric_data, categ_data, is_col_major, (double *)nullptr,
+			numeric_data, categ_data, is_col_major, (real_t *)nullptr,
 			(long int *)nullptr, (long int *)nullptr, nrows, false, this->nthreads,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
@@ -5633,7 +5633,7 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::impute(double Xr[], sparse_ix Xr_ind[],
+	isolation_forest::impute(real_t Xr[], sparse_ix Xr_ind[],
 							 sparse_ix Xr_indptr[],
 							 int categ_data[], bool is_col_major, size_t nrows)
 	{
@@ -5643,7 +5643,7 @@ namespace provallo
 				"Model was built without imputation capabilities.\n");
 		this->check_nthreads();
 		impute_missing_values(
-			(double *)nullptr, categ_data, is_col_major, Xr, Xr_ind, Xr_indptr,
+			(real_t *)nullptr, categ_data, is_col_major, Xr, Xr_ind, Xr_indptr,
 			nrows, false, this->nthreads,
 			(!this->model.trees.empty()) ? &this->model : nullptr,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
@@ -5674,7 +5674,7 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::set_as_reference_points(double numeric_data[],
+	isolation_forest::set_as_reference_points(real_t numeric_data[],
 											  int categ_data[],
 											  bool is_col_major, size_t nrows,
 											  size_t ld_numeric, size_t ld_categ,
@@ -5684,22 +5684,22 @@ namespace provallo
 		if (!this->model.trees.empty())
 			set_reference_points(&this->model, (ExtIsoForest *)NULL, &this->indexer,
 								 with_distances, numeric_data, categ_data,
-								 is_col_major, ld_numeric, ld_categ, (double *)NULL,
+								 is_col_major, ld_numeric, ld_categ, (real_t *)NULL,
 								 (sparse_ix *)NULL, (sparse_ix *)NULL,
-								 (double *)NULL, (sparse_ix *)NULL,
+								 (real_t *)NULL, (sparse_ix *)NULL,
 								 (sparse_ix *)NULL, nrows, this->nthreads);
 		else
 			set_reference_points((iso_forest *)NULL, &this->model_ext,
 								 &this->indexer, with_distances, numeric_data,
 								 categ_data, is_col_major, ld_numeric, ld_categ,
-								 (double *)NULL, (sparse_ix *)NULL,
-								 (sparse_ix *)NULL, (double *)NULL,
+								 (real_t *)NULL, (sparse_ix *)NULL,
+								 (sparse_ix *)NULL, (real_t *)NULL,
 								 (sparse_ix *)NULL, (sparse_ix *)NULL, nrows,
 								 this->nthreads);
 	}
 
 	void
-	isolation_forest::set_as_reference_points(double Xc[], sparse_ix Xc_ind[],
+	isolation_forest::set_as_reference_points(real_t Xc[], sparse_ix Xc_ind[],
 											  sparse_ix Xc_indptr[],
 											  int categ_data[], size_t nrows,
 											  const bool with_distances)
@@ -5712,15 +5712,15 @@ namespace provallo
 		if (!this->model.trees.empty())
 
 			set_reference_points(&this->model, (ExtIsoForest *)NULL, &this->indexer,
-								 with_distances, (double *)NULL, (int *)NULL, true,
+								 with_distances, (real_t *)NULL, (int *)NULL, true,
 								 (size_t)0, (size_t)0, Xc, Xc_ind, Xc_indptr,
-								 (double *)NULL, (sparse_ix *)NULL,
+								 (real_t *)NULL, (sparse_ix *)NULL,
 								 (sparse_ix *)NULL, nrows, this->nthreads);
 		else
 			set_reference_points((iso_forest *)NULL, &this->model_ext,
 								 &this->indexer, with_distances, nullptr, nullptr,
 								 true, (size_t)0, (size_t)0, Xc, Xc_ind, Xc_indptr,
-								 (double *)NULL, (sparse_ix *)NULL,
+								 (real_t *)NULL, (sparse_ix *)NULL,
 								 (sparse_ix *)NULL, nrows, this->nthreads);
 	}
 
@@ -5731,9 +5731,9 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::predict_distance_to_ref_points(double numeric_data[],
+	isolation_forest::predict_distance_to_ref_points(real_t numeric_data[],
 													 int categ_data[],
-													 double Xc[], sparse_ix Xc_ind[],
+													 real_t Xc[], sparse_ix Xc_ind[],
 													 sparse_ix Xc_indptr[],
 													 size_t nrows,
 													 bool is_col_major,
@@ -5741,7 +5741,7 @@ namespace provallo
 													 size_t ld_categ,
 													 bool as_kernel,
 													 bool standardize,
-													 double dist_matrix[])
+													 real_t dist_matrix[])
 	{
 		this->check_is_fitted();
 		if (this->indexer.indices.empty())
@@ -5761,7 +5761,7 @@ namespace provallo
 			this->nthreads, true, standardize, as_kernel,
 			(!this->model.trees.empty()) ? &this->model : NULL,
 			(!this->model_ext.hplanes.empty()) ? &this->model_ext : NULL,
-			(double *)NULL, dist_matrix, (size_t)0, true, &this->indexer,
+			(real_t *)NULL, dist_matrix, (size_t)0, true, &this->indexer,
 			is_col_major, ld_numeric, ld_categ);
 	}
 
@@ -5947,11 +5947,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (this->prob_pick_col_by_kurt < 0)
 			throw std::runtime_error("'prob_pick_col_by_kurt' must be >= 0.\n");
 
-		if (prob_pick_by_gain_avg + prob_pick_by_gain_pl + prob_pick_by_full_gain + prob_pick_by_dens > 1. + 2. * std::numeric_limits<double>::epsilon())
+		if (prob_pick_by_gain_avg + prob_pick_by_gain_pl + prob_pick_by_full_gain + prob_pick_by_dens > 1. + 2. * std::numeric_limits<real_t>::epsilon())
 			throw std::runtime_error(
 				"Probabilities for gain-based splits sum to more than 1.\n");
 
-		if (prob_pick_col_by_var + prob_pick_col_by_var + prob_pick_col_by_kurt > 1. + 2. * std::numeric_limits<double>::epsilon())
+		if (prob_pick_col_by_var + prob_pick_col_by_var + prob_pick_col_by_kurt > 1. + 2. * std::numeric_limits<real_t>::epsilon())
 			throw std::runtime_error(
 				"Probabilities for column choices sum to more than 1.\n");
 
@@ -6016,9 +6016,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		real_t *Xr,
 		sparse_ix *Xr_ind, sparse_ix *Xr_indptr, size_t nrows, int nthreads,
 		bool standardize, provallo::IsoForest *model_outputs,
-		provallo::ext_iso_forest *model_outputs_ext, double *output_depths,
+		provallo::ext_iso_forest *model_outputs_ext, real_t *output_depths,
 		sparse_ix *tree_num,
-		double *per_tree_depths, provallo::TreesIndexer *indexer)
+		real_t *per_tree_depths, provallo::TreesIndexer *indexer)
 	{
 		if (nrows < 2)
 			return;
@@ -6050,7 +6050,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				{
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0; tree < model_outputs->trees.size();
 							 tree++)
 						{
@@ -6071,7 +6071,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				{
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0; tree < model_outputs->trees.size();
 							 tree++)
 						{
@@ -6094,7 +6094,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 				for (size_t row = 0; row < (decltype(row))nrows; row++)
 				{
-					double score = 0;
+					real_t score = 0;
 					for (size_t tree = 0; tree < model_outputs->trees.size();
 						 tree++)
 					{
@@ -6104,7 +6104,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							prediction,
 							(std::vector<provallo::ImputeNode> *)NULL,
 							(provallo::ImputedData *)NULL,
-							(double)0,
+							(real_t)0,
 							(size_t)row,
 							(tree_num == NULL) ? NULL : (tree_num + nrows * tree),
 							(per_tree_depths == NULL) ? NULL : (per_tree_depths + tree + row * model_outputs->trees.size()),
@@ -6123,7 +6123,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				{
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0;
 							 tree < model_outputs_ext->hplanes.size(); tree++)
 						{
@@ -6148,7 +6148,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0;
 							 tree < model_outputs_ext->hplanes.size(); tree++)
 						{
@@ -6170,7 +6170,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			{
 				for (size_t row = 0; row < (decltype(row))nrows; row++)
 				{
-					double score = 0;
+					real_t score = 0;
 					for (size_t tree = 0; tree < model_outputs_ext->hplanes.size();
 						 tree++)
 					{
@@ -6191,16 +6191,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		/* translate sum-of-depths to outlier score */
-		double ntrees, depth_divisor;
+		real_t ntrees, depth_divisor;
 		if (model_outputs != NULL)
 		{
-			ntrees = (double)model_outputs->trees.size();
+			ntrees = (real_t)model_outputs->trees.size();
 			depth_divisor = ntrees * (model_outputs->exp_avg_depth);
 		}
 
 		else
 		{
-			ntrees = (double)model_outputs_ext->hplanes.size();
+			ntrees = (real_t)model_outputs_ext->hplanes.size();
 			depth_divisor = ntrees * (model_outputs_ext->exp_avg_depth);
 		}
 
@@ -6402,60 +6402,60 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 	template <class real_t_>
 	void
-	add_linear_comb(size_t ix_arr[], size_t st, size_t end, double *res,
-					real_t_ *x, double &coef, double x_sd, double x_mean,
-					double &fill_val, MissingAction missing_action,
-					double *buffer_arr, size_t *buffer_NAs, bool first_run);
+	add_linear_comb(size_t ix_arr[], size_t st, size_t end, real_t *res,
+					real_t_ *x, real_t &coef, real_t x_sd, real_t x_mean,
+					real_t &fill_val, MissingAction missing_action,
+					real_t *buffer_arr, size_t *buffer_NAs, bool first_run);
 
-	template <class real_t_, class mapping, class ldouble_safe = long double>
+	template <class real_t_, class mapping, class lreal_t_safe = long real_t>
 	void
 	add_linear_comb_weighted(size_t ix_arr[], size_t st, size_t end,
-							 double *res, real_t_ *x, double &coef,
-							 double x_sd, double x_mean, double &fill_val,
-							 MissingAction missing_action, double *buffer_arr,
+							 real_t *res, real_t_ *x, real_t &coef,
+							 real_t x_sd, real_t x_mean, real_t &fill_val,
+							 MissingAction missing_action, real_t *buffer_arr,
 							 size_t *buffer_NAs, bool first_run, mapping &w);
 	template <class real_t_ = real_t, class sparse_ix_ = sparse_ix>
 	void
 	add_linear_comb(size_t *ix_arr, size_t st, size_t end, size_t col_num,
-					double *res, real_t_ *Xc, sparse_ix_ *Xc_ind,
-					sparse_ix_ *Xc_indptr, double &coef, double x_sd,
-					double x_mean, double &fill_val,
-					MissingAction missing_action, double *buffer_arr,
+					real_t *res, real_t_ *Xc, sparse_ix_ *Xc_ind,
+					sparse_ix_ *Xc_indptr, real_t &coef, real_t x_sd,
+					real_t x_mean, real_t &fill_val,
+					MissingAction missing_action, real_t *buffer_arr,
 					size_t *buffer_NAs, bool first_run);
-	template <class real_t_, class sparse_ix, class mapping, class ldouble_safe>
+	template <class real_t_, class sparse_ix, class mapping, class lreal_t_safe>
 	void
 	add_linear_comb_weighted(size_t *ix_arr, size_t st, size_t end,
-							 size_t col_num, double *res, real_t_ *Xc,
+							 size_t col_num, real_t *res, real_t_ *Xc,
 							 sparse_ix *Xc_ind,
-							 sparse_ix *Xc_indptr, double &coef, double x_sd,
-							 double x_mean, double &fill_val,
-							 MissingAction missing_action, double *buffer_arr,
+							 sparse_ix *Xc_indptr, real_t &coef, real_t x_sd,
+							 real_t x_mean, real_t &fill_val,
+							 MissingAction missing_action, real_t *buffer_arr,
 							 size_t *buffer_NAs, bool first_run, mapping &w);
 	template <class mapping>
 	void
 	add_linear_comb_weighted(size_t *ix_arr, size_t st, size_t end,
-							 double *res, int x[], int ncat, double *cat_coef,
-							 double single_cat_coef, int chosen_cat,
-							 double &fill_val, double &fill_new,
+							 real_t *res, int x[], int ncat, real_t *cat_coef,
+							 real_t single_cat_coef, int chosen_cat,
+							 real_t &fill_val, real_t &fill_new,
 							 size_t *buffer_pos, NewCategAction new_cat_action,
 							 MissingAction missing_action,
 							 CategSplit cat_split_type, bool first_run,
 							 mapping &w);
-	template <class ldouble_safe>
+	template <class lreal_t_safe>
 	void
-	add_linear_comb(size_t *ix_arr, size_t st, size_t end, double *res,
-					int x[], int ncat, double *cat_coef,
-					double single_cat_coef, int chosen_cat, double &fill_val,
-					double &fill_new, size_t *buffer_cnt, size_t *buffer_pos,
+	add_linear_comb(size_t *ix_arr, size_t st, size_t end, real_t *res,
+					int x[], int ncat, real_t *cat_coef,
+					real_t single_cat_coef, int chosen_cat, real_t &fill_val,
+					real_t &fill_new, size_t *buffer_cnt, size_t *buffer_pos,
 					NewCategAction new_cat_action,
 					MissingAction missing_action, CategSplit cat_split_type,
 					bool first_run);
-	template <class mapping, class ldouble_safe>
+	template <class mapping, class lreal_t_safe>
 	void
 	add_linear_comb_weighted(size_t *ix_arr, size_t st, size_t end,
-							 double *res, int x[], int ncat, double *cat_coef,
-							 double single_cat_coef, int chosen_cat,
-							 double &fill_val, double &fill_new,
+							 real_t *res, int x[], int ncat, real_t *cat_coef,
+							 real_t single_cat_coef, int chosen_cat,
+							 real_t &fill_val, real_t &fill_new,
 							 size_t *buffer_pos, NewCategAction new_cat_action,
 							 MissingAction missing_action,
 							 CategSplit cat_split_type, bool first_run,
@@ -6466,7 +6466,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						std::vector<IsoHPlane> &hplanes,
 						ExtIsoForest &model_outputs, prediction_data &_data,
 						sparse_ix *tree_num,
-						double *per_tree_depths, size_t curr_tree,
+						real_t *per_tree_depths, size_t curr_tree,
 						bool has_range_penalty)
 	{
 		// if (hplanes[curr_tree].score >= 0)
@@ -6488,7 +6488,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		std::fill(workspace.comb_val.begin(),
 				  workspace.comb_val.begin() + (workspace.end - workspace.st + 1),
 				  0.);
-		double unused;
+		real_t unused;
 
 		if (likely(_data.categ_data == NULL))
 		{
@@ -6503,7 +6503,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					_data.Xc_ind,
 					_data.Xc_indptr,
 					hplanes[curr_tree].coef[col],
-					(double)0.,
+					(real_t)0.,
 					hplanes[curr_tree].mean[col],
 					(model_outputs.missing_action == Fail) ? unused : hplanes[curr_tree].fill_val[col],
 					model_outputs.missing_action, NULL, NULL, false);
@@ -6529,7 +6529,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						_data.Xc_ind,
 						_data.Xc_indptr,
 						hplanes[curr_tree].coef[ncols_numeric],
-						(double)0.0,
+						(real_t)0.0,
 						hplanes[curr_tree].mean[ncols_numeric],
 						(model_outputs.missing_action == Fail) ? unused : hplanes[curr_tree].fill_val[col],
 						model_outputs.missing_action, NULL, NULL, false);
@@ -6539,7 +6539,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 				case Categorical:
 				{
-					add_linear_comb<double>(
+					add_linear_comb<real_t>(
 						workspace.ix_arr.data(),
 						workspace.st,
 						workspace.end,
@@ -6601,7 +6601,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	classifier::~classifier()
 	{	
-
+		delete_factory();
+		
  	}
 	void
 	sample_random_rows(std::vector<size_t> &ix_arr, size_t nrows,
@@ -6609,7 +6610,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					   RNG_engine &rnd_generator,
 					   std::vector<size_t> &ix_all,
 					   real_t *sample_weights,
-					   std::vector<double> &btree_weights, size_t log2_n,
+					   std::vector<real_t> &btree_weights, size_t log2_n,
 					   size_t btree_offset, std::vector<bool> &is_repeated)
 	{
 		size_t ntake = ix_arr.size();
@@ -6644,8 +6645,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			 and then subtract from it as it goes down every level. Would have less precision
 			 but should still work fine. */
 
-			double rnd_subrange, w_left;
-			double curr_subrange;
+			real_t rnd_subrange, w_left;
+			real_t curr_subrange;
 			size_t curr_ix;
 			for (size_t &ix : ix_arr)
 			{
@@ -6655,7 +6656,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				curr_subrange = btree_weights[0];
 				for (size_t lev = 0; lev < log2_n; lev++)
 				{
-					rnd_subrange = std::uniform_real_distribution<double>(
+					rnd_subrange = std::uniform_real_distribution<real_t>(
 						0., curr_subrange)(rnd_generator);
 					w_left = btree_weights[ix_child(curr_ix)];
 					curr_ix = ix_child(curr_ix) + (rnd_subrange >= w_left);
@@ -6713,7 +6714,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				size_t candidate;
 
 				/* if the sample size is relatively large, use a temporary boolean vector */
-				if (((long double)ntake / (long double)nrows) > (1. / 50.))
+				if (((long real_t)ntake / (long real_t)nrows) > (1. / 50.))
 				{
 
 					if (is_repeated.empty())
@@ -6767,19 +6768,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 	}
 
-	template <typename ldouble_safe>
-	double
+	template <typename lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(real_t *x, size_t n_, MissingAction missing_action,
 						   real_t *w)
 	{
-		ldouble_safe m = 0;
-		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta=0., delta_s=0., delta_div=0.;
-		ldouble_safe diff;
-		ldouble_safe n = 0;
-		ldouble_safe out =0.;
-		ldouble_safe n_prev = 0.;
-		ldouble_safe w_this;
+		lreal_t_safe m = 0;
+		lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		lreal_t_safe delta=0., delta_s=0., delta_div=0.;
+		lreal_t_safe diff;
+		lreal_t_safe n = 0;
+		lreal_t_safe out =0.;
+		lreal_t_safe n_prev = 0.;
+		lreal_t_safe w_this;
 		UNDEF_REFERENCE(missing_action);
 		UNDEF_REFERENCE2(missing_action );
 		UNDEF_REFERENCE2(w);
@@ -6806,29 +6807,29 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (unlikely(n <= 0))
 			return -HUGE_VAL;
 		out = (M4 / M2) * (n / M2);
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
-	template <class real, class ldouble_safe>
-	double
+	template <class real, class lreal_t_safe>
+	real_t
 	calc_kurtosis(size_t ix_arr[], size_t st, size_t end, real x[],
 				  MissingAction missing_action)
 	{
-		ldouble_safe m = 0;
-		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta, delta_s, delta_div;
-		ldouble_safe diff, n;
-		ldouble_safe out;
+		lreal_t_safe m = 0;
+		lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		lreal_t_safe delta, delta_s, delta_div;
+		lreal_t_safe diff, n;
+		lreal_t_safe out;
 
 		if (missing_action == Fail)
 		{
 			for (size_t row = st; row <= end; row++)
 			{
-				n = (ldouble_safe)(row - st + 1);
+				n = (lreal_t_safe)(row - st + 1);
 
 				delta = x[ix_arr[row]] - m;
 				delta_div = delta / n;
 				delta_s = delta_div * delta_div;
-				diff = delta * (delta_div * (ldouble_safe)(row - st));
+				diff = delta * (delta_div * (lreal_t_safe)(row - st));
 
 				m += delta_div;
 				M4 += diff * delta_s * (n * n - 3 * n + 3) + 6 * delta_s * M2 - 4 * delta_div * M3;
@@ -6843,8 +6844,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					return -HUGE_VAL;
 			}
 
-			out = (M4 / M2) * ((ldouble_safe)(end - st + 1) / M2);
-			return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+			out = (M4 / M2) * ((lreal_t_safe)(end - st + 1) / M2);
+			return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 		}
 
 		else
@@ -6855,12 +6856,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (likely(!is_na_or_inf(x[ix_arr[row]])))
 				{
 					cnt++;
-					n = (ldouble_safe)cnt;
+					n = (lreal_t_safe)cnt;
 
 					delta = x[ix_arr[row]] - m;
 					delta_div = delta / n;
 					delta_s = delta_div * delta_div;
-					diff = delta * (delta_div * (ldouble_safe)(cnt - 1));
+					diff = delta * (delta_div * (lreal_t_safe)(cnt - 1));
 
 					m += delta_div;
 					M4 += diff * delta_s * (n * n - 3 * n + 3) + 6 * delta_s * M2 - 4 * delta_div * M3;
@@ -6878,31 +6879,31 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					return -HUGE_VAL;
 			}
 
-			out = (M4 / M2) * ((ldouble_safe)cnt / M2);
-			return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+			out = (M4 / M2) * ((lreal_t_safe)cnt / M2);
+			return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 		}
 	}
 
-	template <class xreal, class ldouble_safe>
-	double
+	template <class xreal, class lreal_t_safe>
+	real_t
 	calc_kurtosis(xreal x[], size_t n, MissingAction missing_action)
 	{
-		ldouble_safe m = 0;
-		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta, delta_s, delta_div;
-		ldouble_safe diff, n_;
-		ldouble_safe out;
+		lreal_t_safe m = 0;
+		lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		lreal_t_safe delta, delta_s, delta_div;
+		lreal_t_safe diff, n_;
+		lreal_t_safe out;
 
 		if (missing_action == Fail)
 		{
 			for (size_t row = 0; row < n; row++)
 			{
-				n_ = (ldouble_safe)(row + 1);
+				n_ = (lreal_t_safe)(row + 1);
 
 				delta = x[row] - m;
 				delta_div = delta / n_;
 				delta_s = delta_div * delta_div;
-				diff = delta * (delta_div * (ldouble_safe)row);
+				diff = delta * (delta_div * (lreal_t_safe)row);
 
 				m += delta_div;
 				M4 += diff * delta_s * (n_ * n_ - 3 * n_ + 3) + 6 * delta_s * M2 - 4 * delta_div * M3;
@@ -6910,8 +6911,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				M2 += diff;
 			}
 
-			out = (M4 / M2) * ((ldouble_safe)n / M2);
-			return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+			out = (M4 / M2) * ((lreal_t_safe)n / M2);
+			return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 		}
 
 		else
@@ -6922,12 +6923,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (likely(!is_na_or_inf(x[row])))
 				{
 					cnt++;
-					n_ = (ldouble_safe)cnt;
+					n_ = (lreal_t_safe)cnt;
 
 					delta = x[row] - m;
 					delta_div = delta / n_;
 					delta_s = delta_div * delta_div;
-					diff = delta * (delta_div * (ldouble_safe)(cnt - 1));
+					diff = delta * (delta_div * (lreal_t_safe)(cnt - 1));
 
 					m += delta_div;
 					M4 += diff * delta_s * (n_ * n_ - 3 * n_ + 3) + 6 * delta_s * M2 - 4 * delta_div * M3;
@@ -6939,25 +6940,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			if (unlikely(cnt == 0))
 				return -HUGE_VAL;
 
-			out = (M4 / M2) * ((ldouble_safe)cnt / M2);
-			return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+			out = (M4 / M2) * ((lreal_t_safe)cnt / M2);
+			return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 		}
 	}
 
 	/* TODO: is this algorithm correct? */
-	template <class xreal, class mapping, class ldouble_safe>
-	double
+	template <class xreal, class mapping, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t ix_arr[], size_t st, size_t end, xreal x[],
 						   MissingAction missing_action, mapping &w)
 	{
-		ldouble_safe m = 0;
-		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta, delta_s, delta_div;
-		ldouble_safe diff;
-		ldouble_safe n = 0;
-		ldouble_safe out;
-		ldouble_safe n_prev = 0.;
-		ldouble_safe w_this;
+		lreal_t_safe m = 0;
+		lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		lreal_t_safe delta, delta_s, delta_div;
+		lreal_t_safe diff;
+		lreal_t_safe n = 0;
+		lreal_t_safe out;
+		lreal_t_safe n_prev = 0.;
+		lreal_t_safe w_this;
 
 		for (size_t row = st; row <= end; row++)
 		{
@@ -6982,7 +6983,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (unlikely(n <= 0))
 			return -HUGE_VAL;
 		if (unlikely(
-				!is_na_or_inf(M2) && M2 <= std::numeric_limits<double>::epsilon()))
+				!is_na_or_inf(M2) && M2 <= std::numeric_limits<real_t>::epsilon()))
 		{
 			if (!check_more_than_two_unique_values(ix_arr, st, end, x,
 												   missing_action))
@@ -6990,25 +6991,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		out = (M4 / M2) * (n / M2);
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
-	template <class xreal, class ldouble_safe>
-	double
+	template <class xreal, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(xreal *x, size_t n_, MissingAction missing_action,
 						   xreal *w)
 	{
  		UNDEF_REFERENCE(missing_action)
  		UNDEF_REFERENCE2(missing_action)
 	
-		ldouble_safe m = 0;
-		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta, delta_s, delta_div;
-		ldouble_safe diff;
-		ldouble_safe n = 0;
-		ldouble_safe out;
-		ldouble_safe n_prev = 0.;
-		ldouble_safe w_this =(ldouble_safe) w[0];
+		lreal_t_safe m = 0;
+		lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		lreal_t_safe delta, delta_s, delta_div;
+		lreal_t_safe diff;
+		lreal_t_safe n = 0;
+		lreal_t_safe out;
+		lreal_t_safe n_prev = 0.;
+		lreal_t_safe w_this =(lreal_t_safe) w[0];
 
 		for (size_t row = 0; row < n_; row++)
 		{
@@ -7034,15 +7035,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			return -HUGE_VAL;
 
 		out = (M4 / M2) * (n / M2);
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
 	/* TODO: make these compensated sums */
 	/* TODO: can this use the same algorithm as above but with a correction at the end,
 	 like it was done for the variance? */
 	template <class xreal = real_t, class xsparse = sparse_ix,
-			  class ldouble_safe = long double>
-	double
+			  class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis(size_t *ix_arr, size_t st, size_t end, size_t col_num,
 				  xreal Xc[], sparse_ix *Xc_ind, sparse_ix *Xc_indptr,
 				  MissingAction missing_action)
@@ -7051,11 +7052,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (Xc_indptr[col_num] == Xc_indptr[col_num + 1])
 			return -HUGE_VAL;
 
-		ldouble_safe s1 = 0;
-		ldouble_safe s2 = 0;
-		ldouble_safe s3 = 0;
-		ldouble_safe s4 = 0;
-		ldouble_safe x_sq;
+		lreal_t_safe s1 = 0;
+		lreal_t_safe s2 = 0;
+		lreal_t_safe s3 = 0;
+		lreal_t_safe s4 = 0;
+		lreal_t_safe x_sq;
 		size_t cnt = end - st + 1;
 
 		if (unlikely(cnt <= 1))
@@ -7068,7 +7069,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t *ptr_st = std::lower_bound(ix_arr + st, ix_arr + end + 1,
 										  Xc_ind[st_col]);
 
-		ldouble_safe xval;
+		lreal_t_safe xval;
 
 		if (missing_action != Fail)
 		{
@@ -7165,41 +7166,41 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (unlikely(cnt <= 1 || s2 == 0 || s2 == pw2(s1)))
 			return -HUGE_VAL;
-		ldouble_safe cnt_l = (ldouble_safe)cnt;
-		ldouble_safe sn = s1 / cnt_l;
-		ldouble_safe v = s2 / cnt_l - pw2(sn);
+		lreal_t_safe cnt_l = (lreal_t_safe)cnt;
+		lreal_t_safe sn = s1 / cnt_l;
+		lreal_t_safe v = s2 / cnt_l - pw2(sn);
 		if (unlikely(std::isnan(v)))
 			return -HUGE_VAL;
-		if (v <= std::numeric_limits<double>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
+		if (v <= std::numeric_limits<real_t>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
 																							  Xc_indptr, Xc_ind, Xc,
 																							  missing_action))
 			return -HUGE_VAL;
 		if (unlikely(v <= 0))
 			return 0.;
-		ldouble_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		lreal_t_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
 	template <class xreal = real_t, class xsparse = sparse_ix,
-			  class ldouble_safe = long double>
-	double
+			  class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis(size_t col_num, size_t nrows, xreal Xc[], xsparse *Xc_ind,
 				  xsparse *Xc_indptr, MissingAction missing_action)
 	{
 		if (Xc_indptr[col_num] == Xc_indptr[col_num + 1])
 			return -HUGE_VAL;
 
-		ldouble_safe s1 = 0;
-		ldouble_safe s2 = 0;
-		ldouble_safe s3 = 0;
-		ldouble_safe s4 = 0;
-		ldouble_safe x_sq;
+		lreal_t_safe s1 = 0;
+		lreal_t_safe s2 = 0;
+		lreal_t_safe s3 = 0;
+		lreal_t_safe s4 = 0;
+		lreal_t_safe x_sq;
 		size_t cnt = nrows;
 
 		if (unlikely(cnt <= 1))
 			return -HUGE_VAL;
 
-		ldouble_safe xval;
+		lreal_t_safe xval;
 
 		if (missing_action != Fail)
 		{
@@ -7248,23 +7249,23 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (unlikely(cnt <= 1 || s2 == 0 || s2 == pw2(s1)))
 			return -HUGE_VAL;
-		ldouble_safe cnt_l = (ldouble_safe)cnt;
-		ldouble_safe sn = s1 / cnt_l;
-		ldouble_safe v = s2 / cnt_l - pw2(sn);
+		lreal_t_safe cnt_l = (lreal_t_safe)cnt;
+		lreal_t_safe sn = s1 / cnt_l;
+		lreal_t_safe v = s2 / cnt_l - pw2(sn);
 		if (unlikely(std::isnan(v)))
 			return -HUGE_VAL;
-		if (v <= std::numeric_limits<double>::epsilon() && !check_more_than_two_unique_values(nrows, col_num, Xc_indptr,
+		if (v <= std::numeric_limits<real_t>::epsilon() && !check_more_than_two_unique_values(nrows, col_num, Xc_indptr,
 																							  Xc_ind, Xc, missing_action))
 			return -HUGE_VAL;
 		if (unlikely(v <= 0))
 			return 0.;
-		ldouble_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		lreal_t_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
 	template <class xreal = real_t, class xsparse = sparse_ix, class xmapping,
-			  class ldouble_safe>
-	double
+			  class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t *ix_arr, size_t st, size_t end,
 						   size_t col_num,
 						   real_t Xc[],
@@ -7275,13 +7276,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (Xc_indptr[col_num] == Xc_indptr[col_num + 1])
 			return -HUGE_VAL;
 
-		ldouble_safe s1 = 0;
-		ldouble_safe s2 = 0;
-		ldouble_safe s3 = 0;
-		ldouble_safe s4 = 0;
-		ldouble_safe x_sq;
-		ldouble_safe w_this;
-		ldouble_safe cnt = 0;
+		lreal_t_safe s1 = 0;
+		lreal_t_safe s2 = 0;
+		lreal_t_safe s3 = 0;
+		lreal_t_safe s4 = 0;
+		lreal_t_safe x_sq;
+		lreal_t_safe w_this;
+		lreal_t_safe cnt = 0;
 		for (size_t row = st; row <= end; row++)
 			cnt += w[ix_arr[row]];
 
@@ -7295,7 +7296,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t *ptr_st = std::lower_bound(ix_arr + st, ix_arr + end + 1,
 										  Xc_ind[st_col]);
 
-		ldouble_safe xval;
+		lreal_t_safe xval;
 
 		if (missing_action != Fail)
 		{
@@ -7390,22 +7391,22 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (unlikely(cnt <= 1 || s2 == 0 || s2 == pw2(s1)))
 			return -HUGE_VAL;
-		ldouble_safe sn = s1 / cnt;
-		ldouble_safe v = s2 / cnt - pw2(sn);
+		lreal_t_safe sn = s1 / cnt;
+		lreal_t_safe v = s2 / cnt - pw2(sn);
 		if (unlikely(std::isnan(v)))
 			return -HUGE_VAL;
-		if (v <= std::numeric_limits<double>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
+		if (v <= std::numeric_limits<real_t>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
 																							  Xc_indptr, Xc_ind, Xc,
 																							  missing_action))
 			return -HUGE_VAL;
 		if (v <= 0)
 			return 0.;
-		ldouble_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt * pw4(sn)) / (cnt * pw2(v));
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		lreal_t_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt * pw4(sn)) / (cnt * pw2(v));
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
-	template <class xreal, class xsparse, class ldouble_safe>
-	double
+	template <class xreal, class xsparse, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t col_num, size_t nrows, xreal *Xc,
 						   xsparse *Xc_ind, xsparse *Xc_indptr,
 						   MissingAction missing_action, xreal *w)
@@ -7413,20 +7414,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (Xc_indptr[col_num] == Xc_indptr[col_num + 1])
 			return -HUGE_VAL;
 
-		ldouble_safe s1 = 0;
-		ldouble_safe s2 = 0;
-		ldouble_safe s3 = 0;
-		ldouble_safe s4 = 0;
-		ldouble_safe x_sq;
-		ldouble_safe w_this;
-		ldouble_safe cnt = nrows - (Xc_indptr[col_num + 1] - Xc_indptr[col_num]);
+		lreal_t_safe s1 = 0;
+		lreal_t_safe s2 = 0;
+		lreal_t_safe s3 = 0;
+		lreal_t_safe s4 = 0;
+		lreal_t_safe x_sq;
+		lreal_t_safe w_this;
+		lreal_t_safe cnt = nrows - (Xc_indptr[col_num + 1] - Xc_indptr[col_num]);
 		for (auto ix = Xc_indptr[col_num]; ix < Xc_indptr[col_num + 1]; ix++)
 			cnt += w[Xc_ind[ix]];
 
 		if (unlikely(cnt <= 0))
 			return -HUGE_VAL;
 
-		ldouble_safe xval;
+		lreal_t_safe xval;
 
 		if (missing_action != Fail)
 		{
@@ -7479,23 +7480,23 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (unlikely(cnt <= 1 || s2 == 0 || s2 == pw2(s1)))
 			return -HUGE_VAL;
-		ldouble_safe sn = s1 / cnt;
-		ldouble_safe v = s2 / cnt - pw2(sn);
+		lreal_t_safe sn = s1 / cnt;
+		lreal_t_safe v = s2 / cnt - pw2(sn);
 		if (unlikely(std::isnan(v)))
 			return -HUGE_VAL;
-		if (v <= std::numeric_limits<double>::epsilon() && !check_more_than_two_unique_values(nrows, col_num, Xc_indptr,
+		if (v <= std::numeric_limits<real_t>::epsilon() && !check_more_than_two_unique_values(nrows, col_num, Xc_indptr,
 																							  Xc_ind, Xc, missing_action))
 			return -HUGE_VAL;
 		if (unlikely(v <= 0))
 			return -HUGE_VAL;
-		ldouble_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt * pw4(sn)) / (cnt * pw2(v));
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		lreal_t_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt * pw4(sn)) / (cnt * pw2(v));
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis_internal(size_t cnt, int x[], int ncat, size_t buffer_cnt[],
-						   double buffer_prob[], MissingAction missing_action,
+						   real_t buffer_prob[], MissingAction missing_action,
 						   CategSplit cat_split_type,
 						   RNG_engine &rnd_generator)
 	{
@@ -7512,12 +7513,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		UNDEF_REFERENCE2(missing_action)
 		
 
-		double sum_kurt = 0;
+		real_t sum_kurt = 0;
 
 		cnt -= buffer_cnt[ncat];
 		if (cnt <= 1)
 			return -HUGE_VAL;
-		ldouble_safe cnt_l = (ldouble_safe)cnt;
+		lreal_t_safe cnt_l = (lreal_t_safe)cnt;
 		for (int cat = 0; cat < ncat; cat++)
 			buffer_prob[cat] = buffer_cnt[cat] / cnt_l;
 
@@ -7525,11 +7526,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		{
 		case SubSet:
 		{
-			ldouble_safe temp_v;
-			ldouble_safe s1, s2, s3, s4;
-			ldouble_safe coef;
-			ldouble_safe coef2;
-			ldouble_safe w_this;
+			lreal_t_safe temp_v;
+			lreal_t_safe s1, s2, s3, s4;
+			lreal_t_safe coef;
+			lreal_t_safe coef2;
+			lreal_t_safe w_this;
 			UniformUnitInterval runif(0, 1);
 			size_t ntry = 50;
 			for (size_t iternum = 0; iternum < 50; iternum++)
@@ -7563,12 +7564,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			else if (unlikely(is_na_or_inf(sum_kurt)))
 				return -HUGE_VAL;
 			else
-				return std::fmax(sum_kurt, 0.) / (double)ntry;
+				return std::fmax(sum_kurt, 0.) / (real_t)ntry;
 		}
 
 		case SingleCateg:
 		{
-			double p;
+			real_t p;
 			int ncat_present = ncat;
 			for (int cat = 0; cat < ncat; cat++)
 			{
@@ -7583,17 +7584,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			else if (unlikely(is_na_or_inf(sum_kurt)))
 				return -HUGE_VAL;
 			else
-				return std::fmax(sum_kurt, 0.) / (double)ncat_present;
+				return std::fmax(sum_kurt, 0.) / (real_t)ncat_present;
 		}
 		}
 
 		return -1; /* this will never be reached, but CRAN complains otherwise */
 	}
 
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis(size_t *ix_arr, size_t st, size_t end, int x[], int ncat,
-				  size_t *buffer_cnt, double buffer_prob[],
+				  size_t *buffer_cnt, real_t buffer_prob[],
 				  MissingAction missing_action, CategSplit cat_split_type,
 				  RNG_engine &rnd_generator)
 	{
@@ -7626,16 +7627,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 		}
 
-		return calc_kurtosis_internal<ldouble_safe>(cnt, x, ncat, buffer_cnt,
+		return calc_kurtosis_internal<lreal_t_safe>(cnt, x, ncat, buffer_cnt,
 													buffer_prob, missing_action,
 													cat_split_type,
 													rnd_generator);
 	}
 
-	template <class ldouble_safe = long double>
-	double
+	template <class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis(size_t nrows, int x[], int ncat, size_t buffer_cnt[],
-				  double buffer_prob[], MissingAction missing_action,
+				  real_t buffer_prob[], MissingAction missing_action,
 				  CategSplit cat_split_type, RNG_engine &rnd_generator)
 	{
 		size_t cnt = nrows;
@@ -7658,17 +7659,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 		}
 
-		return calc_kurtosis_internal<ldouble_safe>(cnt, x, ncat, buffer_cnt,
+		return calc_kurtosis_internal<lreal_t_safe>(cnt, x, ncat, buffer_cnt,
 													buffer_prob, missing_action,
 													cat_split_type,
 													rnd_generator);
 	}
 
 	/* TODO: this one should get a buffer preallocated from outside */
-	template <class mapping, class ldouble_safe>
-	double
-	calc_kurtosis_weighted_internal(std::vector<ldouble_safe> &buffer_cnt,
-									int x[], int ncat, double buffer_prob[],
+	template <class mapping, class lreal_t_safe>
+	real_t
+	calc_kurtosis_weighted_internal(std::vector<lreal_t_safe> &buffer_cnt,
+									int x[], int ncat, real_t buffer_prob[],
 									MissingAction missing_action,
 									CategSplit cat_split_type,
 									RNG_engine &rnd_generator,
@@ -7678,10 +7679,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		UNDEF_REFERENCE2(missing_action)
 		UNDEF_REFERENCE2(w)
 
-		double sum_kurt = 0;
+		real_t sum_kurt = 0;
 
-		ldouble_safe cnt = std::accumulate(buffer_cnt.begin(),
-										   buffer_cnt.end(), (ldouble_safe)0);
+		lreal_t_safe cnt = std::accumulate(buffer_cnt.begin(),
+										   buffer_cnt.end(), (lreal_t_safe)0);
 
 		cnt -= buffer_cnt[ncat];
 		if (unlikely(cnt <= 1))
@@ -7693,10 +7694,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		{
 		case SubSet:
 		{
-			ldouble_safe temp_v;
-			ldouble_safe s1, s2, s3, s4;
-			ldouble_safe coef, coef2;
-			ldouble_safe w_this;
+			lreal_t_safe temp_v;
+			lreal_t_safe s1, s2, s3, s4;
+			lreal_t_safe coef, coef2;
+			lreal_t_safe w_this;
 			UniformUnitInterval runif(0, 1);
 			size_t ntry = 50;
 			for (size_t iternum = 0; iternum < 50; iternum++)
@@ -7730,12 +7731,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			else if (unlikely(is_na_or_inf(sum_kurt)))
 				return -HUGE_VAL;
 			else
-				return std::fmax(sum_kurt, 0.) / (double)ntry;
+				return std::fmax(sum_kurt, 0.) / (real_t)ntry;
 		}
 
 		case SingleCateg:
 		{
-			double p;
+			real_t p;
 			int ncat_present = ncat;
 			for (int cat = 0; cat < ncat; cat++)
 			{
@@ -7750,7 +7751,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			else if (unlikely(is_na_or_inf(sum_kurt)))
 				return -HUGE_VAL;
 			else
-				return std::fmax(sum_kurt, 0.) / (double)ncat_present;
+				return std::fmax(sum_kurt, 0.) / (real_t)ncat_present;
 		}
 		}
 
@@ -7758,17 +7759,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return -1; /* this will never be reached, but CRAN complains otherwise */
 	}
 
-	template <class mapping, class ldouble_safe>
-	double
+	template <class mapping, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t ix_arr[], size_t st, size_t end, int x[],
-						   int ncat, double buffer_prob[],
+						   int ncat, real_t buffer_prob[],
 						   MissingAction missing_action,
 						   CategSplit cat_split_type,
 						   RNG_engine &rnd_generator,
 						   mapping &w)
 	{
-		std::vector<ldouble_safe> buffer_cnt(ncat + 1, 0.);
-		ldouble_safe w_this;
+		std::vector<lreal_t_safe> buffer_cnt(ncat + 1, 0.);
+		lreal_t_safe w_this;
 
 		for (size_t row = st; row <= end; row++)
 		{
@@ -7779,21 +7780,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				buffer_cnt[ncat] += w_this;
 		}
 
-		return calc_kurtosis_weighted_internal<mapping, ldouble_safe>(
+		return calc_kurtosis_weighted_internal<mapping, lreal_t_safe>(
 			buffer_cnt, x, ncat, buffer_prob, missing_action, cat_split_type,
 			rnd_generator, w);
 	}
 
-	template <class xreal = real_t, class ldouble_safe>
-	double
+	template <class xreal = real_t, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t nrows, int x[], int ncat,
-						   double *buffer_prob, MissingAction missing_action,
+						   real_t *buffer_prob, MissingAction missing_action,
 						   CategSplit cat_split_type,
 						   RNG_engine &rnd_generator,
 						   xreal *w)
 	{
-		std::vector<ldouble_safe> buffer_cnt(ncat + 1, 0.);
-		ldouble_safe w_this;
+		std::vector<lreal_t_safe> buffer_cnt(ncat + 1, 0.);
+		lreal_t_safe w_this;
 
 		for (size_t row = 0; row < nrows; row++)
 		{
@@ -7804,7 +7805,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				buffer_cnt[ncat] += w_this;
 		}
 
-		return calc_kurtosis_weighted_internal<real_t *, ldouble_safe>(
+		return calc_kurtosis_weighted_internal<real_t *, lreal_t_safe>(
 			buffer_cnt, x, ncat, buffer_prob, missing_action, cat_split_type,
 			rnd_generator, w);
 	}
@@ -7886,11 +7887,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 The sums of centered squares method is also likely to be more precise. */
 
 	template <class xreal = real_t>
-	double
+	real_t
 	midpoint(xreal x, xreal y)
 	{
 		real_t m = x + (y - x) / (real_t)2;
-		if (likely((double)m < (double)y))
+		if (likely((real_t)m < (real_t)y))
 			return m;
 		else
 		{
@@ -7903,7 +7904,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	template <class xreal = real_t>
-	double
+	real_t
 	midpoint_with_reorder(xreal x, xreal y)
 	{
 		if (x < y)
@@ -7913,8 +7914,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	template <class xreal, class yreal>
-	double
-	find_split_rel_gain_t(xreal *x, size_t n, double &split_point)
+	real_t
+	find_split_rel_gain_t(xreal *x, size_t n, real_t &split_point)
 	{
 		yreal this_gain;
 		yreal best_gain = -HUGE_VAL;
@@ -7941,18 +7942,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (best_gain <= -HUGE_VAL)
 			return best_gain;
 		split_point = midpoint(x1, x2);
-		return std::fmax((double)best_gain,
-						 std::numeric_limits<double>::epsilon());
+		return std::fmax((real_t)best_gain,
+						 std::numeric_limits<real_t>::epsilon());
 	}
 
-	template <class xreal = real_t, class ldouble_safe>
-	double
-	find_split_rel_gain(xreal *x, size_t n, double &split_point)
+	template <class xreal = real_t, class lreal_t_safe>
+	real_t
+	find_split_rel_gain(xreal *x, size_t n, real_t &split_point)
 	{
 		if (n < THRESHOLD_LONG_DOUBLE)
-			return find_split_rel_gain_t<double, xreal>(x, n, split_point);
+			return find_split_rel_gain_t<real_t, xreal>(x, n, split_point);
 		else
-			return find_split_rel_gain_t<ldouble_safe, xreal>((ldouble_safe *)x, n,
+			return find_split_rel_gain_t<lreal_t_safe, xreal>((lreal_t_safe *)x, n,
 															  split_point);
 	}
 
@@ -7960,9 +7961,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 imply having to argsort the 'x' values in order to sort the weights, which is less efficient. */
 
 	template <class xreal_t, class yreal_t>
-	double
+	real_t
 	find_split_rel_gain_t(xreal_t *x, yreal_t xmean, size_t *ix_arr, size_t st,
-						  size_t end, double &split_point, size_t &split_ix)
+						  size_t end, real_t &split_point, size_t &split_ix)
 	{
 		xreal_t this_gain;
 		xreal_t best_gain = -HUGE_VAL;
@@ -7988,46 +7989,46 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (best_gain <= -HUGE_VAL)
 			return best_gain;
 		split_point = midpoint(x[ix_arr[split_ix]], x[ix_arr[split_ix + 1]]);
-		return std::fmax((double)best_gain,
-						 std::numeric_limits<double>::epsilon());
+		return std::fmax((real_t)best_gain,
+						 std::numeric_limits<real_t>::epsilon());
 	}
 
-	template <class xreal_t, class ldouble_safe>
-	double
+	template <class xreal_t, class lreal_t_safe>
+	real_t
 	find_split_rel_gain(xreal_t *x, xreal_t xmean, size_t *ix_arr, size_t st,
-						size_t end, double &split_point, size_t &split_ix)
+						size_t end, real_t &split_point, size_t &split_ix)
 	{
 		if ((end - st + 1) < THRESHOLD_LONG_DOUBLE)
-			return find_split_rel_gain_t<double, xreal_t>(x, xmean, ix_arr, st,
+			return find_split_rel_gain_t<real_t, xreal_t>(x, xmean, ix_arr, st,
 														  end, split_point,
 														  split_ix);
 		else
-			return find_split_rel_gain_t<ldouble_safe, xreal_t>((ldouble_safe *)x,
+			return find_split_rel_gain_t<lreal_t_safe, xreal_t>((lreal_t_safe *)x,
 																xmean, ix_arr, st,
 																end, split_point,
 																split_ix);
 	}
 
-	/*	template <class xreal_t, class mapping, class ldouble_safe>
-	 double find_split_rel_gain_weighted(xreal_t * x,
+	/*	template <class xreal_t, class mapping, class lreal_t_safe>
+	 real_t find_split_rel_gain_weighted(xreal_t * x,
 	 xreal_t  xmean,
 	 size_t *ix_arr,
 	 size_t st,
 	 size_t end,
-	 double &split_point,
+	 real_t &split_point,
 	 size_t &split_ix,
 	 mapping &w)
 	 {
 	 if ((end-st+1) < THRESHOLD_LONG_DOUBLE)
-	 return find_split_rel_gain_weighted_t<double, xreal_t, mapping>(x, xmean, ix_arr, st, end, split_point, split_ix, w);
+	 return find_split_rel_gain_weighted_t<real_t, xreal_t, mapping>(x, xmean, ix_arr, st, end, split_point, split_ix, w);
 	 else
-	 return find_split_rel_gain_weighted_t<ldouble_safe, xreal_t, mapping>(x, xmean, ix_arr, st, end, split_point, split_ix, w);
+	 return find_split_rel_gain_weighted_t<lreal_t_safe, xreal_t, mapping>(x, xmean, ix_arr, st, end, split_point, split_ix, w);
 	 }
 
 	 */
 	template <class xreal, class yral>
 	real_t
-	calc_sd_right_to_left(xreal *x, size_t n, double *sd_arr)
+	calc_sd_right_to_left(xreal *x, size_t n, real_t *sd_arr)
 	{
 		xreal running_mean = 0;
 		xreal running_ssq = 0;
@@ -8045,17 +8046,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return std::sqrt(running_ssq / (real_t)n);
 	}
 
-	template <class xreal, class ldouble_safe>
-	ldouble_safe
-	calc_sd_right_to_left_weighted(xreal *x, size_t n, double *sd_arr,
-								   double *w, ldouble_safe &cumw,
+	template <class xreal, class lreal_t_safe>
+	lreal_t_safe
+	calc_sd_right_to_left_weighted(xreal *x, size_t n, real_t *sd_arr,
+								   real_t *w, lreal_t_safe &cumw,
 								   size_t *sorted_ix)
 	{
-		ldouble_safe running_mean = 0;
-		ldouble_safe running_ssq = 0;
-		ldouble_safe mean_prev = x[sorted_ix[n - 1]];
-		ldouble_safe cnt = 0;
-		double w_this;
+		lreal_t_safe running_mean = 0;
+		lreal_t_safe running_ssq = 0;
+		lreal_t_safe mean_prev = x[sorted_ix[n - 1]];
+		lreal_t_safe cnt = 0;
+		real_t w_this;
 		for (size_t row = 0; row < n - 1; row++)
 		{
 			w_this = w[sorted_ix[n - row - 1]];
@@ -8076,7 +8077,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	template <class xreal, class yreal>
 	xreal
 	calc_sd_right_to_left(xreal *x, yreal xmean, size_t ix_arr[], size_t st,
-						  size_t end, double *sd_arr)
+						  size_t end, real_t *sd_arr)
 	{
 		real_t running_mean = 0;
 		real_t running_ssq = 0;
@@ -8095,18 +8096,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return std::sqrt(running_ssq / (xreal)n);
 	}
 
-	template <class xreal, class mapping, class ldouble_safe>
-	ldouble_safe
+	template <class xreal, class mapping, class lreal_t_safe>
+	lreal_t_safe
 	calc_sd_right_to_left_weighted(xreal *x, xreal xmean, size_t ix_arr[],
-								   size_t st, size_t end, double *sd_arr,
-								   mapping &w, ldouble_safe &cumw)
+								   size_t st, size_t end, real_t *sd_arr,
+								   mapping &w, lreal_t_safe &cumw)
 	{
-		ldouble_safe running_mean = 0;
-		ldouble_safe running_ssq = 0;
+		lreal_t_safe running_mean = 0;
+		lreal_t_safe running_ssq = 0;
 		xreal mean_prev = x[ix_arr[end]] - xmean;
 		size_t n = end - st + 1;
-		ldouble_safe cnt = 0;
-		double w_this;
+		lreal_t_safe cnt = 0;
+		real_t w_this;
 		for (size_t row = 0; row < n - 1; row++)
 		{
 			w_this = w[ix_arr[end - row]];
@@ -8125,10 +8126,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	template <class xreal = real_t, class yreal = real_t>
-	double
-	find_split_std_gain_t(xreal *x, size_t n, double *sd_arr,
-						  GainCriterion criterion, double min_gain,
-						  double &split_point)
+	real_t
+	find_split_std_gain_t(xreal *x, size_t n, real_t *sd_arr,
+						  GainCriterion criterion, real_t min_gain,
+						  real_t &split_point)
 	{
 		yreal full_sd = calc_sd_right_to_left((yreal *)x, n, sd_arr);
 		yreal running_mean = 0;
@@ -8165,40 +8166,40 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return best_gain;
 	}
 
-	template <class real_t_, class ldouble_safe>
-	double
-	find_split_std_gain(real_t_ *x, size_t n, double *sd_arr,
-						GainCriterion criterion, double min_gain,
-						double &split_point)
+	template <class real_t_, class lreal_t_safe>
+	real_t
+	find_split_std_gain(real_t_ *x, size_t n, real_t *sd_arr,
+						GainCriterion criterion, real_t min_gain,
+						real_t &split_point)
 	{
 		if (n < THRESHOLD_LONG_DOUBLE)
-			return find_split_std_gain_t<double, real_t_>(x, n, sd_arr, criterion,
+			return find_split_std_gain_t<real_t, real_t_>(x, n, sd_arr, criterion,
 														  min_gain, split_point);
 		else
-			return find_split_std_gain_t<ldouble_safe, real_t_>((ldouble_safe *)x,
+			return find_split_std_gain_t<lreal_t_safe, real_t_>((lreal_t_safe *)x,
 																n, sd_arr,
 																criterion,
 																min_gain,
 																split_point);
 	}
 
-	template <class xreal, class ldouble_safe>
-	double
-	find_split_std_gain_weighted(xreal *x, size_t n, double *sd_arr,
-								 GainCriterion criterion, double min_gain,
-								 double &split_point, double *w,
+	template <class xreal, class lreal_t_safe>
+	real_t
+	find_split_std_gain_weighted(xreal *x, size_t n, real_t *sd_arr,
+								 GainCriterion criterion, real_t min_gain,
+								 real_t &split_point, real_t *w,
 								 size_t *sorted_ix)
 	{
-		ldouble_safe cumw;
-		double full_sd = calc_sd_right_to_left_weighted(x, n, sd_arr, w, cumw,
+		lreal_t_safe cumw;
+		real_t full_sd = calc_sd_right_to_left_weighted(x, n, sd_arr, w, cumw,
 														sorted_ix);
-		ldouble_safe running_mean = 0;
-		ldouble_safe running_ssq = 0;
-		ldouble_safe mean_prev = x[sorted_ix[0]];
-		double best_gain = -HUGE_VAL;
-		double this_sd, this_gain;
-		double w_this;
-		ldouble_safe currw = 0;
+		lreal_t_safe running_mean = 0;
+		lreal_t_safe running_ssq = 0;
+		lreal_t_safe mean_prev = x[sorted_ix[0]];
+		real_t best_gain = -HUGE_VAL;
+		real_t this_sd, this_gain;
+		real_t w_this;
+		lreal_t_safe currw = 0;
 		size_t best_ix = 0;
 
 		for (size_t row = 0; row < n - 1; row++)
@@ -8231,10 +8232,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	template <class xreal = real_t, class yreal = real_t>
-	double
+	real_t
 	find_split_std_gain_t(xreal *x, yreal xmean, size_t ix_arr[], size_t st,
-						  size_t end, double *sd_arr, GainCriterion criterion,
-						  double min_gain, double &split_point,
+						  size_t end, real_t *sd_arr, GainCriterion criterion,
+						  real_t min_gain, real_t &split_point,
 						  size_t &split_ix)
 	{
 		xreal full_sd = calc_sd_right_to_left(x, xmean, ix_arr, st, end, sd_arr);
@@ -8272,19 +8273,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return best_gain;
 	}
 
-	template <class xreal, class ldouble_safe>
-	double
+	template <class xreal, class lreal_t_safe>
+	real_t
 	find_split_std_gain(xreal *x, xreal xmean, size_t ix_arr[], size_t st,
-						size_t end, double *sd_arr, GainCriterion criterion,
-						double min_gain, double &split_point, size_t &split_ix)
+						size_t end, real_t *sd_arr, GainCriterion criterion,
+						real_t min_gain, real_t &split_point, size_t &split_ix)
 	{
 		if ((end - st + 1) < THRESHOLD_LONG_DOUBLE)
-			return find_split_std_gain_t<double, xreal>(x, xmean, ix_arr, st, end,
+			return find_split_std_gain_t<real_t, xreal>(x, xmean, ix_arr, st, end,
 														sd_arr, criterion,
 														min_gain, split_point,
 														split_ix);
 		else
-			return find_split_std_gain_t<ldouble_safe, xreal>((ldouble_safe *)x,
+			return find_split_std_gain_t<lreal_t_safe, xreal>((lreal_t_safe *)x,
 															  xmean, ix_arr, st,
 															  end, sd_arr,
 															  criterion, min_gain,
@@ -8292,24 +8293,24 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 															  split_ix);
 	}
 
-	template <class xreal, class mapping, class ldouble_safe>
-	double
+	template <class xreal, class mapping, class lreal_t_safe>
+	real_t
 	find_split_std_gain_weighted(xreal *x, real_t xmean, size_t ix_arr[],
-								 size_t st, size_t end, double *sd_arr,
-								 GainCriterion criterion, double min_gain,
-								 double &split_point, size_t &split_ix,
+								 size_t st, size_t end, real_t *sd_arr,
+								 GainCriterion criterion, real_t min_gain,
+								 real_t &split_point, size_t &split_ix,
 								 mapping &w)
 	{
-		ldouble_safe cumw;
-		double full_sd = calc_sd_right_to_left_weighted(x, xmean, ix_arr, st,
+		lreal_t_safe cumw;
+		real_t full_sd = calc_sd_right_to_left_weighted(x, xmean, ix_arr, st,
 														end, sd_arr, w, cumw);
-		ldouble_safe running_mean = 0;
-		ldouble_safe running_ssq = 0;
-		ldouble_safe mean_prev = x[ix_arr[st]] - xmean;
-		double best_gain = -HUGE_VAL;
-		ldouble_safe currw = 0;
-		double this_sd, this_gain;
-		double w_this;
+		lreal_t_safe running_mean = 0;
+		lreal_t_safe running_ssq = 0;
+		lreal_t_safe mean_prev = x[ix_arr[st]] - xmean;
+		real_t best_gain = -HUGE_VAL;
+		lreal_t_safe currw = 0;
+		real_t this_sd, this_gain;
+		real_t w_this;
 		split_ix = st;
 
 		for (size_t row = st; row < end; row++)
@@ -8351,7 +8352,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	[[gnu::optimize("Ofast")]]
 #endif
 	static inline void
-	xpy1(double *x, double *y, size_t n)
+	xpy1(real_t *x, real_t *y, size_t n)
 	{
 		for (size_t ix = 0; ix < n; ix++)
 			y[ix] += x[ix];
@@ -8361,7 +8362,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	[[gnu::optimize("Ofast")]]
 #endif
 	static inline void
-	axpy1(const double a, double *x, double *y, size_t n)
+	axpy1(const real_t a, real_t *x, real_t *y, size_t n)
 	{
 		for (size_t ix = 0; ix < n; ix++)
 			y[ix] = std::fma(a, x[ix], y[ix]);
@@ -8371,7 +8372,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	[[gnu::optimize("Ofast")]]
 #endif
 	static inline void
-	xpy1(double *xval, size_t ind[], size_t nnz, double *y)
+	xpy1(real_t *xval, size_t ind[], size_t nnz, real_t *y)
 	{
 		for (size_t ix = 0; ix < nnz; ix++)
 			y[ind[ix]] += xval[ix];
@@ -8381,7 +8382,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	[[gnu::optimize("Ofast")]]
 #endif
 	static inline void
-	axpy1(const double a, double *xval, size_t ind[], size_t nnz, double *y)
+	axpy1(const real_t a, real_t *xval, size_t ind[], size_t nnz, real_t *y)
 	{
 		for (size_t ix = 0; ix < nnz; ix++)
 			y[ind[ix]] = std::fma(a, xval[ix], y[ind[ix]]);
@@ -8393,28 +8394,28 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 #endif
 
-	template <class xreal = real_t, class ldouble_safe = long double>
-	double
+	template <class xreal = real_t, class lreal_t_safe = long real_t>
+	real_t
 	find_split_full_gain(xreal *x, size_t st, size_t end, size_t *ix_arr,
 						 size_t *cols_use, size_t ncols_use,
-						 bool force_cols_use, double *X_row_major,
-						 size_t ncols, double *Xr, size_t *Xr_ind,
-						 size_t *Xr_indptr, double *buffer_sum_left,
-						 double *buffer_sum_tot, size_t &split_ix,
-						 double &split_point, bool x_uses_ix_arr)
+						 bool force_cols_use, real_t *X_row_major,
+						 size_t ncols, real_t *Xr, size_t *Xr_ind,
+						 size_t *Xr_indptr, real_t *buffer_sum_left,
+						 real_t *buffer_sum_tot, size_t &split_ix,
+						 real_t &split_point, bool x_uses_ix_arr)
 	{
 		if (end <= st)
 			return -HUGE_VAL;
-		if (cols_use != NULL && ncols_use && (double)ncols_use / (double)ncols < 0.1)
+		if (cols_use != NULL && ncols_use && (real_t)ncols_use / (real_t)ncols < 0.1)
 			force_cols_use = true;
 
 		memset(buffer_sum_tot, 0,
-			   (force_cols_use ? ncols_use : ncols) * sizeof(double));
+			   (force_cols_use ? ncols_use : ncols) * sizeof(real_t));
 		if (Xr_indptr == NULL)
 		{
 			if (force_cols_use)
 			{
-				double *ptr_row;
+				real_t *ptr_row;
 				for (size_t row = st; row <= end; row++)
 				{
 					ptr_row = X_row_major + ix_arr[row] * ncols;
@@ -8437,7 +8438,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				size_t *curr_begin;
 				size_t *row_end;
 				size_t *curr_col;
-				double *Xr_this;
+				real_t *Xr_this;
 				size_t *cols_end = cols_use + ncols_use;
 				for (size_t row = st; row <= end; row++)
 				{
@@ -8483,13 +8484,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 		}
 
-		double best_gain = -HUGE_VAL;
-		double this_gain;
-		double sl, sr;
-		double dl, dr;
-		double vleft, vright;
+		real_t best_gain = -HUGE_VAL;
+		real_t this_gain;
+		real_t sl, sr;
+		real_t dl, dr;
+		real_t vleft, vright;
 		memset(buffer_sum_left, 0,
-			   (force_cols_use ? ncols_use : ncols) * sizeof(double));
+			   (force_cols_use ? ncols_use : ncols) * sizeof(real_t));
 		if (Xr_indptr == NULL)
 		{
 			if (!force_cols_use)
@@ -8511,8 +8512,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 					vleft = 0;
 					vright = 0;
-					dl = (double)(row - st + 1);
-					dr = (double)(end - row);
+					dl = (real_t)(row - st + 1);
+					dr = (real_t)(end - row);
 					for (size_t col = 0; col < ncols; col++)
 					{
 						sl = buffer_sum_left[col];
@@ -8532,7 +8533,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			else
 			{
-				double *ptr_row;
+				real_t *ptr_row;
 				for (size_t row = st; row < end; row++)
 				{
 					ptr_row = X_row_major + ix_arr[row] * ncols;
@@ -8551,8 +8552,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 					vleft = 0;
 					vright = 0;
-					dl = (double)(row - st + 1);
-					dr = (double)(end - row);
+					dl = (real_t)(row - st + 1);
+					dr = (real_t)(end - row);
 					for (size_t col = 0; col < ncols_use; col++)
 					{
 						sl = buffer_sum_left[col];
@@ -8594,8 +8595,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 					vleft = 0;
 					vright = 0;
-					dl = (double)(row - st + 1);
-					dr = (double)(end - row);
+					dl = (real_t)(row - st + 1);
+					dr = (real_t)(end - row);
 					for (size_t col = 0; col < ncols; col++)
 					{
 						sl = buffer_sum_left[col];
@@ -8618,7 +8619,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				size_t *curr_begin;
 				size_t *row_end;
 				size_t *curr_col;
-				double *Xr_this;
+				real_t *Xr_this;
 				size_t *cols_end = cols_use + ncols_use;
 				for (size_t row = st; row < end; row++)
 				{
@@ -8663,8 +8664,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 					vleft = 0;
 					vright = 0;
-					dl = (double)(row - st + 1);
-					dr = (double)(end - row);
+					dl = (real_t)(row - st + 1);
+					dr = (real_t)(end - row);
 					for (size_t col = 0; col < ncols_use; col++)
 					{
 						sl = buffer_sum_left[col];
@@ -8690,27 +8691,27 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			split_point = midpoint(x[ix_arr[split_ix]], x[ix_arr[split_ix + 1]]);
 		else
 			split_point = midpoint(x[split_ix], x[split_ix + 1]);
-		return best_gain / (ldouble_safe)(end - st + 1);
+		return best_gain / (lreal_t_safe)(end - st + 1);
 	}
 
-	template <class xreal = real_t, class mapping, class ldouble_safe>
-	double
+	template <class xreal = real_t, class mapping, class lreal_t_safe>
+	real_t
 	find_split_full_gain_weighted(xreal *x, size_t st, size_t end,
 								  size_t *ix_arr, size_t *cols_use,
 								  size_t ncols_use, bool force_cols_use,
-								  double *X_row_major, size_t ncols,
-								  double *Xr, size_t *Xr_ind,
-								  size_t *Xr_indptr, double *buffer_sum_left,
-								  double *buffer_sum_tot, size_t &split_ix,
-								  double &split_point, bool x_uses_ix_arr,
+								  real_t *X_row_major, size_t ncols,
+								  real_t *Xr, size_t *Xr_ind,
+								  size_t *Xr_indptr, real_t *buffer_sum_left,
+								  real_t *buffer_sum_tot, size_t &split_ix,
+								  real_t &split_point, bool x_uses_ix_arr,
 								  mapping &w)
 	{
 		if (end <= st)
 			return -HUGE_VAL;
-		if (cols_use != NULL && ncols_use && (double)ncols_use / (double)ncols < 0.1)
+		if (cols_use != NULL && ncols_use && (real_t)ncols_use / (real_t)ncols < 0.1)
 			force_cols_use = true;
 
-		double wtot = 0;
+		real_t wtot = 0;
 		if (x_uses_ix_arr)
 		{
 			for (size_t row = st; row <= end; row++)
@@ -8724,7 +8725,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		memset(buffer_sum_tot, 0,
-			   (force_cols_use ? ncols_use : ncols) * sizeof(double));
+			   (force_cols_use ? ncols_use : ncols) * sizeof(real_t));
 		if (Xr_indptr == NULL)
 		{
 			if (!force_cols_use)
@@ -8746,8 +8747,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			else
 			{
-				double *ptr_row;
-				double w_row;
+				real_t *ptr_row;
+				real_t w_row;
 
 				if (x_uses_ix_arr)
 				{
@@ -8810,9 +8811,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				size_t *curr_begin;
 				size_t *row_end;
 				size_t *curr_col;
-				double *Xr_this;
+				real_t *Xr_this;
 				size_t *cols_end = cols_use + ncols_use;
-				double w_row;
+				real_t w_row;
 				for (size_t row = st; row <= end; row++)
 				{
 					curr_begin = Xr_ind + Xr_indptr[ix_arr[row]];
@@ -8851,15 +8852,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 		}
 
-		double best_gain = -HUGE_VAL;
-		double this_gain;
-		double sl, sr;
-		double vleft, vright;
-		double wleft = 0;
-		double w_row;
-		double wright;
+		real_t best_gain = -HUGE_VAL;
+		real_t this_gain;
+		real_t sl, sr;
+		real_t vleft, vright;
+		real_t wleft = 0;
+		real_t w_row;
+		real_t wright;
 		memset(buffer_sum_left, 0,
-			   (force_cols_use ? ncols_use : ncols) * sizeof(double));
+			   (force_cols_use ? ncols_use : ncols) * sizeof(real_t));
 		if (Xr_indptr == NULL)
 		{
 			if (!force_cols_use)
@@ -8903,8 +8904,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			else
 			{
-				double *ptr_row;
-				double w_row;
+				real_t *ptr_row;
+				real_t w_row;
 				for (size_t row = st; row < end; row++)
 				{
 					w_row = w[x_uses_ix_arr ? ix_arr[row] : row];
@@ -8952,7 +8953,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			if (!force_cols_use)
 			{
 				size_t ptr_this;
-				double w_row;
+				real_t w_row;
 				for (size_t row = st; row < end; row++)
 				{
 					w_row = w[x_uses_ix_arr ? ix_arr[row] : row];
@@ -8997,9 +8998,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				size_t *curr_begin;
 				size_t *row_end;
 				size_t *curr_col;
-				double *Xr_this;
+				real_t *Xr_this;
 				size_t *cols_end = cols_use + ncols_use;
-				double w_row;
+				real_t w_row;
 				size_t dtemp;
 				for (size_t row = st; row < end; row++)
 				{
@@ -9077,16 +9078,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	template <class xreal = real_t, class yreal = real_t>
-	double
-	find_split_dens_shortform_t(xreal *x, size_t n, double &split_point)
+	real_t
+	find_split_dens_shortform_t(xreal *x, size_t n, real_t &split_point)
 	{
-		double best_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		size_t n_minus_one = n - 1;
 		yreal xmin = x[0];
 		yreal xmax = x[n - 1];
 		yreal xleft, xright;
 		yreal xmid;
-		double this_gain;
+		real_t this_gain;
 		size_t split_ix = 0;
 
 		for (size_t ix = 0; ix < n_minus_one; ix++)
@@ -9114,9 +9115,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		yreal nright = (yreal)(n_minus_one - split_ix);
 		split_point = midpoint(x[split_ix], x[split_ix + 1]);
 		yreal rpct_left = split_point / xtot;
-		rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
+		rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
 		yreal rpct_right = (yreal)1 - rpct_left;
-		rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
+		rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
 
 		yreal nl_sq = nleft / (yreal)n;
 		nl_sq = square(nl_sq);
@@ -9126,30 +9127,30 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return nl_sq / rpct_left + nr_sq / rpct_right;
 	}
 
-	template <class xreal = real_t, class ldouble_safe>
-	double
-	find_split_dens_shortform(xreal *x, size_t n, double &split_point)
+	template <class xreal = real_t, class lreal_t_safe>
+	real_t
+	find_split_dens_shortform(xreal *x, size_t n, real_t &split_point)
 	{
 		if (n < INT32_MAX)
-			return find_split_dens_shortform_t<double, xreal>(x, n, split_point);
+			return find_split_dens_shortform_t<real_t, xreal>(x, n, split_point);
 		else
-			return find_split_dens_shortform_t<ldouble_safe, xreal>(
-				(ldouble_safe *)x, n, split_point);
+			return find_split_dens_shortform_t<lreal_t_safe, xreal>(
+				(lreal_t_safe *)x, n, split_point);
 	}
 
 	template <class xreal, class yreal, class mapping>
-	double
+	real_t
 	find_split_dens_shortform_weighted_t(xreal *x, size_t n,
-										 double &split_point, mapping &w,
+										 real_t &split_point, mapping &w,
 										 size_t *buffer_indices)
 	{
-		double best_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		size_t n_minus_one = n - 1;
 		yreal xmin = x[buffer_indices[0]];
 		yreal xmax = x[buffer_indices[n - 1]];
 		yreal xleft, xright;
 		yreal xmid;
-		double this_gain;
+		real_t this_gain;
 
 		xreal wtot = 0;
 		for (size_t ix = 0; ix < n; ix++)
@@ -9186,14 +9187,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		xreal xtot = xmax - xmin;
 		w_left = best_w;
 		w_right = wtot - w_left;
-		w_left = std::fmax(w_left, std::numeric_limits<double>::min());
-		w_right = std::fmax(w_right, std::numeric_limits<double>::min());
+		w_left = std::fmax(w_left, std::numeric_limits<real_t>::min());
+		w_right = std::fmax(w_right, std::numeric_limits<real_t>::min());
 		split_point = midpoint(x[buffer_indices[split_ix]],
 							   x[buffer_indices[split_ix + 1]]);
 		yreal rpct_left = split_point / xtot;
-		rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
+		rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
 		yreal rpct_right = (yreal)1 - rpct_left;
-		rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
+		rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
 
 		yreal wl_sq = w_left / wtot;
 		wl_sq = square(wl_sq);
@@ -9203,30 +9204,30 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return wl_sq / rpct_left + wr_sq / rpct_right;
 	}
 
-	template <class xreal, class mapping, class ldouble_safe = long double>
-	double
-	find_split_dens_shortform_weighted(xreal *x, size_t n, double &split_point,
+	template <class xreal, class mapping, class lreal_t_safe = long real_t>
+	real_t
+	find_split_dens_shortform_weighted(xreal *x, size_t n, real_t &split_point,
 									   mapping &w, size_t *buffer_indices)
 	{
 		if (n < INT32_MAX)
-			return find_split_dens_shortform_weighted_t<double, xreal, mapping>(
+			return find_split_dens_shortform_weighted_t<real_t, xreal, mapping>(
 				x, n, split_point, w, buffer_indices);
 		else
-			return find_split_dens_shortform_weighted_t<ldouble_safe, xreal, mapping>(
-				(ldouble_safe *)x, n, split_point, w, buffer_indices);
+			return find_split_dens_shortform_weighted_t<lreal_t_safe, xreal, mapping>(
+				(lreal_t_safe *)x, n, split_point, w, buffer_indices);
 	}
 
 	template <class xreal = real_t>
-	double
+	real_t
 	find_split_dens_shortform(xreal *x, size_t *ix_arr, size_t st, size_t end,
-							  double &split_point, size_t &split_ix)
+							  real_t &split_point, size_t &split_ix)
 	{
-		double best_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		xreal xmin = x[ix_arr[st]];
 		xreal xmax = x[ix_arr[end]];
 		xreal xleft, xright;
 		xreal xmid;
-		double this_gain;
+		real_t this_gain;
 
 		for (size_t row = st; row < end; row++)
 		{
@@ -9248,43 +9249,43 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (best_gain <= -HUGE_VAL)
 			return best_gain;
 
-		double xtot = (double)xmax - (double)xmin;
-		double nleft = (double)(split_ix - st + 1);
-		double nright = (double)(end - split_ix);
+		real_t xtot = (real_t)xmax - (real_t)xmin;
+		real_t nleft = (real_t)(split_ix - st + 1);
+		real_t nright = (real_t)(end - split_ix);
 		split_point = midpoint(x[ix_arr[split_ix]], x[ix_arr[split_ix + 1]]);
-		double rpct_left = split_point / xtot;
-		rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
-		double rpct_right = 1. - rpct_left;
-		rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
-		double ntot = (double)(end - st + 1);
+		real_t rpct_left = split_point / xtot;
+		rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
+		real_t rpct_right = 1. - rpct_left;
+		rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
+		real_t ntot = (real_t)(end - st + 1);
 
-		double nl_sq = nleft / ntot;
+		real_t nl_sq = nleft / ntot;
 		nl_sq = square(nl_sq);
-		double nr_sq = nright / ntot;
+		real_t nr_sq = nright / ntot;
 		nl_sq = square(nr_sq);
 
 		return nl_sq / rpct_left + nr_sq / rpct_right;
 	}
 
 	template <class xreal, class mapping>
-	double
+	real_t
 	find_split_dens_shortform_weighted(xreal *x, size_t *ix_arr, size_t st,
-									   size_t end, double &split_point,
+									   size_t end, real_t &split_point,
 									   size_t &split_ix, mapping &w)
 	{
-		double best_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		xreal xmin = x[ix_arr[st]];
 		xreal xmax = x[ix_arr[end]];
 		xreal xleft, xright;
 		xreal xmid;
-		double this_gain;
+		real_t this_gain;
 
-		double wtot = 0;
+		real_t wtot = 0;
 		for (size_t row = st; row <= end; row++)
 			wtot += w[ix_arr[row]];
-		double w_left = 0;
-		double w_right;
-		double best_w = 0;
+		real_t w_left = 0;
+		real_t w_right;
+		real_t best_w = 0;
 
 		for (size_t row = st; row < end; row++)
 		{
@@ -9310,42 +9311,42 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (best_gain <= -HUGE_VAL)
 			return best_gain;
 
-		double xtot = (double)xmax - (double)xmin;
+		real_t xtot = (real_t)xmax - (real_t)xmin;
 		w_left = best_w;
 		w_right = wtot - w_left;
-		w_left = std::fmax(w_left, std::numeric_limits<double>::min());
-		w_right = std::fmax(w_right, std::numeric_limits<double>::min());
+		w_left = std::fmax(w_left, std::numeric_limits<real_t>::min());
+		w_right = std::fmax(w_right, std::numeric_limits<real_t>::min());
 		split_point = midpoint(x[split_ix], x[split_ix + 1]);
-		double rpct_left = split_point / xtot;
-		rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
-		double rpct_right = 1. - rpct_left;
-		rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
+		real_t rpct_left = split_point / xtot;
+		rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
+		real_t rpct_right = 1. - rpct_left;
+		rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
 
-		double wl_sq = w_left / wtot;
+		real_t wl_sq = w_left / wtot;
 		wl_sq = square(wl_sq);
-		double wr_sq = w_right / wtot;
+		real_t wr_sq = w_right / wtot;
 		wl_sq = square(wr_sq);
 
 		return wl_sq / rpct_left + wr_sq / rpct_right;
 	}
 
 	/* This is a slower but more numerically-robust form */
-	template <class xreal, class ldouble_safe>
-	double
+	template <class xreal, class lreal_t_safe>
+	real_t
 	find_split_dens_longform(xreal *x, size_t *ix_arr, size_t st, size_t end,
-							 double &split_point, size_t &split_ix)
+							 real_t &split_point, size_t &split_ix)
 	{
-		double best_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		xreal xmin = x[ix_arr[st]];
 		xreal xmax = x[ix_arr[end]];
 		xreal xleft, xright;
 		xreal xmid;
-		ldouble_safe pct_left, pct_right;
-		ldouble_safe rpct_left, rpct_right;
-		ldouble_safe n_tot = end - st + 1;
-		ldouble_safe xtot = (ldouble_safe)xmax - (ldouble_safe)xmin;
-		ldouble_safe cnt_left;
-		double this_gain;
+		lreal_t_safe pct_left, pct_right;
+		lreal_t_safe rpct_left, rpct_right;
+		lreal_t_safe n_tot = end - st + 1;
+		lreal_t_safe xtot = (lreal_t_safe)xmax - (lreal_t_safe)xmin;
+		lreal_t_safe cnt_left;
+		real_t this_gain;
 
 		for (size_t row = st; row < end; row++)
 		{
@@ -9357,16 +9358,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			if (unlikely(!xleft || !xright))
 				continue;
 
-			cnt_left = (ldouble_safe)(row - st + 1);
+			cnt_left = (lreal_t_safe)(row - st + 1);
 
 			xleft = std::fmax(xleft,
 							  (real_t)std::numeric_limits<real_t>::min());
 			xright = std::fmax(xright,
 							   (real_t)std::numeric_limits<real_t>::min());
 			pct_left = cnt_left / n_tot;
-			pct_right = (ldouble_safe)1 - pct_left;
-			rpct_left = (ldouble_safe)xleft / xtot;
-			rpct_right = (ldouble_safe)xright / xtot;
+			pct_right = (lreal_t_safe)1 - pct_left;
+			rpct_left = (lreal_t_safe)xleft / xtot;
+			rpct_right = (lreal_t_safe)xright / xtot;
 
 			this_gain = square(pct_left) / rpct_left + square(pct_right) / rpct_right;
 			if (unlikely(is_na_or_inf(this_gain)))
@@ -9382,26 +9383,26 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return best_gain;
 	}
 
-	template <class xreal, class mapping, class ldouble_safe>
-	double
+	template <class xreal, class mapping, class lreal_t_safe>
+	real_t
 	find_split_dens_longform_weighted(xreal *x, size_t *ix_arr, size_t st,
-									  size_t end, double &split_point,
+									  size_t end, real_t &split_point,
 									  size_t &split_ix, mapping &w)
 	{
-		double best_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		xreal xmin = x[ix_arr[st]];
 		xreal xmax = x[ix_arr[end]];
 		xreal xleft, xright;
 		xreal xmid;
-		ldouble_safe pct_left, pct_right;
-		ldouble_safe rpct_left, rpct_right;
-		ldouble_safe xtot = (ldouble_safe)xmax - (ldouble_safe)xmin;
-		double this_gain;
+		lreal_t_safe pct_left, pct_right;
+		lreal_t_safe rpct_left, rpct_right;
+		lreal_t_safe xtot = (lreal_t_safe)xmax - (lreal_t_safe)xmin;
+		real_t this_gain;
 
-		ldouble_safe wtot = 0;
+		lreal_t_safe wtot = 0;
 		for (size_t row = st; row <= end; row++)
 			wtot += w[ix_arr[row]];
-		ldouble_safe w_left = 0;
+		lreal_t_safe w_left = 0;
 
 		for (size_t row = st; row < end; row++)
 		{
@@ -9419,9 +9420,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			xright = std::fmax(xright,
 							   (real_t)std::numeric_limits<real_t>::min());
 			pct_left = w_left / wtot;
-			pct_right = (ldouble_safe)1 - pct_left;
-			rpct_left = (ldouble_safe)xleft / xtot;
-			rpct_right = (ldouble_safe)xright / xtot;
+			pct_right = (lreal_t_safe)1 - pct_left;
+			rpct_left = (lreal_t_safe)xleft / xtot;
+			rpct_right = (lreal_t_safe)xright / xtot;
 
 			this_gain = square(pct_left) / rpct_left + square(pct_right) / rpct_right;
 			if (unlikely(is_na_or_inf(this_gain)))
@@ -9437,24 +9438,24 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return best_gain;
 	}
 
-	template <class xreal, class ldouble_safe>
-	double
+	template <class xreal, class lreal_t_safe>
+	real_t
 	find_split_dens(xreal *x, size_t *ix_arr, size_t st, size_t end,
-					double &split_point, size_t &split_ix)
+					real_t &split_point, size_t &split_ix)
 	{
 		if (end - st + 1 < INT32_MAX && x[ix_arr[end]] - x[ix_arr[st]] >= 1)
 			return find_split_dens_shortform<real_t>(x, ix_arr, st, end,
 													 split_point, split_ix);
 		else
-			return find_split_dens_longform<real_t, ldouble_safe>(x, ix_arr, st,
+			return find_split_dens_longform<real_t, lreal_t_safe>(x, ix_arr, st,
 																  end, split_point,
 																  split_ix);
 	}
 
-	template <class xreal, class mapping, class ldouble_safe>
-	double
+	template <class xreal, class mapping, class lreal_t_safe>
+	real_t
 	find_split_dens_weighted(xreal *x, size_t *ix_arr, size_t st, size_t end,
-							 double &split_point, size_t &split_ix, mapping &w)
+							 real_t &split_point, size_t &split_ix, mapping &w)
 	{
 		if (end - st + 1 < INT32_MAX && x[ix_arr[end]] - x[ix_arr[st]] >= 1)
 			return find_split_dens_shortform_weighted<xreal, mapping>(x, ix_arr,
@@ -9462,12 +9463,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 																	  split_point,
 																	  split_ix, w);
 		else
-			return find_split_dens_longform_weighted<xreal, mapping, ldouble_safe>(
+			return find_split_dens_longform_weighted<xreal, mapping, lreal_t_safe>(
 				x, ix_arr, st, end, split_point, split_ix, w);
 	}
 
-	template <class int_t, class ldouble_safe>
-	double
+	template <class int_t, class lreal_t_safe>
+	real_t
 	find_split_dens_longform(int *x, int ncat, size_t *ix_arr, size_t st,
 							 size_t end, CategSplit cat_split_type,
 							 MissingAction missing_action, int &chosen_cat,
@@ -9561,10 +9562,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 			}
 
-			ldouble_safe pct_left =
-				(ldouble_safe)buffer_cnt[buffer_indices[curr]] / (ldouble_safe)(buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr + 1]]);
+			lreal_t_safe pct_left =
+				(lreal_t_safe)buffer_cnt[buffer_indices[curr]] / (lreal_t_safe)(buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr + 1]]);
 
-			return ((ldouble_safe)buffer_cnt[buffer_indices[curr]] * (2. * pct_left) + (ldouble_safe)buffer_cnt[buffer_indices[curr + 1]] * (2. - 2. * pct_left)) / (ldouble_safe)(buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr + 1]]);
+			return ((lreal_t_safe)buffer_cnt[buffer_indices[curr]] * (2. * pct_left) + (lreal_t_safe)buffer_cnt[buffer_indices[curr + 1]] * (2. - 2. * pct_left)) / (lreal_t_safe)(buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr + 1]]);
 		}
 
 		size_t ntot;
@@ -9574,21 +9575,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			ntot = std::accumulate(buffer_cnt, buffer_cnt + ncat, (size_t)0);
 		if (unlikely(ntot <= 1))
 			unexpected_error();
-		ldouble_safe ntot_ = (ldouble_safe)ntot;
+		lreal_t_safe ntot_ = (lreal_t_safe)ntot;
 
 		switch (cat_split_type)
 		{
 		case SingleCateg:
 		{
-			double pct_one_cat = 1. / (double)ncat_present;
-			double pct_left_smallest =
-				(ldouble_safe)buffer_cnt[buffer_indices[curr]] / ntot_;
-			double gain_smallest =
-				(ldouble_safe)buffer_cnt[buffer_indices[curr]] * (pct_left_smallest / pct_one_cat) + (ldouble_safe)(ntot - buffer_cnt[buffer_indices[curr]]) * ((1. - pct_left_smallest) / (1. - pct_one_cat));
+			real_t pct_one_cat = 1. / (real_t)ncat_present;
+			real_t pct_left_smallest =
+				(lreal_t_safe)buffer_cnt[buffer_indices[curr]] / ntot_;
+			real_t gain_smallest =
+				(lreal_t_safe)buffer_cnt[buffer_indices[curr]] * (pct_left_smallest / pct_one_cat) + (lreal_t_safe)(ntot - buffer_cnt[buffer_indices[curr]]) * ((1. - pct_left_smallest) / (1. - pct_one_cat));
 
-			double pct_left_biggest =
-				(ldouble_safe)buffer_cnt[buffer_indices[ncat - 1]] / ntot_;
-			double gain_biggest = (ldouble_safe)buffer_cnt[buffer_indices[ncat - 1]] * (pct_left_biggest / pct_one_cat) + (ldouble_safe)(ntot - buffer_cnt[buffer_indices[ncat - 1]]) * ((1. - pct_left_biggest) / (1. - pct_one_cat));
+			real_t pct_left_biggest =
+				(lreal_t_safe)buffer_cnt[buffer_indices[ncat - 1]] / ntot_;
+			real_t gain_biggest = (lreal_t_safe)buffer_cnt[buffer_indices[ncat - 1]] * (pct_left_biggest / pct_one_cat) + (lreal_t_safe)(ntot - buffer_cnt[buffer_indices[ncat - 1]]) * ((1. - pct_left_biggest) / (1. - pct_one_cat));
 
 			if (gain_smallest >= gain_biggest)
 			{
@@ -9609,19 +9610,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			size_t cnt_left = 0;
 			size_t cnt_right;
 			int st_cat = curr - 1;
-			double this_gain;
-			double best_gain = -HUGE_VAL;
+			real_t this_gain;
+			real_t best_gain = -HUGE_VAL;
 			int best_cat = 0;
-			ldouble_safe pct_left;
-			double pct_cat_left;
-			double ncat_present_ = (double)ncat_present;
+			lreal_t_safe pct_left;
+			real_t pct_cat_left;
+			real_t ncat_present_ = (real_t)ncat_present;
 			for (; curr < ncat; curr++)
 			{
 				cnt_left += buffer_cnt[buffer_indices[curr]];
 				cnt_right = ntot - cnt_left;
-				pct_left = (ldouble_safe)cnt_left / ntot_;
-				pct_cat_left = (double)(curr - st_cat) / ncat_present_;
-				this_gain = (ldouble_safe)cnt_left * (pct_left / pct_cat_left) + (ldouble_safe)cnt_right * (((ldouble_safe)1 - pct_left) / (1. - pct_cat_left));
+				pct_left = (lreal_t_safe)cnt_left / ntot_;
+				pct_cat_left = (real_t)(curr - st_cat) / ncat_present_;
+				this_gain = (lreal_t_safe)cnt_left * (pct_left / pct_cat_left) + (lreal_t_safe)cnt_right * (((lreal_t_safe)1 - pct_left) / (1. - pct_cat_left));
 				if (this_gain > best_gain)
 				{
 					best_gain = this_gain;
@@ -9645,8 +9646,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return -HUGE_VAL;
 	}
 
-	template <class mapping, class int_t, class ldouble_safe>
-	double
+	template <class mapping, class int_t, class lreal_t_safe>
+	real_t
 	find_split_dens_longform_weighted(int *x, int ncat, size_t *ix_arr,
 									  size_t st, size_t end,
 									  CategSplit cat_split_type,
@@ -9658,13 +9659,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
 		if (st >= end || ncat <= 1)
 			return -HUGE_VAL;
-		ldouble_safe w_missing = 0;
+		lreal_t_safe w_missing = 0;
 		int xval;
 		size_t ix_;
 
 		/* count categories */
 		/* TODO: allocate this buffer externally */
-		std::vector<ldouble_safe> buffer_cnt(ncat, (ldouble_safe)0);
+		std::vector<lreal_t_safe> buffer_cnt(ncat, (lreal_t_safe)0);
 		if (missing_action == Fail)
 		{
 			for (size_t row = st; row <= end; row++)
@@ -9750,13 +9751,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 			}
 
-			ldouble_safe pct_left = buffer_cnt[buffer_indices[curr]] / (buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr + 1]]);
+			lreal_t_safe pct_left = buffer_cnt[buffer_indices[curr]] / (buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr + 1]]);
 
 			return (buffer_cnt[buffer_indices[curr]] * (pct_left * 2.) + buffer_cnt[buffer_indices[curr + 1]] * (2. - 2. * pct_left)) / (buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr + 1]]);
 		}
 
-		ldouble_safe ntot = std::accumulate(buffer_cnt.begin(),
-											buffer_cnt.end(), (ldouble_safe)0);
+		lreal_t_safe ntot = std::accumulate(buffer_cnt.begin(),
+											buffer_cnt.end(), (lreal_t_safe)0);
 		if (unlikely(ntot <= 0))
 			unexpected_error();
 
@@ -9764,12 +9765,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		{
 		case SingleCateg:
 		{
-			double pct_one_cat = 1. / (double)ncat_present;
-			double pct_left_smallest = buffer_cnt[buffer_indices[curr]] / ntot;
-			double gain_smallest = buffer_cnt[buffer_indices[curr]] * (pct_left_smallest / pct_one_cat) + (ntot - buffer_cnt[buffer_indices[curr]]) * ((1. - pct_left_smallest) / (1. - pct_one_cat));
+			real_t pct_one_cat = 1. / (real_t)ncat_present;
+			real_t pct_left_smallest = buffer_cnt[buffer_indices[curr]] / ntot;
+			real_t gain_smallest = buffer_cnt[buffer_indices[curr]] * (pct_left_smallest / pct_one_cat) + (ntot - buffer_cnt[buffer_indices[curr]]) * ((1. - pct_left_smallest) / (1. - pct_one_cat));
 
-			double pct_left_biggest = buffer_cnt[buffer_indices[ncat - 1]] / ntot;
-			double gain_biggest = buffer_cnt[buffer_indices[ncat - 1]] * (pct_left_biggest / pct_one_cat) + (ntot - buffer_cnt[buffer_indices[ncat - 1]]) * ((1. - pct_left_biggest) / (1. - pct_one_cat));
+			real_t pct_left_biggest = buffer_cnt[buffer_indices[ncat - 1]] / ntot;
+			real_t gain_biggest = buffer_cnt[buffer_indices[ncat - 1]] * (pct_left_biggest / pct_one_cat) + (ntot - buffer_cnt[buffer_indices[ncat - 1]]) * ((1. - pct_left_biggest) / (1. - pct_one_cat));
 
 			if (gain_smallest >= gain_biggest)
 			{
@@ -9787,22 +9788,22 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		case SubSet:
 		{
-			ldouble_safe cnt_left = 0;
-			ldouble_safe cnt_right;
+			lreal_t_safe cnt_left = 0;
+			lreal_t_safe cnt_right;
 			int st_cat = curr - 1;
-			double this_gain;
-			double best_gain = -HUGE_VAL;
+			real_t this_gain;
+			real_t best_gain = -HUGE_VAL;
 			int best_cat = 0;
-			ldouble_safe pct_left;
-			double pct_cat_left;
-			double ncat_present_ = (double)ncat_present;
+			lreal_t_safe pct_left;
+			real_t pct_cat_left;
+			real_t ncat_present_ = (real_t)ncat_present;
 			for (; curr < ncat; curr++)
 			{
 				cnt_left += buffer_cnt[buffer_indices[curr]];
 				cnt_right = ntot - cnt_left;
 				pct_left = cnt_left / ntot;
-				pct_cat_left = (double)(curr - st_cat) / ncat_present_;
-				this_gain = (ldouble_safe)cnt_left * (pct_left / pct_cat_left) + (ldouble_safe)cnt_right * (((ldouble_safe)1 - pct_left) / (1. - pct_cat_left));
+				pct_cat_left = (real_t)(curr - st_cat) / ncat_present_;
+				this_gain = (lreal_t_safe)cnt_left * (pct_left / pct_cat_left) + (lreal_t_safe)cnt_right * (((lreal_t_safe)1 - pct_left) / (1. - pct_cat_left));
 				if (this_gain > best_gain)
 				{
 					best_gain = this_gain;
@@ -9827,18 +9828,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 #if 0
 	/* for split-criterion in hyperplanes (see below for version aimed at single-variable splits) */
-	template <class ldouble_safe >
-	double eval_guided_crit(double *  x, size_t n, GainCriterion criterion,
-	                        double min_gain, bool as_relative_gain, double *  buffer_sd,
-	                        double &  split_point, double &  xmin, double &  xmax,
+	template <class lreal_t_safe >
+	real_t eval_guided_crit(real_t *  x, size_t n, GainCriterion criterion,
+	                        real_t min_gain, bool as_relative_gain, real_t *  buffer_sd,
+	                        real_t &  split_point, real_t &  xmin, real_t &  xmax,
 	                        size_t *  ix_arr_plus_st,
 	                        size_t *  cols_use, size_t ncols_use, bool force_cols_use,
-	                        double *  X_row_major, size_t ncols,
-	                        double *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
+	                        real_t *  X_row_major, size_t ncols,
+	                        real_t *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
 	{
 	    /* Note: the input 'x' is supposed to be a linear combination of standardized variables, so
 	       all numbers are assumed to be small and in the same scale */
-	    double gain = 0;
+	    real_t gain = 0;
 	    if (criterion == DensityCrit || criterion == FullGain) min_gain = 0;
 
 	    /* here it's assumed the 'x' vector matches exactly with 'ix_arr' + 'st' */
@@ -9861,12 +9862,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	        std::sort(argsorted.begin(), argsorted.end(),
 	                  [&x](const size_t a, const size_t b){return x[a] < x[b];});
 	        if (x[argsorted[0]] == x[argsorted[n-1]]) return -HUGE_VAL;
-	        std::vector<double> temp_buffer(n + mult2(ncols));
+	        std::vector<real_t> temp_buffer(n + mult2(ncols));
 	        for (size_t ix = 0; ix < n; ix++) temp_buffer[ix] = x[argsorted[ix]];
 	        for (size_t ix = 0; ix < n; ix++)
 	            argsorted[ix] = ix_arr_plus_st[argsorted[ix]];
 	        size_t ignored;
-	        return find_split_full_gain<double, ldouble_safe>(
+	        return find_split_full_gain<real_t, lreal_t_safe>(
 	                                    temp_buffer.data(), (size_t)0, n-1, argsorted.data(),
 	                                    cols_use, ncols_use, force_cols_use,
 	                                    X_row_major, ncols,
@@ -9882,28 +9883,28 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	    if (x[0] == x[n-1]) return -HUGE_VAL;
 
 	    if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-	        gain = find_split_rel_gain<double, ldouble_safe>(x, n, split_point);
+	        gain = find_split_rel_gain<real_t, lreal_t_safe>(x, n, split_point);
 	    else if (criterion == Pooled || criterion == Averaged)
-	        gain = find_split_std_gain<double, ldouble_safe>(x, n, buffer_sd, criterion, min_gain, split_point);
+	        gain = find_split_std_gain<real_t, lreal_t_safe>(x, n, buffer_sd, criterion, min_gain, split_point);
 	    else if (criterion == DensityCrit)
-	        gain = find_split_dens_shortform<double, ldouble_safe>(x, n, split_point);
+	        gain = find_split_dens_shortform<real_t, lreal_t_safe>(x, n, split_point);
 	    /* Note: a gain of -Inf signals that the data is unsplittable. Zero signals it's below the minimum. */
 	    return std::fmax(0., gain);
 	}
 
-	template <class ldouble_safe>
-	double eval_guided_crit_weighted(double *  x, size_t n, GainCriterion criterion,
-	                                 double min_gain, bool as_relative_gain, double *  buffer_sd,
-	                                 double &  split_point, double &  xmin, double &  xmax,
-	                                 double *  w, size_t *  buffer_indices,
+	template <class lreal_t_safe>
+	real_t eval_guided_crit_weighted(real_t *  x, size_t n, GainCriterion criterion,
+	                                 real_t min_gain, bool as_relative_gain, real_t *  buffer_sd,
+	                                 real_t &  split_point, real_t &  xmin, real_t &  xmax,
+	                                 real_t *  w, size_t *  buffer_indices,
 	                                 size_t *  ix_arr_plus_st,
 	                                 size_t *  cols_use, size_t ncols_use, bool force_cols_use,
-	                                 double *  X_row_major, size_t ncols,
-	                                 double *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
+	                                 real_t *  X_row_major, size_t ncols,
+	                                 real_t *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
 	{
 	    /* Note: the input 'x' is supposed to be a linear combination of standardized variables, so
 	       all numbers are assumed to be small and in the same scale */
-	    double gain = 0;
+	    real_t gain = 0;
 	    if (criterion == DensityCrit || criterion == FullGain) min_gain = 0;
 
 	    /* here it's assumed the 'x' vector matches exactly with 'ix_arr' + 'st' */
@@ -9926,9 +9927,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	    if (xmin == xmax) return -HUGE_VAL;
 
 	    if (criterion == Pooled || criterion == Averaged)
-	        gain = find_split_std_gain_weighted<double, ldouble_safe>(x, n, buffer_sd, criterion, min_gain, split_point, w, buffer_indices);
+	        gain = find_split_std_gain_weighted<real_t, lreal_t_safe>(x, n, buffer_sd, criterion, min_gain, split_point, w, buffer_indices);
 	    else if (criterion == DensityCrit)
-	        gain = find_split_dens_shortform_weighted<double, double * , ldouble_safe>(x, n, split_point, w, buffer_indices);
+	        gain = find_split_dens_shortform_weighted<real_t, real_t * , lreal_t_safe>(x, n, split_point, w, buffer_indices);
 	    else if (criterion == FullGain)
 	    {
 	        std::vector<size_t> argsorted(n);
@@ -9936,12 +9937,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	        std::sort(argsorted.begin(), argsorted.end(),
 	                  [&x](const size_t a, const size_t b){return x[a] < x[b];});
 	        if (x[argsorted[0]] == x[argsorted[n-1]]) return -HUGE_VAL;
-	        std::vector<double> temp_buffer(n + mult2(ncols));
+	        std::vector<real_t> temp_buffer(n + mult2(ncols));
 	        for (size_t ix = 0; ix < n; ix++) temp_buffer[ix] = x[argsorted[ix]];
 	        for (size_t ix = 0; ix < n; ix++)
 	            argsorted[ix] = ix_arr_plus_st[argsorted[ix]];
 	        size_t ignored;
-	        gain = find_split_full_gain_weighted<double, double * , ldouble_safe>(
+	        gain = find_split_full_gain_weighted<real_t, real_t * , lreal_t_safe>(
 	                                             temp_buffer.data(), (size_t)0, n-1, argsorted.data(),
 	                                             cols_use, ncols_use, force_cols_use,
 	                                             X_row_major, ncols,
@@ -9956,18 +9957,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	/* for split-criterion in single-variable splits */
-	template <class real_t_, class ldouble_safe>
-	double eval_guided_crit(size_t *  ix_arr, size_t st, size_t end, real_t_ *  x,
-	                        double *  buffer_sd, bool as_relative_gain,
-	                        double *  buffer_imputed_x, double *  saved_xmedian,
-	                        size_t &split_ix, double &  split_point, double &  xmin, double &  xmax,
-	                        GainCriterion criterion, double min_gain, MissingAction missing_action,
+	template <class real_t_, class lreal_t_safe>
+	real_t eval_guided_crit(size_t *  ix_arr, size_t st, size_t end, real_t_ *  x,
+	                        real_t *  buffer_sd, bool as_relative_gain,
+	                        real_t *  buffer_imputed_x, real_t *  saved_xmedian,
+	                        size_t &split_ix, real_t &  split_point, real_t &  xmin, real_t &  xmax,
+	                        GainCriterion criterion, real_t min_gain, MissingAction missing_action,
 	                        size_t *  cols_use, size_t ncols_use, bool force_cols_use,
-	                        double *  X_row_major, size_t ncols,
-	                        double *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
+	                        real_t *  X_row_major, size_t ncols,
+	                        real_t *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
 	{
 	    size_t st_orig = st;
-	    double gain = 0;
+	    real_t gain = 0;
 	    if (criterion == DensityCrit || criterion == FullGain) min_gain = 0;
 
 	    /* move NAs to the front if there's any, exclude them from calculations */
@@ -10010,16 +10011,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	        missing_action = Fail;
 	        fill_NAs_with_median(ix_arr, st_orig, st, end, x, buffer_imputed_x, saved_xmedian);
 	        if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-	            gain = find_split_rel_gain<double, ldouble_safe>(buffer_imputed_x, (double)xmean, ix_arr, st_orig, end, split_point, split_ix);
+	            gain = find_split_rel_gain<real_t, lreal_t_safe>(buffer_imputed_x, (real_t)xmean, ix_arr, st_orig, end, split_point, split_ix);
 	        else if (criterion == Pooled || criterion == Averaged)
-	            gain = find_split_std_gain<double, ldouble_safe>(buffer_imputed_x, (double)xmean, ix_arr, st_orig, end, buffer_sd, criterion, min_gain, split_point, split_ix);
+	            gain = find_split_std_gain<real_t, lreal_t_safe>(buffer_imputed_x, (real_t)xmean, ix_arr, st_orig, end, buffer_sd, criterion, min_gain, split_point, split_ix);
 	        else if (criterion == DensityCrit)
-	            gain = find_split_dens<double, ldouble_safe>(buffer_imputed_x, ix_arr, st_orig, end, split_point, split_ix);
+	            gain = find_split_dens<real_t, lreal_t_safe>(buffer_imputed_x, ix_arr, st_orig, end, split_point, split_ix);
 	        else if (criterion == FullGain)
 	        {
 	            /* TODO: this buffer should be allocated from outside */
-	            std::vector<double> temp_buffer(mult2(ncols));
-	            gain = find_split_full_gain<double, ldouble_safe>(
+	            std::vector<real_t> temp_buffer(mult2(ncols));
+	            gain = find_split_full_gain<real_t, lreal_t_safe>(
 	                                        buffer_imputed_x, st_orig, end, ix_arr,
 	                                        cols_use, ncols_use, force_cols_use,
 	                                        X_row_major, ncols,
@@ -10035,16 +10036,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
  	    else
 	    {
 	        if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-	            gain = find_split_rel_gain<real_t_, ldouble_safe>(x, xmean, ix_arr, st, end, split_point, split_ix);
+	            gain = find_split_rel_gain<real_t_, lreal_t_safe>(x, xmean, ix_arr, st, end, split_point, split_ix);
 	        else if (criterion == Pooled || criterion == Averaged)
-	            gain = find_split_std_gain<real_t_, ldouble_safe>(x, xmean, ix_arr, st, end, buffer_sd, criterion, min_gain, split_point, split_ix);
+	            gain = find_split_std_gain<real_t_, lreal_t_safe>(x, xmean, ix_arr, st, end, buffer_sd, criterion, min_gain, split_point, split_ix);
 	        else if (criterion == DensityCrit)
-	            gain = find_split_dens<real_t_, ldouble_safe>(x, ix_arr, st, end, split_point, split_ix);
+	            gain = find_split_dens<real_t_, lreal_t_safe>(x, ix_arr, st, end, split_point, split_ix);
 	        else if (criterion == FullGain)
 	        {
 	            /* TODO: this buffer should be allocated from outside */
-	            std::vector<double> temp_buffer(mult2(ncols));
-	            gain = find_split_full_gain<real_t_, ldouble_safe>(
+	            std::vector<real_t> temp_buffer(mult2(ncols));
+	            gain = find_split_full_gain<real_t_, lreal_t_safe>(
 	                                        x, st, end, ix_arr,
 	                                        cols_use, ncols_use, force_cols_use,
 	                                        X_row_major, ncols,
@@ -10058,19 +10059,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	    return std::fmax(0., gain);
 	}
 
-	template <class real_t_, class mapping, class ldouble_safe>
-	double eval_guided_crit_weighted(size_t *  ix_arr, size_t st, size_t end, real_t_ *  x,
-	                                 double *  buffer_sd, bool as_relative_gain,
-	                                 double *  buffer_imputed_x, double *  saved_xmedian,
-	                                 size_t &split_ix, double &  split_point, double &  xmin, double &  xmax,
-	                                 GainCriterion criterion, double min_gain, MissingAction missing_action,
+	template <class real_t_, class mapping, class lreal_t_safe>
+	real_t eval_guided_crit_weighted(size_t *  ix_arr, size_t st, size_t end, real_t_ *  x,
+	                                 real_t *  buffer_sd, bool as_relative_gain,
+	                                 real_t *  buffer_imputed_x, real_t *  saved_xmedian,
+	                                 size_t &split_ix, real_t &  split_point, real_t &  xmin, real_t &  xmax,
+	                                 GainCriterion criterion, real_t min_gain, MissingAction missing_action,
 	                                 size_t *  cols_use, size_t ncols_use, bool force_cols_use,
-	                                 double *  X_row_major, size_t ncols,
-	                                 double *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr,
+	                                 real_t *  X_row_major, size_t ncols,
+	                                 real_t *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr,
 	                                 mapping &  w)
 	{
 	    size_t st_orig = st;
-	    double gain = 0;
+	    real_t gain = 0;
 	    if (criterion == DensityCrit || criterion == FullGain) min_gain = 0;
 
 	    /* move NAs to the front if there's any, exclude them from calculations */
@@ -10117,15 +10118,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	        missing_action = Fail;
 	        fill_NAs_with_median(ix_arr, st_orig, st, end, x, buffer_imputed_x, saved_xmedian);
 	        if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-	            gain = find_split_rel_gain_weighted<double, mapping, ldouble_safe>(buffer_imputed_x, (double)xmean, ix_arr, st_orig, end, split_point, split_ix, w);
+	            gain = find_split_rel_gain_weighted<real_t, mapping, lreal_t_safe>(buffer_imputed_x, (real_t)xmean, ix_arr, st_orig, end, split_point, split_ix, w);
 	        else if (criterion == Pooled || criterion == Averaged)
-	            gain = find_split_std_gain_weighted<double, mapping, ldouble_safe>(buffer_imputed_x, (double)xmean, ix_arr, st_orig, end, buffer_sd, criterion, min_gain, split_point, split_ix, w);
+	            gain = find_split_std_gain_weighted<real_t, mapping, lreal_t_safe>(buffer_imputed_x, (real_t)xmean, ix_arr, st_orig, end, buffer_sd, criterion, min_gain, split_point, split_ix, w);
 	        else if (criterion == DensityCrit)
-	            gain = find_split_dens_weighted<double, mapping, ldouble_safe>(buffer_imputed_x, ix_arr, st_orig, end, split_point, split_ix, w);
+	            gain = find_split_dens_weighted<real_t, mapping, lreal_t_safe>(buffer_imputed_x, ix_arr, st_orig, end, split_point, split_ix, w);
 	        else if (criterion == FullGain)
 	        {
-	            std::vector<double> temp_buffer(mult2(ncols));
-	            gain = find_split_full_gain_weighted<double, mapping, ldouble_safe>(
+	            std::vector<real_t> temp_buffer(mult2(ncols));
+	            gain = find_split_full_gain_weighted<real_t, mapping, lreal_t_safe>(
 	                                                 buffer_imputed_x, st_orig, end, ix_arr,
 	                                                 cols_use, ncols_use, force_cols_use,
 	                                                 X_row_major, ncols,
@@ -10139,15 +10140,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	    else
 	    {
 	        if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-	            gain = find_split_rel_gain_weighted<real_t_, mapping, ldouble_safe>(x, xmean, ix_arr, st, end, split_point, split_ix, w);
+	            gain = find_split_rel_gain_weighted<real_t_, mapping, lreal_t_safe>(x, xmean, ix_arr, st, end, split_point, split_ix, w);
 	        else if (criterion == Pooled || criterion == Averaged)
-	            gain = find_split_std_gain_weighted<real_t_, mapping, ldouble_safe>(x, xmean, ix_arr, st, end, buffer_sd, criterion, min_gain, split_point, split_ix, w);
+	            gain = find_split_std_gain_weighted<real_t_, mapping, lreal_t_safe>(x, xmean, ix_arr, st, end, buffer_sd, criterion, min_gain, split_point, split_ix, w);
 	        else if (criterion == DensityCrit)
-	            gain = find_split_dens_weighted<real_t_, mapping, ldouble_safe>(x, ix_arr, st, end, split_point, split_ix, w);
+	            gain = find_split_dens_weighted<real_t_, mapping, lreal_t_safe>(x, ix_arr, st, end, split_point, split_ix, w);
 	        else if (criterion == FullGain)
 	        {
-	            std::vector<double> temp_buffer(mult2(ncols));
-	            gain = find_split_full_gain_weighted<real_t_, mapping, ldouble_safe>(
+	            std::vector<real_t> temp_buffer(mult2(ncols));
+	            gain = find_split_full_gain_weighted<real_t_, mapping, lreal_t_safe>(
 	                                                 x, st, end, ix_arr,
 	                                                 cols_use, ncols_use, force_cols_use,
 	                                                 X_row_major, ncols,
@@ -10167,16 +10168,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	   the sorted order of the non-zero entries while calculating gains and SDs, and then
 	   call the 'divide_subset' function after-the-fact to reach the same end result.
 	   It should be much faster than this if the non-zero entries are few. */
-	template <class xreal/*=real_t*/,class sparse_ix_ /*= sparse_ix*/, class ldouble_safe /*= long double*/>
-	double eval_guided_crit(size_t ix_arr[], size_t st, size_t end,
+	template <class xreal/*=real_t*/,class sparse_ix_ /*= sparse_ix*/, class lreal_t_safe /*= long real_t*/>
+	real_t eval_guided_crit(size_t ix_arr[], size_t st, size_t end,
 	                        size_t col_num, xreal Xc[], sparse_ix Xc_ind[], sparse_ix_ Xc_indptr[],
-	                        double buffer_arr[], size_t buffer_pos[], bool as_relative_gain,
-	                        double *  saved_xmedian,
-	                        double &split_point, double &xmin, double &xmax,
-	                        GainCriterion criterion, double min_gain, MissingAction missing_action,
+	                        real_t buffer_arr[], size_t buffer_pos[], bool as_relative_gain,
+	                        real_t *  saved_xmedian,
+	                        real_t &split_point, real_t &xmin, real_t &xmax,
+	                        GainCriterion criterion, real_t min_gain, MissingAction missing_action,
 	                        size_t *  cols_use, size_t ncols_use, bool force_cols_use,
-	                        double *  X_row_major, size_t ncols,
-	                        double *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
+	                        real_t *  X_row_major, size_t ncols,
+	                        real_t *  Xr, size_t *  Xr_ind, size_t *  Xr_indptr)
 	{
 	    size_t ignored;
 
@@ -10208,7 +10209,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	            if ((tot % 2) == 0)
 	            {
-	                double xlow = *std::max_element(buffer_pos, buffer_pos + idx_half);
+	                real_t xlow = *std::max_element(buffer_pos, buffer_pos + idx_half);
 	                *saved_xmedian = xlow + ((*saved_xmedian)-xlow)/2.;
 	            }
 
@@ -10219,25 +10220,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	    }
 
 	    no_nas:
-	    return eval_guided_crit<double, ldouble_safe>(
+	    return eval_guided_crit<real_t, lreal_t_safe>(
 	                            buffer_pos, 0, end - st, buffer_arr, buffer_arr + tot,
-	                            as_relative_gain, saved_xmedian, (double*)NULL, ignored, split_point,
+	                            as_relative_gain, saved_xmedian, (real_t*)NULL, ignored, split_point,
 	                            xmin, xmax, criterion, min_gain, missing_action,
 	                            cols_use, ncols_use, force_cols_use,
 	                            X_row_major, ncols,
 	                            Xr, Xr_ind, Xr_indptr);
 	}
 
-	template <class real_t_, class sparse_ix, class mapping, class ldouble_safe>
-	double eval_guided_crit_weighted(size_t ix_arr[], size_t st, size_t end,
+	template <class real_t_, class sparse_ix, class mapping, class lreal_t_safe>
+	real_t eval_guided_crit_weighted(size_t ix_arr[], size_t st, size_t end,
 	                                 size_t col_num, real_t_ Xc[], sparse_ix Xc_ind[], sparse_ix Xc_indptr[],
-	                                 double buffer_arr[], size_t buffer_pos[], bool as_relative_gain,
-	                                 double *restrict saved_xmedian,
-	                                 double &restrict split_point, double &restrict xmin, double &restrict xmax,
-	                                 GainCriterion criterion, double min_gain, MissingAction missing_action,
+	                                 real_t buffer_arr[], size_t buffer_pos[], bool as_relative_gain,
+	                                 real_t *restrict saved_xmedian,
+	                                 real_t &restrict split_point, real_t &restrict xmin, real_t &restrict xmax,
+	                                 GainCriterion criterion, real_t min_gain, MissingAction missing_action,
 	                                 size_t *restrict cols_use, size_t ncols_use, bool force_cols_use,
-	                                 double *restrict X_row_major, size_t ncols,
-	                                 double *restrict Xr, size_t *restrict Xr_ind, size_t *restrict Xr_indptr,
+	                                 real_t *restrict X_row_major, size_t ncols,
+	                                 real_t *restrict Xr, size_t *restrict Xr_ind, size_t *restrict Xr_indptr,
 	                                 mapping &restrict w)
 	{
 	    size_t ignored;
@@ -10271,7 +10272,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	            if ((tot % 2) == 0)
 	            {
-	                double xlow = *std::max_element(buffer_pos, buffer_pos + idx_half);
+	                real_t xlow = *std::max_element(buffer_pos, buffer_pos + idx_half);
 	                *saved_xmedian = xlow + ((*saved_xmedian)-xlow)/2.;
 	            }
 
@@ -10284,14 +10285,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	    no_nas:
 	    /* TODO: allocate this buffer externally */
-	    std::vector<double> buffer_w(tot);
+	    std::vector<real_t> buffer_w(tot);
 	    for (size_t row = st; row <= end; row++)
 	        buffer_w[row-st] = w[ix_arr[row]];
 	    /* TODO: in this case, as the weights match with the order of the indices, could use a faster version
 	       with a weighted rel_gain function instead (not yet implemented). */
-	    return eval_guided_crit_weighted<double, std::vector<double>, ldouble_safe>(
+	    return eval_guided_crit_weighted<real_t, std::vector<real_t>, lreal_t_safe>(
 	                                     buffer_pos, 0, end - st, buffer_arr, buffer_arr + tot,
-	                                     as_relative_gain, saved_xmedian, (double*)NULL, ignored, split_point,
+	                                     as_relative_gain, saved_xmedian, (real_t*)NULL, ignored, split_point,
 	                                     xmin, xmax, criterion, min_gain, missing_action,
 	                                     cols_use, ncols_use, force_cols_use,
 	                                     X_row_major, ncols,
@@ -10319,17 +10320,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	/* TODO: 'buffer_pos' doesn't need to be 'size_t', 'int' would suffice */
 
 #endif
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	eval_guided_crit(size_t *ix_arr, size_t st, size_t end, int *x, int ncat,
 					 int *saved_cat_mode, size_t *buffer_cnt,
-					 size_t *buffer_pos, double *buffer_prob, int &chosen_cat,
+					 size_t *buffer_pos, real_t *buffer_prob, int &chosen_cat,
 					 signed char *split_categ, signed char *buffer_split,
-					 GainCriterion criterion, double min_gain, bool all_perm,
+					 GainCriterion criterion, real_t min_gain, bool all_perm,
 					 MissingAction missing_action, CategSplit cat_split_type)
 	{
 		if (criterion == DensityCrit)
-			return find_split_dens_longform<size_t, ldouble_safe>(x, ncat, ix_arr,
+			return find_split_dens_longform<size_t, lreal_t_safe>(x, ncat, ix_arr,
 																  st, end,
 																  cat_split_type,
 																  missing_action,
@@ -10384,8 +10385,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 		}
 
-		double this_gain = -HUGE_VAL;
-		double best_gain = -HUGE_VAL;
+		real_t this_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		std::iota(buffer_pos, buffer_pos + ncat, (size_t)0);
 		size_t st_pos = 0;
 
@@ -10394,7 +10395,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		case SingleCateg:
 		{
 			size_t cnt = end - st + 1;
-			ldouble_safe cnt_l = (ldouble_safe)cnt;
+			lreal_t_safe cnt_l = (lreal_t_safe)cnt;
 			size_t ncat_present = 0;
 
 			switch (criterion)
@@ -10408,7 +10409,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					if (buffer_cnt[cat])
 					{
 						ncat_present++;
-						buffer_prob[cat] = (ldouble_safe)buffer_cnt[cat] / cnt_l;
+						buffer_prob[cat] = (lreal_t_safe)buffer_cnt[cat] / cnt_l;
 					}
 
 					else
@@ -10423,7 +10424,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (ncat_present <= 1)
 					return -HUGE_VAL;
 
-				double sd_full = expected_sd_cat<size_t, ldouble_safe>(
+				real_t sd_full = expected_sd_cat<size_t, lreal_t_safe>(
 					buffer_prob, ncat_present, buffer_pos + st_pos);
 
 				/* try isolating each category one at a time */
@@ -10434,7 +10435,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							sd_full,
 							0.0,
 							(expected_sd_cat_single<size_t, size_t,
-													ldouble_safe>(buffer_cnt, buffer_prob,
+													lreal_t_safe>(buffer_cnt, buffer_prob,
 																  ncat_present,
 																  buffer_pos + st_pos,
 																  pos - st_pos, cnt)));
@@ -10468,8 +10469,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (ncat_present <= 1)
 					return -HUGE_VAL;
 
-				ldouble_safe cnt_left = (ldouble_safe)((end - st + 1) - cnt_max);
-				this_gain = ((ldouble_safe)cnt * std::log((ldouble_safe)cnt) - cnt_left * std::log(cnt_left) - (ldouble_safe)cnt_max * std::log((ldouble_safe)cnt_max)) / cnt;
+				lreal_t_safe cnt_left = (lreal_t_safe)((end - st + 1) - cnt_max);
+				this_gain = ((lreal_t_safe)cnt * std::log((lreal_t_safe)cnt) - cnt_left * std::log(cnt_left) - (lreal_t_safe)cnt_max * std::log((lreal_t_safe)cnt_max)) / cnt;
 				best_gain = (this_gain > min_gain) ? this_gain : best_gain;
 				break;
 			}
@@ -10492,20 +10493,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			/* set split as: (1):left (0):right (-1):not_present */
 			memset(buffer_split, 0, ncat * sizeof(signed char));
 
-			ldouble_safe cnt = (ldouble_safe)(end - st + 1);
+			lreal_t_safe cnt = (lreal_t_safe)(end - st + 1);
 
 			switch (criterion)
 			{
 			case Averaged:
 			{
 				/* determine first non-zero and convert to probabilities */
-				double sd_full;
+				real_t sd_full;
 				for (int cat = 0; cat < ncat; cat++)
 				{
 					if (buffer_cnt[buffer_pos[cat]])
 					{
 						buffer_prob[buffer_pos[cat]] =
-							(ldouble_safe)buffer_cnt[buffer_pos[cat]] / cnt;
+							(lreal_t_safe)buffer_cnt[buffer_pos[cat]] / cnt;
 					}
 
 					else
@@ -10520,7 +10521,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 				/* calculate full SD assuming they take values randomly ~Unif(0, 1) */
 				size_t ncat_present = (size_t)ncat - st_pos;
-				sd_full = expected_sd_cat<size_t, ldouble_safe>(
+				sd_full = expected_sd_cat<size_t, lreal_t_safe>(
 					buffer_prob, ncat_present, buffer_pos + st_pos);
 				if (ncat_present >= log2ceil(SIZE_MAX))
 					all_perm = false;
@@ -10532,10 +10533,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					buffer_split[buffer_pos[pos]] = 1;
 					this_gain = sd_gain(
 						sd_full,
-						(expected_sd_cat<size_t, size_t, ldouble_safe>(
+						(expected_sd_cat<size_t, size_t, lreal_t_safe>(
 							buffer_cnt, buffer_prob, pos - st_pos + 1,
 							buffer_pos + st_pos)),
-						(expected_sd_cat<size_t, size_t, ldouble_safe>(
+						(expected_sd_cat<size_t, size_t, lreal_t_safe>(
 							buffer_cnt, buffer_prob, (size_t)ncat - pos - 1,
 							buffer_pos + pos + 1)));
 					if (this_gain > min_gain && this_gain > best_gain)
@@ -10551,7 +10552,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			case Pooled:
 			{
-				ldouble_safe s = 0;
+				lreal_t_safe s = 0;
 
 				/* determine first non-zero and get base info */
 				for (int cat = 0; cat < ncat; cat++)
@@ -10559,7 +10560,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					if (buffer_cnt[buffer_pos[cat]])
 					{
 						s +=
-							(buffer_cnt[buffer_pos[cat]] <= 1) ? 0 : ((ldouble_safe)buffer_cnt[buffer_pos[cat]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[cat]]));
+							(buffer_cnt[buffer_pos[cat]] <= 1) ? 0 : ((lreal_t_safe)buffer_cnt[buffer_pos[cat]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[cat]]));
 					}
 
 					else
@@ -10573,12 +10574,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					return -HUGE_VAL;
 
 				/* calculate base info */
-				ldouble_safe base_info = cnt * std::log(cnt) - s;
+				lreal_t_safe base_info = cnt * std::log(cnt) - s;
 
 				if (all_perm)
 				{
 					size_t cnt_left = 0, cnt_right = 0;
-					double s_left = 0., s_right = 0.;
+					real_t s_left = 0., s_right = 0.;
 					size_t ncat_present = (size_t)ncat - st_pos;
 					size_t ncomb = pow2(ncat_present) - 1;
 					size_t best_combin = 0;
@@ -10595,18 +10596,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							{
 								cnt_left += buffer_cnt[buffer_pos[pos]];
 								s_left +=
-									(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+									(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 							}
 
 							else
 							{
 								cnt_right += buffer_cnt[buffer_pos[pos]];
 								s_right +=
-									(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+									(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 							}
 						}
 
-						this_gain = categ_gain<size_t, ldouble_safe>(
+						this_gain = categ_gain<size_t, lreal_t_safe>(
 							cnt_left, cnt_right, s_left, s_right, base_info,
 							cnt);
 
@@ -10628,21 +10629,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					/* try moving the categories one at a time */
 					size_t cnt_left = 0;
 					size_t cnt_right = end - st + 1;
-					double s_left = 0;
-					double s_right = s;
+					real_t s_left = 0;
+					real_t s_right = s;
 
 					for (size_t pos = st_pos; pos < (ncat - st_pos - 1);
 						 pos++)
 					{
 						buffer_split[buffer_pos[pos]] = 1;
 						s_left +=
-							(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+							(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 						s_right -=
-							(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+							(buffer_cnt[buffer_pos[pos]] <= 1) ? 0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 						cnt_left += buffer_cnt[buffer_pos[pos]];
 						cnt_right -= buffer_cnt[buffer_pos[pos]];
 
-						this_gain = categ_gain<size_t, ldouble_safe>(
+						this_gain = categ_gain<size_t, lreal_t_safe>(
 							cnt_left, cnt_right, s_left, s_right, base_info,
 							cnt);
 
@@ -10676,30 +10677,30 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			return best_gain;
 	}
 
-	template <class mapping, class ldouble_safe>
-	double
+	template <class mapping, class lreal_t_safe>
+	real_t
 	eval_guided_crit_weighted(size_t *ix_arr, size_t st, size_t end, int *x,
 							  int ncat, int *saved_cat_mode,
-							  size_t *buffer_pos, double *buffer_prob,
+							  size_t *buffer_pos, real_t *buffer_prob,
 							  int &chosen_cat, signed char *split_categ,
 							  signed char *buffer_split,
-							  GainCriterion criterion, double min_gain,
+							  GainCriterion criterion, real_t min_gain,
 							  bool all_perm, MissingAction missing_action,
 							  CategSplit cat_split_type, mapping &w)
 	{
 		if (criterion == DensityCrit)
-			return find_split_dens_longform_weighted<mapping, size_t, ldouble_safe>(
+			return find_split_dens_longform_weighted<mapping, size_t, lreal_t_safe>(
 				x, ncat, ix_arr, st, end, cat_split_type, missing_action,
 				chosen_cat, split_categ, saved_cat_mode, buffer_pos, w);
 		if (st >= end)
 			return -HUGE_VAL;
-		ldouble_safe w_missing = 0;
+		lreal_t_safe w_missing = 0;
 		int xval;
 		size_t ix_;
 
 		/* count categories */
 		/* TODO: allocate this buffer externally */
-		std::vector<ldouble_safe> buffer_cnt(ncat, (ldouble_safe)0);
+		std::vector<lreal_t_safe> buffer_cnt(ncat, (lreal_t_safe)0);
 		if (missing_action == Fail)
 		{
 			for (size_t row = st; row <= end; row++)
@@ -10744,11 +10745,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 		}
 
-		ldouble_safe cnt = std::accumulate(buffer_cnt.begin(),
-										   buffer_cnt.end(), (ldouble_safe)0);
+		lreal_t_safe cnt = std::accumulate(buffer_cnt.begin(),
+										   buffer_cnt.end(), (lreal_t_safe)0);
 
-		double this_gain = -HUGE_VAL;
-		double best_gain = -HUGE_VAL;
+		real_t this_gain = -HUGE_VAL;
+		real_t best_gain = -HUGE_VAL;
 		std::iota(buffer_pos, buffer_pos + ncat, (size_t)0);
 		size_t st_pos = 0;
 
@@ -10784,7 +10785,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (ncat_present <= 1)
 					return -HUGE_VAL;
 
-				double sd_full = expected_sd_cat<size_t, ldouble_safe>(
+				real_t sd_full = expected_sd_cat<size_t, lreal_t_safe>(
 					buffer_prob, ncat_present, buffer_pos + st_pos);
 
 				/* try isolating each category one at a time */
@@ -10793,8 +10794,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					this_gain = sd_gain(
 						sd_full,
 						0.0,
-						(expected_sd_cat_single<ldouble_safe, size_t,
-												ldouble_safe>(buffer_cnt.data(), buffer_prob,
+						(expected_sd_cat_single<lreal_t_safe, size_t,
+												lreal_t_safe>(buffer_cnt.data(), buffer_prob,
 															  ncat_present, buffer_pos + st_pos,
 															  pos - st_pos, cnt)));
 					if (this_gain > min_gain && this_gain > best_gain)
@@ -10810,7 +10811,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			{
 				/* here it will always pick the largest one */
 				size_t ncat_present = 0;
-				ldouble_safe cnt_max = 0;
+				lreal_t_safe cnt_max = 0;
 				for (int cat = 0; cat < ncat; cat++)
 				{
 					if (buffer_cnt[cat])
@@ -10827,10 +10828,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (ncat_present <= 1)
 					return -HUGE_VAL;
 
-				ldouble_safe cnt_left = (ldouble_safe)(cnt - cnt_max);
+				lreal_t_safe cnt_left = (lreal_t_safe)(cnt - cnt_max);
 
 				/* TODO: think of a better way of dealing with numbers between zero and one */
-				this_gain = (std::fmax((ldouble_safe)1, cnt) * std::log(std::fmax((ldouble_safe)1, cnt)) - std::fmax((ldouble_safe)1, cnt_left) * std::log(std::fmax((ldouble_safe)1, cnt_left)) - std::fmax((ldouble_safe)1, cnt_max) * std::log(std::fmax((ldouble_safe)1, cnt_max))) / std::fmax((ldouble_safe)1, cnt);
+				this_gain = (std::fmax((lreal_t_safe)1, cnt) * std::log(std::fmax((lreal_t_safe)1, cnt)) - std::fmax((lreal_t_safe)1, cnt_left) * std::log(std::fmax((lreal_t_safe)1, cnt_left)) - std::fmax((lreal_t_safe)1, cnt_max) * std::log(std::fmax((lreal_t_safe)1, cnt_max))) / std::fmax((lreal_t_safe)1, cnt);
 				best_gain = (this_gain > min_gain) ? this_gain : best_gain;
 				break;
 			}
@@ -10858,13 +10859,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			case Averaged:
 			{
 				/* determine first non-zero and convert to probabilities */
-				double sd_full;
+				real_t sd_full;
 				for (int cat = 0; cat < ncat; cat++)
 				{
 					if (buffer_cnt[buffer_pos[cat]])
 					{
 						buffer_prob[buffer_pos[cat]] =
-							(ldouble_safe)buffer_cnt[buffer_pos[cat]] / cnt;
+							(lreal_t_safe)buffer_cnt[buffer_pos[cat]] / cnt;
 					}
 
 					else
@@ -10879,7 +10880,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 				/* calculate full SD assuming they take values randomly ~Unif(0, 1) */
 				size_t ncat_present = (size_t)ncat - st_pos;
-				sd_full = expected_sd_cat<size_t, ldouble_safe>(
+				sd_full = expected_sd_cat<size_t, lreal_t_safe>(
 					buffer_prob, ncat_present, buffer_pos + st_pos);
 				if (ncat_present >= log2ceil(SIZE_MAX))
 					all_perm = false;
@@ -10892,10 +10893,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					/* TODO: is this correct? */
 					this_gain = sd_gain(
 						sd_full,
-						(expected_sd_cat<ldouble_safe, size_t, ldouble_safe>(
+						(expected_sd_cat<lreal_t_safe, size_t, lreal_t_safe>(
 							buffer_cnt.data(), buffer_prob, pos - st_pos + 1,
 							buffer_pos + st_pos)),
-						(expected_sd_cat<ldouble_safe, size_t, ldouble_safe>(
+						(expected_sd_cat<lreal_t_safe, size_t, lreal_t_safe>(
 							buffer_cnt.data(), buffer_prob,
 							(size_t)ncat - pos - 1, buffer_pos + pos + 1)));
 					if (this_gain > min_gain && this_gain > best_gain)
@@ -10911,7 +10912,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			case Pooled:
 			{
-				ldouble_safe s = 0;
+				lreal_t_safe s = 0;
 
 				/* determine first non-zero and get base info */
 				for (int cat = 0; cat < ncat; cat++)
@@ -10919,7 +10920,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					if (buffer_cnt[buffer_pos[cat]])
 					{
 						s +=
-							(buffer_cnt[buffer_pos[cat]] <= 1) ? (ldouble_safe)0 : ((ldouble_safe)buffer_cnt[buffer_pos[cat]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[cat]]));
+							(buffer_cnt[buffer_pos[cat]] <= 1) ? (lreal_t_safe)0 : ((lreal_t_safe)buffer_cnt[buffer_pos[cat]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[cat]]));
 					}
 
 					else
@@ -10933,12 +10934,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					return -HUGE_VAL;
 
 				/* calculate base info */
-				ldouble_safe base_info = std::fmax((ldouble_safe)1, cnt) * std::log(std::fmax((ldouble_safe)1, cnt)) - s;
+				lreal_t_safe base_info = std::fmax((lreal_t_safe)1, cnt) * std::log(std::fmax((lreal_t_safe)1, cnt)) - s;
 
 				if (all_perm)
 				{
 					size_t cnt_left, cnt_right;
-					double s_left, s_right;
+					real_t s_left, s_right;
 					size_t ncat_present = (size_t)ncat - st_pos;
 					size_t ncomb = pow2(ncat_present) - 1;
 					size_t best_combin = 0;
@@ -10955,18 +10956,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							{
 								cnt_left += buffer_cnt[buffer_pos[pos]];
 								s_left +=
-									(buffer_cnt[buffer_pos[pos]] <= 1) ? (ldouble_safe)0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+									(buffer_cnt[buffer_pos[pos]] <= 1) ? (lreal_t_safe)0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 							}
 
 							else
 							{
 								cnt_right += buffer_cnt[buffer_pos[pos]];
 								s_right +=
-									(buffer_cnt[buffer_pos[pos]] <= 1) ? (ldouble_safe)0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+									(buffer_cnt[buffer_pos[pos]] <= 1) ? (lreal_t_safe)0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 							}
 						}
 
-						this_gain = categ_gain<size_t, ldouble_safe>(
+						this_gain = categ_gain<size_t, lreal_t_safe>(
 							cnt_left, cnt_right, s_left, s_right, base_info,
 							cnt);
 
@@ -10988,21 +10989,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					/* try moving the categories one at a time */
 					size_t cnt_left = 0;
 					size_t cnt_right = end - st + 1;
-					double s_left = 0;
-					double s_right = s;
+					real_t s_left = 0;
+					real_t s_right = s;
 
 					for (size_t pos = st_pos; pos < (ncat - st_pos - 1);
 						 pos++)
 					{
 						buffer_split[buffer_pos[pos]] = 1;
 						s_left +=
-							(buffer_cnt[buffer_pos[pos]] <= 1) ? (ldouble_safe)0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+							(buffer_cnt[buffer_pos[pos]] <= 1) ? (lreal_t_safe)0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 						s_right -=
-							(buffer_cnt[buffer_pos[pos]] <= 1) ? (ldouble_safe)0 : ((ldouble_safe)buffer_cnt[buffer_pos[pos]] * std::log((ldouble_safe)buffer_cnt[buffer_pos[pos]]));
+							(buffer_cnt[buffer_pos[pos]] <= 1) ? (lreal_t_safe)0 : ((lreal_t_safe)buffer_cnt[buffer_pos[pos]] * std::log((lreal_t_safe)buffer_cnt[buffer_pos[pos]]));
 						cnt_left += buffer_cnt[buffer_pos[pos]];
 						cnt_right -= buffer_cnt[buffer_pos[pos]];
 
-						this_gain = categ_gain<size_t, ldouble_safe>(
+						this_gain = categ_gain<size_t, lreal_t_safe>(
 							cnt_left, cnt_right, s_left, s_right, base_info,
 							cnt);
 
@@ -11042,7 +11043,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		std::vector<provallo::WorkerForSimilarity> *worker_memory,
 		std::vector<WorkerMemory> *worker_memory_m, PredictionData *data,
 		InputData *input_data, provallo::IsoForest *model_outputs,
-		ExtIsoForest *model_outputs_ext, double *tmat, double *rmat,
+		ExtIsoForest *model_outputs_ext, real_t *tmat, real_t *rmat,
 		size_t n_from, size_t ntrees, bool assume_full_distr,
 		bool standardize_dist, bool as_kernel, int nthreads)
 	{
@@ -11071,7 +11072,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			std::copy((*worker_memory_m)[0].tmat_sep.begin(),
 					  (*worker_memory_m)[0].tmat_sep.end(), tmat);
 		}
-		double ntrees_dbl = (double)ntrees;
+		real_t ntrees_dbl = (real_t)ntrees;
 		if (standardize_dist)
 		{
 			if (as_kernel)
@@ -11089,7 +11090,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			 For the standardized metric, it takes the expected divisor as 2(=3-1) instead of 3, given
 			 that every combination will always get a +1 at the beginning. Since what's obtained here
 			 is a sum across all trees, adding this +1 means adding the number of trees. */
-			double div_trees = ntrees_dbl;
+			real_t div_trees = ntrees_dbl;
 			if (assume_full_distr)
 			{
 				div_trees *= 2;
@@ -11136,13 +11137,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 	}
 
-	template <class InputData = InputData, typename ldouble_safe = long double>
-	std::vector<double>
+	template <class InputData = InputData, typename lreal_t_safe = long real_t>
+	std::vector<real_t>
 	calc_kurtosis_all_data(InputData &input_data, ModelParams &model_params,
 						   RNG_engine &rnd_generator);
 
 	template <class real_t_, class sparse_ix_,
-			  typename ldouble_safe>
+			  typename lreal_t_safe>
 	int
 	fit_iforest_internal(IsoForest *model_outputs,
 						 ExtIsoForest *model_outputs_ext,
@@ -11160,16 +11161,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						 bool limit_depth, bool penalize_range,
 						 bool standardize_data, ScoringMetric scoring_metric,
 						 bool fast_bratio, bool standardize_dist,
-						 double tmat[], double output_depths[],
+						 real_t tmat[], real_t output_depths[],
 						 bool standardize_depth,
 						 real_t col_weights[],
-						 bool weigh_by_kurt, double prob_pick_by_gain_pl,
-						 double prob_pick_by_gain_avg,
-						 double prob_pick_by_full_gain,
-						 double prob_pick_by_dens,
-						 double prob_pick_col_by_range,
-						 double prob_pick_col_by_var,
-						 double prob_pick_col_by_kurt, double min_gain,
+						 bool weigh_by_kurt, real_t prob_pick_by_gain_pl,
+						 real_t prob_pick_by_gain_avg,
+						 real_t prob_pick_by_full_gain,
+						 real_t prob_pick_by_dens,
+						 real_t prob_pick_col_by_range,
+						 real_t prob_pick_col_by_var,
+						 real_t prob_pick_col_by_kurt, real_t min_gain,
 						 MissingAction missing_action,
 						 CategSplit cat_split_type,
 						 NewCategAction new_cat_action, bool all_perm,
@@ -11249,9 +11250,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			{numeric_data, ncols_numeric, categ_data, ncat, max_categ, ncols_categ,
 			 nrows, ncols_numeric + ncols_categ, sample_weights,
 			 weight_as_sample, col_weights, Xc, Xc_ind, Xc_indptr, 0, 0,
-			 std::vector<double>(), std::vector<char>(), 0, NULL,
-			 (double *)NULL, (double *)NULL, (int *)NULL, std::vector<double>(),
-			 std::vector<double>(), std::vector<double>(),
+			 std::vector<real_t>(), std::vector<char>(), 0, NULL,
+			 (real_t *)NULL, (real_t *)NULL, (int *)NULL, std::vector<real_t>(),
+			 std::vector<real_t>(), std::vector<real_t>(),
 			 std::vector<size_t>(), std::vector<size_t>()};
 		ModelParams model_params =
 			{with_replacement, sample_size, ntrees, ncols_per_tree,
@@ -11296,7 +11297,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		/* same for column weights */
 		/* TODO: this should also save the kurtoses when using 'prob_pick_col_by_kurt' */
-		column_sampler<ldouble_safe> base_col_sampler;
+		column_sampler<lreal_t_safe> base_col_sampler;
 		if (col_weights != NULL || (model_params.weigh_by_kurt && model_params.sample_size == input_data.nrows && !model_params.with_replacement && (model_params.ncols_per_tree >= input_data.ncols_tot / (model_params.ntrees * 2))))
 		{
 			bool avoid_col_weights = (model_outputs != NULL && model_params.ntry >= model_params.ncols_per_tree && model_params.prob_pick_by_gain_avg + model_params.prob_pick_by_gain_pl + model_params.prob_pick_by_full_gain + model_params.prob_pick_by_dens >= 1) || (model_outputs == NULL && model_params.ndim >= model_params.ncols_per_tree) || (model_params.ncols_per_tree == 1);
@@ -11305,8 +11306,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (model_params.weigh_by_kurt && model_params.sample_size == input_data.nrows && !model_params.with_replacement)
 				{
 					RNG_engine rnd_generator(random_seed);
-					std::vector<double> kurt_weights = calc_kurtosis_all_data<
-						InputData, ldouble_safe>(input_data, model_params,
+					std::vector<real_t> kurt_weights = calc_kurtosis_all_data<
+						InputData, lreal_t_safe>(input_data, model_params,
 												 rnd_generator);
 					if (col_weights != NULL)
 					{
@@ -11343,8 +11344,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		 case it might not be beneficial to do this beforehand. Find out when the expected gain
 		 from doing this here is not beneficial. */
 		/* TODO: move this to a different file, it doesn't belong here */
-		std::vector<double> variable_ranges_low;
-		std::vector<double> variable_ranges_high;
+		std::vector<real_t> variable_ranges_low;
+		std::vector<real_t> variable_ranges_high;
 		std::vector<int> variable_ncats;
 		if (model_params.sample_size == input_data.nrows && !model_params.with_replacement && (model_params.ncols_per_tree >= input_data.ncols_numeric) && ((model_params.prob_pick_col_by_range && input_data.ncols_numeric) || is_boxed_metric(model_params.scoring_metric)))
 		{
@@ -11446,7 +11447,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			model_outputs->missing_action = missing_action;
 			model_outputs->scoring_metric = scoring_metric;
 			if (model_outputs->scoring_metric != Density && model_outputs->scoring_metric != BoxedDensity && model_outputs->scoring_metric != BoxedDensity2 && model_outputs->scoring_metric != BoxedRatio)
-				model_outputs->exp_avg_depth = expected_avg_depth<ldouble_safe>(
+				model_outputs->exp_avg_depth = expected_avg_depth<lreal_t_safe>(
 					sample_size);
 			else
 				model_outputs->exp_avg_depth = 1;
@@ -11468,7 +11469,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			model_outputs_ext->scoring_metric = scoring_metric;
 			if (model_outputs_ext->scoring_metric != Density && model_outputs_ext->scoring_metric != BoxedDensity && model_outputs_ext->scoring_metric != BoxedDensity2 && model_outputs_ext->scoring_metric != BoxedRatio)
 				model_outputs_ext->exp_avg_depth =
-					expected_avg_depth<ldouble_safe>(sample_size);
+					expected_avg_depth<lreal_t_safe>(sample_size);
 			else
 				model_outputs_ext->exp_avg_depth = 1;
 			model_outputs_ext->exp_avg_sep = expected_separation_depth(
@@ -11478,7 +11479,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		if (imputer != NULL)
-			initialize_imputer<decltype(input_data), ldouble_safe>(*imputer,
+			initialize_imputer<decltype(input_data), lreal_t_safe>(*imputer,
 																   input_data,
 																   ntrees,
 																   nthreads);
@@ -11487,9 +11488,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if ((size_t)nthreads > ntrees)
 			nthreads = (int)ntrees;
 #ifdef _OPENMP
-		std::vector<WorkerMemory<ImputedData, ldouble_safe, real_t>> worker_memory(nthreads);
+		std::vector<WorkerMemory<ImputedData, lreal_t_safe, real_t>> worker_memory(nthreads);
 #else
-		std::vector<WorkerMemory<ImputedData, ldouble_safe, real_t>> worker_memory(
+		std::vector<WorkerMemory<ImputedData, lreal_t_safe, real_t>> worker_memory(
 			1);
 #endif
 
@@ -11528,7 +11529,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				//
 				fit_itree<decltype(input_data),
 						  typename std::remove_pointer<decltype(worker_memory.data())>::type,
-						  ldouble_safe>(
+						  lreal_t_safe>(
 					(model_outputs != NULL) ? &model_outputs->trees[tree] : NULL,
 					(model_outputs_ext != NULL) ? &model_outputs_ext->hplanes[tree] : NULL,
 					worker_memory[omp_get_thread_num()], input_data, model_params,
@@ -11613,7 +11614,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			if (standardize_depth)
 			{
-				double depth_divisor = (double)ntrees * ((model_outputs != NULL) ? model_outputs->exp_avg_depth : model_outputs_ext->exp_avg_depth);
+				real_t depth_divisor = (real_t)ntrees * ((model_outputs != NULL) ? model_outputs->exp_avg_depth : model_outputs_ext->exp_avg_depth);
 				for (size_t row = 0; row < nrows; row++)
 					output_depths[row] = std::exp2(
 						-output_depths[row] / depth_divisor);
@@ -11621,7 +11622,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			else
 			{
-				double ntrees_dbl = (double)ntrees;
+				real_t ntrees_dbl = (real_t)ntrees;
 				for (size_t row = 0; row < nrows; row++)
 					output_depths[row] /= ntrees_dbl;
 			}
@@ -11663,91 +11664,91 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return EXIT_SUCCESS;
 	}
 
-	template <class real_t_ = real_t, class ldouble_safe = long double>
-	double
+	template <class real_t_ = real_t, class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis(size_t ix_arr[], size_t st, size_t end, real_t_ x[],
 				  MissingAction missing_action);
 
-	template <class real_t_ = real_t, class ldouble_safe = long double>
-	double
+	template <class real_t_ = real_t, class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis(real_t_ x[], size_t n, MissingAction missing_action);
 
-	template <class real_t_, class mapping, class ldouble_safe = long double>
-	double
+	template <class real_t_, class mapping, class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis_weighted(size_t ix_arr[], size_t st, size_t end, real_t_ x[],
 						   MissingAction missing_action, mapping &w);
 
-	template <class real_t_ = real_t, class ldouble_safe = long double>
-	double
+	template <class real_t_ = real_t, class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis_weighted(real_t_ *x, size_t n_, MissingAction missing_action,
 						   real_t_ *w);
 
-	template <class real_t_, class sparse_ix_, class ldouble_safe>
-	double
+	template <class real_t_, class sparse_ix_, class lreal_t_safe>
+	real_t
 	calc_kurtosis(size_t col_num, size_t nrows, real_t_ Xc[],
 				  sparse_ix_ *Xc_ind, sparse_ix_ *Xc_indptr,
 				  MissingAction missing_action);
-	template <class real_t_, class sparse_ix_, class mapping, class ldouble_safe>
-	double
+	template <class real_t_, class sparse_ix_, class mapping, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t *ix_arr, size_t st, size_t end,
 						   size_t col_num, real_t_ Xc[], sparse_ix_ *Xc_ind,
 						   sparse_ix_ *Xc_indptr, MissingAction missing_action,
 						   mapping &w);
 
 	template <class real_t_ = real_t, class sparse_ix_ = sparse_ix,
-			  class ldouble_safe = long double>
-	double
+			  class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis_weighted(size_t col_num, size_t nrows, real_t_ *Xc,
 						   sparse_ix_ *Xc_ind, sparse_ix_ *Xc_indptr,
 						   MissingAction missing_action, real_t_ *w);
 
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis_internal(size_t cnt, int x[], int ncat, size_t buffer_cnt[],
-						   double buffer_prob[], MissingAction missing_action,
+						   real_t buffer_prob[], MissingAction missing_action,
 						   CategSplit cat_split_type,
 						   RNG_engine &rnd_generator);
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis(size_t *ix_arr, size_t st, size_t end, int x[], int ncat,
-				  size_t *buffer_cnt, double buffer_prob[],
+				  size_t *buffer_cnt, real_t buffer_prob[],
 				  MissingAction missing_action, CategSplit cat_split_type,
 				  RNG_engine &rnd_generator);
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis(size_t nrows, int x[], int ncat, size_t buffer_cnt[],
-				  double buffer_prob[], MissingAction missing_action,
+				  real_t buffer_prob[], MissingAction missing_action,
 				  CategSplit cat_split_type, RNG_engine &rnd_generator);
-	template <class mapping, class ldouble_safe>
-	double
-	calc_kurtosis_weighted_internal(std::vector<ldouble_safe> &buffer_cnt,
-									int x[], int ncat, double buffer_prob[],
+	template <class mapping, class lreal_t_safe>
+	real_t
+	calc_kurtosis_weighted_internal(std::vector<lreal_t_safe> &buffer_cnt,
+									int x[], int ncat, real_t buffer_prob[],
 									MissingAction missing_action,
 									CategSplit cat_split_type,
 									RNG_engine &rnd_generator,
 									mapping &w);
-	template <class mapping, class ldouble_safe>
-	double
+	template <class mapping, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t ix_arr[], size_t st, size_t end, int x[],
-						   int ncat, double buffer_prob[],
+						   int ncat, real_t buffer_prob[],
 						   MissingAction missing_action,
 						   CategSplit cat_split_type,
 						   RNG_engine &rnd_generator,
 						   mapping &w);
 
-	template <class real_t_, class ldouble_safe>
-	double
+	template <class real_t_, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t nrows, int x[], int ncat,
-						   double *buffer_prob, MissingAction missing_action,
+						   real_t *buffer_prob, MissingAction missing_action,
 						   CategSplit cat_split_type,
 						   RNG_engine &rnd_generator,
 						   real_t_ *w);
 
-	template <class InputData, class WorkerMemory, class ldouble_safe>
+	template <class InputData, class WorkerMemory, class lreal_t_safe>
 	void
 	calc_kurt_all_cols(InputData &input_data, WorkerMemory &workspace,
-					   ModelParams &model_params, double *kurtosis,
-					   double *saved_xmin, double *saved_xmax)
+					   ModelParams &model_params, real_t *kurtosis,
+					   real_t *saved_xmin, real_t *saved_xmax)
 	{
 		workspace.col_sampler.prepare_full_pass();
 		while (workspace.col_sampler.sample_col(workspace.col_chosen))
@@ -11777,7 +11778,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						kurtosis[workspace.col_chosen] = calc_kurtosis<
 							typename std::remove_pointer<
 								decltype(input_data.numeric_data)>::type,
-							ldouble_safe>(
+							lreal_t_safe>(
 							workspace.ix_arr.data(),
 							workspace.st,
 							workspace.end,
@@ -11790,7 +11791,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						kurtosis[workspace.col_chosen] = calc_kurtosis_weighted<
 							typename std::remove_pointer<
 								decltype(input_data.numeric_data)>::type,
-							decltype(workspace.weights_arr), ldouble_safe>(
+							decltype(workspace.weights_arr), lreal_t_safe>(
 							workspace.ix_arr.data(),
 							workspace.st,
 							workspace.end,
@@ -11803,7 +11804,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						kurtosis[workspace.col_chosen] = calc_kurtosis_weighted<
 							typename std::remove_pointer<
 								decltype(input_data.numeric_data)>::type,
-							decltype(workspace.weights_map), ldouble_safe>(
+							decltype(workspace.weights_map), lreal_t_safe>(
 							workspace.ix_arr.data(),
 							workspace.st,
 							workspace.end,
@@ -11822,7 +11823,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 									decltype(input_data.Xc)>::type,
 								typename std::remove_pointer<
 									decltype(input_data.Xc_indptr)>::type,
-								ldouble_safe>(workspace.ix_arr.data(),
+								lreal_t_safe>(workspace.ix_arr.data(),
 											  workspace.st, workspace.end,
 											  workspace.col_chosen,
 											  input_data.Xc, input_data.Xc_ind,
@@ -11838,7 +11839,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 									decltype(input_data.Xc)>::type,
 								typename std::remove_pointer<
 									decltype(input_data.Xc_indptr)>::type,
-								decltype(workspace.weights_arr), ldouble_safe>(
+								decltype(workspace.weights_arr), lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end, workspace.col_chosen,
 								input_data.Xc, input_data.Xc_ind,
@@ -11854,7 +11855,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 									decltype(input_data.Xc)>::type,
 								typename std::remove_pointer<
 									decltype(input_data.Xc_indptr)>::type,
-								decltype(workspace.weights_map), ldouble_safe>(
+								decltype(workspace.weights_map), lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end, workspace.col_chosen,
 								input_data.Xc, input_data.Xc_ind,
@@ -11895,17 +11896,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								  size_t ncols_per_tree, bool limit_depth,
 								  bool penalize_range, bool standardize_data,
 								  ScoringMetric scoring_metric, bool fast_bratio,
-								  bool standardize_dist, double tmat[],
-								  double output_depths[], bool standardize_depth,
+								  bool standardize_dist, real_t tmat[],
+								  real_t output_depths[], bool standardize_depth,
 								  real_t col_weights[],
 								  bool weigh_by_kurt,
-								  double prob_pick_by_gain_pl,
-								  double prob_pick_by_gain_avg,
-								  double prob_pick_by_full_gain,
-								  double prob_pick_by_dens,
-								  double prob_pick_col_by_range,
-								  double prob_pick_col_by_var,
-								  double prob_pick_col_by_kurt, double min_gain,
+								  real_t prob_pick_by_gain_pl,
+								  real_t prob_pick_by_gain_avg,
+								  real_t prob_pick_by_full_gain,
+								  real_t prob_pick_by_dens,
+								  real_t prob_pick_col_by_range,
+								  real_t prob_pick_col_by_var,
+								  real_t prob_pick_col_by_kurt, real_t min_gain,
 								  MissingAction missing_action,
 								  CategSplit cat_split_type,
 								  NewCategAction new_cat_action, bool all_perm,
@@ -11913,10 +11914,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								  UseDepthImp depth_imp,
 								  WeighImpRows weigh_imp_rows,
 								  bool impute_at_fit, uint64_t random_seed,
-								  bool use_long_double, int nthreads)
+								  bool use_long_real_t, int nthreads)
 	{
-		if (!use_long_double)
-			return fit_iforest_internal<real_t, sparse_ix, double>(
+		if (!use_long_real_t)
+			return fit_iforest_internal<real_t, sparse_ix, real_t>(
 				model_outputs, model_outputs_ext, numeric_data, ncols_numeric,
 				categ_data, ncols_categ, ncat, Xc, Xc_ind, Xc_indptr, ndim, ntry,
 				coef_type, coef_by_prop, sample_weights, with_replacement,
@@ -11930,7 +11931,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				imputer, min_imp_obs, depth_imp, weigh_imp_rows, impute_at_fit,
 				random_seed, nthreads);
 
-		return fit_iforest_internal<real_t, sparse_ix, long double>(
+		return fit_iforest_internal<real_t, sparse_ix, long real_t>(
 			model_outputs, model_outputs_ext, numeric_data, ncols_numeric,
 			categ_data, ncols_categ, ncat, Xc, Xc_ind, Xc_indptr, ndim, ntry,
 			coef_type, coef_by_prop, sample_weights, with_replacement,
@@ -12010,18 +12011,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				size_t sample_size, size_t ntrees, size_t max_depth,
 				size_t ncols_per_tree, bool limit_depth, bool penalize_range,
 				bool standardize_data, ScoringMetric scoring_metric,
-				bool fast_bratio, bool standardize_dist, double tmat[],
-				double output_depths[], bool standardize_depth,
+				bool fast_bratio, bool standardize_dist, real_t tmat[],
+				real_t output_depths[], bool standardize_depth,
 				real_t col_weights[],
-				bool weigh_by_kurt, double prob_pick_by_gain_pl,
-				double prob_pick_by_gain_avg, double prob_pick_by_full_gain,
-				double prob_pick_by_dens, double prob_pick_col_by_range,
-				double prob_pick_col_by_var, double prob_pick_col_by_kurt,
-				double min_gain, MissingAction missing_action,
+				bool weigh_by_kurt, real_t prob_pick_by_gain_pl,
+				real_t prob_pick_by_gain_avg, real_t prob_pick_by_full_gain,
+				real_t prob_pick_by_dens, real_t prob_pick_col_by_range,
+				real_t prob_pick_col_by_var, real_t prob_pick_col_by_kurt,
+				real_t min_gain, MissingAction missing_action,
 				CategSplit cat_split_type, NewCategAction new_cat_action,
 				bool all_perm, Imputer *imputer, size_t min_imp_obs,
 				UseDepthImp depth_imp, WeighImpRows weigh_imp_rows,
-				bool impute_at_fit, uint64_t random_seed, bool use_long_double,
+				bool impute_at_fit, uint64_t random_seed, bool use_long_real_t,
 				int nthreads)
 	{
 		return fit_iforest(model_outputs, model_outputs_ext, numeric_data,
@@ -12039,7 +12040,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						   missing_action, cat_split_type, new_cat_action,
 						   all_perm, imputer, min_imp_obs, depth_imp,
 						   weigh_imp_rows, impute_at_fit, random_seed,
-						   use_long_double, nthreads);
+						   use_long_real_t, nthreads);
 	}
 	int
 	add_tree(IsoForest *model_outputs, ExtIsoForest *model_outputs_ext,
@@ -12054,11 +12055,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			 bool limit_depth, bool penalize_range, bool standardize_data,
 			 bool fast_bratio,
 			 real_t col_weights[],
-			 bool weigh_by_kurt, double prob_pick_by_gain_pl,
-			 double prob_pick_by_gain_avg, double prob_pick_by_full_gain,
-			 double prob_pick_by_dens, double prob_pick_col_by_range,
-			 double prob_pick_col_by_var, double prob_pick_col_by_kurt,
-			 double min_gain, MissingAction missing_action,
+			 bool weigh_by_kurt, real_t prob_pick_by_gain_pl,
+			 real_t prob_pick_by_gain_avg, real_t prob_pick_by_full_gain,
+			 real_t prob_pick_by_dens, real_t prob_pick_col_by_range,
+			 real_t prob_pick_col_by_var, real_t prob_pick_col_by_kurt,
+			 real_t min_gain, MissingAction missing_action,
 			 CategSplit cat_split_type, NewCategAction new_cat_action,
 			 UseDepthImp depth_imp, WeighImpRows weigh_imp_rows, bool all_perm,
 			 Imputer *imputer, size_t min_imp_obs, TreesIndexer *indexer,
@@ -12067,7 +12068,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			 size_t ref_ld_categ,
 			 real_t ref_Xc[],
 			 sparse_ix ref_Xc_ind[], sparse_ix ref_Xc_indptr[],
-			 uint64_t random_seed, bool use_long_double)
+			 uint64_t random_seed, bool use_long_real_t)
 	{
 		return add_tree(model_outputs, model_outputs_ext, numeric_data,
 						ncols_numeric, categ_data, ncols_categ, ncat, Xc, Xc_ind,
@@ -12082,7 +12083,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						weigh_imp_rows, all_perm, imputer, min_imp_obs, indexer,
 						ref_numeric_data, ref_categ_data, ref_is_col_major,
 						ref_ld_numeric, ref_ld_categ, ref_Xc, ref_Xc_ind,
-						ref_Xc_indptr, random_seed, use_long_double);
+						ref_Xc_indptr, random_seed, use_long_real_t);
 	}
 	void
 	remap_terminal_trees(IsoForest *model_outputs,
@@ -12151,9 +12152,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					real_t *Xr,
 					sparse_ix *Xr_ind, sparse_ix *Xr_indptr, size_t nrows,
 					int nthreads, bool standardize, IsoForest *model_outputs,
-					ExtIsoForest *model_outputs_ext, double *output_depths,
+					ExtIsoForest *model_outputs_ext, real_t *output_depths,
 					sparse_ix *tree_num,
-					double *per_tree_depths, TreesIndexer *indexer)
+					real_t *per_tree_depths, TreesIndexer *indexer)
 	{
 		if (unlikely(!nrows))
 			return;
@@ -12188,7 +12189,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0; tree < model_outputs->trees.size();
 							 tree++)
 						{
@@ -12212,7 +12213,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0; tree < model_outputs->trees.size();
 							 tree++)
 						{
@@ -12238,7 +12239,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 				for (size_t row = 0; row < (decltype(row))nrows; row++)
 				{
-					double score = 0;
+					real_t score = 0;
 					for (size_t tree = 0; tree < model_outputs->trees.size();
 						 tree++)
 					{
@@ -12248,7 +12249,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							data,
 							(std::vector<ImputeNode> *)NULL,
 							(ImputedData *)NULL,
-							(double)0,
+							(real_t)0,
 							(size_t)row,
 							(tree_num == NULL) ? NULL : (tree_num + nrows * tree),
 							(per_tree_depths == NULL) ? NULL : (per_tree_depths + tree + row * model_outputs->trees.size()),
@@ -12271,7 +12272,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0;
 							 tree < model_outputs_ext->hplanes.size(); tree++)
 						{
@@ -12296,7 +12297,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						double score = 0;
+						real_t score = 0;
 						for (size_t tree = 0;
 							 tree < model_outputs_ext->hplanes.size(); tree++)
 						{
@@ -12321,7 +12322,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 				for (size_t row = 0; row < (decltype(row))nrows; row++)
 				{
-					double score = 0;
+					real_t score = 0;
 					for (size_t tree = 0; tree < model_outputs_ext->hplanes.size();
 						 tree++)
 					{
@@ -12341,16 +12342,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			}
 		}
 		/* translate sum-of-depths to outlier score */
-		double ntrees, depth_divisor;
+		real_t ntrees, depth_divisor;
 		if (model_outputs != NULL)
 		{
-			ntrees = (double)model_outputs->trees.size();
+			ntrees = (real_t)model_outputs->trees.size();
 			depth_divisor = ntrees * (model_outputs->exp_avg_depth);
 		}
 
 		else
 		{
-			ntrees = (double)model_outputs_ext->hplanes.size();
+			ntrees = (real_t)model_outputs_ext->hplanes.size();
 			depth_divisor = ntrees * (model_outputs_ext->exp_avg_depth);
 		}
 
@@ -12494,7 +12495,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						 real_t *Xc,
 						 sparse_ix *Xc_ind, sparse_ix *Xc_indptr,
 						 bool is_col_major, size_t ld_numeric, size_t ld_categ,
-						 size_t nrows, int nthreads, double *rmat,
+						 size_t nrows, int nthreads, real_t *rmat,
 						 bool standardize)
 	{
 		size_t ntrees = indexer.indices.size();
@@ -12504,7 +12505,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		std::unique_ptr<sparse_ix[]> terminal_indices(
 			new sparse_ix[nrows * ntrees]);
-		std::unique_ptr<double[]> ignored(new double[nrows]);
+		std::unique_ptr<real_t[]> ignored(new real_t[nrows]);
 		predict_iforest(numeric_data, categ_data, is_col_major, ld_numeric,
 						ld_categ, is_col_major ? Xc : nullptr,
 						is_col_major ? Xc_ind : nullptr,
@@ -12513,7 +12514,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						is_col_major ? (sparse_ix *)nullptr : Xc_ind,
 						is_col_major ? (sparse_ix *)nullptr : Xc_indptr, nrows,
 						nthreads, false, model_outputs, model_outputs_ext,
-						ignored.get(), terminal_indices.get(), (double *)NULL,
+						ignored.get(), terminal_indices.get(), (real_t *)NULL,
 						&indexer);
 		ignored.reset();
 		check_interrupt_switch(ss);
@@ -12529,8 +12530,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			SingleTreeIndex *index_node;
 			size_t idx_this;
 			sparse_ix *terminal_indices_this = terminal_indices.get() + row;
-			double *rmat_this = rmat + row * n_ref;
-			memset(rmat_this, 0, n_ref * sizeof(double));
+			real_t *rmat_this = rmat + row * n_ref;
+			memset(rmat_this, 0, n_ref * sizeof(real_t));
 
 			for (size_t tree = 0; tree < ntrees; tree++)
 			{
@@ -12548,7 +12549,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (standardize)
 		{
-			double ntrees_dbl = (double)ntrees;
+			real_t ntrees_dbl = (real_t)ntrees;
 			for (size_t ix = 0; ix < nrows * n_ref; ix++)
 				rmat[ix] /= ntrees_dbl;
 		}
@@ -12598,7 +12599,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 	}
 	template <class PredictionData = PredictionData,
-			  class ldouble_safe = long double>
+			  class lreal_t_safe = long real_t>
 	void
 	traverse_hplane_sim(WorkerForSimilarity &workspace,
 						PredictionData &prediction_data,
@@ -12632,7 +12633,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						workspace.end,
 						prediction_data.nrows,
 						workspace.tmat_sep.data(),
-						workspace.assume_full_distr ? 3. : expected_separation_depth((ldouble_safe)hplanes[curr_tree].remainder + (ldouble_safe)(workspace.end - workspace.st + 1)));
+						workspace.assume_full_distr ? 3. : expected_separation_depth((lreal_t_safe)hplanes[curr_tree].remainder + (lreal_t_safe)(workspace.end - workspace.st + 1)));
 				else if (!workspace.rmat.empty())
 					increase_comb_counter_in_groups(
 						workspace.ix_arr.data(),
@@ -12641,7 +12642,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						workspace.n_from,
 						prediction_data.nrows,
 						workspace.rmat.data(),
-						workspace.assume_full_distr ? 3. : expected_separation_depth((ldouble_safe)hplanes[curr_tree].remainder + (ldouble_safe)(workspace.end - workspace.st + 1)));
+						workspace.assume_full_distr ? 3. : expected_separation_depth((lreal_t_safe)hplanes[curr_tree].remainder + (lreal_t_safe)(workspace.end - workspace.st + 1)));
 			}
 			else
 			{
@@ -12669,7 +12670,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							workspace.ix_arr.begin() + workspace.st,
 							workspace.ix_arr.begin() + workspace.end + 1,
 							workspace.n_from));
-					double *rmat_this;
+					real_t *rmat_this;
 					for (size_t i = workspace.st; i < workspace.st + n_group; i++)
 					{
 						rmat_this = workspace.rmat.data() + workspace.ix_arr[i] * workspace.n_from;
@@ -12708,7 +12709,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		std::fill(
 			workspace.comb_val.begin(),
 			workspace.comb_val.begin() + (workspace.end - workspace.st + 1), 0);
-		double unused;
+		real_t unused;
 		if (prediction_data.categ_data != NULL || prediction_data.Xc_indptr != NULL)
 		{
 			for (size_t col = 0; col < hplanes[curr_tree].col_num.size(); col++)
@@ -12725,7 +12726,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							workspace.comb_val.data(),
 							prediction_data.numeric_data + prediction_data.nrows * hplanes[curr_tree].col_num[col],
 							hplanes[curr_tree].coef[ncols_numeric],
-							(double)0,
+							(real_t)0,
 							hplanes[curr_tree].mean[ncols_numeric],
 							(model_outputs.missing_action == Fail) ? unused : hplanes[curr_tree].fill_val[col],
 							model_outputs.missing_action, NULL, NULL, false);
@@ -12740,7 +12741,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							prediction_data.Xc_ind,
 							prediction_data.Xc_indptr,
 							hplanes[curr_tree].coef[ncols_numeric],
-							(double)0,
+							(real_t)0,
 							hplanes[curr_tree].mean[ncols_numeric],
 							(model_outputs.missing_action == Fail) ? unused : hplanes[curr_tree].fill_val[col],
 							model_outputs.missing_action, NULL, NULL, false);
@@ -12754,7 +12755,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					{
 					case SingleCateg:
 					{
-						add_linear_comb<ldouble_safe>(
+						add_linear_comb<lreal_t_safe>(
 							workspace.ix_arr.data(),
 							workspace.st,
 							workspace.end,
@@ -12773,7 +12774,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 					case SubSet:
 					{
-						add_linear_comb<ldouble_safe>(
+						add_linear_comb<lreal_t_safe>(
 							workspace.ix_arr.data(),
 							workspace.st,
 							workspace.end,
@@ -12781,7 +12782,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							prediction_data.categ_data + prediction_data.nrows * hplanes[curr_tree].col_num[col],
 							(int)hplanes[curr_tree].cat_coef[ncols_categ].size(),
 							hplanes[curr_tree].cat_coef[ncols_categ].data(),
-							(double)0,
+							(real_t)0,
 							(int)0,
 							(model_outputs.missing_action == Fail) ? unused : hplanes[curr_tree].fill_val[col],
 							hplanes[curr_tree].fill_new[ncols_categ], NULL,
@@ -12813,7 +12814,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					workspace.comb_val.data(),
 					prediction_data.numeric_data + prediction_data.nrows * hplanes[curr_tree].col_num[col],
 					hplanes[curr_tree].coef[col],
-					(double)0,
+					(real_t)0,
 					hplanes[curr_tree].mean[col],
 					(model_outputs.missing_action == Fail) ? unused : hplanes[curr_tree].fill_val[col],
 					model_outputs.missing_action, NULL, NULL, false);
@@ -12830,7 +12831,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (split_ix > workspace.st)
 		{
 			workspace.end = split_ix - 1;
-			traverse_hplane_sim<PredictionData, ldouble_safe>(
+			traverse_hplane_sim<PredictionData, lreal_t_safe>(
 				workspace, prediction_data, model_outputs, hplanes,
 				hplanes[curr_tree].hplane_left, as_kernel);
 		}
@@ -12839,7 +12840,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		{
 			workspace.st = split_ix;
 			workspace.end = orig_end;
-			traverse_hplane_sim<PredictionData, ldouble_safe>(
+			traverse_hplane_sim<PredictionData, lreal_t_safe>(
 				workspace, prediction_data, model_outputs, hplanes,
 				hplanes[curr_tree].hplane_right, as_kernel);
 		}
@@ -12854,8 +12855,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t nrows, int nthreads,
 		bool assume_full_distr, bool standardize_dist,
 		IsoForest *model_outputs,
-		ExtIsoForest *model_outputs_ext, double *tmat,
-		double *rmat, size_t n_from,
+		ExtIsoForest *model_outputs_ext, real_t *tmat,
+		real_t *rmat, size_t n_from,
 		TreesIndexer *indexer, bool is_col_major,
 		size_t ld_numeric, size_t ld_categ)
 	{
@@ -12890,7 +12891,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	}
 
-	template <class PredictionData, class ldouble_safe>
+	template <class PredictionData, class lreal_t_safe>
 	void
 	traverse_tree_sim(WorkerForSimilarity &workspace,
 					  PredictionData &prediction_data,
@@ -12934,7 +12935,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		bool standardize_dist,
 		IsoForest *model_outputs,
 		ExtIsoForest *model_outputs_ext,
-		double *rmat,
+		real_t *rmat,
 		TreesIndexer *indexer,
 		bool is_col_major,
 		size_t ld_numeric,
@@ -12948,7 +12949,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t ntrees =
 			(model_outputs != NULL) ? model_outputs->trees.size() : model_outputs_ext->hplanes.size();
 		std::vector<sparse_ix> terminal_indices(nrows * ntrees);
-		std::unique_ptr<double[]> ignored(new double[nrows]);
+		std::unique_ptr<real_t[]> ignored(new real_t[nrows]);
 		predict_iforest(numeric_data, categ_data, is_col_major, ld_numeric,
 						ld_categ, is_col_major ? Xc : nullptr,
 						is_col_major ? Xc_ind : nullptr,
@@ -12957,7 +12958,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						is_col_major ? (sparse_ix *)nullptr : Xc_ind,
 						is_col_major ? (sparse_ix *)nullptr : Xc_indptr, nrows,
 						nthreads, false, model_outputs, model_outputs_ext,
-						ignored.get(), terminal_indices.data(), (double *)NULL,
+						ignored.get(), terminal_indices.data(), (real_t *)NULL,
 						indexer);
 		ignored.reset();
 
@@ -12977,10 +12978,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			size_t ncomb_this;
 			size_t *ref_this;
 			sparse_ix *ind_this;
-			double *node_depths_this;
-			double *node_dist_this;
-			double *rmat_this = rmat + row * n_ref;
-			memset(rmat_this, 0, n_ref * sizeof(double));
+			real_t *node_depths_this;
+			real_t *node_dist_this;
+			real_t *rmat_this = rmat + row * n_ref;
+			memset(rmat_this, 0, n_ref * sizeof(real_t));
 			for (size_t tree = 0; tree < ntrees; tree++)
 			{
 				ref_this = indexer->indices[tree].reference_points.data();
@@ -13008,15 +13009,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t size_rmat = nrows * n_ref;
 		if (standardize_dist)
 		{
-			double ntrees_dbl = (double)ntrees;
-			double div_trees = (double)(mult2(ntrees));
+			real_t ntrees_dbl = (real_t)ntrees;
+			real_t div_trees = (real_t)(mult2(ntrees));
 			for (size_t ix = 0; ix < size_rmat; ix++)
 				rmat[ix] = std::exp2(-(rmat[ix] - ntrees_dbl) / div_trees);
 		}
 
 		else
 		{
-			double div_trees = (double)ntrees;
+			real_t div_trees = (real_t)ntrees;
 			for (size_t ix = 0; ix < size_rmat; ix++)
 				rmat[ix] /= div_trees;
 		}
@@ -13024,7 +13025,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		check_interrupt_switch(ss);
 	}
 
-	template <typename ldouble_safe>
+	template <typename lreal_t_safe>
 	void
 	calc_similarity_internal(
 		real_t numeric_data[],
@@ -13034,8 +13035,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t nrows, int nthreads,
 		bool assume_full_distr, bool standardize_dist,
 		bool as_kernel, IsoForest *model_outputs,
-		ExtIsoForest *model_outputs_ext, double tmat[],
-		double rmat[], size_t n_from,
+		ExtIsoForest *model_outputs_ext, real_t tmat[],
+		real_t rmat[], size_t n_from,
 		bool use_indexed_references,
 		TreesIndexer *indexer, bool is_col_major,
 		size_t ld_numeric, size_t ld_categ)
@@ -13140,7 +13141,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #elif SIZE_MAX == UINT64_MAX
 			size_t lim_rows = (size_t)UINT32_MAX - (size_t)1;
 #else
-			size_t lim_rows = (size_t)std::ceil(std::sqrt((ldouble_safe)SIZE_MAX));
+			size_t lim_rows = (size_t)std::ceil(std::sqrt((lreal_t_safe)SIZE_MAX));
 #endif
 			if (nrows > lim_rows)
 				throw std::runtime_error(
@@ -13183,7 +13184,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						worker_memory[omp_get_thread_num()], data, model_outputs,
 						NULL,
 						n_from, assume_full_distr);
-					traverse_tree_sim<PredictionData, ldouble_safe>(
+					traverse_tree_sim<PredictionData, lreal_t_safe>(
 						worker_memory[omp_get_thread_num()], data, *model_outputs,
 						model_outputs->trees[tree], (size_t)0, as_kernel);
 				}
@@ -13213,7 +13214,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						worker_memory[omp_get_thread_num()], data,
 						NULL,
 						model_outputs_ext, n_from, assume_full_distr);
-					traverse_hplane_sim<PredictionData, ldouble_safe>(
+					traverse_hplane_sim<PredictionData, lreal_t_safe>(
 						worker_memory[omp_get_thread_num()], data,
 						*model_outputs_ext, model_outputs_ext->hplanes[hplane],
 						(size_t)0, as_kernel);
@@ -13243,7 +13244,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		/* gather and transform the results */
 		gather_sim_result<PredictionData, InputData,
-						  WorkerMemory<ImputedData, ldouble_safe, real_t>>(&worker_memory,
+						  WorkerMemory<ImputedData, lreal_t_safe, real_t>>(&worker_memory,
 																		   NULL,
 																		   &data, NULL,
 																		   model_outputs,
@@ -13266,24 +13267,24 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	calc_similarity(real_t numeric_data[], int categ_data[],
 					real_t Xc[],
 					sparse_ix Xc_ind[], sparse_ix Xc_indptr[], size_t nrows,
-					bool use_long_double, int nthreads, bool assume_full_distr,
+					bool use_long_real_t, int nthreads, bool assume_full_distr,
 					bool standardize_dist, bool as_kernel,
 					IsoForest *model_outputs, ExtIsoForest *model_outputs_ext,
-					double tmat[], double rmat[], size_t n_from,
+					real_t tmat[], real_t rmat[], size_t n_from,
 					bool use_indexed_references, TreesIndexer *indexer,
 					bool is_col_major, size_t ld_numeric, size_t ld_categ)
 	{
-		if (use_long_double && !has_long_double())
+		if (use_long_real_t && !has_long_real_t())
 		{
-			use_long_double = false;
+			use_long_real_t = false;
 			fprintf(
 				stderr,
-				"Passed 'use_long_double=true', but library was compiled without long double support.\n");
+				"Passed 'use_long_real_t=true', but library was compiled without long real_t support.\n");
 		}
 #ifndef NO_LONG_DOUBLE
-		if (likely(!use_long_double))
+		if (likely(!use_long_real_t))
 #endif
-			calc_similarity_internal<double>(numeric_data, categ_data, Xc, Xc_ind,
+			calc_similarity_internal<real_t>(numeric_data, categ_data, Xc, Xc_ind,
 											 Xc_indptr, nrows, nthreads,
 											 assume_full_distr, standardize_dist,
 											 as_kernel, model_outputs,
@@ -13292,7 +13293,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 											 is_col_major, ld_numeric, ld_categ);
 #ifndef NO_LONG_DOUBLE
 		else
-			calc_similarity_internal<long double>(numeric_data, categ_data, Xc,
+			calc_similarity_internal<long real_t>(numeric_data, categ_data, Xc,
 												  Xc_ind, Xc_indptr, nrows, nthreads,
 												  assume_full_distr,
 												  standardize_dist, as_kernel,
@@ -13368,12 +13369,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 	/* comment out similarity
 	inline void
-	calc_similarity(double numeric_data[], int categ_data[], double Xc[],
+	calc_similarity(real_t numeric_data[], int categ_data[], real_t Xc[],
 					int Xc_ind[], int Xc_indptr[], size_t nrows,
-					bool use_long_double, int nthreads, bool assume_full_distr,
+					bool use_long_real_t, int nthreads, bool assume_full_distr,
 					bool standardize_dist, bool as_kernel,
 					IsoForest *model_outputs, ExtIsoForest *model_outputs_ext,
-					double tmat[], double rmat[], size_t n_from,
+					real_t tmat[], real_t rmat[], size_t n_from,
 					bool use_indexed_references, TreesIndexer *indexer,
 					bool is_col_major, size_t ld_numeric, size_t ld_categ)
 	{
@@ -13409,9 +13410,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if( use_indexed_references && indexer == NULL )
 			throw std::runtime_error("Must pass a reference to a TreesIndexer object.\n");
 		
-		if(use_long_double)
+		if(use_long_real_t)
 		//instantiate similarity template parameters 
- 		calc_similarity_internal<long double>(numeric_data, categ_data, Xc, Xc_ind_,
+ 		calc_similarity_internal<long real_t>(numeric_data, categ_data, Xc, Xc_ind_,
 											 Xc_indptr_, nrows, nthreads,
 											 assume_full_distr, standardize_dist,
 											 as_kernel, model_outputs,
@@ -13419,7 +13420,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 											 use_indexed_references, indexer,
 											 is_col_major, ld_numeric, ld_categ);
  		else
- 		calc_similarity_internal<double>(numeric_data, categ_data, Xc, Xc_ind_,
+ 		calc_similarity_internal<real_t>(numeric_data, categ_data, Xc, Xc_ind_,
 											 Xc_indptr_, nrows, nthreads,
 											 assume_full_distr, standardize_dist,
 											 as_kernel, model_outputs,
@@ -13440,15 +13441,29 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return indexer.indices.front().reference_points.size();
 	}
 
-	// indexer :
+    std::ostream &operator<<(std::ostream &out, const roc_curve &q)
+    {
+		//out << "roc_curve:\n";
+
+		const std::vector<std::pair<real_t, real_t>>& points = q.get_points();
+		for (size_t ix = 0; ix < points.size(); ix++)
+		{
+			out <<"("<< points[ix].first << "," << points[ix].second << ")\n";
+		}
+		out << "AUC:" <<q._auc << "\n";
+		return out;
+
+    }
+
+    // indexer :
 	template <class Node>
 	void
 	build_dindex_recursive(const size_t curr_node, const size_t n_terminal,
 						   const size_t ncomb, const size_t st,
 						   const size_t end, std::vector<size_t> &node_indices, /* array with all terminal indices in 'tree' */
 						   const std::vector<size_t> &node_mappings,			/* tree_index : terminal_index */
-						   std::vector<double> &node_distances,					/* indexed by terminal_index */
-						   std::vector<double> &node_depths,					/* indexed by terminal_index */
+						   std::vector<real_t> &node_distances,					/* indexed by terminal_index */
+						   std::vector<real_t> &node_depths,					/* indexed by terminal_index */
 						   size_t curr_depth, const std::vector<Node> &tree)
 	{
 		if (end > st)
@@ -13538,8 +13553,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	void
 	build_dindex(std::vector<size_t> &node_indices,		   /* empty, but correctly sized */
 				 const std::vector<size_t> &node_mappings, /* tree_index : terminal_index */
-				 std::vector<double> &node_distances,	   /* indexed by terminal_index */
-				 std::vector<double> &node_depths,		   /* indexed by terminal_index */
+				 std::vector<real_t> &node_distances,	   /* indexed by terminal_index */
+				 std::vector<real_t> &node_depths,		   /* indexed by terminal_index */
 				 const size_t n_terminal, const std::vector<Node> &tree)
 	{
 		if (tree.size() <= 1)
@@ -13566,8 +13581,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	void
 	build_dindex(std::vector<size_t> &node_indices,		   /* empty, but correctly sized */
 				 const std::vector<size_t> &node_mappings, /* tree_index : terminal_index */
-				 std::vector<double> &node_distances,	   /* indexed by terminal_index */
-				 std::vector<double> &node_depths,		   /* indexed by terminal_index */
+				 std::vector<real_t> &node_distances,	   /* indexed by terminal_index */
+				 std::vector<real_t> &node_depths,		   /* indexed by terminal_index */
 				 const size_t n_terminal, const std::vector<IsoTree> &tree)
 	{
 		build_dindex<IsoTree>(node_indices, node_mappings, node_distances,
@@ -13679,7 +13694,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	void
-	tmat_to_dense(double *tmat, double *dmat, size_t n, double fill_diag)
+	tmat_to_dense(real_t *tmat, real_t *dmat, size_t n, real_t fill_diag)
 	{
 		size_t ncomb = calc_ncomb(n);
 		for (size_t i = 0; i < (n - 1); i++)
@@ -13696,9 +13711,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	void
 	batched_csc_predict(PredictionData &data, int nthreads,
 						IsoForest *model_outputs,
-						ExtIsoForest *model_outputs_ext, double *output_depths,
+						ExtIsoForest *model_outputs_ext, real_t *output_depths,
 						sparse_ix *tree_num,
-						double *per_tree_depths)
+						real_t *per_tree_depths)
 	{
 #ifdef _OPENMP
 		size_t ntrees = (model_outputs != NULL) ? model_outputs->trees.size() : model_outputs_ext->hplanes.size();
@@ -13740,7 +13755,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					ptr_worker->end = data.nrows - 1;
 					if (model_outputs->missing_action == Divide)
 						std::fill(ptr_worker->weights_arr.begin(),
-								  ptr_worker->weights_arr.end(), (double)1);
+								  ptr_worker->weights_arr.end(), (real_t)1);
 					traverse_itree_csc(
 						*ptr_worker,
 						model_outputs->trees[tree],
@@ -13819,7 +13834,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #ifdef _OPENMP
 			else
 			{
-				std::fill(output_depths, output_depths + prediction_data.nrows, (double)0);
+				std::fill(output_depths, output_depths + prediction_data.nrows, (real_t)0);
 				for (auto &workspace : worker_memory)
 					if (workspace.depths.size())
 #if !defined(_MSC_VER) && !defined(_WIN32)
@@ -13831,7 +13846,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 		}
 	}
-	template <class ldouble_safe>
+	template <class lreal_t_safe>
 	void
 	impute_missing_values_internal(
 		real_t numeric_data[],
@@ -13884,8 +13899,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							*model_outputs,
 							data,
 							&imputer.imputer_tree[&tree - &(model_outputs->trees[0])],
-							&imp_memory[omp_get_thread_num()], (double)1,
-							ix_arr[row], (sparse_ix *)NULL, (double *)NULL,
+							&imp_memory[omp_get_thread_num()], (real_t)1,
+							ix_arr[row], (sparse_ix *)NULL, (real_t *)NULL,
 							(size_t)0);
 					}
 
@@ -13908,7 +13923,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 		else
 		{
-			double temp;
+			real_t temp;
 
 			for (size_t row = 0; row < (decltype(row))end; row++)
 			{
@@ -13928,7 +13943,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							temp,
 							&imputer.imputer_tree[&hplane - &(model_outputs_ext->hplanes[0])],
 							&imp_memory[omp_get_thread_num()], (sparse_ix *)NULL,
-							(double *)NULL, ix_arr[row]);
+							(real_t *)NULL, ix_arr[row]);
 					}
 
 					apply_imputation_results(data,
@@ -13958,15 +13973,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						  bool is_col_major,
 						  real_t Xr[],
 						  sparse_ix Xr_ind[], sparse_ix Xr_indptr[],
-						  size_t nrows, bool use_long_double, int nthreads,
+						  size_t nrows, bool use_long_real_t, int nthreads,
 						  IsoForest *model_outputs,
 						  ExtIsoForest *model_outputs_ext, Imputer &imputer)
 	{
 
 
-		if( use_long_double)
+		if( use_long_real_t)
 		{
-		impute_missing_values_internal<long double>(numeric_data, categ_data,
+		impute_missing_values_internal<long real_t>(numeric_data, categ_data,
 													is_col_major, Xr, Xr_ind,
 													Xr_indptr, nrows, nthreads,
 													model_outputs,
@@ -13975,7 +13990,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 		else
 		{
-		impute_missing_values_internal<double>(
+		impute_missing_values_internal<real_t>(
 				numeric_data, categ_data, is_col_major,
 				Xr, Xr_ind, Xr_indptr,
 				nrows, nthreads,
@@ -14043,28 +14058,28 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	/* redef
 
-	 void isolation_forest::predict_distance(double Xc[], int Xc_ind[], int Xc_indptr[], int categ_data[],
+	 void isolation_forest::predict_distance(real_t Xc[], int Xc_ind[], int Xc_indptr[], int categ_data[],
 	 size_t nrows,
 	 bool as_kernel,
 	 bool assume_full_distr, bool standardize,
 	 bool triangular,
-	 double dist_matrix[])
+	 real_t dist_matrix[])
 	 {
 	 this->check_is_fitted();
 	 this->check_nthreads();
-	 std::vector<double> tmat(triangular? 0 : calc_ncomb(nrows));
+	 std::vector<real_t> tmat(triangular? 0 : calc_ncomb(nrows));
 
-	 calc_similarity((double*)nullptr, (int*)nullptr,
+	 calc_similarity((real_t*)nullptr, (int*)nullptr,
 	 Xc, Xc_ind, Xc_indptr,
 	 nrows, false, this->nthreads, assume_full_distr, standardize, as_kernel,
 	 (!this->model.trees.empty())? &this->model : nullptr,
 	 (!this->model_ext.hplanes.empty())? &this->model_ext : nullptr,
 	 triangular? dist_matrix : tmat.data(),
-	 (double*)nullptr, (size_t)0, false,
+	 (real_t*)nullptr, (size_t)0, false,
 	 (!this->indexer.indices.empty())? &this->indexer : nullptr,
 	 true, (size_t)0, (size_t)0);
 	 if (!triangular) {
-	 double diag_filler;
+	 real_t diag_filler;
 	 if (as_kernel) {
 	 if (standardize)
 	 diag_filler = 1.;
@@ -14075,7 +14090,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 if (standardize)
 	 diag_filler = 0;
 	 else
-	 diag_filler = std::numeric_limits<double>::infinity();
+	 diag_filler = std::numeric_limits<real_t>::infinity();
 	 }
 	 tmat_to_dense(tmat.data(), dist_matrix, nrows, diag_filler);
 	 }
@@ -14084,28 +14099,28 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 
 
-	 void isolation_forest::predict_distance(double numeric_data[], int categ_data[],
+	 void isolation_forest::predict_distance(real_t numeric_data[], int categ_data[],
 	 size_t nrows,
 	 bool as_kernel,
 	 bool assume_full_distr, bool standardize,
 	 bool triangular,
-	 double dist_matrix[])
+	 real_t dist_matrix[])
 	 {
 	 this->check_is_fitted();
 	 this->check_nthreads();
-	 std::vector<double> tmat(triangular? 0 : calc_ncomb(nrows));
+	 std::vector<real_t> tmat(triangular? 0 : calc_ncomb(nrows));
 
 	 calc_similarity(numeric_data, categ_data,
-	 (double*)nullptr, (int*)nullptr, (int*)nullptr,
+	 (real_t*)nullptr, (int*)nullptr, (int*)nullptr,
 	 nrows, false, this->nthreads, assume_full_distr, standardize, as_kernel,
 	 (!this->model.trees.empty())? &this->model : nullptr,
 	 (!this->model_ext.hplanes.empty())? &this->model_ext : nullptr,
 	 triangular? dist_matrix : tmat.data(),
-	 (double*)nullptr, (size_t)0, false,
+	 (real_t*)nullptr, (size_t)0, false,
 	 (!this->indexer.indices.empty())? &this->indexer : nullptr,
 	 true, (size_t)0, (size_t)0);
 	 if (!triangular) {
-	 double diag_filler;
+	 real_t diag_filler;
 	 if (as_kernel) {
 	 if (standardize)
 	 diag_filler = 1.;
@@ -14116,12 +14131,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 if (standardize)
 	 diag_filler = 0;
 	 else
-	 diag_filler = std::numeric_limits<double>::infinity();
+	 diag_filler = std::numeric_limits<real_t>::infinity();
 	 }
 	 tmat_to_dense(tmat.data(), dist_matrix, nrows, diag_filler);
 	 }
 	 }
-	 std::vector<double> isolation_forest::predict_distance(double X[], size_t nrows,
+	 std::vector<real_t> isolation_forest::predict_distance(real_t X[], size_t nrows,
 	 bool as_kernel,
 	 bool assume_full_distr, bool standardize,
 	 bool triangular)
@@ -14129,19 +14144,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 {
 	 this->check_is_fitted();
 	 this->check_nthreads();
-	 std::vector<double> tmat(calc_ncomb(nrows));
-	 std::vector<double> dmat(triangular? square(nrows) : 0);
+	 std::vector<real_t> tmat(calc_ncomb(nrows));
+	 std::vector<real_t> dmat(triangular? square(nrows) : 0);
 
 	 calc_similarity(X, (int*)nullptr,
-	 (double*)nullptr, (int*)nullptr, (int*)nullptr,
+	 (real_t*)nullptr, (int*)nullptr, (int*)nullptr,
 	 nrows, false, this->nthreads, assume_full_distr, standardize, as_kernel,
 	 (!this->model.trees.empty())? &this->model : nullptr,
 	 (!this->model_ext.hplanes.empty())? &this->model_ext : nullptr,
-	 tmat.data(), (double*)nullptr, (size_t)0, false,
+	 tmat.data(), (real_t*)nullptr, (size_t)0, false,
 	 (!this->indexer.indices.empty())? &this->indexer : nullptr,
 	 true, (size_t)0, (size_t)0);
 	 if (!triangular) {
-	 double diag_filler;
+	 real_t diag_filler;
 	 if (as_kernel) {
 	 if (standardize)
 	 diag_filler = 1.;
@@ -14152,7 +14167,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 if (standardize)
 	 diag_filler = 0;
 	 else
-	 diag_filler = std::numeric_limits<double>::infinity();
+	 diag_filler = std::numeric_limits<real_t>::infinity();
 	 }
 	 tmat_to_dense(tmat.data(), dmat.data(), nrows, diag_filler);
 	 }
@@ -14228,26 +14243,26 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 	}
 
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis(real_t x[], size_t n, MissingAction missing_action)
 	{
-		ldouble_safe m = 0;
-		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta, delta_s, delta_div;
-		ldouble_safe diff, n_;
-		ldouble_safe out;
+		lreal_t_safe m = 0;
+		lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		lreal_t_safe delta, delta_s, delta_div;
+		lreal_t_safe diff, n_;
+		lreal_t_safe out;
 
 		if (missing_action == Fail)
 		{
 			for (size_t row = 0; row < n; row++)
 			{
-				n_ = (ldouble_safe)(row + 1);
+				n_ = (lreal_t_safe)(row + 1);
 
 				delta = x[row] - m;
 				delta_div = delta / n_;
 				delta_s = delta_div * delta_div;
-				diff = delta * (delta_div * (ldouble_safe)row);
+				diff = delta * (delta_div * (lreal_t_safe)row);
 
 				m += delta_div;
 				M4 += diff * delta_s * (n_ * n_ - 3 * n_ + 3) + 6 * delta_s * M2 - 4 * delta_div * M3;
@@ -14255,8 +14270,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				M2 += diff;
 			}
 
-			out = (M4 / M2) * ((ldouble_safe)n / M2);
-			return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+			out = (M4 / M2) * ((lreal_t_safe)n / M2);
+			return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 		}
 
 		else
@@ -14267,12 +14282,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				if (likely(!is_na_or_inf(x[row])))
 				{
 					cnt++;
-					n_ = (ldouble_safe)cnt;
+					n_ = (lreal_t_safe)cnt;
 
 					delta = x[row] - m;
 					delta_div = delta / n_;
 					delta_s = delta_div * delta_div;
-					diff = delta * (delta_div * (ldouble_safe)(cnt - 1));
+					diff = delta * (delta_div * (lreal_t_safe)(cnt - 1));
 
 					m += delta_div;
 					M4 += diff * delta_s * (n_ * n_ - 3 * n_ + 3) + 6 * delta_s * M2 - 4 * delta_div * M3;
@@ -14284,25 +14299,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			if (unlikely(cnt == 0))
 				return -HUGE_VAL;
 
-			out = (M4 / M2) * ((ldouble_safe)cnt / M2);
-			return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+			out = (M4 / M2) * ((lreal_t_safe)cnt / M2);
+			return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 		}
 	}
 
 	/* TODO: is this algorithm correct? */
-	template <class mapping, class ldouble_safe = long double>
-	double
+	template <class mapping, class lreal_t_safe = long real_t>
+	real_t
 	calc_kurtosis_weighted(size_t ix_arr[], size_t st, size_t end, real_t x[],
 						   MissingAction missing_action, mapping &w)
 	{
-		ldouble_safe m = 0;
-		ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		ldouble_safe delta, delta_s, delta_div;
-		ldouble_safe diff;
-		ldouble_safe n = 0;
-		ldouble_safe out;
-		ldouble_safe n_prev = 0.;
-		ldouble_safe w_this;
+		lreal_t_safe m = 0;
+		lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		lreal_t_safe delta, delta_s, delta_div;
+		lreal_t_safe diff;
+		lreal_t_safe n = 0;
+		lreal_t_safe out;
+		lreal_t_safe n_prev = 0.;
+		lreal_t_safe w_this;
 
 		for (size_t row = st; row <= end; row++)
 		{
@@ -14327,7 +14342,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (unlikely(n <= 0))
 			return -HUGE_VAL;
 		if (unlikely(
-				!is_na_or_inf(M2) && M2 <= std::numeric_limits<double>::epsilon()))
+				!is_na_or_inf(M2) && M2 <= std::numeric_limits<real_t>::epsilon()))
 		{
 			if (!check_more_than_two_unique_values(ix_arr, st, end, x,
 												   missing_action))
@@ -14335,20 +14350,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		out = (M4 / M2) * (n / M2);
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 #if 0 // redef
-		template < class ldouble_safe>
-		double calc_kurtosis_weighted(real_t *  x, size_t n_, MissingAction missing_action, real_t *  w)
+		template < class lreal_t_safe>
+		real_t calc_kurtosis_weighted(real_t *  x, size_t n_, MissingAction missing_action, real_t *  w)
 		{
-		    ldouble_safe m = 0;
-		    ldouble_safe M2 = 0, M3 = 0, M4 = 0;
-		    ldouble_safe delta, delta_s, delta_div;
-		    ldouble_safe diff;
-		    ldouble_safe n = 0;
-		    ldouble_safe out;
-		    ldouble_safe n_prev = 0.;
-		    ldouble_safe w_this;
+		    lreal_t_safe m = 0;
+		    lreal_t_safe M2 = 0, M3 = 0, M4 = 0;
+		    lreal_t_safe delta, delta_s, delta_div;
+		    lreal_t_safe diff;
+		    lreal_t_safe n = 0;
+		    lreal_t_safe out;
+		    lreal_t_safe n_prev = 0.;
+		    lreal_t_safe w_this;
 
 		    for (size_t row = 0; row < n_; row++)
 		    {
@@ -14373,15 +14388,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    if (unlikely(n <= 0)) return -HUGE_VAL;
 
 		    out = ( M4 / M2 ) * ( n / M2 );
-		    return (!is_na_or_inf(out))? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		    return (!is_na_or_inf(out))? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 		}
 
 #endif
 	/* TODO: make these compensated sums */
 	/* TODO: can this use the same algorithm as above but with a correction at the end,
 	 like it was done for the variance? */
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis(size_t *ix_arr, size_t st, size_t end, size_t col_num,
 				  real_t Xc[],
 				  sparse_ix *Xc_ind, sparse_ix *Xc_indptr,
@@ -14391,11 +14406,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (Xc_indptr[col_num] == Xc_indptr[col_num + 1])
 			return -HUGE_VAL;
 
-		ldouble_safe s1 = 0;
-		ldouble_safe s2 = 0;
-		ldouble_safe s3 = 0;
-		ldouble_safe s4 = 0;
-		ldouble_safe x_sq;
+		lreal_t_safe s1 = 0;
+		lreal_t_safe s2 = 0;
+		lreal_t_safe s3 = 0;
+		lreal_t_safe s4 = 0;
+		lreal_t_safe x_sq;
 		size_t cnt = end - st + 1;
 
 		if (unlikely(cnt <= 1))
@@ -14408,7 +14423,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t *ptr_st = std::lower_bound(ix_arr + st, ix_arr + end + 1,
 										  Xc_ind[st_col]);
 
-		ldouble_safe xval;
+		lreal_t_safe xval;
 
 		if (missing_action != Fail)
 		{
@@ -14503,23 +14518,23 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (unlikely(cnt <= 1 || s2 == 0 || s2 == pw2(s1)))
 			return -HUGE_VAL;
-		ldouble_safe cnt_l = (ldouble_safe)cnt;
-		ldouble_safe sn = s1 / cnt_l;
-		ldouble_safe v = s2 / cnt_l - pw2(sn);
+		lreal_t_safe cnt_l = (lreal_t_safe)cnt;
+		lreal_t_safe sn = s1 / cnt_l;
+		lreal_t_safe v = s2 / cnt_l - pw2(sn);
 		if (unlikely(std::isnan(v)))
 			return -HUGE_VAL;
-		if (v <= std::numeric_limits<double>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
+		if (v <= std::numeric_limits<real_t>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
 																							  Xc_indptr, Xc_ind, Xc,
 																							  missing_action))
 			return -HUGE_VAL;
 		if (unlikely(v <= 0))
 			return 0.;
-		ldouble_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		lreal_t_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
-	template <class ldouble_safe>
-	double
+	template <class lreal_t_safe>
+	real_t
 	calc_kurtosis(size_t col_num, size_t nrows,
 				  real_t Xc[],
 				  sparse_ix *Xc_ind, sparse_ix *Xc_indptr,
@@ -14528,17 +14543,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (Xc_indptr[col_num] == Xc_indptr[col_num + 1])
 			return -HUGE_VAL;
 
-		ldouble_safe s1 = 0;
-		ldouble_safe s2 = 0;
-		ldouble_safe s3 = 0;
-		ldouble_safe s4 = 0;
-		ldouble_safe x_sq;
+		lreal_t_safe s1 = 0;
+		lreal_t_safe s2 = 0;
+		lreal_t_safe s3 = 0;
+		lreal_t_safe s4 = 0;
+		lreal_t_safe x_sq;
 		size_t cnt = nrows;
 
 		if (unlikely(cnt <= 1))
 			return -HUGE_VAL;
 
-		ldouble_safe xval;
+		lreal_t_safe xval;
 
 		if (missing_action != Fail)
 		{
@@ -14587,22 +14602,22 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (unlikely(cnt <= 1 || s2 == 0 || s2 == pw2(s1)))
 			return -HUGE_VAL;
-		ldouble_safe cnt_l = (ldouble_safe)cnt;
-		ldouble_safe sn = s1 / cnt_l;
-		ldouble_safe v = s2 / cnt_l - pw2(sn);
+		lreal_t_safe cnt_l = (lreal_t_safe)cnt;
+		lreal_t_safe sn = s1 / cnt_l;
+		lreal_t_safe v = s2 / cnt_l - pw2(sn);
 		if (unlikely(std::isnan(v)))
 			return -HUGE_VAL;
-		if (v <= std::numeric_limits<double>::epsilon() && !check_more_than_two_unique_values(nrows, col_num, Xc_indptr,
+		if (v <= std::numeric_limits<real_t>::epsilon() && !check_more_than_two_unique_values(nrows, col_num, Xc_indptr,
 																							  Xc_ind, Xc, missing_action))
 			return -HUGE_VAL;
 		if (unlikely(v <= 0))
 			return 0.;
-		ldouble_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		lreal_t_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt_l * pw4(sn)) / (cnt_l * pw2(v));
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
-	template <class mapping, class ldouble_safe>
-	double
+	template <class mapping, class lreal_t_safe>
+	real_t
 	calc_kurtosis_weighted(size_t *ix_arr, size_t st, size_t end,
 						   size_t col_num,
 						   real_t Xc[],
@@ -14613,13 +14628,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (Xc_indptr[col_num] == Xc_indptr[col_num + 1])
 			return -HUGE_VAL;
 
-		ldouble_safe s1 = 0;
-		ldouble_safe s2 = 0;
-		ldouble_safe s3 = 0;
-		ldouble_safe s4 = 0;
-		ldouble_safe x_sq;
-		ldouble_safe w_this;
-		ldouble_safe cnt = 0;
+		lreal_t_safe s1 = 0;
+		lreal_t_safe s2 = 0;
+		lreal_t_safe s3 = 0;
+		lreal_t_safe s4 = 0;
+		lreal_t_safe x_sq;
+		lreal_t_safe w_this;
+		lreal_t_safe cnt = 0;
 		for (size_t row = st; row <= end; row++)
 			cnt += w[ix_arr[row]];
 
@@ -14633,7 +14648,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t *ptr_st = std::lower_bound(ix_arr + st, ix_arr + end + 1,
 										  Xc_ind[st_col]);
 
-		ldouble_safe xval;
+		lreal_t_safe xval;
 
 		if (missing_action != Fail)
 		{
@@ -14728,24 +14743,24 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (unlikely(cnt <= 1 || s2 == 0 || s2 == pw2(s1)))
 			return -HUGE_VAL;
-		ldouble_safe sn = s1 / cnt;
-		ldouble_safe v = s2 / cnt - pw2(sn);
+		lreal_t_safe sn = s1 / cnt;
+		lreal_t_safe v = s2 / cnt - pw2(sn);
 		if (unlikely(std::isnan(v)))
 			return -HUGE_VAL;
-		if (v <= std::numeric_limits<double>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
+		if (v <= std::numeric_limits<real_t>::epsilon() && !check_more_than_two_unique_values(ix_arr, st, end, col_num,
 																							  Xc_indptr, Xc_ind, Xc,
 																							  missing_action))
 			return -HUGE_VAL;
 		if (v <= 0)
 			return 0.;
-		ldouble_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt * pw4(sn)) / (cnt * pw2(v));
-		return (!is_na_or_inf(out)) ? std::fmax((double)out, 0.) : (-HUGE_VAL);
+		lreal_t_safe out = (s4 - 4 * s3 * sn + 6 * s2 * pw2(sn) - 4 * s1 * pw3(sn) + cnt * pw4(sn)) / (cnt * pw2(v));
+		return (!is_na_or_inf(out)) ? std::fmax((real_t)out, 0.) : (-HUGE_VAL);
 	}
 
 	/* TODO: make this a compensated sum */
 	template <class real_t_ = real_t>
-	double
-	find_split_rel_gain_t(real_t_ *x, size_t n, double split_point)
+	real_t
+	find_split_rel_gain_t(real_t_ *x, size_t n, real_t split_point)
 	{
 		real_t this_gain;
 		real_t best_gain = -HUGE_VAL;
@@ -14772,17 +14787,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (best_gain <= -HUGE_VAL)
 			return best_gain;
 		split_point = midpoint(x1, x2);
-		return std::fmax((double)best_gain,
-						 std::numeric_limits<double>::epsilon());
+		return std::fmax((real_t)best_gain,
+						 std::numeric_limits<real_t>::epsilon());
 	}
 
 	/* Note: there is no 'weighted' version of 'find_split_rel_gain' with unindexed 'x', because calling it would
 	 imply having to argsort the 'x' values in order to sort the weights, which is less efficient. */
 
 	template <class real_x, class real_y, class mapping>
-	double
+	real_t
 	find_split_rel_gain_weighted_t(real_x *x, real_x xmean, size_t *ix_arr,
-								   size_t st, size_t end, double &split_point,
+								   size_t st, size_t end, real_t &split_point,
 								   size_t &split_ix, mapping &w)
 	{
 		real_y this_gain;
@@ -14813,26 +14828,26 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (best_gain <= -HUGE_VAL)
 			return best_gain;
 		split_point = midpoint(x[ix_arr[split_ix]], x[ix_arr[split_ix + 1]]);
-		return std::fmax((double)best_gain,
-						 std::numeric_limits<double>::epsilon());
+		return std::fmax((real_t)best_gain,
+						 std::numeric_limits<real_t>::epsilon());
 	}
 
-	template <class real_t_, class mapping, class ldouble_safe>
-	double
+	template <class real_t_, class mapping, class lreal_t_safe>
+	real_t
 	find_split_rel_gain_weighted(real_t_ *x, real_t_ xmean, size_t *ix_arr,
-								 size_t st, size_t end, double &split_point,
+								 size_t st, size_t end, real_t &split_point,
 								 size_t &split_ix, mapping &w)
 	{
 		if ((end - st + 1) < THRESHOLD_LONG_DOUBLE)
-			return find_split_rel_gain_weighted_t<double, real_t_, mapping>(
+			return find_split_rel_gain_weighted_t<real_t, real_t_, mapping>(
 				x, xmean, ix_arr, st, end, split_point, split_ix, w);
 		else
-			return find_split_rel_gain_weighted_t<ldouble_safe, real_t_, mapping>(
-				(ldouble_safe *)x, xmean, ix_arr, st, end, split_point, split_ix, w);
+			return find_split_rel_gain_weighted_t<lreal_t_safe, real_t_, mapping>(
+				(lreal_t_safe *)x, xmean, ix_arr, st, end, split_point, split_ix, w);
 	}
 
 	real_t
-	calc_sd_right_to_left(real_t *x, size_t n, double *sd_arr)
+	calc_sd_right_to_left(real_t *x, size_t n, real_t *sd_arr)
 	{
 		real_t running_mean = 0;
 		real_t running_ssq = 0;
@@ -14850,17 +14865,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		return std::sqrt(running_ssq / (real_t)n);
 	}
 
-	template <class ldouble_safe>
-	ldouble_safe
-	calc_sd_right_to_left_weighted(real_t *x, size_t n, double *sd_arr,
-								   double *w, ldouble_safe &cumw,
+	template <class lreal_t_safe>
+	lreal_t_safe
+	calc_sd_right_to_left_weighted(real_t *x, size_t n, real_t *sd_arr,
+								   real_t *w, lreal_t_safe &cumw,
 								   size_t *sorted_ix)
 	{
-		ldouble_safe running_mean = 0;
-		ldouble_safe running_ssq = 0;
-		ldouble_safe mean_prev = x[sorted_ix[n - 1]];
-		ldouble_safe cnt = 0;
-		double w_this;
+		lreal_t_safe running_mean = 0;
+		lreal_t_safe running_ssq = 0;
+		lreal_t_safe mean_prev = x[sorted_ix[n - 1]];
+		lreal_t_safe cnt = 0;
+		real_t w_this;
 		for (size_t row = 0; row < n - 1; row++)
 		{
 			w_this = w[sorted_ix[n - row - 1]];
@@ -14880,7 +14895,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	real_t
 	calc_sd_right_to_left(real_t *x, real_t xmean, size_t ix_arr[], size_t st,
-						  size_t end, double *sd_arr)
+						  size_t end, real_t *sd_arr)
 	{
 		real_t running_mean = 0;
 		real_t running_ssq = 0;
@@ -14902,7 +14917,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #if 0
 
 		template <class xreal = real_t, class yreal = real_t>
-		double find_split_rel_gain_t(xreal * x, yreal xmean, size_t *ix_arr, size_t st, size_t end, double &split_point, size_t &split_ix)
+		real_t find_split_rel_gain_t(xreal * x, yreal xmean, size_t *ix_arr, size_t st, size_t end, real_t &split_point, size_t &split_ix)
 		{
 			yreal this_gain;
 			yreal best_gain = -HUGE_VAL;
@@ -14929,36 +14944,36 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    if (best_gain <= -HUGE_VAL)
 		        return best_gain;
 		    split_point = midpoint(x[ix_arr[split_ix]], x[ix_arr[split_ix+1]]);
-		    return std::fmax((double)best_gain, std::numeric_limits<double>::epsilon());
+		    return std::fmax((real_t)best_gain, std::numeric_limits<real_t>::epsilon());
 		}
-		double find_split_rel_gain(real_t * x, size_t n, double &split_point)
+		real_t find_split_rel_gain(real_t * x, size_t n, real_t &split_point)
 		{
 		    if (n < THRESHOLD_LONG_DOUBLE)
-		        return find_split_rel_gain_t<double>(x, n, split_point);
+		        return find_split_rel_gain_t<real_t>(x, n, split_point);
 		    else
-		        return find_split_rel_gain_t<long double>(x, n, split_point);
+		        return find_split_rel_gain_t<long real_t>(x, n, split_point);
 		}
 
-		template <class real_t_ = real_t, class ldouble_safe>
-		double find_split_rel_gain(real_t_ *x, real_t_ xmean, size_t *ix_arr, size_t st, size_t end, double &split_point, size_t &split_ix)
+		template <class real_t_ = real_t, class lreal_t_safe>
+		real_t find_split_rel_gain(real_t_ *x, real_t_ xmean, size_t *ix_arr, size_t st, size_t end, real_t &split_point, size_t &split_ix)
 		{
 		    if ((end-st+1) < THRESHOLD_LONG_DOUBLE)
-		        return find_split_rel_gain_t<double, real_t_>(x, xmean, ix_arr, st, end, split_point, split_ix);
+		        return find_split_rel_gain_t<real_t, real_t_>(x, xmean, ix_arr, st, end, split_point, split_ix);
 		    else
-		        return find_split_rel_gain_t<ldouble_safe, real_t_>(x, xmean, ix_arr, st, end, split_point, split_ix);
+		        return find_split_rel_gain_t<lreal_t_safe, real_t_>(x, xmean, ix_arr, st, end, split_point, split_ix);
 		}
 
 		--> comment
-		template <class real_t_, class mapping, class ldouble_safe>
-		ldouble_safe calc_sd_right_to_left_weighted(real_t_ * x, real_t_ xmean, size_t ix_arr[], size_t st, size_t end,
-		                                           double * sd_arr, mapping & w, ldouble_safe &cumw)
+		template <class real_t_, class mapping, class lreal_t_safe>
+		lreal_t_safe calc_sd_right_to_left_weighted(real_t_ * x, real_t_ xmean, size_t ix_arr[], size_t st, size_t end,
+		                                           real_t * sd_arr, mapping & w, lreal_t_safe &cumw)
 		{
-		    ldouble_safe running_mean = 0;
-		    ldouble_safe running_ssq = 0;
+		    lreal_t_safe running_mean = 0;
+		    lreal_t_safe running_ssq = 0;
 		    real_t_ mean_prev = x[ix_arr[end]] - xmean;
 		    size_t n = end - st + 1;
-		    ldouble_safe cnt = 0;
-		    double w_this;
+		    lreal_t_safe cnt = 0;
+		    real_t w_this;
 		    for (size_t row = 0; row < n-1; row++)
 		    {
 		        w_this = w[ix_arr[end-row]];
@@ -14977,8 +14992,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		template <class real_t, class real_t_>
-		double find_split_std_gain_t(real_t_ * x, size_t n, double * sd_arr,
-		                             GainCriterion criterion, double min_gain, double & split_point)
+		real_t find_split_std_gain_t(real_t_ * x, size_t n, real_t * sd_arr,
+		                             GainCriterion criterion, real_t min_gain, real_t & split_point)
 		{
 		    real_t full_sd = calc_sd_right_to_left<real_t>(x, n, sd_arr);
 		    real_t running_mean = 0;
@@ -15016,19 +15031,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 
 
-		template <class real_t, class mapping, class ldouble_safe>
-		double find_split_std_gain_weighted(real_t * x, real_t xmean, size_t ix_arr[], size_t st, size_t end, double * sd_arr,
-		                                    GainCriterion criterion, double min_gain, double & split_point, size_t & split_ix, mapping & w)
+		template <class real_t, class mapping, class lreal_t_safe>
+		real_t find_split_std_gain_weighted(real_t * x, real_t xmean, size_t ix_arr[], size_t st, size_t end, real_t * sd_arr,
+		                                    GainCriterion criterion, real_t min_gain, real_t & split_point, size_t & split_ix, mapping & w)
 		{
-		    ldouble_safe cumw;
-		    double full_sd = calc_sd_right_to_left_weighted(x, xmean, ix_arr, st, end, sd_arr, w, cumw);
-		    ldouble_safe running_mean = 0;
-		    ldouble_safe running_ssq = 0;
-		    ldouble_safe mean_prev = x[ix_arr[st]] - xmean;
-		    double best_gain = -HUGE_VAL;
-		    ldouble_safe currw = 0;
-		    double this_sd, this_gain;
-		    double w_this;
+		    lreal_t_safe cumw;
+		    real_t full_sd = calc_sd_right_to_left_weighted(x, xmean, ix_arr, st, end, sd_arr, w, cumw);
+		    lreal_t_safe running_mean = 0;
+		    lreal_t_safe running_ssq = 0;
+		    lreal_t_safe mean_prev = x[ix_arr[st]] - xmean;
+		    real_t best_gain = -HUGE_VAL;
+		    lreal_t_safe currw = 0;
+		    real_t this_sd, this_gain;
+		    real_t w_this;
 		    split_ix = st;
 
 		    for (size_t row = st; row < end; row++)
@@ -15069,7 +15084,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #ifndef _FOR_R
 		[[gnu::optimize("Ofast")]]
 #endif
-		static inline void xpy1(double * x, double * y, size_t n)
+		static inline void xpy1(real_t * x, real_t * y, size_t n)
 		{
 		    for (size_t ix = 0; ix < n; ix++) y[ix] += x[ix];
 		}
@@ -15077,7 +15092,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #ifndef _FOR_R
 		[[gnu::optimize("Ofast")]]
 #endif
-		static inline void axpy1(const double a, double * x, double * y, size_t n)
+		static inline void axpy1(const real_t a, real_t * x, real_t * y, size_t n)
 		{
 		    for (size_t ix = 0; ix < n; ix++) y[ix] = std::fma(a, x[ix], y[ix]);
 		}
@@ -15085,7 +15100,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #ifndef _FOR_R
 		[[gnu::optimize("Ofast")]]
 #endif
-		static inline void xpy1(double * xval, size_t ind[], size_t nnz, double * y)
+		static inline void xpy1(real_t * xval, size_t ind[], size_t nnz, real_t * y)
 		{
 		    for (size_t ix = 0; ix < nnz; ix++) y[ind[ix]] += xval[ix];
 		}
@@ -15093,7 +15108,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #ifndef _FOR_R
 		[[gnu::optimize("Ofast")]]
 #endif
-		static inline void axpy1(const double a, double * xval, size_t ind[], size_t nnz, double * y)
+		static inline void axpy1(const real_t a, real_t * xval, size_t ind[], size_t nnz, real_t * y)
 		{
 		    for (size_t ix = 0; ix < nnz; ix++) y[ind[ix]] = std::fma(a, xval[ix], y[ind[ix]]);
 		}
@@ -15104,25 +15119,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 #endif
 #endif
 
-		template <class real_t, class ldouble_safe>
-		double find_split_full_gain(real_t * x, size_t st, size_t end, size_t * ix_arr,
+		template <class real_t, class lreal_t_safe>
+		real_t find_split_full_gain(real_t * x, size_t st, size_t end, size_t * ix_arr,
 		                            size_t * cols_use, size_t ncols_use, bool force_cols_use,
-		                            double * X_row_major, size_t ncols,
-		                            double * Xr, size_t * Xr_ind, size_t * Xr_indptr,
-		                            double * buffer_sum_left, double * buffer_sum_tot,
-		                            size_t & split_ix, double & split_point,
+		                            real_t * X_row_major, size_t ncols,
+		                            real_t * Xr, size_t * Xr_ind, size_t * Xr_indptr,
+		                            real_t * buffer_sum_left, real_t * buffer_sum_tot,
+		                            size_t & split_ix, real_t & split_point,
 		                            bool x_uses_ix_arr)
 		{
 		    if (end <= st) return -HUGE_VAL;
-		    if (cols_use != NULL && ncols_use && (double)ncols_use / (double)ncols < 0.1)
+		    if (cols_use != NULL && ncols_use && (real_t)ncols_use / (real_t)ncols < 0.1)
 		        force_cols_use = true;
 
-		    memset(buffer_sum_tot, 0, (force_cols_use? ncols_use : ncols)*sizeof(double));
+		    memset(buffer_sum_tot, 0, (force_cols_use? ncols_use : ncols)*sizeof(real_t));
 		    if (Xr_indptr == NULL)
 		    {
 		        if (force_cols_use)
 		        {
-		            double * ptr_row;
+		            real_t * ptr_row;
 		            for (size_t row = st; row <= end; row++)
 		            {
 		                ptr_row = X_row_major + ix_arr[row]*ncols;
@@ -15145,7 +15160,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            size_t *curr_begin;
 		            size_t *row_end;
 		            size_t *curr_col;
-		            double * Xr_this;
+		            real_t * Xr_this;
 		            size_t *cols_end = cols_use + ncols_use;
 		            for (size_t row = st; row <= end; row++)
 		            {
@@ -15186,12 +15201,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		        }
 		    }
 
-		    double best_gain = -HUGE_VAL;
-		    double this_gain;
-		    double sl, sr;
-		    double dl, dr;
-		    double vleft, vright;
-		    memset(buffer_sum_left, 0, (force_cols_use? ncols_use : ncols)*sizeof(double));
+		    real_t best_gain = -HUGE_VAL;
+		    real_t this_gain;
+		    real_t sl, sr;
+		    real_t dl, dr;
+		    real_t vleft, vright;
+		    memset(buffer_sum_left, 0, (force_cols_use? ncols_use : ncols)*sizeof(real_t));
 		    if (Xr_indptr == NULL)
 		    {
 		        if (!force_cols_use)
@@ -15208,8 +15223,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		                vleft = 0;
 		                vright = 0;
-		                dl = (double)(row-st+1);
-		                dr = (double)(end-row);
+		                dl = (real_t)(row-st+1);
+		                dr = (real_t)(end-row);
 		                for (size_t col = 0; col < ncols; col++)
 		                {
 		                    sl = buffer_sum_left[col];
@@ -15229,7 +15244,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		        else
 		        {
-		            double * ptr_row;
+		            real_t * ptr_row;
 		            for (size_t row = st; row < end; row++)
 		            {
 		                ptr_row = X_row_major + ix_arr[row]*ncols;
@@ -15244,8 +15259,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		                vleft = 0;
 		                vright = 0;
-		                dl = (double)(row-st+1);
-		                dr = (double)(end-row);
+		                dl = (real_t)(row-st+1);
+		                dr = (real_t)(end-row);
 		                for (size_t col = 0; col < ncols_use; col++)
 		                {
 		                    sl = buffer_sum_left[col];
@@ -15282,8 +15297,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		                vleft = 0;
 		                vright = 0;
-		                dl = (double)(row-st+1);
-		                dr = (double)(end-row);
+		                dl = (real_t)(row-st+1);
+		                dr = (real_t)(end-row);
 		                for (size_t col = 0; col < ncols; col++)
 		                {
 		                    sl = buffer_sum_left[col];
@@ -15306,7 +15321,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            size_t *curr_begin;
 		            size_t *row_end;
 		            size_t *curr_col;
-		            double * Xr_this;
+		            real_t * Xr_this;
 		            size_t *cols_end = cols_use + ncols_use;
 		            for (size_t row = st; row < end; row++)
 		            {
@@ -15343,8 +15358,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		                vleft = 0;
 		                vright = 0;
-		                dl = (double)(row-st+1);
-		                dr = (double)(end-row);
+		                dl = (real_t)(row-st+1);
+		                dr = (real_t)(end-row);
 		                for (size_t col = 0; col < ncols_use; col++)
 		                {
 		                    sl = buffer_sum_left[col];
@@ -15369,24 +15384,24 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		        split_point = midpoint(x[ix_arr[split_ix]], x[ix_arr[split_ix+1]]);
 		    else
 		        split_point = midpoint(x[split_ix], x[split_ix+1]);
-		    return best_gain / (ldouble_safe)(end - st + 1);
+		    return best_gain / (lreal_t_safe)(end - st + 1);
 		}
 
-		template <class real_t, class mapping, class ldouble_safe>
-		double find_split_full_gain_weighted(real_t * x, size_t st, size_t end, size_t * ix_arr,
+		template <class real_t, class mapping, class lreal_t_safe>
+		real_t find_split_full_gain_weighted(real_t * x, size_t st, size_t end, size_t * ix_arr,
 		                                     size_t * cols_use, size_t ncols_use, bool force_cols_use,
-		                                     double * X_row_major, size_t ncols,
-		                                     double * Xr, size_t * Xr_ind, size_t * Xr_indptr,
-		                                     double * buffer_sum_left, double * buffer_sum_tot,
-		                                     size_t & split_ix, double & split_point,
+		                                     real_t * X_row_major, size_t ncols,
+		                                     real_t * Xr, size_t * Xr_ind, size_t * Xr_indptr,
+		                                     real_t * buffer_sum_left, real_t * buffer_sum_tot,
+		                                     size_t & split_ix, real_t & split_point,
 		                                     bool x_uses_ix_arr,
 		                                     mapping & w)
 		{
 		    if (end <= st) return -HUGE_VAL;
-		    if (cols_use != NULL && ncols_use && (double)ncols_use / (double)ncols < 0.1)
+		    if (cols_use != NULL && ncols_use && (real_t)ncols_use / (real_t)ncols < 0.1)
 		        force_cols_use = true;
 
-		    double wtot = 0;
+		    real_t wtot = 0;
 		    if (x_uses_ix_arr)
 		    {
 		        for (size_t row = st; row <= end; row++)
@@ -15399,7 +15414,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            wtot += w[row];
 		    }
 
-		    memset(buffer_sum_tot, 0, (force_cols_use? ncols_use : ncols)*sizeof(double));
+		    memset(buffer_sum_tot, 0, (force_cols_use? ncols_use : ncols)*sizeof(real_t));
 		    if (Xr_indptr == NULL)
 		    {
 		        if (!force_cols_use)
@@ -15419,8 +15434,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		        else
 		        {
-		            double * ptr_row;
-		            double w_row;
+		            real_t * ptr_row;
+		            real_t w_row;
 
 		            if (x_uses_ix_arr)
 		            {
@@ -15475,9 +15490,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            size_t *curr_begin;
 		            size_t *row_end;
 		            size_t *curr_col;
-		            double * Xr_this;
+		            real_t * Xr_this;
 		            size_t *cols_end = cols_use + ncols_use;
-		            double w_row;
+		            real_t w_row;
 		            for (size_t row = st; row <= end; row++)
 		            {
 		                curr_begin = Xr_ind + Xr_indptr[ix_arr[row]];
@@ -15512,14 +15527,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		        }
 		    }
 
-		    double best_gain = -HUGE_VAL;
-		    double this_gain;
-		    double sl, sr;
-		    double vleft, vright;
-		    double wleft = 0;
-		    double w_row;
-		    double wright;
-		    memset(buffer_sum_left, 0, (force_cols_use? ncols_use : ncols)*sizeof(double));
+		    real_t best_gain = -HUGE_VAL;
+		    real_t this_gain;
+		    real_t sl, sr;
+		    real_t vleft, vright;
+		    real_t wleft = 0;
+		    real_t w_row;
+		    real_t wright;
+		    memset(buffer_sum_left, 0, (force_cols_use? ncols_use : ncols)*sizeof(real_t));
 		    if (Xr_indptr == NULL)
 		    {
 		        if (!force_cols_use)
@@ -15558,8 +15573,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		        else
 		        {
-		            double * ptr_row;
-		            double w_row;
+		            real_t * ptr_row;
+		            real_t w_row;
 		            for (size_t row = st; row < end; row++)
 		            {
 		                w_row = w[x_uses_ix_arr? ix_arr[row] : row];
@@ -15601,7 +15616,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		        if (!force_cols_use)
 		        {
 		            size_t ptr_this;
-		            double w_row;
+		            real_t w_row;
 		            for (size_t row = st; row < end; row++)
 		            {
 		                w_row= w[x_uses_ix_arr? ix_arr[row] : row];
@@ -15640,9 +15655,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            size_t *curr_begin;
 		            size_t *row_end;
 		            size_t *curr_col;
-		            double * Xr_this;
+		            real_t * Xr_this;
 		            size_t *cols_end = cols_use + ncols_use;
-		            double w_row;
+		            real_t w_row;
 		            size_t dtemp;
 		            for (size_t row = st; row < end; row++)
 		            {
@@ -15711,15 +15726,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		template <class real_t_, class real_t>
-		double find_split_dens_shortform_t(real_t * x, size_t n, double & split_point)
+		real_t find_split_dens_shortform_t(real_t * x, size_t n, real_t & split_point)
 		{
-		    double best_gain = -HUGE_VAL;
+		    real_t best_gain = -HUGE_VAL;
 		    size_t n_minus_one = n - 1;
 		    real_t_ xmin = x[0];
 		    real_t_ xmax = x[n-1];
 		    real_t_ xleft, xright;
 		    real_t_ xmid;
-		    double this_gain;
+		    real_t this_gain;
 		    size_t split_ix = 0;
 
 		    for (size_t ix = 0; ix < n_minus_one; ix++)
@@ -15744,9 +15759,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    real_t_ nright = (real_t_)(n_minus_one - split_ix);
 		    split_point = midpoint(x[split_ix], x[split_ix+1]);
 		    real_t_ rpct_left = split_point / xtot;
-		    rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
+		    rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
 		    real_t_ rpct_right = (real_t_)1 - rpct_left;
-		    rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
+		    rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
 
 		    real_t_ nl_sq = nleft  / (real_t_)n; nl_sq = square(nl_sq);
 		    real_t_ nr_sq = nright / (real_t_)n; nl_sq = square(nr_sq);
@@ -15754,25 +15769,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    return nl_sq / rpct_left + nr_sq / rpct_right;
 		}
 
-		template <class real_t, class ldouble_safe>
-		double find_split_dens_shortform(real_t * x, size_t n, double & split_point)
+		template <class real_t, class lreal_t_safe>
+		real_t find_split_dens_shortform(real_t * x, size_t n, real_t & split_point)
 		{
 		    if (n < INT32_MAX)
-		        return find_split_dens_shortform_t<double, real_t>(x, n, split_point);
+		        return find_split_dens_shortform_t<real_t, real_t>(x, n, split_point);
 		    else
-		        return find_split_dens_shortform_t<ldouble_safe, real_t>(x, n, split_point);
+		        return find_split_dens_shortform_t<lreal_t_safe, real_t>(x, n, split_point);
 		}
 
 		template <class real_t_, class real_t, class mapping>
-		double find_split_dens_shortform_weighted_t(real_t * x, size_t n, double & split_point, mapping & w, size_t * buffer_indices)
+		real_t find_split_dens_shortform_weighted_t(real_t * x, size_t n, real_t & split_point, mapping & w, size_t * buffer_indices)
 		{
-		    double best_gain = -HUGE_VAL;
+		    real_t best_gain = -HUGE_VAL;
 		    size_t n_minus_one = n - 1;
 		    real_t_ xmin = x[buffer_indices[0]];
 		    real_t_ xmax = x[buffer_indices[n-1]];
 		    real_t_ xleft, xright;
 		    real_t_ xmid;
-		    double this_gain;
+		    real_t this_gain;
 
 		    real_t_ wtot = 0;
 		    for (size_t ix = 0; ix < n; ix++)
@@ -15806,13 +15821,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    real_t_ xtot = xmax - xmin;
 		    w_left = best_w;
 		    w_right = wtot - w_left;
-		    w_left = std::fmax(w_left, std::numeric_limits<double>::min());
-		    w_right = std::fmax(w_right, std::numeric_limits<double>::min());
+		    w_left = std::fmax(w_left, std::numeric_limits<real_t>::min());
+		    w_right = std::fmax(w_right, std::numeric_limits<real_t>::min());
 		    split_point = midpoint(x[buffer_indices[split_ix]], x[buffer_indices[split_ix+1]]);
 		    real_t_ rpct_left = split_point / xtot;
-		    rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
+		    rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
 		    real_t_ rpct_right = (real_t_)1 - rpct_left;
-		    rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
+		    rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
 
 		    real_t_ wl_sq = w_left  / wtot; wl_sq = square(wl_sq);
 		    real_t_ wr_sq = w_right / wtot; wl_sq = square(wr_sq);
@@ -15820,25 +15835,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    return wl_sq / rpct_left + wr_sq / rpct_right;
 		}
 
-		template <class real_t, class mapping, class ldouble_safe>
-		double find_split_dens_shortform_weighted(real_t * x, size_t n, double & split_point, mapping & w, size_t * buffer_indices)
+		template <class real_t, class mapping, class lreal_t_safe>
+		real_t find_split_dens_shortform_weighted(real_t * x, size_t n, real_t & split_point, mapping & w, size_t * buffer_indices)
 		{
 		    if (n < INT32_MAX)
-		        return find_split_dens_shortform_weighted_t<double, real_t, mapping>(x, n, split_point, w, buffer_indices);
+		        return find_split_dens_shortform_weighted_t<real_t, real_t, mapping>(x, n, split_point, w, buffer_indices);
 		    else
-		        return find_split_dens_shortform_weighted_t<ldouble_safe, real_t, mapping>(x, n, split_point, w, buffer_indices);
+		        return find_split_dens_shortform_weighted_t<lreal_t_safe, real_t, mapping>(x, n, split_point, w, buffer_indices);
 		}
 
 		template <class real_t>
-		double find_split_dens_shortform(real_t * x, size_t * ix_arr, size_t st, size_t end,
-		                                 double & split_point, size_t & split_ix)
+		real_t find_split_dens_shortform(real_t * x, size_t * ix_arr, size_t st, size_t end,
+		                                 real_t & split_point, size_t & split_ix)
 		{
-		    double best_gain = -HUGE_VAL;
+		    real_t best_gain = -HUGE_VAL;
 		    real_t xmin = x[ix_arr[st]];
 		    real_t xmax = x[ix_arr[end]];
 		    real_t xleft, xright;
 		    real_t xmid;
-		    double this_gain;
+		    real_t this_gain;
 
 		    for (size_t row = st; row < end; row++)
 		    {
@@ -15857,39 +15872,39 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		    if (best_gain <= -HUGE_VAL) return best_gain;
 
-		    double xtot = (double)xmax - (double)xmin;
-		    double nleft = (double)(split_ix-st+1);
-		    double nright = (double)(end - split_ix);
+		    real_t xtot = (real_t)xmax - (real_t)xmin;
+		    real_t nleft = (real_t)(split_ix-st+1);
+		    real_t nright = (real_t)(end - split_ix);
 		    split_point = midpoint(x[ix_arr[split_ix]], x[ix_arr[split_ix+1]]);
-		    double rpct_left = split_point / xtot;
-		    rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
-		    double rpct_right = 1. - rpct_left;
-		    rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
-		    double ntot = (double)(end - st + 1);
+		    real_t rpct_left = split_point / xtot;
+		    rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
+		    real_t rpct_right = 1. - rpct_left;
+		    rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
+		    real_t ntot = (real_t)(end - st + 1);
 
-		    double nl_sq = nleft  / ntot; nl_sq = square(nl_sq);
-		    double nr_sq = nright / ntot; nl_sq = square(nr_sq);
+		    real_t nl_sq = nleft  / ntot; nl_sq = square(nl_sq);
+		    real_t nr_sq = nright / ntot; nl_sq = square(nr_sq);
 
 		    return nl_sq / rpct_left + nr_sq / rpct_right;
 		}
 
 		template <class real_t, class mapping>
-		double find_split_dens_shortform_weighted(real_t * x, size_t * ix_arr, size_t st, size_t end,
-		                                          double & split_point, size_t & split_ix, mapping & w)
+		real_t find_split_dens_shortform_weighted(real_t * x, size_t * ix_arr, size_t st, size_t end,
+		                                          real_t & split_point, size_t & split_ix, mapping & w)
 		{
-		    double best_gain = -HUGE_VAL;
+		    real_t best_gain = -HUGE_VAL;
 		    real_t xmin = x[ix_arr[st]];
 		    real_t xmax = x[ix_arr[end]];
 		    real_t xleft, xright;
 		    real_t xmid;
-		    double this_gain;
+		    real_t this_gain;
 
-		    double wtot = 0;
+		    real_t wtot = 0;
 		    for (size_t row = st; row <= end; row++)
 		        wtot += w[ix_arr[row]];
-		    double w_left = 0;
-		    double w_right;
-		    double best_w = 0;
+		    real_t w_left = 0;
+		    real_t w_right;
+		    real_t best_w = 0;
 
 		    for (size_t row = st; row < end; row++)
 		    {
@@ -15912,39 +15927,39 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		    if (best_gain <= -HUGE_VAL) return best_gain;
 
-		    double xtot = (double)xmax - (double)xmin;
+		    real_t xtot = (real_t)xmax - (real_t)xmin;
 		    w_left = best_w;
 		    w_right = wtot - w_left;
-		    w_left = std::fmax(w_left, std::numeric_limits<double>::min());
-		    w_right = std::fmax(w_right, std::numeric_limits<double>::min());
+		    w_left = std::fmax(w_left, std::numeric_limits<real_t>::min());
+		    w_right = std::fmax(w_right, std::numeric_limits<real_t>::min());
 		    split_point = midpoint(x[split_ix], x[split_ix+1]);
-		    double rpct_left = split_point / xtot;
-		    rpct_left = std::fmax(rpct_left, std::numeric_limits<double>::min());
-		    double rpct_right = 1. - rpct_left;
-		    rpct_right = std::fmax(rpct_right, std::numeric_limits<double>::min());
+		    real_t rpct_left = split_point / xtot;
+		    rpct_left = std::fmax(rpct_left, std::numeric_limits<real_t>::min());
+		    real_t rpct_right = 1. - rpct_left;
+		    rpct_right = std::fmax(rpct_right, std::numeric_limits<real_t>::min());
 
-		    double wl_sq = w_left  / wtot; wl_sq = square(wl_sq);
-		    double wr_sq = w_right / wtot; wl_sq = square(wr_sq);
+		    real_t wl_sq = w_left  / wtot; wl_sq = square(wl_sq);
+		    real_t wr_sq = w_right / wtot; wl_sq = square(wr_sq);
 
 		    return wl_sq / rpct_left + wr_sq / rpct_right;
 		}
 
 		/* This is a slower but more numerically-robust form */
-		template <class real_t_=real_t, class ldouble_safe = long double>
-		double find_split_dens_longform(real_t_ * x, size_t * ix_arr, size_t st, size_t end,
-		                                double & split_point, size_t & split_ix)
+		template <class real_t_=real_t, class lreal_t_safe = long real_t>
+		real_t find_split_dens_longform(real_t_ * x, size_t * ix_arr, size_t st, size_t end,
+		                                real_t & split_point, size_t & split_ix)
 		{
-		    double best_gain = -HUGE_VAL;
+		    real_t best_gain = -HUGE_VAL;
 		    real_t_ xmin = x[ix_arr[st]];
 		    real_t_ xmax = x[ix_arr[end]];
 		    real_t_ xleft, xright;
 		    real_t_ xmid;
-		    ldouble_safe pct_left, pct_right;
-		    ldouble_safe rpct_left, rpct_right;
-		    ldouble_safe n_tot = end - st + 1;
-		    ldouble_safe xtot = (ldouble_safe)xmax - (ldouble_safe)xmin;
-		    ldouble_safe cnt_left;
-		    double this_gain;
+		    lreal_t_safe pct_left, pct_right;
+		    lreal_t_safe rpct_left, rpct_right;
+		    lreal_t_safe n_tot = end - st + 1;
+		    lreal_t_safe xtot = (lreal_t_safe)xmax - (lreal_t_safe)xmin;
+		    lreal_t_safe cnt_left;
+		    real_t this_gain;
 
 		    for (size_t row = st; row < end; row++)
 		    {
@@ -15954,14 +15969,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		        xright = xmax - xmid;
 		        if (unlikely(!xleft || !xright)) continue;
 
-		        cnt_left = (ldouble_safe)(row-st+1);
+		        cnt_left = (lreal_t_safe)(row-st+1);
 
 		        xleft = std::fmax(xleft, (real_t)std::numeric_limits<real_t>::min());
 		        xright = std::fmax(xright, (real_t)std::numeric_limits<real_t>::min());
 		        pct_left = cnt_left / n_tot;
-		        pct_right = (ldouble_safe)1 - pct_left;
-		        rpct_left = (ldouble_safe)xleft / xtot;
-		        rpct_right = (ldouble_safe)xright / xtot;
+		        pct_right = (lreal_t_safe)1 - pct_left;
+		        rpct_left = (lreal_t_safe)xleft / xtot;
+		        rpct_right = (lreal_t_safe)xright / xtot;
 
 		        this_gain = square(pct_left) / rpct_left + square(pct_right) / rpct_right;
 		        if (unlikely(is_na_or_inf(this_gain))) continue;
@@ -15976,24 +15991,24 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    return best_gain;
 		}
 
-		template <class real_t, class mapping, class ldouble_safe>
-		double find_split_dens_longform_weighted(real_t * x, size_t * ix_arr, size_t st, size_t end,
-		                                         double & split_point, size_t & split_ix, mapping & w)
+		template <class real_t, class mapping, class lreal_t_safe>
+		real_t find_split_dens_longform_weighted(real_t * x, size_t * ix_arr, size_t st, size_t end,
+		                                         real_t & split_point, size_t & split_ix, mapping & w)
 		{
-		    double best_gain = -HUGE_VAL;
+		    real_t best_gain = -HUGE_VAL;
 		    real_t xmin = x[ix_arr[st]];
 		    real_t xmax = x[ix_arr[end]];
 		    real_t xleft, xright;
 		    real_t xmid;
-		    ldouble_safe pct_left, pct_right;
-		    ldouble_safe rpct_left, rpct_right;
-		    ldouble_safe xtot = (ldouble_safe)xmax - (ldouble_safe)xmin;
-		    double this_gain;
+		    lreal_t_safe pct_left, pct_right;
+		    lreal_t_safe rpct_left, rpct_right;
+		    lreal_t_safe xtot = (lreal_t_safe)xmax - (lreal_t_safe)xmin;
+		    real_t this_gain;
 
-		    ldouble_safe wtot = 0;
+		    lreal_t_safe wtot = 0;
 		    for (size_t row = st; row <= end; row++)
 		        wtot += w[ix_arr[row]];
-		    ldouble_safe w_left = 0;
+		    lreal_t_safe w_left = 0;
 
 		    for (size_t row = st; row < end; row++)
 		    {
@@ -16007,9 +16022,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		        xleft = std::fmax(xleft, (real_t)std::numeric_limits<real_t>::min());
 		        xright = std::fmax(xright, (real_t)std::numeric_limits<real_t>::min());
 		        pct_left = w_left / wtot;
-		        pct_right = (ldouble_safe)1 - pct_left;
-		        rpct_left = (ldouble_safe)xleft / xtot;
-		        rpct_right = (ldouble_safe)xright / xtot;
+		        pct_right = (lreal_t_safe)1 - pct_left;
+		        rpct_left = (lreal_t_safe)xleft / xtot;
+		        rpct_right = (lreal_t_safe)xright / xtot;
 
 		        this_gain = square(pct_left) / rpct_left + square(pct_right) / rpct_right;
 		        if (unlikely(is_na_or_inf(this_gain))) continue;
@@ -16024,28 +16039,28 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    return best_gain;
 		}
 
-		template <class real_t, class ldouble_safe>
-		double find_split_dens(real_t * x, size_t * ix_arr, size_t st, size_t end,
-		                       double & split_point, size_t & split_ix)
+		template <class real_t, class lreal_t_safe>
+		real_t find_split_dens(real_t * x, size_t * ix_arr, size_t st, size_t end,
+		                       real_t & split_point, size_t & split_ix)
 		{
 		    if (end - st + 1 < INT32_MAX && x[ix_arr[end]] - x[ix_arr[st]] >= 1)
 		        return find_split_dens_shortform<real_t>(x, ix_arr, st, end, split_point, split_ix);
 		    else
-		        return find_split_dens_longform<real_t, ldouble_safe>(x, ix_arr, st, end, split_point, split_ix);
+		        return find_split_dens_longform<real_t, lreal_t_safe>(x, ix_arr, st, end, split_point, split_ix);
 		}
 
-		template <class real_t, class mapping, class ldouble_safe>
-		double find_split_dens_weighted(real_t * x, size_t * ix_arr, size_t st, size_t end,
-		                                double & split_point, size_t & split_ix, mapping & w)
+		template <class real_t, class mapping, class lreal_t_safe>
+		real_t find_split_dens_weighted(real_t * x, size_t * ix_arr, size_t st, size_t end,
+		                                real_t & split_point, size_t & split_ix, mapping & w)
 		{
 		    if (end - st + 1 < INT32_MAX && x[ix_arr[end]] - x[ix_arr[st]] >= 1)
 		        return find_split_dens_shortform_weighted<real_t, mapping>(x, ix_arr, st, end, split_point, split_ix, w);
 		    else
-		        return find_split_dens_longform_weighted<real_t, mapping, ldouble_safe>(x, ix_arr, st, end, split_point, split_ix, w);
+		        return find_split_dens_longform_weighted<real_t, mapping, lreal_t_safe>(x, ix_arr, st, end, split_point, split_ix, w);
 		}
 
-		template <class int_t, class ldouble_safe>
-		double find_split_dens_longform(int * x, int ncat, size_t * ix_arr, size_t st, size_t end,
+		template <class int_t, class lreal_t_safe>
+		real_t find_split_dens_longform(int * x, int ncat, size_t * ix_arr, size_t st, size_t end,
 		                                CategSplit cat_split_type, MissingAction missing_action,
 		                                int & chosen_cat, signed char * split_categ, int * saved_cat_mode,
 		                                size_t * buffer_cnt, int_t * buffer_indices)
@@ -16133,21 +16148,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            }
 		        }
 
-		        ldouble_safe pct_left
+		        lreal_t_safe pct_left
 		            =
-		        (ldouble_safe)buffer_cnt[buffer_indices[curr]]
+		        (lreal_t_safe)buffer_cnt[buffer_indices[curr]]
 		            /
-		        (ldouble_safe)(
+		        (lreal_t_safe)(
 		            buffer_cnt[buffer_indices[curr]]
 		                +
 		            buffer_cnt[buffer_indices[curr+1]]
 		        );
 
-		        return  ((ldouble_safe)buffer_cnt[buffer_indices[curr]] * (2. * pct_left)
+		        return  ((lreal_t_safe)buffer_cnt[buffer_indices[curr]] * (2. * pct_left)
 		                     +
-		                 (ldouble_safe)buffer_cnt[buffer_indices[curr+1]] * (2. - 2.*pct_left))
+		                 (lreal_t_safe)buffer_cnt[buffer_indices[curr+1]] * (2. - 2.*pct_left))
 		                    /
-		                 (ldouble_safe)(buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr+1]]);
+		                 (lreal_t_safe)(buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr+1]]);
 		    }
 
 		    size_t ntot;
@@ -16156,27 +16171,27 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    else
 		        ntot = std::accumulate(buffer_cnt, buffer_cnt + ncat, (size_t)0);
 		    if (unlikely(ntot <= 1)) unexpected_error();
-		    ldouble_safe ntot_ = (ldouble_safe)ntot;
+		    lreal_t_safe ntot_ = (lreal_t_safe)ntot;
 
 		    switch (cat_split_type)
 		    {
 		        case SingleCateg:
 		        {
-		            double pct_one_cat = 1. / (double)ncat_present;
-		            double pct_left_smallest = (ldouble_safe)buffer_cnt[buffer_indices[curr]] / ntot_;
-		            double gain_smallest
+		            real_t pct_one_cat = 1. / (real_t)ncat_present;
+		            real_t pct_left_smallest = (lreal_t_safe)buffer_cnt[buffer_indices[curr]] / ntot_;
+		            real_t gain_smallest
 		                =
-		            (ldouble_safe)buffer_cnt[buffer_indices[curr]] * (pct_left_smallest / pct_one_cat)
+		            (lreal_t_safe)buffer_cnt[buffer_indices[curr]] * (pct_left_smallest / pct_one_cat)
 		            +
-		            (ldouble_safe)(ntot - buffer_cnt[buffer_indices[curr]]) * ((1. - pct_left_smallest) / (1. - pct_one_cat))
+		            (lreal_t_safe)(ntot - buffer_cnt[buffer_indices[curr]]) * ((1. - pct_left_smallest) / (1. - pct_one_cat))
 		            ;
 
-		            double pct_left_biggest = (ldouble_safe)buffer_cnt[buffer_indices[ncat-1]] / ntot_;
-		            double gain_biggest
+		            real_t pct_left_biggest = (lreal_t_safe)buffer_cnt[buffer_indices[ncat-1]] / ntot_;
+		            real_t gain_biggest
 		                =
-		            (ldouble_safe)buffer_cnt[buffer_indices[ncat-1]] * (pct_left_biggest / pct_one_cat)
+		            (lreal_t_safe)buffer_cnt[buffer_indices[ncat-1]] * (pct_left_biggest / pct_one_cat)
 		            +
-		            (ldouble_safe)(ntot - buffer_cnt[buffer_indices[ncat-1]]) * ((1. - pct_left_biggest) / (1. - pct_one_cat))
+		            (lreal_t_safe)(ntot - buffer_cnt[buffer_indices[ncat-1]]) * ((1. - pct_left_biggest) / (1. - pct_one_cat))
 		            ;
 
 		            if (gain_smallest >= gain_biggest)
@@ -16198,23 +16213,23 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            size_t cnt_left = 0;
 		            size_t cnt_right;
 		            int st_cat = curr - 1;
-		            double this_gain;
-		            double best_gain = -HUGE_VAL;
+		            real_t this_gain;
+		            real_t best_gain = -HUGE_VAL;
 		            int best_cat = 0;
-		            ldouble_safe pct_left;
-		            double pct_cat_left;
-		            double ncat_present_ = (double)ncat_present;
+		            lreal_t_safe pct_left;
+		            real_t pct_cat_left;
+		            real_t ncat_present_ = (real_t)ncat_present;
 		            for (; curr < ncat; curr++)
 		            {
 		                cnt_left += buffer_cnt[buffer_indices[curr]];
 		                cnt_right = ntot - cnt_left;
-		                pct_left = (ldouble_safe)cnt_left / ntot_;
-		                pct_cat_left = (double)(curr - st_cat) / ncat_present_;
+		                pct_left = (lreal_t_safe)cnt_left / ntot_;
+		                pct_cat_left = (real_t)(curr - st_cat) / ncat_present_;
 		                this_gain
 		                    =
-		                (ldouble_safe)cnt_left * (pct_left / pct_cat_left)
+		                (lreal_t_safe)cnt_left * (pct_left / pct_cat_left)
 		                +
-		                (ldouble_safe)cnt_right * (((ldouble_safe)1 - pct_left) / (1. - pct_cat_left))
+		                (lreal_t_safe)cnt_right * (((lreal_t_safe)1 - pct_left) / (1. - pct_cat_left))
 		                ;
 		                if (this_gain > best_gain)
 		                {
@@ -16238,20 +16253,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		    return -HUGE_VAL;
 		}
 
-		template <class mapping, class int_t, class ldouble_safe>
-		double find_split_dens_longform_weighted(int * x, int ncat, size_t * ix_arr, size_t st, size_t end,
+		template <class mapping, class int_t, class lreal_t_safe>
+		real_t find_split_dens_longform_weighted(int * x, int ncat, size_t * ix_arr, size_t st, size_t end,
 		                                         CategSplit cat_split_type, MissingAction missing_action,
 		                                         int & chosen_cat, signed char * split_categ, int * saved_cat_mode,
 		                                         int_t * buffer_indices, mapping & w)
 		{
 		    if (st >= end || ncat <= 1) return -HUGE_VAL;
-		    ldouble_safe w_missing = 0;
+		    lreal_t_safe w_missing = 0;
 		    int xval;
 		    size_t ix_;
 
 		    /* count categories */
 		    /* TODO: allocate this buffer externally */
-		    std::vector<ldouble_safe> buffer_cnt(ncat, (ldouble_safe)0);
+		    std::vector<lreal_t_safe> buffer_cnt(ncat, (lreal_t_safe)0);
 		    if (missing_action == Fail)
 		    {
 		        for (size_t row = st; row <= end; row++)
@@ -16332,7 +16347,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		            }
 		        }
 
-		        ldouble_safe pct_left
+		        lreal_t_safe pct_left
 		            =
 		        buffer_cnt[buffer_indices[curr]]
 		            /
@@ -16349,24 +16364,24 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		                (buffer_cnt[buffer_indices[curr]] + buffer_cnt[buffer_indices[curr+1]]);
 		    }
 
-		    ldouble_safe ntot = std::accumulate(buffer_cnt.begin(), buffer_cnt.end(), (ldouble_safe)0);
+		    lreal_t_safe ntot = std::accumulate(buffer_cnt.begin(), buffer_cnt.end(), (lreal_t_safe)0);
 		    if (unlikely(ntot <= 0)) unexpected_error();
 
 		    switch (cat_split_type)
 		    {
 		        case SingleCateg:
 		        {
-		            double pct_one_cat = 1. / (double)ncat_present;
-		            double pct_left_smallest = buffer_cnt[buffer_indices[curr]] / ntot;
-		            double gain_smallest
+		            real_t pct_one_cat = 1. / (real_t)ncat_present;
+		            real_t pct_left_smallest = buffer_cnt[buffer_indices[curr]] / ntot;
+		            real_t gain_smallest
 		                =
 		            buffer_cnt[buffer_indices[curr]] * (pct_left_smallest / pct_one_cat)
 		            +
 		            (ntot - buffer_cnt[buffer_indices[curr]]) * ((1. - pct_left_smallest) / (1. - pct_one_cat))
 		            ;
 
-		            double pct_left_biggest = buffer_cnt[buffer_indices[ncat-1]] / ntot;
-		            double gain_biggest
+		            real_t pct_left_biggest = buffer_cnt[buffer_indices[ncat-1]] / ntot;
+		            real_t gain_biggest
 		                =
 		            buffer_cnt[buffer_indices[ncat-1]] * (pct_left_biggest / pct_one_cat)
 		            +
@@ -16389,26 +16404,26 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		        case SubSet:
 		        {
-		            ldouble_safe cnt_left = 0;
-		            ldouble_safe cnt_right;
+		            lreal_t_safe cnt_left = 0;
+		            lreal_t_safe cnt_right;
 		            int st_cat = curr - 1;
-		            double this_gain;
-		            double best_gain = -HUGE_VAL;
+		            real_t this_gain;
+		            real_t best_gain = -HUGE_VAL;
 		            int best_cat = 0;
-		            ldouble_safe pct_left;
-		            double pct_cat_left;
-		            double ncat_present_ = (double)ncat_present;
+		            lreal_t_safe pct_left;
+		            real_t pct_cat_left;
+		            real_t ncat_present_ = (real_t)ncat_present;
 		            for (; curr < ncat; curr++)
 		            {
 		                cnt_left += buffer_cnt[buffer_indices[curr]];
 		                cnt_right = ntot - cnt_left;
 		                pct_left = cnt_left / ntot;
-		                pct_cat_left = (double)(curr - st_cat) / ncat_present_;
+		                pct_cat_left = (real_t)(curr - st_cat) / ncat_present_;
 		                this_gain
 		                    =
-		                (ldouble_safe)cnt_left * (pct_left / pct_cat_left)
+		                (lreal_t_safe)cnt_left * (pct_left / pct_cat_left)
 		                +
-		                (ldouble_safe)cnt_right * (((ldouble_safe)1 - pct_left) / (1. - pct_cat_left))
+		                (lreal_t_safe)cnt_right * (((lreal_t_safe)1 - pct_left) / (1. - pct_cat_left))
 		                ;
 		                if (this_gain > best_gain)
 		                {
@@ -16433,19 +16448,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 #endif
 	/* for split-criterion in hyperplanes (see below for version aimed at single-variable splits) */
-	template <class ldouble_safe>
-	double
-	eval_guided_crit(double *x, size_t n, GainCriterion criterion,
-					 double min_gain, bool as_relative_gain, double *buffer_sd,
-					 double &split_point, double &xmin, double &xmax,
+	template <class lreal_t_safe>
+	real_t
+	eval_guided_crit(real_t *x, size_t n, GainCriterion criterion,
+					 real_t min_gain, bool as_relative_gain, real_t *buffer_sd,
+					 real_t &split_point, real_t &xmin, real_t &xmax,
 					 size_t *ix_arr_plus_st, size_t *cols_use,
 					 size_t ncols_use, bool force_cols_use,
-					 double *X_row_major, size_t ncols, double *Xr,
+					 real_t *X_row_major, size_t ncols, real_t *Xr,
 					 size_t *Xr_ind, size_t *Xr_indptr)
 	{
 		/* Note: the input 'x' is supposed to be a linear combination of standardized variables, so
 		 all numbers are assumed to be small and in the same scale */
-		double gain = 0;
+		real_t gain = 0;
 		if (criterion == DensityCrit || criterion == FullGain)
 			min_gain = 0;
 
@@ -16471,13 +16486,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					  { return x[a] < x[b]; });
 			if (x[argsorted[0]] == x[argsorted[n - 1]])
 				return -HUGE_VAL;
-			std::vector<double> temp_buffer(n + mult2(ncols));
+			std::vector<real_t> temp_buffer(n + mult2(ncols));
 			for (size_t ix = 0; ix < n; ix++)
 				temp_buffer[ix] = x[argsorted[ix]];
 			for (size_t ix = 0; ix < n; ix++)
 				argsorted[ix] = ix_arr_plus_st[argsorted[ix]];
 			size_t ignored;
-			return find_split_full_gain<double, ldouble_safe>(
+			return find_split_full_gain<real_t, lreal_t_safe>(
 				temp_buffer.data(), (size_t)0, n - 1, argsorted.data(),
 				cols_use, ncols_use, force_cols_use, X_row_major, ncols, Xr,
 				Xr_ind, Xr_indptr, temp_buffer.data() + n,
@@ -16492,28 +16507,28 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			return -HUGE_VAL;
 
 		if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-			gain = find_split_rel_gain<double, ldouble_safe>(x, n, split_point);
+			gain = find_split_rel_gain<real_t, lreal_t_safe>(x, n, split_point);
 		else if (criterion == Pooled || criterion == Averaged)
-			gain = find_split_std_gain<double, ldouble_safe>(x, n, buffer_sd,
+			gain = find_split_std_gain<real_t, lreal_t_safe>(x, n, buffer_sd,
 															 criterion, min_gain,
 															 split_point);
 		else if (criterion == DensityCrit)
-			gain = find_split_dens_shortform<double, ldouble_safe>(x, n,
+			gain = find_split_dens_shortform<real_t, lreal_t_safe>(x, n,
 																   split_point);
 		/* Note: a gain of -Inf signals that the data is unsplittable. Zero signals it's below the minimum. */
 		return std::fmax(0., gain);
 	}
 
-	template <class ldouble_safe>
-	double
-	eval_guided_crit_weighted(double *x, size_t n, GainCriterion criterion,
-							  double min_gain, bool as_relative_gain,
-							  double *buffer_sd, double &split_point,
-							  double &xmin, double &xmax, double *w,
+	template <class lreal_t_safe>
+	real_t
+	eval_guided_crit_weighted(real_t *x, size_t n, GainCriterion criterion,
+							  real_t min_gain, bool as_relative_gain,
+							  real_t *buffer_sd, real_t &split_point,
+							  real_t &xmin, real_t &xmax, real_t *w,
 							  size_t *buffer_indices, size_t *ix_arr_plus_st,
 							  size_t *cols_use, size_t ncols_use,
-							  bool force_cols_use, double *X_row_major,
-							  size_t ncols, double *Xr, size_t *Xr_ind,
+							  bool force_cols_use, real_t *X_row_major,
+							  size_t ncols, real_t *Xr, size_t *Xr_ind,
 							  size_t *Xr_indptr)
 	{
 		UNDEF_REFERENCE(as_relative_gain)
@@ -16521,7 +16536,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		/* Note: the input 'x' is supposed to be a linear combination of standardized variables, so
 		 all numbers are assumed to be small and in the same scale */
-		double gain = 0;
+		real_t gain = 0;
 		if (criterion == DensityCrit || criterion == FullGain)
 			min_gain = 0;
 
@@ -16548,12 +16563,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			return -HUGE_VAL;
 
 		if (criterion == Pooled || criterion == Averaged)
-			gain = find_split_std_gain_weighted<double, ldouble_safe>(
+			gain = find_split_std_gain_weighted<real_t, lreal_t_safe>(
 				x, n, buffer_sd, criterion, min_gain, split_point, w,
 				buffer_indices);
 		else if (criterion == DensityCrit)
 			gain =
-				find_split_dens_shortform_weighted<double, double *, ldouble_safe>(
+				find_split_dens_shortform_weighted<real_t, real_t *, lreal_t_safe>(
 					x, n, split_point, w, buffer_indices);
 		else if (criterion == FullGain)
 		{
@@ -16563,13 +16578,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					  { return x[a] < x[b]; });
 			if (x[argsorted[0]] == x[argsorted[n - 1]])
 				return -HUGE_VAL;
-			std::vector<double> temp_buffer(n + mult2(ncols));
+			std::vector<real_t> temp_buffer(n + mult2(ncols));
 			for (size_t ix = 0; ix < n; ix++)
 				temp_buffer[ix] = x[argsorted[ix]];
 			for (size_t ix = 0; ix < n; ix++)
 				argsorted[ix] = ix_arr_plus_st[argsorted[ix]];
 			size_t ignored;
-			gain = find_split_full_gain_weighted<double, double *, ldouble_safe>(
+			gain = find_split_full_gain_weighted<real_t, real_t *, lreal_t_safe>(
 				temp_buffer.data(), (size_t)0, n - 1, argsorted.data(),
 				cols_use, ncols_use, force_cols_use, X_row_major, ncols, Xr,
 				Xr_ind, Xr_indptr, temp_buffer.data() + n,
@@ -16580,20 +16595,20 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 	/* for split-criterion in single-variable splits */
-	template <class real_t_, class ldouble_safe>
-	double
+	template <class real_t_, class lreal_t_safe>
+	real_t
 	eval_guided_crit(size_t *ix_arr, size_t st, size_t end, real_t_ *x,
-					 double *buffer_sd, bool as_relative_gain,
-					 double *buffer_imputed_x, double *saved_xmedian,
-					 size_t &split_ix, double &split_point, double &xmin,
-					 double &xmax, GainCriterion criterion, double min_gain,
+					 real_t *buffer_sd, bool as_relative_gain,
+					 real_t *buffer_imputed_x, real_t *saved_xmedian,
+					 size_t &split_ix, real_t &split_point, real_t &xmin,
+					 real_t &xmax, GainCriterion criterion, real_t min_gain,
 					 MissingAction missing_action, size_t *cols_use,
 					 size_t ncols_use, bool force_cols_use,
-					 double *X_row_major, size_t ncols, double *Xr,
+					 real_t *X_row_major, size_t ncols, real_t *Xr,
 					 size_t *Xr_ind, size_t *Xr_indptr)
 	{
 		size_t st_orig = st;
-		double gain = 0;
+		real_t gain = 0;
 		if (criterion == DensityCrit || criterion == FullGain)
 			min_gain = 0;
 
@@ -16642,14 +16657,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			fill_NAs_with_median(ix_arr, st_orig, st, end, x, buffer_imputed_x,
 								 saved_xmedian);
 			if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-				gain = find_split_rel_gain<double, ldouble_safe>(buffer_imputed_x,
-																 (double)xmean,
+				gain = find_split_rel_gain<real_t, lreal_t_safe>(buffer_imputed_x,
+																 (real_t)xmean,
 																 ix_arr, st_orig,
 																 end, split_point,
 																 split_ix);
 			else if (criterion == Pooled || criterion == Averaged)
-				gain = find_split_std_gain<double, ldouble_safe>(buffer_imputed_x,
-																 (double)xmean,
+				gain = find_split_std_gain<real_t, lreal_t_safe>(buffer_imputed_x,
+																 (real_t)xmean,
 																 ix_arr, st_orig,
 																 end, buffer_sd,
 																 criterion,
@@ -16657,15 +16672,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 																 split_point,
 																 split_ix);
 			else if (criterion == DensityCrit)
-				gain = find_split_dens<double, ldouble_safe>(buffer_imputed_x,
+				gain = find_split_dens<real_t, lreal_t_safe>(buffer_imputed_x,
 															 ix_arr, st_orig, end,
 															 split_point,
 															 split_ix);
 			else if (criterion == FullGain)
 			{
 				/* TODO: this buffer should be allocated from outside */
-				std::vector<double> temp_buffer(mult2(ncols));
-				gain = find_split_full_gain<double, ldouble_safe>(
+				std::vector<real_t> temp_buffer(mult2(ncols));
+				gain = find_split_full_gain<real_t, lreal_t_safe>(
 					buffer_imputed_x, st_orig, end, ix_arr, cols_use, ncols_use,
 					force_cols_use, X_row_major, ncols, Xr, Xr_ind, Xr_indptr,
 					temp_buffer.data(), temp_buffer.data() + ncols, split_ix,
@@ -16680,12 +16695,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		else
 		{
 			if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-				gain = find_split_rel_gain<real_t_, ldouble_safe>(x, xmean, ix_arr,
+				gain = find_split_rel_gain<real_t_, lreal_t_safe>(x, xmean, ix_arr,
 																  st, end,
 																  split_point,
 																  split_ix);
 			else if (criterion == Pooled || criterion == Averaged)
-				gain = find_split_std_gain<real_t_, ldouble_safe>(x, xmean, ix_arr,
+				gain = find_split_std_gain<real_t_, lreal_t_safe>(x, xmean, ix_arr,
 																  st, end,
 																  buffer_sd,
 																  criterion,
@@ -16693,14 +16708,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 																  split_point,
 																  split_ix);
 			else if (criterion == DensityCrit)
-				gain = find_split_dens<real_t_, ldouble_safe>(x, ix_arr, st, end,
+				gain = find_split_dens<real_t_, lreal_t_safe>(x, ix_arr, st, end,
 															  split_point,
 															  split_ix);
 			else if (criterion == FullGain)
 			{
 				/* TODO: this buffer should be allocated from outside */
-				std::vector<double> temp_buffer(mult2(ncols));
-				gain = find_split_full_gain<real_t_, ldouble_safe>(
+				std::vector<real_t> temp_buffer(mult2(ncols));
+				gain = find_split_full_gain<real_t_, lreal_t_safe>(
 					x, st, end, ix_arr, cols_use, ncols_use, force_cols_use,
 					X_row_major, ncols, Xr, Xr_ind, Xr_indptr,
 					temp_buffer.data(), temp_buffer.data() + ncols, split_ix,
@@ -16711,21 +16726,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		/* Note: a gain of -Inf signals that the data is unsplittable. Zero signals it's below the minimum. */
 		return std::fmax(0., gain);
 	}
-	template <class real_t_, class mapping, class ldouble_safe>
-	double
+	template <class real_t_, class mapping, class lreal_t_safe>
+	real_t
 	eval_guided_crit_weighted(size_t *ix_arr, size_t st, size_t end,
-							  real_t_ *x, double *buffer_sd,
-							  bool as_relative_gain, double *buffer_imputed_x,
-							  double *saved_xmedian, size_t &split_ix,
-							  double &split_point, double &xmin, double &xmax,
-							  GainCriterion criterion, double min_gain,
+							  real_t_ *x, real_t *buffer_sd,
+							  bool as_relative_gain, real_t *buffer_imputed_x,
+							  real_t *saved_xmedian, size_t &split_ix,
+							  real_t &split_point, real_t &xmin, real_t &xmax,
+							  GainCriterion criterion, real_t min_gain,
 							  MissingAction missing_action, size_t *cols_use,
 							  size_t ncols_use, bool force_cols_use,
-							  double *X_row_major, size_t ncols, double *Xr,
+							  real_t *X_row_major, size_t ncols, real_t *Xr,
 							  size_t *Xr_ind, size_t *Xr_indptr, mapping &w)
 	{
 		size_t st_orig = st;
-		double gain = 0;
+		real_t gain = 0;
 		if (criterion == DensityCrit || criterion == FullGain)
 			min_gain = 0;
 
@@ -16778,22 +16793,22 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			fill_NAs_with_median(ix_arr, st_orig, st, end, x, buffer_imputed_x,
 								 saved_xmedian);
 			if (criterion == Pooled && as_relative_gain && min_gain <= 0)
-				gain = find_split_rel_gain_weighted<double, mapping, ldouble_safe>(
-					buffer_imputed_x, (double)xmean, ix_arr, st_orig, end,
+				gain = find_split_rel_gain_weighted<real_t, mapping, lreal_t_safe>(
+					buffer_imputed_x, (real_t)xmean, ix_arr, st_orig, end,
 					split_point, split_ix, w);
 			else if (criterion == Pooled || criterion == Averaged)
-				gain = find_split_std_gain_weighted<double, mapping, ldouble_safe>(
-					buffer_imputed_x, (double)xmean, ix_arr, st_orig, end,
+				gain = find_split_std_gain_weighted<real_t, mapping, lreal_t_safe>(
+					buffer_imputed_x, (real_t)xmean, ix_arr, st_orig, end,
 					buffer_sd, criterion, min_gain, split_point, split_ix, w);
 			else if (criterion == DensityCrit)
-				gain = find_split_dens_weighted<double, mapping, ldouble_safe>(
+				gain = find_split_dens_weighted<real_t, mapping, lreal_t_safe>(
 					buffer_imputed_x, ix_arr, st_orig, end, split_point, split_ix,
 					w);
 			else if (criterion == FullGain)
 			{
-				std::vector<double> temp_buffer(mult2(ncols));
+				std::vector<real_t> temp_buffer(mult2(ncols));
 				gain =
-					find_split_full_gain_weighted<double, mapping, ldouble_safe>(
+					find_split_full_gain_weighted<real_t, mapping, lreal_t_safe>(
 						buffer_imputed_x, st_orig, end, ix_arr, cols_use,
 						ncols_use, force_cols_use, X_row_major, ncols, Xr, Xr_ind,
 						Xr_indptr, temp_buffer.data(),
@@ -16806,21 +16821,21 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		{
 			if (criterion == Pooled && as_relative_gain && min_gain <= 0)
 				gain =
-					find_split_rel_gain_weighted<real_t_, mapping, ldouble_safe>(
+					find_split_rel_gain_weighted<real_t_, mapping, lreal_t_safe>(
 						x, xmean, ix_arr, st, end, split_point, split_ix, w);
 			else if (criterion == Pooled || criterion == Averaged)
 				gain =
-					find_split_std_gain_weighted<real_t_, mapping, ldouble_safe>(
+					find_split_std_gain_weighted<real_t_, mapping, lreal_t_safe>(
 						x, xmean, ix_arr, st, end, buffer_sd, criterion, min_gain,
 						split_point, split_ix, w);
 			else if (criterion == DensityCrit)
-				gain = find_split_dens_weighted<real_t_, mapping, ldouble_safe>(
+				gain = find_split_dens_weighted<real_t_, mapping, lreal_t_safe>(
 					x, ix_arr, st, end, split_point, split_ix, w);
 			else if (criterion == FullGain)
 			{
-				std::vector<double> temp_buffer(mult2(ncols));
+				std::vector<real_t> temp_buffer(mult2(ncols));
 				gain = find_split_full_gain_weighted<real_t_, mapping,
-													 ldouble_safe>(x, st, end, ix_arr, cols_use, ncols_use,
+													 lreal_t_safe>(x, st, end, ix_arr, cols_use, ncols_use,
 																   force_cols_use, X_row_major, ncols, Xr, Xr_ind,
 																   Xr_indptr, temp_buffer.data(),
 																   temp_buffer.data() + ncols, split_ix,
@@ -16836,17 +16851,17 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 the sorted order of the non-zero entries while calculating gains and SDs, and then
 	 call the 'divide_subset' function after-the-fact to reach the same end result.
 	 It should be much faster than this if the non-zero entries are few. */
-	template <class real_t_, class sparse_ix_, class ldouble_safe>
-	double
+	template <class real_t_, class sparse_ix_, class lreal_t_safe>
+	real_t
 	eval_guided_crit(size_t ix_arr[], size_t st, size_t end, size_t col_num,
 					 real_t_ Xc[], sparse_ix_ Xc_ind[], sparse_ix_ Xc_indptr[],
-					 double buffer_arr[], size_t buffer_pos[],
-					 bool as_relative_gain, double *saved_xmedian,
-					 double &split_point, double &xmin, double &xmax,
-					 GainCriterion criterion, double min_gain,
+					 real_t buffer_arr[], size_t buffer_pos[],
+					 bool as_relative_gain, real_t *saved_xmedian,
+					 real_t &split_point, real_t &xmin, real_t &xmax,
+					 GainCriterion criterion, real_t min_gain,
 					 MissingAction missing_action, size_t *cols_use,
 					 size_t ncols_use, bool force_cols_use,
-					 double *X_row_major, size_t ncols, double *Xr,
+					 real_t *X_row_major, size_t ncols, real_t *Xr,
 					 size_t *Xr_ind, size_t *Xr_indptr)
 	{
 		size_t ignored;
@@ -16877,7 +16892,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			if ((tot % 2) == 0)
 			{
-				double xlow = *std::max_element(buffer_pos,
+				real_t xlow = *std::max_element(buffer_pos,
 												buffer_pos + idx_half);
 				*saved_xmedian = xlow + ((*saved_xmedian) - xlow) / 2.;
 			}
@@ -16889,13 +16904,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 		}
 
-	no_nas:
-		return eval_guided_crit<double, ldouble_safe>(buffer_pos, 0, end - st,
+		no_nas:
+		return eval_guided_crit<real_t, lreal_t_safe>(buffer_pos, 0, end - st,
 													  buffer_arr,
 													  buffer_arr + tot,
 													  as_relative_gain,
 													  saved_xmedian,
-													  (double *)NULL, ignored,
+													  (real_t *)NULL, ignored,
 													  split_point, xmin, xmax,
 													  criterion, min_gain,
 													  missing_action, cols_use,
@@ -16905,18 +16920,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 													  Xr_ind, Xr_indptr);
 	}
 
-	template <class real_t_, class sparse_ix_, class mapping, class ldouble_safe>
-	double
+	template <class real_t_, class sparse_ix_, class mapping, class lreal_t_safe>
+	real_t
 	eval_guided_crit_weighted(size_t ix_arr[], size_t st, size_t end,
 							  size_t col_num, real_t_ Xc[],
 							  sparse_ix_ Xc_ind[], sparse_ix_ Xc_indptr[],
-							  double buffer_arr[], size_t buffer_pos[],
-							  bool as_relative_gain, double *saved_xmedian,
-							  double &split_point, double &xmin, double &xmax,
-							  GainCriterion criterion, double min_gain,
+							  real_t buffer_arr[], size_t buffer_pos[],
+							  bool as_relative_gain, real_t *saved_xmedian,
+							  real_t &split_point, real_t &xmin, real_t &xmax,
+							  GainCriterion criterion, real_t min_gain,
 							  MissingAction missing_action, size_t *cols_use,
 							  size_t ncols_use, bool force_cols_use,
-							  double *X_row_major, size_t ncols, double *Xr,
+							  real_t *X_row_major, size_t ncols, real_t *Xr,
 							  size_t *Xr_ind, size_t *Xr_indptr, mapping &w)
 	{
 		size_t ignored;
@@ -16947,7 +16962,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 			if ((tot % 2) == 0)
 			{
-				double xlow = *std::max_element(buffer_pos,
+				real_t xlow = *std::max_element(buffer_pos,
 												buffer_pos + idx_half);
 				*saved_xmedian = xlow + ((*saved_xmedian) - xlow) / 2.;
 			}
@@ -16961,14 +16976,14 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	no_nas:
 		/* TODO: allocate this buffer externally */
-		std::vector<double> buffer_w(tot);
+		std::vector<real_t> buffer_w(tot);
 		for (size_t row = st; row <= end; row++)
 			buffer_w[row - st] = w[ix_arr[row]];
 		/* TODO: in this case, as the weights match with the order of the indices, could use a faster version
 		 with a weighted rel_gain function instead (not yet implemented). */
-		return eval_guided_crit_weighted<double, std::vector<double>, ldouble_safe>(
+		return eval_guided_crit_weighted<real_t, std::vector<real_t>, lreal_t_safe>(
 			buffer_pos, 0, end - st, buffer_arr, buffer_arr + tot,
-			as_relative_gain, saved_xmedian, (double *)NULL, ignored, split_point,
+			as_relative_gain, saved_xmedian, (real_t *)NULL, ignored, split_point,
 			xmin, xmax, criterion, min_gain, missing_action, cols_use, ncols_use,
 			force_cols_use, X_row_major, ncols, Xr, Xr_ind, Xr_indptr, buffer_w);
 	}
@@ -17017,7 +17032,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		return false;
 	}
-	template <class InputData, class WorkerMemory, class ldouble_safe>
+	template <class InputData, class WorkerMemory, class lreal_t_safe>
 	void
 	fit_itree(std::vector<IsoTree> *tree_root,
 			  std::vector<IsoHPlane> *hplane_root, WorkerMemory &workspace,
@@ -17106,9 +17121,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (hplane_root != NULL)
 		{
 			if (input_data.ncols_categ || model_params.coef_type == Normal)
-				workspace.coef_norm = std::normal_distribution<double>(0, 1);
+				workspace.coef_norm = std::normal_distribution<real_t>(0, 1);
 			if (model_params.coef_type == Uniform)
-				workspace.coef_unif = std::uniform_real_distribution<double>(-1,
+				workspace.coef_unif = std::uniform_real_distribution<real_t>(-1,
 																			 1);
 		}
 
@@ -17140,7 +17155,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				case SubSet:
 				{
 					workspace.ext_cat_coef.resize(input_data.ncols_tot);
-					for (std::vector<double> &v : workspace.ext_cat_coef)
+					for (std::vector<real_t> &v : workspace.ext_cat_coef)
 						v.resize(input_data.max_categ);
 					break;
 				}
@@ -17157,7 +17172,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (hplane_root == NULL)
 			workspace.weights_map.clear();
 
-		ldouble_safe weight_scaling = 0;
+		lreal_t_safe weight_scaling = 0;
 		if (input_data.sample_weights != NULL && !input_data.weight_as_sample)
 		{
 			workspace.changed_weights = true;
@@ -17173,7 +17188,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				{
 					for (const size_t ix : workspace.ix_arr)
 						weight_scaling += input_data.sample_weights[ix];
-					weight_scaling = (ldouble_safe)model_params.sample_size / weight_scaling;
+					weight_scaling = (lreal_t_safe)model_params.sample_size / weight_scaling;
 					workspace.weights_map.reserve(workspace.ix_arr.size());
 					for (const size_t ix : workspace.ix_arr)
 						workspace.weights_map[ix] = input_data.sample_weights[ix] * weight_scaling;
@@ -17191,12 +17206,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							std::accumulate(
 								workspace.ix_arr.begin(),
 								workspace.ix_arr.end(),
-								(ldouble_safe)0,
-								[&input_data](const ldouble_safe a,
+								(lreal_t_safe)0,
+								[&input_data](const lreal_t_safe a,
 											  const size_t b)
-								{ return a + (ldouble_safe)input_data.sample_weights[b]; });
-						weight_scaling = (ldouble_safe)model_params.sample_size / weight_scaling;
-						for (double &w : workspace.weights_arr)
+								{ return a + (lreal_t_safe)input_data.sample_weights[b]; });
+						weight_scaling = (lreal_t_safe)model_params.sample_size / weight_scaling;
+						for (real_t &w : workspace.weights_arr)
 							w *= weight_scaling;
 					}
 
@@ -17208,8 +17223,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							workspace.weights_arr[ix] =
 								input_data.sample_weights[ix];
 						}
-						weight_scaling = (ldouble_safe)model_params.sample_size / weight_scaling;
-						for (double &w : workspace.weights_arr)
+						weight_scaling = (lreal_t_safe)model_params.sample_size / weight_scaling;
+						for (real_t &w : workspace.weights_arr)
 							w *= weight_scaling;
 					}
 				}
@@ -17346,7 +17361,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		/* weigh columns by kurtosis in the sample if required */
 		/* TODO: this one could probably be refactored to use the function in the helpers */
-		std::vector<double> kurt_weights;
+		std::vector<real_t> kurt_weights;
 		bool avoid_leave_m_cols = false;
 		if (model_params.weigh_by_kurt && !avoid_col_weights && (input_data.preinitialized_col_sampler == NULL || ((model_params.prob_pick_col_by_range || model_params.prob_pick_col_by_var) && workspace.tree_kurtoses == NULL)))
 		{
@@ -17365,7 +17380,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							kurt_weights[col] = calc_kurtosis<
 								typename std::remove_pointer<
 									decltype(input_data.numeric_data)>::type,
-								ldouble_safe>(
+								lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end,
 								input_data.numeric_data + col * input_data.nrows,
@@ -17374,7 +17389,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							kurt_weights[col] = calc_kurtosis_weighted<
 								typename std::remove_pointer<
 									decltype(input_data.numeric_data)>::type,
-								decltype(workspace.weights_arr), ldouble_safe>(
+								decltype(workspace.weights_arr), lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end,
 								input_data.numeric_data + col * input_data.nrows,
@@ -17383,7 +17398,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							kurt_weights[col] = calc_kurtosis_weighted<
 								typename std::remove_pointer<
 									decltype(input_data.numeric_data)>::type,
-								decltype(workspace.weights_map), ldouble_safe>(
+								decltype(workspace.weights_map), lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end,
 								input_data.numeric_data + col * input_data.nrows,
@@ -17404,7 +17419,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 										decltype(input_data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(input_data.Xc_indptr)>::type,
-									ldouble_safe>(workspace.ix_arr.data(),
+									lreal_t_safe>(workspace.ix_arr.data(),
 												  workspace.st, workspace.end, col,
 												  input_data.Xc, input_data.Xc_ind,
 												  input_data.Xc_indptr,
@@ -17416,7 +17431,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 										decltype(input_data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(input_data.Xc_indptr)>::type,
-									decltype(workspace.weights_arr), ldouble_safe>(
+									decltype(workspace.weights_arr), lreal_t_safe>(
 									workspace.ix_arr.data(), workspace.st,
 									workspace.end, col, input_data.Xc,
 									input_data.Xc_ind, input_data.Xc_indptr,
@@ -17429,7 +17444,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 										decltype(input_data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(input_data.Xc_indptr)>::type,
-									decltype(workspace.weights_map), ldouble_safe>(
+									decltype(workspace.weights_map), lreal_t_safe>(
 									workspace.ix_arr.data(), workspace.st,
 									workspace.end, col, input_data.Xc,
 									input_data.Xc_ind, input_data.Xc_indptr,
@@ -17442,7 +17457,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				{
 					if (workspace.weights_arr.empty() && workspace.weights_map.empty())
 						kurt_weights[col + input_data.ncols_numeric] =
-							calc_kurtosis<ldouble_safe>(
+							calc_kurtosis<lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end,
 								input_data.categ_data + col * input_data.nrows,
@@ -17454,7 +17469,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					else if (!workspace.weights_arr.empty())
 						kurt_weights[col + input_data.ncols_numeric] =
 							calc_kurtosis_weighted<decltype(workspace.weights_arr),
-												   ldouble_safe>(
+												   lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end,
 								input_data.categ_data + col * input_data.nrows,
@@ -17465,7 +17480,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					else
 						kurt_weights[col + input_data.ncols_numeric] =
 							calc_kurtosis_weighted<decltype(workspace.weights_map),
-												   ldouble_safe>(
+												   lreal_t_safe>(
 								workspace.ix_arr.data(), workspace.st,
 								workspace.end,
 								input_data.categ_data + col * input_data.nrows,
@@ -17498,7 +17513,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				std::vector<bool> buffer2;
 				sample_random_rows(cols_take, input_data.ncols_tot, false,
 								   workspace.rnd_generator, buffer1,
-								   (double *)NULL, kurt_weights, /* <- will not get used */
+								   (real_t *)NULL, kurt_weights, /* <- will not get used */
 								   (size_t)0, (size_t)0, buffer2);
 
 				if (model_params.sample_size == input_data.nrows && !model_params.with_replacement && !input_data.all_kurtoses.empty())
@@ -17521,7 +17536,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								kurt_weights[col] = calc_kurtosis<
 									typename std::remove_pointer<
 										decltype(input_data.numeric_data)>::type,
-									ldouble_safe>(
+									lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -17531,7 +17546,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								kurt_weights[col] = calc_kurtosis_weighted<
 									typename std::remove_pointer<
 										decltype(input_data.numeric_data)>::type,
-									decltype(workspace.weights_arr), ldouble_safe>(
+									decltype(workspace.weights_arr), lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -17542,7 +17557,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								kurt_weights[col] = calc_kurtosis_weighted<
 									typename std::remove_pointer<
 										decltype(input_data.numeric_data)>::type,
-									decltype(workspace.weights_map), ldouble_safe>(
+									decltype(workspace.weights_map), lreal_t_safe>(
 									workspace.ix_arr.data(),
 									workspace.st,
 									workspace.end,
@@ -17559,7 +17574,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 										decltype(input_data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(input_data.Xc_indptr)>::type,
-									ldouble_safe>(workspace.ix_arr.data(),
+									lreal_t_safe>(workspace.ix_arr.data(),
 												  workspace.st, workspace.end, col,
 												  input_data.Xc, input_data.Xc_ind,
 												  input_data.Xc_indptr,
@@ -17570,7 +17585,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 										decltype(input_data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(input_data.Xc_indptr)>::type,
-									decltype(workspace.weights_arr), ldouble_safe>(
+									decltype(workspace.weights_arr), lreal_t_safe>(
 									workspace.ix_arr.data(), workspace.st,
 									workspace.end, col, input_data.Xc,
 									input_data.Xc_ind, input_data.Xc_indptr,
@@ -17582,7 +17597,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 										decltype(input_data.Xc)>::type,
 									typename std::remove_pointer<
 										decltype(input_data.Xc_indptr)>::type,
-									decltype(workspace.weights_map), ldouble_safe>(
+									decltype(workspace.weights_map), lreal_t_safe>(
 									workspace.ix_arr.data(), workspace.st,
 									workspace.end, col, input_data.Xc,
 									input_data.Xc_ind, input_data.Xc_indptr,
@@ -17594,7 +17609,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					else
 					{
 						if (workspace.weights_arr.empty() && workspace.weights_map.empty())
-							kurt_weights[col] = calc_kurtosis<ldouble_safe>(
+							kurt_weights[col] = calc_kurtosis<lreal_t_safe>(
 								workspace.ix_arr.data(),
 								workspace.st,
 								workspace.end,
@@ -17607,7 +17622,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								workspace.rnd_generator);
 						else if (!workspace.weights_arr.empty())
 							kurt_weights[col] = calc_kurtosis_weighted<
-								decltype(workspace.weights_arr), ldouble_safe>(
+								decltype(workspace.weights_arr), lreal_t_safe>(
 								workspace.ix_arr.data(),
 								workspace.st,
 								workspace.end,
@@ -17619,7 +17634,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								workspace.rnd_generator, workspace.weights_arr);
 						else
 							kurt_weights[col] = calc_kurtosis_weighted<
-								decltype(workspace.weights_map), ldouble_safe>(
+								decltype(workspace.weights_map), lreal_t_safe>(
 								workspace.ix_arr.data(),
 								workspace.st,
 								workspace.end,
@@ -17672,7 +17687,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		else
 		{
 			workspace.col_sampler =
-				*((column_sampler<ldouble_safe> *)input_data.preinitialized_col_sampler);
+				*((column_sampler<lreal_t_safe> *)input_data.preinitialized_col_sampler);
 			col_sampler_is_fresh = false;
 		}
 		/* TODO: this can be done more efficiently when sub-sampling columns */
@@ -17708,13 +17723,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		if (tree_root != NULL)
 		{
-			split_itree_recursive<InputData, WorkerMemory, ldouble_safe>(
+			split_itree_recursive<InputData, WorkerMemory, lreal_t_safe>(
 				*tree_root, workspace, input_data, model_params, impute_nodes, 0);
 		}
 
 		else
 		{
-			split_hplane_recursive<InputData, WorkerMemory, ldouble_safe>(
+			split_hplane_recursive<InputData, WorkerMemory, lreal_t_safe>(
 				*hplane_root, workspace, input_data, model_params, impute_nodes,
 				0);
 		}
@@ -17724,22 +17739,22 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			drop_nonterminal_imp_node(*impute_nodes, tree_root, hplane_root);
 	}
 
-	template <class InputData, typename ldouble_safe>
-	std::vector<double>
+	template <class InputData, typename lreal_t_safe>
+	std::vector<real_t>
 	calc_kurtosis_all_data(InputData &input_data, ModelParams &model_params,
 						   RNG_engine &rnd_generator)
 	{
-		std::unique_ptr<double[]> buffer_double;
+		std::unique_ptr<real_t[]> buffer_real_t;
 		std::unique_ptr<size_t[]> buffer_size_t;
 		if (input_data.ncols_categ)
 		{
-			buffer_double = std::unique_ptr<double[]>(
-				new double[input_data.max_categ]);
+			buffer_real_t = std::unique_ptr<real_t[]>(
+				new real_t[input_data.max_categ]);
 			if (!(input_data.sample_weights != NULL && !input_data.weight_as_sample))
 				buffer_size_t = std::unique_ptr<size_t[]>(
 					new size_t[input_data.max_categ + 1]);
 		}
-		std::vector<double> kurt_weights(
+		std::vector<real_t> kurt_weights(
 			input_data.ncols_numeric + input_data.ncols_categ);
 		for (size_t col = 0; col < input_data.ncols_tot; col++)
 		{
@@ -17750,7 +17765,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				{
 					if (!(input_data.sample_weights != NULL && !input_data.weight_as_sample))
 					{
-						kurt_weights[col] = calc_kurtosis<ldouble_safe>(
+						kurt_weights[col] = calc_kurtosis<lreal_t_safe>(
 							input_data.numeric_data + col * input_data.nrows,
 							input_data.nrows, model_params.missing_action);
 					}
@@ -17760,7 +17775,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						kurt_weights[col] = calc_kurtosis_weighted<
 							typename std::remove_pointer<
 								decltype(input_data.numeric_data)>::type,
-							ldouble_safe>(
+							lreal_t_safe>(
 							input_data.numeric_data + col * input_data.nrows,
 							input_data.nrows, model_params.missing_action,
 							input_data.sample_weights);
@@ -17777,7 +17792,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 									decltype(input_data.Xc)>::type,
 								typename std::remove_pointer<
 									decltype(input_data.Xc_indptr)>::type,
-								ldouble_safe>(col, input_data.nrows,
+								lreal_t_safe>(col, input_data.nrows,
 											  input_data.Xc, input_data.Xc_ind,
 											  input_data.Xc_indptr,
 											  model_params.missing_action);
@@ -17791,7 +17806,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 									decltype(input_data.Xc)>::type,
 								typename std::remove_pointer<
 									decltype(input_data.Xc_indptr)>::type,
-								ldouble_safe>(col, input_data.nrows,
+								lreal_t_safe>(col, input_data.nrows,
 											  input_data.Xc, input_data.Xc_ind,
 											  input_data.Xc_indptr,
 											  model_params.missing_action,
@@ -17803,11 +17818,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			{
 				if (!(input_data.sample_weights != NULL && !input_data.weight_as_sample))
 				{
-					kurt_weights[col] = calc_kurtosis<ldouble_safe>(
+					kurt_weights[col] = calc_kurtosis<lreal_t_safe>(
 						input_data.nrows,
 						input_data.categ_data + (col - input_data.ncols_numeric) * input_data.nrows,
 						input_data.ncat[col - input_data.ncols_numeric],
-						buffer_size_t.get(), buffer_double.get(),
+						buffer_size_t.get(), buffer_real_t.get(),
 						model_params.missing_action, model_params.cat_split_type,
 						rnd_generator);
 				}
@@ -17817,11 +17832,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					kurt_weights[col] = calc_kurtosis_weighted<
 						typename std::remove_pointer<
 							decltype(input_data.sample_weights)>::type,
-						ldouble_safe>(
+						lreal_t_safe>(
 						input_data.nrows,
 						input_data.categ_data + (col - input_data.ncols_numeric) * input_data.nrows,
 						input_data.ncat[col - input_data.ncols_numeric],
-						buffer_double.get(), model_params.missing_action,
+						buffer_real_t.get(), model_params.missing_action,
 						model_params.cat_split_type, rnd_generator,
 						input_data.sample_weights);
 				}
@@ -18411,7 +18426,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	// Confusion matrix
 
 	confusion_matrix::confusion_matrix(const dataset &data,
-									   const classifier &classifier_) 	{
+									   const classifier &classifier_) : _matrix(), _class_values(),_fp(0),_fn(0),_tp(0),_tn(0), _total(0),_error(0), _accuracy(0.), _precision(0.), _recall(0.), _f1(0.) 
+	{
 
 		// Target tag
 		attribute_tag target_tag = data.getattributes().get_target_tag();
@@ -18419,6 +18435,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		size_t target_count = data.getattributes().getCount(target_tag);
 		//fill class values 
 		_class_values.resize(target_count);
+
 		for (size_t i = 0; i < target_count; ++i)
 			_class_values[i] = data.getattributes().getValue(target_tag,attribute( discrete_value(i) ));
 		
@@ -18433,6 +18450,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// Test data
 		for (size_t i = 0; i < data.size(); ++i)
 		{
+			//Update total
+			++_total;
+
 			// Get target value on the test data
 			attribute test_attr (data.getattribute(i ,target_tag));
 			//translate the attribute : _class_values
@@ -18458,10 +18478,89 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	 		//update confusion matrix
 			++_matrix(test_attr.discrete(), res.discrete());
 
+			//update error count 
+			if (test_attr.discrete() != res.discrete())
+				++_error;
+			
+
+			//update tp,fp,tn,fn
+			if (test_attr.discrete() == res.discrete())
+			{
+				if (test_attr.discrete() == 0)
+					++_tn;
+				else
+					++_tp;
+			}
+			else
+			{
+				if (test_attr.discrete() == 0)
+					++_fp;
+				else
+					++_fn;
+			}	
 			//update roc_curve
 			
 		}// for
+
+		//update accuracy,precision,recall,f1
+		_accuracy = (real_t)(_tp + _tn) / _total;
+		_precision = (real_t)_tp / (_tp + _fp);
+		_recall = (real_t)_tp / (_tp + _fn);
+		_f1 = 2 * _precision * _recall / (_precision + _recall);
+		
  	}// confusion_matrix
+
+	//copy constructor
+	confusion_matrix::confusion_matrix(const confusion_matrix &rhs) : _matrix(rhs._matrix), _class_values(rhs._class_values),_fp(rhs._fp),_fn(rhs._fn),_tp(rhs._tp),_tn(rhs._tn), _total(rhs._total),_error(rhs._error), _accuracy(rhs._accuracy), _precision(rhs._precision), _recall(rhs._recall), _f1(rhs._f1) 
+	{
+		//nothing to do
+	}
+	//move constructor
+	confusion_matrix::confusion_matrix(confusion_matrix &&rhs) : _matrix(std::move(rhs._matrix)), _class_values(std::move(rhs._class_values)),_fp(rhs._fp),_fn(rhs._fn),_tp(rhs._tp),_tn(rhs._tn), _total(rhs._total),_error(rhs._error), _accuracy(rhs._accuracy), _precision(rhs._precision), _recall(rhs._recall), _f1(rhs._f1) 
+	{
+		//nothing to do
+	}
+    confusion_matrix &confusion_matrix::operator=(const confusion_matrix &other)
+	{
+		if(!(other==*this))
+		{
+			_matrix = other._matrix;
+			_class_values = other._class_values;
+			_fp = other._fp;
+			_fn = other._fn;
+			_tp = other._tp;
+			_tn = other._tn;
+			_total = other._total;
+			_error = other._error;
+			_accuracy = other._accuracy;
+			_precision = other._precision;
+			_recall = other._recall;
+			_f1 = other._f1;
+		}
+
+		return *this;
+	}
+    //move assignment
+    confusion_matrix &confusion_matrix::operator=(confusion_matrix &&other)
+	{
+		if(!(other==*this))
+		{
+			_matrix = std::move(other._matrix);
+			_class_values = std::move(other._class_values);
+			_fp = other._fp;
+			_fn = other._fn;
+			_tp = other._tp;
+			_tn = other._tn;
+			_total = other._total;
+			_error = other._error;
+			_accuracy = other._accuracy;
+			_precision = other._precision;
+			_recall = other._recall;
+			_f1 = other._f1;
+		}
+
+		return *this;
+	} 
 
 	size_t
 	confusion_matrix::getError() const
@@ -18498,6 +18597,12 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				out << std::setw(10) << q._matrix[i][j];
 			out << std::endl;
 		}
+		//Print accuracy,precision,recall,f1
+		out << std::setw(10) << "Accuracy:" << std::setw(10) << q._accuracy << std::endl;
+		out << std::setw(10) << "Precision:" << std::setw(10) << q._precision << std::endl;
+		out << std::setw(10) << "Recall:" << std::setw(10) << q._recall << std::endl;
+		out << std::setw(10) << "F1:" << std::setw(10) << q._f1 << std::endl;
+		
 		return out;
 	}
 
@@ -18533,7 +18638,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		//_isoforest->set_max_depth(_max_depth);
 		//_isoforest->set_seed(_seed>>32&0xFFFFFFFF|_seed&0xFFFFFFFF );
 
-		matrix<double> training_data = transform_data();
+		matrix<real_t> training_data = transform_data();
 		_isoforest->fit(training_data.array(), training_data.rows(), training_data.cols()); // std::cout << "res size " << res.size() << std::endl;
 
 		// std::cout << "res " << res[0] << std::endl;
@@ -18556,9 +18661,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// create isoforest and train it
 	}
 	// transform dataset to matrix:
-	provallo::matrix<double> iso_classifier::transform_data() const
+	provallo::matrix<real_t> iso_classifier::transform_data() const
 	{
-		provallo::matrix<double> samples(_data.size() / _data.getattributes().getSize(), _data.getattributes().getSize());
+		provallo::matrix<real_t> samples(_data.size() / _data.getattributes().getSize(), _data.getattributes().getSize());
 		for (size_t i = 0; i < _data.size(); ++i)
 			for (size_t j = 0; j < _data.getattributes().getSize(); ++j)
 				samples(i, j) = _data.getattribute(i / _data.getattributes().getSize(), j).continous();
@@ -18577,7 +18682,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			throw std::runtime_error("isoforest_classifier::classify(): Data size does not match number of attributes");
 		// classify
 
-		provallo::matrix<double> samples(data.size() / cnt, cnt);
+		provallo::matrix<real_t> samples(data.size() / cnt, cnt);
 
 		for (size_t i = 0; i < data.size(); ++i)
 			for (size_t j = 0; j < classifier::_attributes_info.getSize(); j++)
@@ -18585,7 +18690,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 		size_t nclasses = classifier::_attributes_info.getCount(classifier::_attributes_info.get_target_tag());
 
-		std::vector<double> result_probabilities = _isoforest->predict(samples);
+		std::vector<real_t> result_probabilities = _isoforest->predict(samples);
 		class_dist result(nclasses);
 		class_dist return_result(result_probabilities.size());
 
@@ -18641,7 +18746,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (samples_count < 2 * samples_size)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least two samples are required");
 		// Get number of trees
-		size_t trees_count = (size_t)(std::log((double)samples_count) / std::log(2.0));
+		size_t trees_count = (size_t)(std::log((real_t)samples_count) / std::log(2.0));
 		// Check number of trees
 		if (trees_count < 1)
 			throw std::runtime_error("isoforest_classifier::isoforest_classifier(): At least one tree is required");
@@ -18714,13 +18819,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	}
 
+	const char* classifier_name[] =
+  	{
+    	"NONE","TREE","Decision Tree ","Random Tree ","Ensemble","Random Forest","AdaBoost","NaiveBayes","Metric","Nearest Neighbors","K-Means","Isolation Tree","Isolation Forest","Fixed KD Tree","LightGBM","XGBoost","CategoryBoost","SVM","LogRegression","kNN","MLP","LinearRegression","Perceptron","SGD","GA","QDA","LDA","GNB","GMM",
+		"Hidden Markov Model","DBSCAN","OPTICS","K-Means++","K-Means Parallel","K-Means Lloyd","K-Means Lloyd Parallel" 
+  	};
+
+
 	void
 	print_classifier_summary(const std::string &data_set_name,
 							 const dataset &data, const classifier &_classifier)
 	{
 		// Check fitting over training test
-		std::cout << "[#] ----- Check [ " << data_set_name << "]" << std::endl;
-		confusion_matrix ConfusionMatrix(data, _classifier);
+
+		size_t classifier_index = _classifier.get_type()%classifier_type::CLASSIFIER_MAX;
+
+		std::string cname =classifier_name[classifier_index ] ;	
+		
+		std::cout << "[#] ----- Check [ " << data_set_name << ","<<cname<< "]" << std::endl;
+		confusion_matrix ConfusionMatrix(std::ref(data),std::ref( _classifier));
 		// Print matrix
 		std::cout << ConfusionMatrix;
 		// Resume information
@@ -18831,5 +18948,111 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		UNDEF_REFERENCE2(indexer)
 
 	}	
+
+	//mini implementaion of lightgbm_classifier : 
+ 
+
+	//lightgbm implementation : 
+	//constructor : 
+	lightgbm_classifier::lightgbm_classifier( const dataset &data, const parameter_base &parameters,
+      const std::random_device &random, std::ostream &out/*default std::cout*/, split_method_factory *factory/*nullptr*/ ):ensemble_classifier(data,parameters,random,factory) 
+	{
+		UNDEF_REFERENCE(data)
+		UNDEF_REFERENCE2(parameters)
+		UNDEF_REFERENCE2(random)
+		UNDEF_REFERENCE2(out)
+		UNDEF_REFERENCE2(factory)
+		//setup lightgbm parameters :
+		//1)boosting_type
+		//2)num_iterations
+		//3)learning_rate
+		//4)num_leaves
+		//5)max_depth
+		//6)min_data_in_leaf
+		//7)bagging_fraction
+		//8)feature_fraction
+		//9)num_threads
+		//10)verbose
+ 
+
+		//end training :
+
+	}
+	//classify 	:
+	 attribute
+    lightgbm_classifier::classify(dataset::attribute_iterator begin,
+             dataset::attribute_iterator end) const 
+			 {
+						class_dist cd(1);
+						UNDEF_REFERENCE(begin)
+						UNDEF_REFERENCE2(end)
+						//return class_dist();	
+						return cd.mode();
+			 }
+     attribute
+    lightgbm_classifier::classify(std::vector<attribute>::const_iterator begin,
+             std::vector<attribute>::const_iterator end) const
+			 {
+						class_dist cd(1);
+						UNDEF_REFERENCE(begin)
+						UNDEF_REFERENCE2(end)
+						//return class_dist();	
+						return cd.mode();
+			 }
+
+    // Get distribution of outcomes
+   class_dist
+   lightgbm_classifier::posterior(dataset::attribute_iterator begin,dataset::attribute_iterator end) const
+   {
+	class_dist cd(1);
+  	UNDEF_REFERENCE(begin)
+   	UNDEF_REFERENCE2(end)
+   	//return class_dist();	
+	return cd;
+   }
+   class_dist
+   lightgbm_classifier::posterior(std::vector<attribute>::const_iterator begin,
+              std::vector<attribute>::const_iterator end) const
+
+			  {
+
+				class_dist cd(1);
+				UNDEF_REFERENCE(begin)
+				UNDEF_REFERENCE2(end)
+				//return class_dist();	
+				return cd;
+			  }
+
+ 	//destructor :
+	lightgbm_classifier::~lightgbm_classifier()
+	{
+	} 
+
+	//print :	
+	void lightgbm_classifier::print(std::ostream& out) const
+	{
+		UNDEF_REFERENCE(out)
+		UNDEF_REFERENCE2(out)
+	}
+	class_dist  lightgbm_classifier::classify(const std::vector<attribute> &sample) const
+	{
+		UNDEF_REFERENCE(sample)
+		UNDEF_REFERENCE2(sample)
+
+		class_dist cd(1);
+		return cd;
+	}
+      
+    class_dist lightgbm_classifier::posterior (const std::vector<attribute> &sample) const 
+	{
+		UNDEF_REFERENCE(sample)
+		UNDEF_REFERENCE2(sample)
+
+		class_dist cd(1);
+		return cd;
+
+	}
+
+
  }
 /* namespace provallo */

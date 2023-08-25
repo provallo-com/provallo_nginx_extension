@@ -815,6 +815,44 @@ namespace provallo
     }
     #endif // ITERATOR
 
+    //rowwise & colwise implementation
+    template <typename F>
+    matrix<T> rowwise(F f) const
+    {
+      matrix<T> tmp(size1_, 1);
+      for (size_t i = 0; i < size1_; i++)
+        tmp(i, 0) = f(data_[i * size2_]);
+      return tmp;
+    }
+    template <typename F>
+    matrix<T> colwise(F f) const
+    {
+      matrix<T> tmp(1, size2_);
+      for (size_t i = 0; i < size2_; i++)
+        tmp(0, i) = f(data_[i]);
+      return tmp;
+    }
+
+    T log()
+    {
+      T sum = 0;
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          sum += std::log(data_[i * size2_ + j]);
+      return sum;
+    }
+    
+    //unaryExpr implementation
+    template <typename F>
+    matrix<T> unaryExpr(F f) const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = f(data_[i * size2_ + j]);
+      return tmp;
+    }
+
 
     T row_sum(size_t row)const
     {
@@ -972,11 +1010,16 @@ namespace provallo
       for (size_t i = 0; i < ret.size1_; i++)
         for (size_t j = 0; j < ret.size2_; j++)
           ret(i, j) = ret(i, j) / m(i, j);
-
-      return ret;
+       return ret;
     }
     const_reference
     operator()(size_type i, size_type j) const
+    {
+      return data_[i * size2_ + j];
+    }
+
+    const_reference 
+    element(size_type i, size_type j)const
     {
       return data_[i * size2_ + j];
     }
@@ -1141,6 +1184,7 @@ namespace provallo
       size1_ = dim;
       size2_ = dim1;
       data_ = new T[size1_ * size2_];
+      std::fill(data_, data_ +(size1_ * size2_), value_type(0));
     }
     size_type
     size1() const
@@ -1157,17 +1201,14 @@ namespace provallo
     {
       array_type ret  = reinterpret_cast<array_type>( data_ + (i * cols()));    
       return ret;
-      
     }
-
-     array_type row(size_t i) const
+ 
+    array_type row(size_t i) const
     {
       array_type ret  = reinterpret_cast<array_type>(
           data() + (i * cols()));
-
       return ret;
     }
- 
  
     template <size_t N> matrix<T> lpNorm() const 
     {
@@ -1520,7 +1561,107 @@ namespace provallo
       return diagonal_instance;
     }
 
-    matrix<T> sqrt()
+    //Let G=(V,E)
+    //be a locally finite graph; this means that each vertex has finite degree. The Laplacian operator Δ acting on the space of functions f:V→R is given by
+    //(Δf)(v)=∑v→w(f(w)−f(v))
+
+    //where v→w
+    //indicates an edge from the vertex v to the vertex w. When G=Z with edges between adjacent integers, this gives
+    //(Δf)(n)=f(n+1)−2f(n)+f(n−1)
+
+    //as expected. On the space of compactly supported functions f:V→R
+    //(those that are zero except at finitely many positions) there is a natural inner product given by
+    //⟨f,g⟩=∑vf(v)g(v)
+
+    //and the Laplacian is Hermitian with respect to this inner product. Indeed,
+    //⟨f,Δg⟩=∑v→w(f(v)g(w)−f(v)g(v))=∑v→w(f(w)g(v)−f(v)g(v))=⟨Δf,g⟩.
+ 
+    matrix<T> & laplacian()const
+    {
+      matrix<T> ret(size1(), size2());
+      
+      for (size_t i = 0; i < size1(); ++i)
+        for (size_t j = 0; j < size2(); ++j)
+          ret(i, j) = laplacian(i, j);
+      return ret;
+    }
+    T laplacian(size_t i, size_t j)const
+    {
+      T ret = 0;
+      if (i == j)
+      {
+        ret = 0;
+        for (size_t k = 0; k < size1(); ++k)
+          ret += element(i, k);
+        ret = -ret;
+      }
+      else
+      {
+        ret = element(i, j);
+      }
+      return ret;   
+    }
+    matrix<T> & laplacian_normalized()const
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); ++i)
+        for (size_t j = 0; j < size2(); ++j)
+          ret(i, j) = laplacian(i, j) / element(i, i) / element(j, j) / size1() / size2() * 4 * M_PI * M_PI * 1e-7  * 1e-7      ;
+
+      return ret; 
+    }
+    matrix<T> & laplacian_normalized(const matrix<T> & m)const
+    {
+      matrix<T> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); ++i)
+        for (size_t j = 0; j < size2(); ++j)
+          ret(i, j) = laplacian(i, j) / element(i, i) / element(j, j) / size1() / size2() * 4 * M_PI * M_PI * 1e-7  * 1e-7 * m(i, j)     ;
+
+      return ret;
+    }
+    matrix<bool> hermitian()const
+    {
+      matrix<bool> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); ++i)
+        for (size_t j = 0; j < size2(); ++j)
+          ret(i, j) = hermitian(i, j);
+      return ret; 
+    }
+    bool hermitian(size_t i, size_t j)const
+    {
+      return element(i, j) == element(j, i);
+    }
+
+    matrix<bool> symmetric()const
+    {
+      matrix<bool> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); ++i)
+        for (size_t j = 0; j < size2(); ++j)
+          ret(i, j) = symmetric(i, j);
+      return ret; 
+    }
+    bool symmetric(size_t i, size_t j)const
+    {
+      return element(i, j) == element(j, i);
+    }
+
+    matrix<bool> antisymmetric()const
+    {
+      matrix<bool> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); ++i)
+        for (size_t j = 0; j < size2(); ++j)
+          ret(i, j) = antisymmetric(i, j);
+      return ret;
+    }
+    bool antisymmetric(size_t i, size_t j)const
+    {
+      return element(i, j) == -element(j, i);
+    }
+
+
+
+ 
+     matrix<T> sqrt()
     {
 
       matrix<T> sqrt_prod(size2(), size1());
@@ -1570,19 +1711,17 @@ namespace provallo
     {
       return data_ + size1_ * size2_;
     }
-
     const_iterator
     end() const
     {
       return data_ + size1_ * size2_;
     }
-
     const_iterator
     cend() const
     {
       return data_ + size1_ * size2_;
     }
-    T squaredNorm()
+    T squaredNorm() const
     {
 
       T ret = 0.;
@@ -1593,7 +1732,7 @@ namespace provallo
       return ret;
     }
 
-    T norm()
+    T norm() const
     {
       return std::sqrt(squaredNorm());
     }
@@ -1723,7 +1862,126 @@ namespace provallo
       }
       return in;
     } 
+
+    //  
+    // operators for matrix-matrix operations
+    //
+    matrix<T> &
+    operator+=(const matrix<T> &rhs)
+    {
+      assert(size1_ == rhs.size1_ && size2_ == rhs.size2_);
+      std::transform(data_.begin(), data_.end(), rhs.data_.begin(),
+                     data_.begin(), std::plus<T>());
+      return *this;
+    }
+
+    matrix<T> &
+    operator-=(const matrix<T> &rhs)
+    {
+      assert(size1_ == rhs.size1_ && size2_ == rhs.size2_);
+      std::transform(data_.begin(), data_.end(), rhs.data_.begin(),
+                     data_.begin(), std::minus<T>());
+      return *this;
+    }
+
+    matrix<T> &
+    operator*=(const matrix<T> &rhs)
+    {
+      assert(size1_ == rhs.size1_ && size2_ == rhs.size2_);
+      std::transform(data_.begin(), data_.end(), rhs.data_.begin(),
+                     data_.begin(), std::multiplies<T>());
+      return *this;
+    } 
+
+    matrix<T> &
+    operator/=(const matrix<T> &rhs)
+    {
+      assert(size1_ == rhs.size1_ && size2_ == rhs.size2_);
+      std::transform(data_.begin(), data_.end(), rhs.data_.begin(),
+                     data_.begin(), std::divides<T>());
+      return *this;
+    }
+    //  real determinant
+    T real_det()const
+    {
+      T ret = 0;
+      //calculate determinant of matrix
+      if (size1_ == 1)
+      {
+        ret = data_[0];
+      }
+      else if (size1_ == 2)
+      {
+        ret = data_[0] * data_[3] - data_[1] * data_[2];
+      }
+      else
+      {
+        for (size_t i = 0; i < size1_; i++)
+        {
+          matrix<T> temp(size1_ - 1, size1_ - 1);
+          for (size_t j = 1; j < size1_; j++)
+          {
+            for (size_t k = 0; k < size1_; k++)
+            {
+              if (k < i)
+              {
+                temp(j - 1, k) = data_[j * size1_ + k];
+              }
+              else if (k > i)
+              {
+                temp(j - 1, k - 1) = data_[j * size1_ + k];
+              }
+            }
+          }
+          ret += data_[i] * pow(-1, i) * temp.real_det();
+        }
+      } 
+      return ret;
+
+    }
+
+    //serialize matrices to binary file 
     
+    
+    //  complex determinant
+    std::complex<T> complex_det()const
+    {
+      std::complex<T> ret = 0;
+      //calculate determinant of matrix
+      if (size1_ == 1)
+      {
+        ret = data_[0];
+      }
+      else if (size1_ == 2)
+      {
+        ret = data_[0] * data_[3] - data_[1] * data_[2];
+      }
+      else
+      {
+        for (size_t i = 0; i < size1_; i++)
+        {
+          matrix<T> temp(size1_ - 1, size1_ - 1);
+          for (size_t j = 1; j < size1_; j++)
+          {
+            for (size_t k = 0; k < size1_; k++)
+            {
+              if (k < i)
+              {
+                temp(j - 1, k) = data_[j * size1_ + k];
+              }
+              else if (k > i)
+              {
+                temp(j - 1, k - 1) = data_[j * size1_ + k];
+              }
+            }
+          }
+          ret += data_[i] * pow(-1, i) * temp.complex_det();
+        }
+      } 
+      return ret;
+
+    }      
+
   private:
     size_type size1_;
     size_type size2_;
@@ -2783,7 +3041,7 @@ namespace provallo
     }
   };
 
-  // Transpose matrix
+  // Transpose matrix without calling matrix<T>::transpose()
   template <typename T>
   matrix<T>
   transpose(const matrix<T> &mat)
@@ -2795,7 +3053,7 @@ namespace provallo
     return transp;
   }
 
-  // Transpose matrix
+  // Transpose matrix without calling matrix<T>::transpose()
   template <typename T, std::size_t N, std::size_t M>
   bounded_matrix<T, M, N>
   transpose(const bounded_matrix<T, N, M> &mat)
@@ -2864,7 +3122,7 @@ namespace provallo
 
   // utilities with matrices :
 
-  // rot matrix
+  //jacobi utitlity for  matrix rot
   template <typename T>
   inline void rot(matrix<T> &a, T s, T tau, const size_t i, const size_t j, const size_t k, const size_t l)
   {
@@ -2872,7 +3130,7 @@ namespace provallo
     a(i, j) = g - s * (h + g * tau);
     a(k, l) = h + s * (g - h * tau);
   }
-  //
+  // jacobi 
   template <typename T>
   void slvsml(matrix<T> &out, matrix<T> &rhs)
   {
@@ -2884,7 +3142,8 @@ namespace provallo
 
     out(1, 1) = -h * h * rhs(1, 1) / 4.;
   }
-  //
+  //jacobi rstrct utility :
+
   template <typename T>
   void rstrct(matrix<T> &uc, matrix<T> &uf)
   {
@@ -3229,7 +3488,37 @@ namespace provallo
     }
 
     return ret;
-  } // end operator/    
- 
+  } // end operator/     
+  //template friend ofstream/ifstream operators 
+  template <typename T>
+  std::ofstream &operator<<(std::ofstream &ofs, const matrix<T> &m)
+  {
+    ofs << m.size1() << " " << m.size2() << std::endl;
+    for (typename matrix<T>::size_type i = 0; i < m.size1(); i++)
+    {
+      for (typename matrix<T>::size_type j = 0; j < m.size2(); j++)
+      {
+        ofs << m(i, j) << " ";
+      }
+      ofs << std::endl;
+    }
+    return ofs;
+  } 
+  template <typename T>
+  std::ifstream &operator>>(std::ifstream &ifs, matrix<T> &m)
+  {
+    typename matrix<T>::size_type rows, cols;
+    ifs >> rows >> cols;
+    m.resize(rows, cols);
+    for (typename matrix<T>::size_type i = 0; i < m.size1(); i++)
+    {
+      for (typename matrix<T>::size_type j = 0; j < m.size2(); j++)
+      {
+        ifs >> m(i, j);
+      }
+    }
+    return ifs;
+  } 
+
 } /* namespace provallo */ ;
 #endif /* DECISION_ENGINE_MATRIX_H_ */

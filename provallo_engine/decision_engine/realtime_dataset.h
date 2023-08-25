@@ -42,7 +42,7 @@ namespace provallo
         
         public:
           //constructors            
-        explicit realtime_datset(const provallo::csvfile &file_in  )
+        realtime_dataset(const provallo::csvfile &file_in  );
 
         //implement the pure virtual functions inherited from dataset :
         virtual dataset *

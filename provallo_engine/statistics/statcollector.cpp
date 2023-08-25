@@ -882,13 +882,13 @@ namespace provallo
     return normalized;
   }
 
-  float
+  real_t
   stat_collector::getTimeStamp() const
   {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     // Get time stamp in seconds
-    return (float)ts.tv_sec + ((float)ts.tv_nsec * 1E-9);
+    return (real_t)ts.tv_sec + ((real_t)ts.tv_nsec * 1E-9);
   }
 
   void

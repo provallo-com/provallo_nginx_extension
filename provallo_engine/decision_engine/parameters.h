@@ -53,7 +53,8 @@ namespace provallo
     KMEANS_PLUS_PLUS = 32,
     KMEANS_PARALLEL = 33,
     KMEANS_LLOYD = 34,
-    KMEANS_LLOYD_PARALLEL = 35
+    KMEANS_LLOYD_PARALLEL = 35,
+    CLASSIFIER_MAX = 36
   };
   // Base class for parameters
   class parameter_base
@@ -183,6 +184,320 @@ namespace provallo
 
     ~random_tree_param(){};
   };
+
+
+  // Parameters for light gbm
+  class lightgbm_param : public parameter_base
+  {
+    // Number of attributes to select on a split node
+    uint32_t _rho;
+    // Maximum level of the tree
+    uint32_t _level;
+    // Minimum gain
+    real_t _min_gain; 
+    // Number of leaves
+    uint32_t _num_leaves;
+    // Number of iterations
+    uint32_t _num_iterations;
+    // Learning rate
+    real_t _learning_rate;
+    // Number of threads
+    uint32_t _num_threads;
+    // Number of classes
+    uint32_t _num_class;
+    // Number of bins
+    uint32_t _num_bins;
+    // Number of trees
+    uint32_t _num_trees;
+     // Number of features
+    uint32_t _num_features;
+    // Number of data
+    uint32_t _num_data;
+    // Number of data per leaf
+    uint32_t _num_data_per_leaf;
+    // Number of data per group
+    uint32_t _num_data_per_group;
+    // Number of groups
+    uint32_t _num_groups;
+    // Number of splits
+    uint32_t _num_splits;
+
+    //
+    
+  public:
+    //constructor 
+    lightgbm_param(uint32_t rho = 1, uint32_t level = 0, real_t min_gain = 0.0, uint32_t num_leaves = 31, uint32_t num_iterations = 100, real_t learning_rate = 0.1, uint32_t num_threads = 0, uint32_t num_class = 1, uint32_t num_bins = 255, uint32_t num_trees = 1,  uint32_t num_features = 0, uint32_t num_data = 0, uint32_t num_data_per_leaf = 0, uint32_t num_data_per_group = 0, uint32_t num_groups = 0, uint32_t num_splits = 0) : _rho(rho), _level(level), _min_gain(min_gain), _num_leaves(num_leaves), _num_iterations(num_iterations), _learning_rate(learning_rate), _num_threads(num_threads), _num_class(num_class), _num_bins(num_bins), _num_trees(num_trees),  _num_features(num_features), _num_data(num_data), _num_data_per_leaf(num_data_per_leaf), _num_data_per_group(num_data_per_group), _num_groups(num_groups), _num_splits(num_splits)
+    {
+
+    }
+    static classifier_type
+    _type()
+    {
+      return LIGHT_GBM;
+    }
+
+  //print 
+    void print(std::ostream& out)const
+    {
+      out<<"Number of attributes to select on a split node: "<<_rho<<std::endl;
+      out<<"Maximum level of the tree: "<<_level<<std::endl;
+      out<<"Minimum gain: "<<_min_gain<<std::endl;
+      out<<"Number of leaves: "<<_num_leaves<<std::endl;
+      out<<"Number of iterations: "<<_num_iterations<<std::endl;
+      out<<"Learning rate: "<<_learning_rate<<std::endl;
+      out<<"Number of threads: "<<_num_threads<<std::endl;
+      out<<"Number of classes: "<<_num_class<<std::endl;
+      out<<"Number of bins: "<<_num_bins<<std::endl;
+      out<<"Number of trees: "<<_num_trees<<std::endl;
+      out<<"Number of features: "<<_num_features<<std::endl;
+      out<<"Number of data: "<<_num_data<<std::endl;
+      out<<"Number of data per leaf: "<<_num_data_per_leaf<<std::endl;
+      out<<"Number of data per group: "<<_num_data_per_group<<std::endl;
+      out<<"Number of groups: "<<_num_groups<<std::endl;
+      out<<"Number of splits: "<<_num_splits<<std::endl;
+      out<<"Number of leaves: "<<_num_leaves<<std::endl;
+      out<<std::endl;
+
+    }
+    //get type
+    classifier_type getType() const
+    {
+      return _type();
+    }
+    //get level
+    uint32_t getLevel() const
+    {
+      return _level;
+    }
+    //get min gain
+    real_t getMinGain() const
+    {
+      return _min_gain;
+    }
+    //get rho
+    uint32_t getRho() const
+    {
+      return _rho;
+    }
+    //get num leaves
+    uint32_t getNumLeaves() const
+    {
+      return _num_leaves;
+    }
+    //get num iterations
+    uint32_t getNumIterations() const
+    {
+      return _num_iterations;
+    }
+    //get learning rate
+    real_t getLearningRate() const
+    {
+      return _learning_rate;
+    }
+    //get num threads
+    uint32_t getNumThreads() const
+    {
+      return _num_threads;
+    }
+    //get num class
+    
+    virtual   ~lightgbm_param(){};
+  //  
+  };
+
+  // Parameters for XGBoost
+  class xgboost_param : public parameter_base 
+  {
+    // Number of attributes to select on a split node
+    uint32_t _rho;
+    // Maximum level of the tree
+    uint32_t _level;
+    // Minimum gain
+    real_t _min_gain;
+    // Number of leaves
+    uint32_t _num_leaves;
+    // Number of iterations
+    uint32_t _num_iterations;
+    // Learning rate
+    real_t _learning_rate;
+    // Number of threads
+    uint32_t _num_threads;
+    // Number of classes
+    uint32_t _num_class;
+    // Number of bins
+    uint32_t _num_bins;
+    // Number of trees
+    uint32_t _num_trees;
+    // Number of features
+    uint32_t _num_features;
+    // Number of data
+    uint32_t _num_data;
+    // Number of data per leaf
+    uint32_t _num_data_per_leaf;
+    // Number of data per group
+    uint32_t _num_data_per_group;
+    // Number of groups
+    uint32_t _num_groups;
+    // Number of splits
+    uint32_t _num_splits;
+
+  public:
+
+    //constructor
+    xgboost_param(uint32_t rho = 1, uint32_t level = 0, real_t min_gain = 0.0, uint32_t num_leaves = 31, uint32_t num_iterations = 100, real_t learning_rate = 0.1, uint32_t num_threads = 0, uint32_t num_class = 1, uint32_t num_bins = 255, uint32_t num_trees = 1, uint32_t num_features = 0, uint32_t num_data = 0, uint32_t num_data_per_leaf = 0, uint32_t num_data_per_group = 0, uint32_t num_groups = 0, uint32_t num_splits = 0) : _rho(rho), _level(level), _min_gain(min_gain), _num_leaves(num_leaves), _num_iterations(num_iterations), _learning_rate(learning_rate), _num_threads(num_threads), _num_class(num_class), _num_bins(num_bins), _num_trees(num_trees), _num_features(num_features), _num_data(num_data), _num_data_per_leaf(num_data_per_leaf), _num_data_per_group(num_data_per_group), _num_groups(num_groups), _num_splits(num_splits)
+    {
+      //check
+      if(_rho == 0)
+      {
+        throw std::invalid_argument("xgboost_param: rho must be greater than 0");
+      }
+      if(_level == 0)
+      {
+        throw std::invalid_argument("xgboost_param: level must be greater than 0");
+      }
+      if(_min_gain < 0.0)
+      {
+        throw std::invalid_argument("xgboost_param: min_gain must be greater than or equal to 0.0");
+      }
+      if(_num_leaves == 0)
+      {
+        throw std::invalid_argument("xgboost_param: num_leaves must be greater than 0");
+      }
+      if(_num_iterations == 0)
+      {
+        throw std::invalid_argument("xgboost_param: num_iterations must be greater than 0");
+      }
+
+      if(_learning_rate <= 0.0)
+      {
+        throw std::invalid_argument("xgboost_param: learning_rate must be greater than 0.0");
+      }
+
+
+    }
+    static classifier_type
+    _type()
+    {
+      return XGBOOST;
+    }
+    //print
+
+    void print(std::ostream& out)const
+    {
+      out<<"Number of attributes to select on a split node: "<<_rho<<std::endl;
+      out<<"Maximum level of the tree: "<<_level<<std::endl;
+      out<<"Minimum gain: "<<_min_gain<<std::endl;
+      out<<"Number of leaves: "<<_num_leaves<<std::endl;
+      out<<"Number of iterations: "<<_num_iterations<<std::endl;
+      out<<"Learning rate: "<<_learning_rate<<std::endl;
+      out<<"Number of threads: "<<_num_threads<<std::endl;
+      out<<"Number of classes: "<<_num_class<<std::endl;
+      out<<"Number of bins: "<<_num_bins<<std::endl;
+      out<<"Number of trees: "<<_num_trees<<std::endl;
+      out<<"Number of features: "<<_num_features<<std::endl;
+      out<<"Number of data: "<<_num_data<<std::endl;
+      out<<"Number of data per leaf: "<<_num_data_per_leaf<<std::endl;
+      out<<"Number of data per group: "<<_num_data_per_group<<std::endl;
+      out<<"Number of groups: "<<_num_groups<<std::endl;
+      out<<"Number of splits: "<<_num_splits<<std::endl;
+      out<<"Number of leaves: "<<_num_leaves<<std::endl;
+      out<<std::endl;
+
+    } 
+    virtual   ~xgboost_param(){};
+  //
+    //get type
+    classifier_type
+    getType() const
+    {
+      return _type();
+    }
+
+    uint32_t getRho() const
+    {
+      return _rho;
+    }
+
+    uint32_t getLevel() const
+    {
+      return _level;
+    } 
+
+    real_t getMinGain() const
+    {
+      return _min_gain;
+    }
+
+    
+    uint32_t getNumIterations() const
+    {
+      return _num_iterations;
+    }
+
+    real_t getLearningRate() const
+    {
+      return _learning_rate;
+    }
+
+    uint32_t getNumThreads() const
+    {
+      return _num_threads;
+    }
+
+    // Number of classes
+    
+    // Number of bins
+    uint32_t getNumBins() const
+    {
+      return _num_bins;
+    }
+    // Number of trees
+    uint32_t getNumTrees() const
+    {
+      return _num_trees;
+    }
+    // Number of features
+    uint32_t getNumFeatures() const
+    {
+      return _num_features;
+    }
+    // Number of data
+    uint32_t getNumData() const
+    {
+      return _num_data;
+    }
+    // Number of data per leaf
+    uint32_t getNumDataPerLeaf() const
+    {
+      return _num_data_per_leaf;
+    }
+    // Number of data per group
+    
+    uint32_t getNumDataPerGroup() const
+    {
+      return _num_data_per_group;
+    }
+    // Number of groups
+    uint32_t getNumGroups() const
+    {
+      return _num_groups;
+    }
+    // Number of splits
+    uint32_t getNumSplits() const
+    {
+      return _num_splits;
+    }
+    // Number of leaves
+    uint32_t getNumLeaves() const
+    {
+      return _num_leaves;
+    }
+    
+    //use matrix<real_t> inside xgboost/lightgbm algorith to transform the data instead of actually holding trees in memory. 
+    //this is a matrix of probabilities that can be used to classify data points
+    //the matrix is a transition matrix from a tree structure to a matrix of probabilities 
+ 
+  };
   // Parameters for Random Forest
   class random_forest_param : public parameter_base
   {
@@ -231,7 +546,7 @@ namespace provallo
       return _parameters;
     }
 
-    ~random_forest_param()
+    virtual ~random_forest_param()
     {
     }
   };

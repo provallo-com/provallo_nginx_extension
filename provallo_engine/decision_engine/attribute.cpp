@@ -49,7 +49,7 @@ namespace provallo
       this->_tag = deserial->_tag;
     }
   }
-
+ 
   discrete_attribute::discrete_attribute(
       const attribute_name &name, const attribute_tag &tag,
       const vector<attribute_value> &attribute_values) : attribute_definition(name, tag), _values_map(attribute_values)
@@ -61,10 +61,12 @@ namespace provallo
     for (; att != attribute_values.end(); ++att)
     {
       // Insert data on the map
+      if (_name_map.find(*att) == _name_map.end())
       _name_map.insert(
           pair<attribute_value, discrete_value>((*att), value));
       ++value;
     }
+    std::cout << "discrete_attribute::discrete_attribute "<< name << "tag: " << tag << " size: " << attribute_values.size() << std::endl;
   }
 
   discrete_attribute::discrete_attribute(const attribute_definition *deserial) : attribute_definition(deserial)
@@ -198,22 +200,28 @@ namespace provallo
                                       const std::string &str)
   {
     // Discrete
-    if (str.find(",") != string::npos)
-    {
-      // Values are defined in a CSV format
-      vector<attribute_value> values;
-      tokenize(str, values);
-      // Create discrete definition
-      return new discrete_attribute(name, tag, values);
-    }
-    // Continuous
-    else if (str.find("continuous") != string::npos)
+    if (str.find("continuous") != string::npos)
     {
       return new continous_attribute(name, tag);
     }
     else if (str.find("ignore") != string::npos)
     {
       return new ignored_attribute(name, tag);
+    }
+    else
+    if (str.find(",") != string::npos)
+    {
+      // Values are defined in a CSV format
+      vector<attribute_value> values;
+      tokenize(str, values);
+      // Create discrete definition
+      discrete_attribute* ret = new discrete_attribute(name, tag, values);
+      if(ret->getCount() == 0)
+      {
+        for (size_t i = 0; i < values.size(); ++i)
+          ret->add_value(values[i], i);
+      }
+      return ret;
     }
     // Not defined
     return nullptr;
@@ -262,6 +270,9 @@ namespace provallo
     // Resize containers
     _tag_map.resize(attributes.size());
     _definition_map.resize(attributes.size(),nullptr);
+    _count.resize(attributes.size());
+    _type.resize(attributes.size());
+    
 
     // Definition of the target attribute
     attribute_name target_str("");
@@ -301,9 +312,7 @@ namespace provallo
 
     //  Sanity check
     // Check if the target attribute exists
-
-
-    if (target_str.size() == 0)
+     if (target_str.size() == 0)
       {
         print_error("Target attribute [" + target_name + "] does not exist");
       }
@@ -326,40 +335,30 @@ namespace provallo
                        CONTINUOUS);
         else if (getType(i) == discrete_attribute::_type())
           _groups.push(std::vector<attribute_tag>(1, i), DISC, DISCRETE); 
-    
-       }
+        }
     }
   }
 
   attribute_information::attribute_information(
-      const attribute_information &right) : _tag_map(right._tag_map), _name_map(right._name_map), _target_pos(right._target_pos), _definition_map(right._definition_map.size()), _count(right._count), _type(right._type), _groups(right._groups)
+      const attribute_information &right) : _tag_map(right._tag_map), _name_map(right._name_map), _target_pos(right._target_pos), _definition_map(right._definition_map.size()), _count(right._count), _type(right._type), _groups(right._groups) 
   {
-
-    // copy definitions
-    for (uint32_t i = 0; i < _definition_map.size(); ++i)
+    // clone definitions
+    for (uint32_t i = 0; i < getSize(); ++i)
+    {
       _definition_map[i] = right._definition_map[i]->clone();
-    // copy groups
-    _groups = right._groups;
-    // copy name map
-    _name_map = right._name_map;
-    // copy tag map
-    _tag_map = right._tag_map;
-    // copy target position
-    _target_pos = right._target_pos;
-    // copy count
-    _count = right._count;
-    // copy type
-    _type = right._type;
-    
+    }
 
-    
-    
-  }
+  } 
 
   attribute_information::attribute_information(
       const attribute_information *deserial) : _tag_map(deserial->_tag_map), _name_map(deserial->_name_map), _target_pos(deserial->_target_pos), _definition_map(deserial->_definition_map.size()), _count(deserial->_count), _type(deserial->_type), _groups(deserial->_groups)
 
   {
+  }
+
+  attribute_information::attribute_information(attribute_information&& mov) noexcept: _tag_map(std::move(mov._tag_map)), _name_map(std::move(mov._name_map)), _target_pos(mov._target_pos), _definition_map(std::move(mov._definition_map)), _count(std::move(mov._count)), _type(std::move(mov._type)), _groups(std::move(mov._groups))   
+  {
+  
   }
 
   std::string
@@ -387,6 +386,7 @@ namespace provallo
   {
     for (uint32_t i = 0; i < q._definition_map.size(); ++i)
       out << q._tag_map[i] << " : " << *(q._definition_map[i]) << endl;
+
     return out;
   }
 

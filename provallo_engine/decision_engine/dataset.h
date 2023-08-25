@@ -99,7 +99,7 @@ namespace provallo
   protected:
     clock_t last_sort;
     // Information about the attributes on this data set
-     attribute_information _attributes_info;
+    attribute_information _attributes_info;
     // Holds sorted indices of each attribute (useful when dealing with
     // numeric attributes)
     
@@ -1084,18 +1084,22 @@ namespace provallo
     }
     virtual ~dataset()
     {
+
       if (dest_counter > 0)
       {
         dest_counter -= 1;
-        size_t remaining = dest_counter;
+        uint64_t remaining = dest_counter;
         std::cout << "[=] dataset" << std::to_string(_id) << " destroyed , remaining ( " << std::to_string(remaining) << ")" << std::endl;
       }
       else
       {
         std::cout << "[=] dataset" << std::to_string(_id) << " destroyed , remaining ( " << std::to_string(dest_counter) << ")" << std::endl; 
       }
-      //double free or corruption (out): 0x00007f9c4c000b20
+      //free memory
+      _sorted_indices.clear();
+      _attributes_info.clear();
 
+      
 
     } 
 
@@ -1317,19 +1321,22 @@ namespace provallo
   public:
     training_set(const attribute_information &attributes_info) : dataset(attributes_info), _samples(attributes_info.getSize())
     {
-      const size_t n = attributes_info.getSize();
-      for ( uint32_t i = 0; i <n; ++i)
-      {   
-          _samples[i].reserve(n);
-      }
+      
     }
     training_set(training_set &&right) : dataset(std::move(right)), _samples(std::move(right._samples))
     {
     }
-    training_set(const training_set &right) : dataset(right), _samples(right._samples.size())
+    training_set(const training_set &right) : dataset(right), _samples(right._samples.size()) 
     {
       
-      std::copy(right._samples.begin(), right._samples.end(), _samples.begin());  
+      for ( size_t i=0;i<right._samples.size();++i)
+      {
+          _samples[i].reserve(right._samples[i].size());
+          for ( size_t j=0;j<right._samples[i].size();++j)
+          {
+            _samples[i].push_back(right._samples[i][j]);
+          }
+      }
 
     } // end training_set
  
@@ -1347,6 +1354,15 @@ namespace provallo
     {
       assert(_samples.size() != 0 ) ;
       return _samples[0].size(); //return number of samples 
+    }
+    void clear()
+    {
+      for (auto & sample: _samples )
+        sample.clear();
+
+      _samples.clear();
+      _attributes_info.clear();
+      //_samples.resize(_attributes_info.getSize());
     }
 
     unsigned int
@@ -1501,10 +1517,18 @@ namespace provallo
 
 
 
-     virtual ~training_set()
+    virtual ~training_set()
     {
+      //clear references of samples 
+      for ( auto& sample : _samples ) 
+            sample.clear();
+       _samples.shrink_to_fit();
+
+      
+      _sorted_indices.clear();
+       
       dest_counter -= 1;
-      size_t remaining = dest_counter;
+      uint64_t remaining = dest_counter;
       std::cout << "[=] training_set" << std::to_string(_id) << " destroyed , remaining ( " << std::to_string(remaining) << ")" << std::endl;
     }
   };
@@ -1677,7 +1701,7 @@ namespace provallo
     dataset *
     getNew() const
     {
-      return new  testing_set(this->getattributes());
+      return new  testing_set(*this);
     }
 
     friend class testing_set_ref;
@@ -1724,6 +1748,11 @@ namespace provallo
     testing_set(const testing_set &right) : dataset(right.getattributes()), _samples(right._samples), _nattr(
                                                                                                           right._nattr)
     {
+      //std::cout << "copying testing set" << std::endl;
+      //std::cout << "size: " << _samples.size() << std::endl;
+      //std::cout << "nattr: " << _nattr << std::endl;
+      //std::cout << "attributes: " << _attributes_info.getSize() << std::endl;
+      //std::cout << "target: " << _attributes_info.get_target_tag() << std::endl;
     }
 
     testing_set(testing_set &&right) : dataset(right.getattributes()), _samples(std::move(right._samples)), _nattr(
@@ -1830,14 +1859,19 @@ namespace provallo
     }
     testing_set_ref(const testing_set &right) : dataset::dataset(right.getattributes()), _dataset(&right),_indices(_dataset->size())
     {
-
       for (size_t i = 0; i < _indices.size(); i++)
       {
+        //no indices set.
         _indices[i] = i;
       }
+      //std::cout << "copying testing set ref" << std::endl;
     } 
     testing_set_ref(testing_set_ref &right, const std::vector<size_t> &indices) : dataset::dataset(right.getattributes()), _dataset(right._dataset), _indices(indices)
     {
+        for (size_t i = 0; i < _indices.size(); i++)
+      {
+        _indices[i] = indices[ i];
+      }
     }
     testing_set_ref(testing_set_ref &&right) : dataset::dataset(right.getattributes()), _dataset(right._dataset), _indices(right._indices)
     {
