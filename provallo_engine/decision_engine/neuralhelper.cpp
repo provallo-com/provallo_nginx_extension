@@ -12,22 +12,22 @@
 #include <thread>
 namespace provallo
 {
-    using type_matrix = matrix<float>;
+    using type_matrix = matrix<real_t>;
 
     //  Sigmoid
     ActivationFun
-    sigmoid(float lambda)
+    sigmoid(real_t lambda)
     {
-        return [=](float x)
+        return [=](real_t x)
         {
-            return 1.f / (1.f + exp(-lambda * x));
+            return 1./ (1. + exp(-lambda * x));
         };
     }
     //  Heavyside
     ActivationFun
-    heavyside(float gapAbscissa)
+    heavyside(real_t gapAbscissa)
     {
-        return [=](float x)
+        return [=](real_t x)
         {
             return (x < gapAbscissa) ? 0 : 1;
         };
@@ -36,7 +36,7 @@ namespace provallo
     ActivationFun
     hyperTan()
     {
-        return [=](float x)
+        return [=](real_t x)
         {
             return tanh(2 * x / 3);
         };
@@ -45,19 +45,19 @@ namespace provallo
     ActivationFun
     reLu()
     {
-        return [=](float x)
+        return [=](real_t x)
         {
-            if (x > 0.f)
+            if (x > 0.0)
                 return x;
             else
-                return 0.f;
+                return 0.0;
         };
     }
     //  Leaky ReLu
     ActivationFun
-    reLuLeaky(float lambda)
+    reLuLeaky(real_t lambda)
     {
-        return [=](float x)
+        return [=](real_t x)
         {
             if (x > 0)
                 return x;
@@ -71,12 +71,12 @@ namespace provallo
     {
         return [=](type_matrix v1, type_matrix v2)
         {
-            float res = 0;
+            real_t res = 0;
             for (size_t i = 0; i < v1.size1(); i++)
             {
                 for (size_t j = 0; j < v2.size2(); j++)
 
-                    res += -1. * std::log<double>( fabs(v1(i, j) - (1 - v2(i, j)))).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
+                    res += -1. * std::log<real_t>( fabs(v1(i, j) - (1 - v2(i, j)))).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
             }
             return res;
         };
@@ -87,12 +87,12 @@ namespace provallo
     {
         return [](type_matrix v1, type_matrix v2)
         {
-            float res = 0;
+            real_t res = 0;
             for (size_t i = 0; i < v1.size1(); i++)
             {
                 for (size_t j = 0; j < v2.size2(); j++)
 
-                    res += -1. * std::log<double>(0.0000001 + v1(i, j)).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
+                    res += -1. * std::log<real_t>(0.0000001 + v1(i, j)).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
             }
             return res;
         };
@@ -104,14 +104,14 @@ namespace provallo
     {
         return [](type_matrix v1, type_matrix v2)
         {
-            float res = 0;
+            real_t res = 0;
             for (size_t i = 0; i < v1.size1(); i++)
             {
 
                 for (size_t j = 0; j < v2.size2(); j++)
                 {
 
-                    res += -1 * std::log<double>(1.0 - v1(i, j) + 0.0000001).real();
+                    res += -1 * std::log<real_t>(1.0 - v1(i, j) + 0.0000001).real();
                 }
             }
             return res;
@@ -124,10 +124,10 @@ namespace provallo
     {
         return [](type_matrix v1, type_matrix v2)
         {
-            float res = 0;
+            real_t res = 0;
             for (size_t i = 0; i < v1.size1(); i++)
                 for (size_t j = 0; j < v2.size2(); j++)
-                    res += -exp(-(1 / 1.0f) * std::log<double>((1.0 / v1(i, j)) - 1.).real()); 
+                    res += -exp(-(1 / 1.0f) * std::log<real_t>((1.0 / v1(i, j)) - 1.).real()); 
 
             return res;
         };
@@ -191,7 +191,7 @@ namespace provallo
         return inputs * _propagation_matrix;
     }
 
-    type_matrix zero_pad_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, float step)
+    type_matrix zero_pad_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, real_t step)
     {
         return xnPartialDerivative * (_propagation_matrix/(1.-step)) ;
     }
@@ -202,7 +202,7 @@ namespace provallo
         return xnPartialDerivative * _backprop_matrix;
     }
 
-    type_matrix zero_pad_layer::mini_batch_layer_backdrop(const type_matrix &xnPartialDerivative, float step)
+    type_matrix zero_pad_layer::mini_batch_layer_backdrop(const type_matrix &xnPartialDerivative, real_t step)
     {
         return xnPartialDerivative * _backprop_matrix /(1.+step) ;
     }
@@ -236,7 +236,7 @@ namespace provallo
         return (static_cast<size_t>(_input_dim * _input_dim));
     }
 
-    noisy_layer::noisy_layer(size_t inputSize, size_t outputSize, std::function<float(float)> activationF, size_t descentType)
+    noisy_layer::noisy_layer(size_t inputSize, size_t outputSize, std::function<real_t(real_t)> activationF, size_t descentType)
         : fully_connected_layer(inputSize, outputSize, activationF, descentType), _noise_weights(type_matrix::Random(1, outputSize)), _noise_buffer(type_matrix::Zero(_noise_weights.rows(), 1)), _noise_variation_sum(type_matrix::Zero(1, outputSize))
     {
     }
@@ -254,7 +254,7 @@ namespace provallo
         return output;
     }
 
-    type_matrix noisy_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, float step)
+    type_matrix noisy_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, real_t step)
     {
         type_matrix ynPartialDerivative = xnPartialDerivative * fnDerivativeMatrix();
 
@@ -274,12 +274,12 @@ namespace provallo
     {
         fully_connected_layer::update_layer_weights(minibatchSize);
         for (auto i : _noise_variation_sum)
-            i = i / double(minibatchSize);
+            i = i / real_t(minibatchSize);
 
         _sum_weight_variation.set_zero();
     }
 
-    fully_connected_layer::fully_connected_layer(size_t inputSize, size_t outputSize, std::function<float(float)> activationF, size_t descentType)
+    fully_connected_layer::fully_connected_layer(size_t inputSize, size_t outputSize, std::function<real_t(real_t)> activationF, size_t descentType)
         : _weight(type_matrix::Random(inputSize, outputSize)), _bias(type_matrix::Random(1, outputSize)) // ligne
           ,
           _activation_functions(activationF), _buffer_activation_level(type_matrix::Zero(1, outputSize)) // ligne
@@ -290,7 +290,7 @@ namespace provallo
     {
     }
 
-    fully_connected_layer::fully_connected_layer(size_t inputSize, size_t outputSize, type_matrix weight, type_matrix bias, std::function<float(float)> activationF, size_t descentType)
+    fully_connected_layer::fully_connected_layer(size_t inputSize, size_t outputSize, type_matrix weight, type_matrix bias, std::function<real_t(real_t)> activationF, size_t descentType)
         : _weight(weight), _bias(bias) // ligne
           ,
           _activation_functions(activationF), _buffer_activation_level(type_matrix::Zero(1, outputSize)) // ligne
@@ -317,7 +317,7 @@ namespace provallo
     }
     // back propogation :
 
-    type_matrix fully_connected_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, float step)
+    type_matrix fully_connected_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, real_t step)
     {
 
         type_matrix ynPartialDerivative = xnPartialDerivative * fnDerivativeMatrix();
@@ -327,8 +327,8 @@ namespace provallo
         {
         case 1: // RMS Prop
             updateFirstMomentStep(wnPartialDerivative, ynPartialDerivative, step);
-            _sum_bias_variation = _sum_bias_variation + (float(1.) / (_adaptive_bias_step.sqrt()) + (ynPartialDerivative * 0.000001));
-            _sum_weight_variation = _sum_weight_variation + (float(1.) / (_adaptive_bias_step.sqrt()) + (ynPartialDerivative * 0.000001));
+            _sum_bias_variation = _sum_bias_variation + (real_t(1.) / (_adaptive_bias_step.sqrt()) + (ynPartialDerivative * 0.000001));
+            _sum_weight_variation = _sum_weight_variation + (real_t(1.) / (_adaptive_bias_step.sqrt()) + (ynPartialDerivative * 0.000001));
 
             // mSumBiasVariation += ((1.0/(sqrt(mAdaptativeBiasStep.array()+0.000001)))*ynPartialDerivative.array()).matrix();
             // mSumWeightVariation += ((1.0/(sqrt(mAdaptativeWeightStep.array()+0.000001)))*wnPartialDerivative.array()).matrix();
@@ -338,8 +338,8 @@ namespace provallo
             _update_count++;
             updateFirstMomentStep(wnPartialDerivative, ynPartialDerivative, step);
             updateSecondMomentStep(wnPartialDerivative, ynPartialDerivative, step);
-            _sum_bias_variation = _sum_bias_variation + (float(1.) / (_adaptive_bias_second_step.sqrt() * _adaptive_bias_step));
-            _sum_weight_variation = _sum_weight_variation + (float(1.) / (_adaptive_weight_second_step.sqrt() * _adaptive_bias_step));
+            _sum_bias_variation = _sum_bias_variation + (real_t(1.) / (_adaptive_bias_second_step.sqrt() * _adaptive_bias_step));
+            _sum_weight_variation = _sum_weight_variation + (real_t(1.) / (_adaptive_weight_second_step.sqrt() * _adaptive_bias_step));
             /// mSumBiasVariation += ((1.0/(sqrt(((mAdaptativeBiasSecondStep).array())+0.000001)))*mAdaptativeBiasStep.array()).matrix();
             // mSumWeightVariation += ((1.0/(sqrt(((mAdaptativeWeightSecondStep).array())+0.000001)))*mAdaptativeWeightStep.array()).matrix();
             update_layer_weights();
@@ -364,7 +364,7 @@ namespace provallo
         return ynPartialDerivative * _weight.transpose();
     }
 
-    type_matrix fully_connected_layer::mini_batch_layer_backdrop(const type_matrix &xnPartialDerivative, float step)
+    type_matrix fully_connected_layer::mini_batch_layer_backdrop(const type_matrix &xnPartialDerivative, real_t step)
     {
         // Same as layerBackprop but no weight updating
 
@@ -386,8 +386,8 @@ namespace provallo
 
     void fully_connected_layer::update_layer_weights(size_t minibatchSize)
     {
-        _weight = _weight - _sum_weight_variation / double(minibatchSize);
-        _bias = _bias + _sum_bias_variation / double(minibatchSize);
+        _weight = _weight - _sum_weight_variation / real_t(minibatchSize);
+        _bias = _bias + _sum_bias_variation / real_t(minibatchSize);
 
         // reset des buffer
         _sum_weight_variation.set_zero();
@@ -396,7 +396,7 @@ namespace provallo
 
     type_matrix fully_connected_layer::fnDerivativeMatrix() const
     {
-        auto fnDerivated = [this](float x, float dx)
+        auto fnDerivated = [this](real_t x, real_t dx)
         { return (_activation_functions(x + dx) - _activation_functions(x)) / dx; };
         //-->size-->size1
         type_matrix fnDerivativeMat(_buffer_activation_level.size1(), 1);
@@ -408,7 +408,7 @@ namespace provallo
         // return (fnDerivativeMat.as_diagonal()*fnDerivativeMat);
     }
 
-    void fully_connected_layer::updateFirstMomentStep(const type_matrix &wnPartialDerivative, const type_matrix &ynPartialDerivative, float step)
+    void fully_connected_layer::updateFirstMomentStep(const type_matrix &wnPartialDerivative, const type_matrix &ynPartialDerivative, real_t step)
     {
         _adaptive_weight_step = (step * _adaptive_weight_step) + (1 - step) * wnPartialDerivative;
         _adaptive_bias_step = (step * _adaptive_weight_step) + (1 - step) * ynPartialDerivative;
@@ -417,7 +417,7 @@ namespace provallo
         // mAdaptativeBiasStep = step*mAdaptativeBiasStep + (1-step)*fabs(ynPartialDerivative);
     }
 
-    void fully_connected_layer::updateSecondMomentStep(const type_matrix &wnPartialDerivative, const type_matrix &ynPartialDerivative, float step)
+    void fully_connected_layer::updateSecondMomentStep(const type_matrix &wnPartialDerivative, const type_matrix &ynPartialDerivative, real_t step)
     {
 
         _adaptive_weight_second_step = real_type(.99) * _adaptive_weight_step + (real_type(.01 *step ) * (wnPartialDerivative * wnPartialDerivative)) ;
@@ -460,7 +460,7 @@ namespace provallo
         }
     }
 
-    neural_net::neural_net(const std::vector<size_t> &layerSizes, const std::vector<matrix<float>> &weightVector, const std::vector<matrix<float>> &biasVector, const std::vector<ActivationFun> &activationFuns, size_t descentType)
+    neural_net::neural_net(const std::vector<size_t> &layerSizes, const std::vector<matrix<real_t>> &weightVector, const std::vector<matrix<real_t>> &biasVector, const std::vector<ActivationFun> &activationFuns, size_t descentType)
     {
 
         if (layerSizes.size() != activationFuns.size() + 1)
@@ -468,8 +468,8 @@ namespace provallo
 
         for (size_t i(0); i < layerSizes.size() - 1; ++i)
             // size_t tailleImg, size_t _Channels,
-            //  		       const std::vector<type_matrix>& weight, std::function<float
-            // 		       (float)> activationF = sigmoid (10.f)
+            //  		       const std::vector<type_matrix>& weight, std::function<real_t
+            // 		       (real_t)> activationF = sigmoid (10.f)
             this->push_back(
                 neuron_layer::ptr((layerSizes[i] == 0) ? (neuron_layer *)new fully_connected_layer(layerSizes[i], layerSizes[i + 1], weightVector[i], biasVector[i], activationFuns[i], descentType) : (layerSizes[i] == 2) ? (neuron_layer *)new convolution_layer(layerSizes[i], layerSizes[i + 1], weightVector, activationFuns[i])
                                                                                                                                                                                                                             : // @suppress("Ambiguous problem")
@@ -502,7 +502,7 @@ namespace provallo
             }
         }
 
-        float *temp = type_matrix((filtreConv * input)).row(id);
+        real_t *temp = type_matrix((filtreConv * input)).row(id);
         std::lock_guard<std::recursive_mutex> locker_(mtx);
 
         // mtx.lock();
@@ -522,7 +522,7 @@ namespace provallo
         // mtx.unlock();
     }
 
-    convolution_layer::convolution_layer(size_t tailleImg, size_t nbChannels, size_t dimensionFiltre, size_t nbFiltres, std::function<float(float)> activationF)
+    convolution_layer::convolution_layer(size_t tailleImg, size_t nbChannels, size_t dimensionFiltre, size_t nbFiltres, std::function<real_t(real_t)> activationF)
         : _dimension_input((int)sqrt(tailleImg)), _weight_matrix(std::vector<type_matrix>()), mBias(type_matrix::Random(1, nbFiltres)) // ligne
           ,
           _activation_functions(activationF), _buffer_activation_level(type_matrix::Zero(nbFiltres, (_dimension_input - dimensionFiltre + 1) * (_dimension_input - dimensionFiltre + 1))) // ligne
@@ -539,7 +539,7 @@ namespace provallo
         }
     }
 
-    convolution_layer::convolution_layer(size_t tailleImg, size_t nbChannels, const std::vector<type_matrix> &weight, std::function<float(float)> activationF)
+    convolution_layer::convolution_layer(size_t tailleImg, size_t nbChannels, const std::vector<type_matrix> &weight, std::function<real_t(real_t)> activationF)
         : _dimension_input((size_t)sqrt(tailleImg)), _weight_matrix(weight), mBias(type_matrix::Random(1, weight.size())) // ligne
           ,
           _activation_functions(activationF), _buffer_activation_level(type_matrix::Zero(weight.size(), (_dimension_input - (size_t)sqrt(weight[0].cols()) + 1) * (_dimension_input - (size_t)sqrt(weight[0].cols()) + 1))) // ligne
@@ -576,7 +576,7 @@ namespace provallo
 
         return output;
     }
-    type_matrix convolution_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, float step)
+    type_matrix convolution_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, real_t step)
     {
         // calculate ynPartialDerivative
         type_matrix ynPartialDerivative = xnPartialDerivative * fnDerivativeMatrix();
@@ -708,32 +708,32 @@ namespace provallo
         }
     }
 
-    void neural_helper::backpropDiscriminator(matrix<float> input, matrix<float> desiredOutput, float step, float dx)
+    void neural_helper::backpropDiscriminator(matrix<real_t> input, matrix<real_t> desiredOutput, real_t step, real_t dx)
     {
-        matrix<float> xnPartialDerivative = calculateInitialErrorVector(_discriminator->processNetwork(input), desiredOutput, dx);
+        matrix<real_t> xnPartialDerivative = calculateInitialErrorVector(_discriminator->processNetwork(input), desiredOutput, dx);
 
         propagateError(_discriminator, xnPartialDerivative, step);
     }
 
-    void neural_helper::backpropGenerator(matrix<float> input, matrix<float> desiredOutput, float step, float dx)
+    void neural_helper::backpropGenerator(matrix<real_t> input, matrix<real_t> desiredOutput, real_t step, real_t dx)
     {
-        matrix<float> xnPartialDerivative = calculateInitialErrorVectorGen(_discriminator->processNetwork(input), desiredOutput, dx);
+        matrix<real_t> xnPartialDerivative = calculateInitialErrorVectorGen(_discriminator->processNetwork(input), desiredOutput, dx);
         xnPartialDerivative = propagateErrorDiscriminatorInvariant(xnPartialDerivative);
         propagateError(_generator, xnPartialDerivative, step);
     }
 
-    void neural_helper::minibatchDiscriminatorBackprop(neural_net::ptr network, matrix<float> input, matrix<float> desiredOutput, float step, float dx)
+    void neural_helper::minibatchDiscriminatorBackprop(neural_net::ptr network, matrix<real_t> input, matrix<real_t> desiredOutput, real_t step, real_t dx)
     // Same as backpropDiscriminator but no weight updating
     {
-        matrix<float> xnPartialDerivative = calculateInitialErrorVector(_discriminator->processNetwork(input), desiredOutput, dx);
+        matrix<real_t> xnPartialDerivative = calculateInitialErrorVector(_discriminator->processNetwork(input), desiredOutput, dx);
 
         propagateErrorMinibatch(network, xnPartialDerivative, step);
     }
 
-    void neural_helper::minibatchGeneratorBackprop(neural_net::ptr network, matrix<float> input, matrix<float> desiredOutput, float step, float dx)
+    void neural_helper::minibatchGeneratorBackprop(neural_net::ptr network, matrix<real_t> input, matrix<real_t> desiredOutput, real_t step, real_t dx)
     // Same as backpropGenerator but no weight updating
     {
-        matrix<float> xnPartialDerivative = calculateInitialErrorVectorGen(_discriminator->processNetwork(input), desiredOutput, dx);
+        matrix<real_t> xnPartialDerivative = calculateInitialErrorVectorGen(_discriminator->processNetwork(input), desiredOutput, dx);
         xnPartialDerivative = propagateErrorMinibatch(_discriminator, xnPartialDerivative, 0);
         propagateErrorMinibatch(network, xnPartialDerivative, step);
     }
@@ -744,7 +744,7 @@ namespace provallo
             (*itr)->update_layer_weights(minibatchSize);
     }
 
-    void neural_helper::propagateError(neural_net::ptr network, matrix<float> xnPartialDerivative, float step)
+    void neural_helper::propagateError(neural_net::ptr network, matrix<real_t> xnPartialDerivative, real_t step)
     {
         for (auto itr = network->rbegin(); itr != network->rend(); ++itr)
         {
@@ -752,7 +752,7 @@ namespace provallo
         }
     }
 
-    matrix<float> neural_helper::propagateErrorMinibatch(neural_net::ptr network, matrix<float> xnPartialDerivative, float step)
+    matrix<real_t> neural_helper::propagateErrorMinibatch(neural_net::ptr network, matrix<real_t> xnPartialDerivative, real_t step)
     {
         for (auto itr = network->rbegin(); itr != network->rend(); ++itr)
         {
@@ -762,7 +762,7 @@ namespace provallo
     }
 
     //[[deprecated]] //use propagateErrorMinibatch(mDiscriminator, xnPartialDerivative, 0) instead
-    matrix<float> neural_helper::propagateErrorDiscriminatorInvariant(matrix<float> xnPartialDerivative)
+    matrix<real_t> neural_helper::propagateErrorDiscriminatorInvariant(matrix<real_t> xnPartialDerivative)
     {
         for (auto itr = _discriminator->rbegin(); itr != _discriminator->rend(); ++itr)
         {
@@ -771,31 +771,31 @@ namespace provallo
         return xnPartialDerivative;
     }
 
-    matrix<float> neural_helper::calculateInitialErrorVectorGen(matrix<float> output, matrix<float> desiredOutput, float dx)
+    matrix<real_t> neural_helper::calculateInitialErrorVectorGen(matrix<real_t> output, matrix<real_t> desiredOutput, real_t dx)
     {
         size_t output_size = output.size1() * output.size2();
 
-        matrix<float> errorVect = matrix<float>::Zero(1, output_size);
+        matrix<real_t> errorVect = matrix<real_t>::Zero(1, output_size);
 
         for (size_t i(0); i < output_size; ++i)
         {
-            matrix<float> deltaX(matrix<float>::Zero(1, output_size));
+            matrix<real_t> deltaX(matrix<real_t>::Zero(1, output_size));
             deltaX(0, i) = dx;
-            errorVect(0, i) = std::min(100.f, (_error_func_gen(output + deltaX, desiredOutput) - _error_func_gen(output, desiredOutput)) / dx);
+            errorVect(0, i) = std::min(100.0, (_error_func_gen(output + deltaX, desiredOutput) - _error_func_gen(output, desiredOutput)) / dx);
         }
         return errorVect;
     }
 
-    matrix<float> neural_helper::calculateInitialErrorVector(matrix<float> output, matrix<float> desiredOutput, float dx)
+    matrix<real_t> neural_helper::calculateInitialErrorVector(matrix<real_t> output, matrix<real_t> desiredOutput, real_t dx)
     {
         size_t output_size = output.size1() * output.size2();
-        matrix<float> errorVect = matrix<float>::Zero(1, output_size);
+        matrix<real_t> errorVect = matrix<real_t>::Zero(1, output_size);
 
         for (size_t i(0); i < output_size; ++i)
         {
-            matrix<float> deltaX(matrix<float>::Zero(1, output_size));
+            matrix<real_t> deltaX(matrix<real_t>::Zero(1, output_size));
             deltaX(0, i) = dx;
-            errorVect(0, i) = std::min(100.f, (_error_func_dis(output + deltaX, desiredOutput) - _error_func_dis(output, desiredOutput)) / dx);
+            errorVect(0, i) = std::min(100.0, (_error_func_dis(output + deltaX, desiredOutput) - _error_func_dis(output, desiredOutput)) / dx);
         }
         return errorVect;
     }
@@ -811,38 +811,38 @@ namespace provallo
         error_statistics data;
 
         // Calcul de la moyenne
-        data.meanGen = std::accumulate(mErrorsGen.begin(), mErrorsGen.end(), 0.f) / (static_cast<float>(mErrorsGen.size()));
-        data.meanDis = std::accumulate(mErrorsDis.begin(), mErrorsDis.end(), 0.f) / (static_cast<float>(mErrorsGen.size()));
+        data.meanGen = std::accumulate(mErrorsGen.begin(), mErrorsGen.end(), 0.0) / (static_cast<real_t>(mErrorsGen.size()));
+        data.meanDis = std::accumulate(mErrorsDis.begin(), mErrorsDis.end(), 0.0) / (static_cast<real_t>(mErrorsGen.size()));
 
         // Calcul d'écart type
-        float deviationGen{0};
-        float deviationDis{0};
+        real_t deviationGen{0};
+        real_t deviationDis{0};
 
         if (mErrorsGen.size() != 1)
         {
-            std::for_each(mErrorsGen.begin(), mErrorsGen.end(), [&](float x)
+            std::for_each(mErrorsGen.begin(), mErrorsGen.end(), [&](real_t x)
                           { deviationGen += pow(x - data.meanGen, 2); });
-            data.deviationGen = sqrt(deviationGen / static_cast<float>(mErrorsGen.size() - 1));
+            data.deviationGen = sqrt(deviationGen / static_cast<real_t>(mErrorsGen.size() - 1));
         }
         if (mErrorsDis.size() != 1)
         {
-            std::for_each(mErrorsDis.begin(), mErrorsDis.end(), [&](float x)
+            std::for_each(mErrorsDis.begin(), mErrorsDis.end(), [&](real_t x)
                           { deviationDis += pow(x - data.meanDis, 2); });
-            data.deviationDis = sqrt(deviationDis / static_cast<float>(mErrorsDis.size() - 1));
+            data.deviationDis = sqrt(deviationDis / static_cast<real_t>(mErrorsDis.size() - 1));
         }
         // Calcul d'interval de confiance
-        data.confidenceRangeGen = 2 * data.deviationGen / (sqrt(static_cast<float>(mErrorsGen.size())));
-        data.confidenceRangeDis = 2 * data.deviationDis / (sqrt(static_cast<float>(mErrorsDis.size())));
+        data.confidenceRangeGen = 2 * data.deviationGen / (sqrt(static_cast<real_t>(mErrorsGen.size())));
+        data.confidenceRangeDis = 2 * data.deviationDis / (sqrt(static_cast<real_t>(mErrorsDis.size())));
 
         return data;
     }
 
-    void error_processor::addResultGen(float result)
+    void error_processor::addResultGen(real_t result)
     {
         mErrorsGen.push_back(result);
     }
 
-    void error_processor::addResultDis(float result)
+    void error_processor::addResultDis(real_t result)
     {
         mErrorsDis.push_back(result);
     }
@@ -885,7 +885,7 @@ namespace provallo
         }
     }
 
-    void source_processor::exportImage(const matrix<float> &image, size_t teachIndex, size_t sizeSide)
+    void source_processor::exportImage(const matrix<real_t> &image, size_t teachIndex, size_t sizeSide)
     {
 
         mCSVImg << "#" << teachIndex << endrow;
@@ -1021,17 +1021,17 @@ namespace provallo
             }
 
             // Création du vecteur de bruit pour les tests du générateur
-            std::vector<matrix<float>> vectorTest;
+            std::vector<matrix<real_t>> vectorTest;
             for (size_t i(0); i < _configuration._GenTest; i++)
             {
-                matrix<float> noise = matrix<float>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
+                matrix<real_t> noise = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
                 vectorTest.push_back(noise);
             }
 
             // Création du Batch de Test du générateur
             for (size_t i(0); i < _configuration._GenTest; i++)
             {
-                matrix<float> outputTest = matrix<float>::Zero(1, 1);
+                matrix<real_t> outputTest = matrix<real_t>::Zero(1, 1);
                 outputTest(0, 0) = 0.;
                 mTestingBatchGen.push_back(learning_task::Sample(vectorTest[i], outputTest));
             }
@@ -1144,10 +1144,10 @@ namespace provallo
             // Création Image
             if (loopIndex % _configuration.intervalleImg == 0)
             {
-                matrix<float> input;
+                matrix<real_t> input;
                 for (unsigned int i(0); i < _configuration._ImgParIntervalleImg; i++)
                 {
-                    input = matrix<float>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
+                    input = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
                     mSourceProcessor.exportImage(mGenerator->processNetwork(input), loopIndex * _configuration._TeachingsPerLoop, _configuration.imageSizeSide);
                 }
             }
@@ -1168,10 +1168,10 @@ namespace provallo
             std::cout << "[#]Generator score " << scoreGen << "  # Discirminator score " << scoreDis << " !" << std::endl;
             if (loopIndex % _configuration.intervalleImg == 0)
             {
-                matrix<float> input;
+                matrix<real_t> input;
                 for (unsigned int i(0); i < _configuration._ImgParIntervalleImg; i++)
                 {
-                    input = matrix<float>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
+                    input = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
                     mSourceProcessor.exportImage(mGenerator->processNetwork(input), loopIndex * _configuration._TeachingsPerLoop, _configuration.imageSizeSide);
                 }
             }
@@ -1194,15 +1194,15 @@ namespace provallo
 
         for (size_t index{0}; index < _configuration._TeachingsPerLoop; index++)
         {
-            matrix<float> noiseInput = matrix<float>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
-            matrix<float> desiredOutput = matrix<float>(1, 1);
+            matrix<real_t> noiseInput = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
+            matrix<real_t> desiredOutput = matrix<real_t>(1, 1);
 
             for (size_t i(0); i < _configuration._GenTeach; i++)
             {
 
-                matrix<float> noiseInput = matrix<float>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
-                matrix<float> input = mGenerator->processNetwork(noiseInput);
-                noiseInput = matrix<float>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
+                matrix<real_t> noiseInput = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
+                matrix<real_t> input = mGenerator->processNetwork(noiseInput);
+                noiseInput = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
                 input = mGenerator->processNetwork(noiseInput);
 
                 desiredOutput(0, 0) = 1;
@@ -1210,11 +1210,11 @@ namespace provallo
             }
             for (size_t i(0); i < _configuration._DisTeach; i++)
             {
-                noiseInput = matrix<float>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
+                noiseInput = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
                 Sample sample(mTeachingBatchDis[distribution(randomEngine)]);
                 mTeacher.backpropDiscriminator(sample.first, sample.second, _configuration.step, _configuration.dx);
 
-                matrix<float> input = mGenerator->processNetwork(noiseInput);
+                matrix<real_t> input = mGenerator->processNetwork(noiseInput);
                 desiredOutput(0, 0) = 0;
                 mTeacher.backpropDiscriminator(input, desiredOutput, _configuration.step, _configuration.dx);
             }
@@ -1227,8 +1227,8 @@ namespace provallo
 
         for (unsigned int index{0}; index < _configuration._TeachingsPerLoop; index++)
         {
-            matrix<float> desiredOutput0 = matrix<float>(1, 1);
-            matrix<float> desiredOutput1 = matrix<float>(1, 1);
+            matrix<real_t> desiredOutput0 = matrix<real_t>(1, 1);
+            matrix<real_t> desiredOutput1 = matrix<real_t>(1, 1);
             desiredOutput0(0, 0) = 0;
             desiredOutput1(0, 0) = 1;
             for (unsigned long k(0); k < 1; ++k)
@@ -1257,48 +1257,48 @@ namespace provallo
         }
     }
 
-    float learning_task::runTestGen(int limit, bool returnErrorRate)
+    real_t learning_task::runTestGen(int limit, bool returnErrorRate)
     {
-        float errorMean{0};
+        real_t errorMean{0};
         if (returnErrorRate)
         {
             for (std::vector<Sample>::iterator itr = mTestingBatchGen.begin(); itr != mTestingBatchGen.end() && limit-- != 0; ++itr)
             {
-                matrix<float> output(mDiscriminator->processNetwork(mGenerator->processNetwork(itr->first)));
+                matrix<real_t> output(mDiscriminator->processNetwork(mGenerator->processNetwork(itr->first)));
                 errorMean += sqrt((output - itr->second).squaredNorm());
             }
         }
-        return errorMean / static_cast<float>(mTestingBatchGen.size());
+        return errorMean / static_cast<real_t>(mTestingBatchGen.size());
     }
 
-    float learning_task::runTestDis(int limit, bool returnErrorRate)
+    real_t learning_task::runTestDis(int limit, bool returnErrorRate)
     {
         int i(limit);
-        float errorMean{0};
+        real_t errorMean{0};
         if (returnErrorRate)
         {
             for (std::vector<Sample>::iterator itr = mTestingBatchDis.begin(); itr != mTestingBatchDis.end() && i-- != 0; ++itr)
             {
-                matrix<float> output(mDiscriminator->processNetwork(itr->first));
+                matrix<real_t> output(mDiscriminator->processNetwork(itr->first));
                 errorMean += sqrt((output).squaredNorm());
             }
         }
-        return errorMean / static_cast<float>(std::min((int)mTestingBatchDis.size(), limit));
+        return errorMean / static_cast<real_t>(std::min((int)mTestingBatchDis.size(), limit));
     }
 
 #if 0
    [[deprecated]]
-   float learning_task::gameScore(size_t nbImages)
+   real_t learning_task::gameScore(size_t nbImages)
    {
-   	float mean = 0;
+   	real_t mean = 0;
    	for (int i(0); i < nbImages; i++)
    	{
-   		mean += (mDiscriminator->processNetwork(mGenerator->processNetwork(    matrix<float>::Random(1, mGenerator->get_input_size()))))(0);
+   		mean += (mDiscriminator->processNetwork(mGenerator->processNetwork(    matrix<real_t>::Random(1, mGenerator->get_input_size()))))(0);
    	}
-   	return(mean/(float)nbImages);
+   	return(mean/(real_t)nbImages);
    }
    [[deprecated]]
-    matrix<float> learning_task::genProcessing(    matrix<float> input)
+    matrix<real_t> learning_task::genProcessing(    matrix<real_t> input)
    {
    	return(mGenerator->processNetwork(input));
    }
@@ -1325,13 +1325,13 @@ namespace provallo
     {
         learning_task::Minibatch generatedImagesFromNoiseMinibatch(_configuration.minibatchSize);
 
-        matrix<float> desiredOutput(1, 1);
+        matrix<real_t> desiredOutput(1, 1);
         desiredOutput(0, 0) = 1;
 
         for (unsigned long i(0); i < _configuration.minibatchSize; ++i)
         {
-            matrix<float> noiseInput = matrix<float>::Random(1, mGenerator->get_input_size());
-            matrix<float> input = mGenerator->processNetwork(noiseInput);
+            matrix<real_t> noiseInput = matrix<real_t>::Random(1, mGenerator->get_input_size());
+            matrix<real_t> input = mGenerator->processNetwork(noiseInput);
 
             Sample imageSample = std::make_pair(input, desiredOutput);
 
@@ -1484,8 +1484,8 @@ namespace provallo
         std::ifstream ifs(networkPath);
         std::string a;
         // data
-        std::vector<matrix<float>> neuralNetwork;
-        std::vector<matrix<float>> bias;
+        std::vector<matrix<real_t>> neuralNetwork;
+        std::vector<matrix<real_t>> bias;
         // type
         std::vector<size_t> taille;
         neural_net *ret = nullptr;
@@ -1511,8 +1511,8 @@ namespace provallo
 
             for (size_t i(0); i < taille.size() - 1; i++)
             {
-                neuralNetwork.push_back(matrix<float>::Zero(taille[i], taille[i + 1]));
-                bias.push_back(matrix<float>::Zero(1, taille[i + 1]));
+                neuralNetwork.push_back(matrix<real_t>::Zero(taille[i], taille[i + 1]));
+                bias.push_back(matrix<real_t>::Zero(1, taille[i + 1]));
             }
             std::vector<ActivationFun> activationFunVector;
             for (size_t i(0); i < taille.size() - 1; i++)
@@ -1589,7 +1589,7 @@ namespace provallo
 
         Batch trainingBatch;
 
-        matrix<float> outputTrain = matrix<float>::Zero(1, 1);
+        matrix<real_t> outputTrain = matrix<real_t>::Zero(1, 1);
         outputTrain(0, 0) = 1.0;
 
         // Compteur permet de compter le nombre d'images dans le batch, pour ne pas dépasser mLabelTrainSize
@@ -1614,7 +1614,7 @@ namespace provallo
 
         Batch testBatch;
 
-        matrix<float> outputTest = matrix<float>::Zero(1, 1);
+        matrix<real_t> outputTest = matrix<real_t>::Zero(1, 1);
         outputTest(0, 0) = 1.0;
 
         // Compteur permet de compter le nombre d'images dans le batch, pour ne pas dépasser mLabelTestSize
@@ -1633,7 +1633,7 @@ namespace provallo
         return testBatch;
     }
 
-    matrix<float> cifar10_source::getMatrix(size_t index, bool isTrainOrTestRequired, bool greyLevel) const
+    matrix<real_t> cifar10_source::getMatrix(size_t index, bool isTrainOrTestRequired, bool greyLevel) const
     {
         // Le 3072 est hardcodé car c'est la taille d'une image cifar (32 * 32 = 1024 (nombre de pixels) et 1024 * 3 = 3072 (3 couleurs))
         unsigned int cifarSize;
@@ -1642,7 +1642,7 @@ namespace provallo
         if (greyLevel)
         {
             cifarSize = 1024;
-            matrix<float> mat = matrix<float>::Zero(1, cifarSize);
+            matrix<real_t> mat = matrix<real_t>::Zero(1, cifarSize);
             for (unsigned int pixel(0); pixel < cifarSize; pixel++)
             {
                 mat(0, pixel) = (*dSet)[index][pixel] * 0.2126 + (*dSet)[index][pixel + 1024] * 0.7152 + (*dSet)[index][pixel + 2048] * 0.0722;
@@ -1652,7 +1652,7 @@ namespace provallo
         else
         {
             cifarSize = 3072;
-            matrix<float> mat = matrix<float>::Zero(1, cifarSize);
+            matrix<real_t> mat = matrix<real_t>::Zero(1, cifarSize);
             for (unsigned int pixel(0); pixel < cifarSize; pixel++)
             {
                 mat(0, pixel) = (*dSet)[index][pixel];
@@ -1691,7 +1691,7 @@ namespace provallo
 
         Batch trainingBatch;
 
-        matrix<float> outputTrain = matrix<float>::Zero(1, 1);
+        matrix<real_t> outputTrain = matrix<real_t>::Zero(1, 1);
         outputTrain(0, 0) = 1.0;
 
         size_t compteur(0);
@@ -1714,7 +1714,7 @@ namespace provallo
 
         Batch testingBatch;
 
-        matrix<float> outputTest = matrix<float>::Zero(1, 1);
+        matrix<real_t> outputTest = matrix<real_t>::Zero(1, 1);
         outputTest(0, 0) = 1.0;
 
         size_t compteur(0);
@@ -1753,7 +1753,7 @@ namespace provallo
         return ((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
     }
 
-    void mnist_reader::ReadMNIST(std::vector<matrix<float>> &mnist, matrix<size_t> &label)
+    void mnist_reader::ReadMNIST(std::vector<matrix<real_t>> &mnist, matrix<size_t> &label)
     {
         std::ifstream file(mFullPathImage, std::ios::binary);
         if (file.is_open())
@@ -1783,7 +1783,7 @@ namespace provallo
                     {
                         unsigned char temp = 0;
                         file.read((char *)&temp, sizeof(temp));
-                        mnist[i](0, (n_rows * r) + c) = ((float)temp) / 255;
+                        mnist[i](0, (n_rows * r) + c) = ((real_t)temp) / 255;
                     }
                 }
             }

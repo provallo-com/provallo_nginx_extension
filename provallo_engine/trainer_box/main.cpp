@@ -1208,12 +1208,33 @@ exclude_list.push_back(".git");
   std::cout << "[+] Test Wall time elapsed in s: "
     << std::chrono::duration<double> (t_end - t_start).count ()
     << std::endl;
-  
+  std::cout<<"[+] fitting vectorizers "<<std::endl;
+
   //now that we have the vectorizers, we can train the autoencoders
+  
   for ( auto& v : vectorizers_attacks) 
-        v->fit();
-  for ( auto& v : vectorizers_normal ) 
-        v->fit();
+  {
+      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//= vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
+      c_start = clock ();
+      t_start = std::chrono::high_resolution_clock::now ();
+
+      if ( v->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
+      {
+        vectorizer_type = vectorizer_types[v->get_type()];
+      } 
+      std::cout<<"[+] fitting vectorizer "<<vectorizer_type<<std::endl;
+       v->fit();
+      std::cout<<"[+] fitting vectorizer "<<vectorizer_type<<" done"<<std::endl;
+      c_end = clock ();
+      t_end = std::chrono::high_resolution_clock::now ();
+      std::cout << "[+] vectorizer CPU time elapsed in s: "
+        << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+      std::cout << "[+] vectorizer Wall time elapsed in s: "
+        << std::chrono::duration<double> (t_end - t_start).count ()
+        << std::endl;
+
+  }
+ 
           
   //now that we have the autoencoders, we can train them
   //reiterate on the files and train the autoencoders 

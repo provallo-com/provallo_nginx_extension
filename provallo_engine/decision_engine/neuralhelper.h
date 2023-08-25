@@ -21,19 +21,19 @@
 
 namespace provallo
 {
-  using ActivationFun = std::function<float(float)>;
-  using ErrorFun = std::function<float(matrix<float>, matrix<float>)>;
+  using ActivationFun = std::function<real_t(real_t)>;
+  using ErrorFun = std::function<real_t(matrix<real_t>, matrix<real_t>)>;
 
   ActivationFun
-  sigmoid (float lambda);
+  sigmoid (real_t lambda);
   ActivationFun
-  heavyside (float gapAbscissa);
+  heavyside (real_t gapAbscissa);
   ActivationFun
   hyperTan ();
   ActivationFun
   reLu ();
   ActivationFun
-  reLuLeaky (float lambda = 0.01);
+  reLuLeaky (real_t lambda = 0.01);
   ErrorFun
   l2Norm ();
   ErrorFun
@@ -52,7 +52,7 @@ namespace provallo
   public:
     using ptr= std::unique_ptr<neuron_layer>;
 
-    using real_type = float;
+    using real_type = real_t;
 
     using type_matrix = matrix<real_type>;
  
@@ -72,11 +72,11 @@ namespace provallo
     virtual type_matrix
     process_layer (const type_matrix &inputs)=0;
     virtual type_matrix
-    layer_backpropagation (const type_matrix &xnPartialDerivative, float step) =0;
+    layer_backpropagation (const type_matrix &xnPartialDerivative, real_t step) =0;
     virtual type_matrix
     layer_backdrop_invariant (const type_matrix & xnPartialDerivative) =0;
     virtual type_matrix
-    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, float step) =0;
+    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, real_t step) =0;
     virtual void
     update_layer_weights (size_t minibatchSize = 1) =0;
 
@@ -95,13 +95,13 @@ namespace provallo
   public:
 
     fully_connected_layer (size_t inputSize, size_t outputSize,
-			   std::function<float
-			   (float)> activationF = sigmoid (10.f),
+			   std::function<real_t
+			   (real_t)> activationF = sigmoid (10.f),
 			   size_t descentType = 0);
     fully_connected_layer (size_t inputSize, size_t outputSize,
 			   type_matrix weight, type_matrix bias,
-			   std::function<float
-			   (float)> activationF = sigmoid (10.f),
+			   std::function<real_t
+			   (real_t)> activationF = sigmoid (10.f),
 			   size_t descentType = 0);
 
 
@@ -110,13 +110,13 @@ namespace provallo
     process_layer (const type_matrix& inputs);
 
     virtual type_matrix
-    layer_backpropagation (const type_matrix & xnPartialDerivative, float step);
+    layer_backpropagation (const type_matrix & xnPartialDerivative, real_t step);
 
     type_matrix
     layer_backdrop_invariant (const type_matrix & xnPartialDerivative);
 
     type_matrix
-    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, float step);
+    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, real_t step);
 
     virtual void
     update_layer_weights (size_t minibatchSize = 1);
@@ -132,18 +132,18 @@ namespace provallo
     fnDerivativeMatrix () const;
     void
     updateFirstMomentStep (const type_matrix& wnPartialDerivative,
-			   const type_matrix& ynPartialDerivative, float step);
+			   const type_matrix& ynPartialDerivative, real_t step);
 
     void
     updateSecondMomentStep (const type_matrix& wnPartialDerivative,
-			    const type_matrix& ynPartialDerivative, float step);
+			    const type_matrix& ynPartialDerivative, real_t step);
 
     type_matrix _weight;
 
     type_matrix _bias;
 
-    std::function<float
-    (float)> _activation_functions;
+    std::function<real_t
+    (real_t)> _activation_functions;
 
     type_matrix _buffer_activation_level;
 
@@ -172,7 +172,7 @@ namespace provallo
     static std::recursive_mutex mtx;
 
   public:
-    using type_matrix = matrix<float>;
+    using type_matrix = matrix<real_t>;
 
     explicit convolution_operator (type_matrix input, type_matrix filtre,
 		  type_matrix* resultat, bool sum_lines):
@@ -224,12 +224,12 @@ namespace provallo
 
     convolution_layer (size_t inputSize, size_t _Channels,
 		       size_t dimensionFiltre, size_t _Filtres,
-		       std::function<float
-		       (float)> activationF = sigmoid (10.f));
+		       std::function<real_t
+		       (real_t)> activationF = sigmoid (10.f));
 
     convolution_layer (size_t tailleImg, size_t _Channels,
-		       const std::vector<type_matrix>& weight, std::function<float
-		       (float)> activationF = sigmoid (10.f));
+		       const std::vector<type_matrix>& weight, std::function<real_t
+		       (real_t)> activationF = sigmoid (10.f));
 
 
 
@@ -239,13 +239,13 @@ namespace provallo
     process_layer (const type_matrix& inputs);
 
     type_matrix
-    layer_backpropagation (const type_matrix & xnPartialDerivative, float step);
+    layer_backpropagation (const type_matrix & xnPartialDerivative, real_t step);
 
     type_matrix
     layer_backdrop_invariant (const type_matrix & xnPartialDerivative){return type_matrix::value_type(1.)-(xnPartialDerivative );}//FIXME:}
 
     type_matrix
-    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, float step){return xnPartialDerivative*step;}//FIXME:}
+    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, real_t step){return xnPartialDerivative*step;}//FIXME:}
 
     void
     update_layer_weights (size_t minibatchSize = 1)
@@ -291,8 +291,8 @@ namespace provallo
 
     type_matrix mBias;
 
-    std::function<float
-    (float)> _activation_functions;
+    std::function<real_t
+    (real_t)> _activation_functions;
 
     type_matrix _buffer_activation_level;
 
@@ -313,15 +313,15 @@ namespace provallo
   public:
 
     noisy_layer (size_t inputSize, size_t outputSize,
-		 std::function<float
-		 (float)> activationF = sigmoid (10.f),
+		 std::function<real_t
+		 (real_t)> activationF = sigmoid (10.f),
 		 size_t descentType = 0);
 
     type_matrix
     process_layer (const type_matrix& inputs);
 
     type_matrix
-    layer_backpropagation (const type_matrix & xnPartialDerivative, float step);
+    layer_backpropagation (const type_matrix & xnPartialDerivative, real_t step);
 
     void
     update_layer_weights  (size_t minibatchSize = 1);
@@ -348,13 +348,13 @@ namespace provallo
     process_layer (const type_matrix& inputs);
 
     virtual type_matrix
-    layer_backpropagation (const type_matrix & xnPartialDerivative, float step);
+    layer_backpropagation (const type_matrix & xnPartialDerivative, real_t step);
 
     type_matrix
     layer_backdrop_invariant (const type_matrix & xnPartialDerivative);
 
     type_matrix
-    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, float step);
+    mini_batch_layer_backdrop (const type_matrix & xnPartialDerivative, real_t step);
 
     virtual void
     update_layer_weights (size_t minibatchSize = 1);
@@ -393,24 +393,24 @@ namespace provallo
   public:
 
     max_pooling_layer (size_t inputSize, size_t outputSize,
-		       std::function<float
-		       (float)> activationF = sigmoid (10.f));
+		       std::function<real_t
+		       (real_t)> activationF = sigmoid (10.f));
 
     max_pooling_layer (size_t inputSize, size_t outputSize,
-		       type_matrix weight, type_matrix bias, std::function<float
-		       (float)> activationF = sigmoid (10.f));
+		       type_matrix weight, type_matrix bias, std::function<real_t
+		       (real_t)> activationF = sigmoid (10.f));
 
     virtual ~max_pooling_layer ();
 
     type_matrix
     process_layer (const type_matrix& inputs);
     type_matrix
-    layerBackprop (type_matrix xnPartialDerivative, float step);
+    layerBackprop (type_matrix xnPartialDerivative, real_t step);
     type_matrix
     layerBackpropInvariant (type_matrix xnPartialDerivative);
 
     type_matrix
-    minibatchLayerBackprop (type_matrix xnPartialDerivative, float step);
+    minibatchLayerBackprop (type_matrix xnPartialDerivative, real_t step);
 
     void
     update_layer_weights (size_t minibatchSize = 1);
@@ -433,8 +433,8 @@ namespace provallo
 
     type_matrix _bias;
 
-    std::function<float
-    (float)> _activation_functions;
+    std::function<real_t
+    (real_t)> _activation_functions;
 
     type_matrix _buffer_activation_level;
 
@@ -456,14 +456,14 @@ namespace provallo
   {
   public:
     using ptr = std::shared_ptr<neural_net>;
-    using type_matrix = matrix<float>;
+    using type_matrix = matrix<real_t>;
 
   public:
 
     neural_net ();
     neural_net (   const std::vector<size_t>& layerSizes,
-		   const std::vector<matrix<float>> &weightVector,
-		   const std::vector<matrix<float>> &biasVector,
+		   const std::vector<matrix<real_t>> &weightVector,
+		   const std::vector<matrix<real_t>> &biasVector,
 		   const std::vector<ActivationFun> & activationFuns,
 		   size_t descentType=0 );
 
@@ -568,24 +568,24 @@ namespace provallo
     		   size_t genFun);
 
     void
-    backpropDiscriminator (matrix<float> input, matrix<float> desiredOutput,
-			   float step = 0.2, float dx = 0.05);
+    backpropDiscriminator (matrix<real_t> input, matrix<real_t> desiredOutput,
+			   real_t step = 0.2, real_t dx = 0.05);
 
     void
-    backpropGenerator (matrix<float> input, matrix<float> desiredOutput,
-		       float step = 0.2, float dx = 0.05);
+    backpropGenerator (matrix<real_t> input, matrix<real_t> desiredOutput,
+		       real_t step = 0.2, real_t dx = 0.05);
 
     void
     minibatchDiscriminatorBackprop (neural_net::ptr network,
-				    matrix<float> input,
-				    matrix<float> desiredOutput, float step =
+				    matrix<real_t> input,
+				    matrix<real_t> desiredOutput, real_t step =
 					0.2,
-				    float dx = 0.05);
+				    real_t dx = 0.05);
 
     void
-    minibatchGeneratorBackprop (neural_net::ptr network, matrix<float> input,
-				matrix<float> desiredOutput, float step = 0.2,
-				float dx = 0.05);
+    minibatchGeneratorBackprop (neural_net::ptr network, matrix<real_t> input,
+				matrix<real_t> desiredOutput, real_t step = 0.2,
+				real_t dx = 0.05);
 
     void
     updateNetworkWeights (neural_net::ptr network, size_t minibatchSize =
@@ -594,22 +594,22 @@ namespace provallo
   private:
 
     void
-    propagateError (neural_net::ptr network, matrix<float> xnPartialDerivative, float step);
+    propagateError (neural_net::ptr network, matrix<real_t> xnPartialDerivative, real_t step);
 
-    matrix<float>
+    matrix<real_t>
     propagateErrorMinibatch (neural_net::ptr network,
-			     matrix<float> xnPartialDerivative, float step);
+			     matrix<real_t> xnPartialDerivative, real_t step);
 
-    matrix<float>
-    propagateErrorDiscriminatorInvariant (matrix<float> xnPartialDerivative);
+    matrix<real_t>
+    propagateErrorDiscriminatorInvariant (matrix<real_t> xnPartialDerivative);
 
-    matrix<float>
-    calculateInitialErrorVector (matrix<float> output,
-				 matrix<float> desiredOutput, float dx);
+    matrix<real_t>
+    calculateInitialErrorVector (matrix<real_t> output,
+				 matrix<real_t> desiredOutput, real_t dx);
 
-    matrix<float>
-    calculateInitialErrorVectorGen (matrix<float> output,
-				    matrix<float> desiredOutput, float dx);
+    matrix<real_t>
+    calculateInitialErrorVectorGen (matrix<real_t> output,
+				    matrix<real_t> desiredOutput, real_t dx);
 
   private:
     neural_net::ptr _generator;
@@ -627,7 +627,7 @@ namespace provallo
           /// Un alias pour désigner un pointeur sur in InputProvider
           using Ptr = std::unique_ptr<sample_source>;
           /// Un alias pour désigner un donnée (Entrée, Sortie)
-          using Sample = std::pair<matrix<float>, matrix<float>>;
+          using Sample = std::pair<matrix<real_t>, matrix<real_t>>;
           /// Un alias pour désigner un batch de données (Entrée, Sortie)
           using Batch = std::vector<Sample>;
           /// Un alias pour désigner un minibatch de données (Entrée, Sortie)
@@ -640,7 +640,11 @@ namespace provallo
 
           virtual Batch trainingBatch(bool greyLevel = 0) const =0;
           virtual Batch testingBatch(bool greyLevel = 0) const =0;
-
+          void resize(size_t labelTrainSize, size_t labelTestSize)
+          {
+              mLabelTrainSize = labelTrainSize;
+              mLabelTestSize = labelTestSize;
+          }
       protected:
           size_t mLabelTrainSize;
           size_t mLabelTestSize;
@@ -659,10 +663,10 @@ namespace provallo
       private:
           std::array<size_t, 10>    mLabels;
 
-          std::vector<matrix<float>>    mImageTrain;
+          std::vector<matrix<real_t>>    mImageTrain;
           matrix<size_t>                 mLabelTrain;
 
-          std::vector<matrix<float>>    mImageTest;
+          std::vector<matrix<real_t>>    mImageTest;
           matrix<size_t>                 mLabelTest;
 
   };
@@ -723,7 +727,7 @@ namespace provallo
        * @param greyLevel : détermine si l'on travaille sur les images en couleur ou en niveau de gris
        * @return la matrice correspondant à l'image d'indice index dans le set spécifié
        */
-      matrix<float> getMatrix(size_t index, bool isTrainOrTestRequired = 1, bool greyLevel = 0) const;
+      matrix<real_t> getMatrix(size_t index, bool isTrainOrTestRequired = 1, bool greyLevel = 0) const;
 
   private:
       // Résolution automatique de type parce que j'ai la flemme
@@ -732,12 +736,44 @@ namespace provallo
 
   };
 
+  //source class for .names files
+  class names_source : public sample_source
+  {
+    public:
+        
 
+        names_source(const std::string& namesFile);
+ 
+        names_source(const names_source& other) = delete;
+        names_source& operator=(const names_source& other) = delete;
+        names_source(names_source&& other) = delete;
+        names_source& operator=(names_source&& other) = delete;
+
+        //sample_source impl. pure virtual 
+        Batch trainingBatch(bool greyLevel) const override;
+        Batch testingBatch(bool greyLevel) const override;
+     protected:
+        void readNamesFile();
+        void readTrainFile();
+        void readTestFile();
+        
+        matrix<real_t> mImageTrain;
+        matrix<real_t> mImageTest;
+        std::vector<size_t> mLabelTrain;
+        std::vector<size_t> mLabelTest;
+        std::vector<std::string> mLabelNames;
+        std::vector<std::string> ColumnNames;
+        
+        std::string mNamesFile;
+        size_t mNbClasses;
+        size_t mNbTrain;
+        size_t mNbTest;
+   };
   class mnist_reader
   {
   public:
       mnist_reader(const std::string& full_path_image, const  std::string& full_path_label);
-      void ReadMNIST(std::vector<matrix<float>> &mnist, matrix<size_t> &label);
+      void ReadMNIST(std::vector<matrix<real_t>> &mnist, matrix<size_t> &label);
 
   private:
       static int reverseInt (int i);
@@ -750,12 +786,12 @@ namespace provallo
       public:
           struct error_statistics
           {
-              float meanGen;
-              float meanDis;
-              float deviationGen;
-              float confidenceRangeGen;
-  			float deviationDis;
-  			float confidenceRangeDis;
+              real_t meanGen;
+              real_t meanDis;
+              real_t deviationGen;
+              real_t confidenceRangeGen;
+  			real_t deviationDis;
+  			real_t confidenceRangeDis;
 
   		};
 
@@ -763,15 +799,15 @@ namespace provallo
                           error_processor();
 
           error_statistics   processData() const;
-          void            addResultGen(float result);
-          void            addResultDis(float result);
+          void            addResultGen(real_t result);
+          void            addResultDis(real_t result);
 
       private:
 
 
       private:
-          std::vector<float> mErrorsGen;
-          std::vector<float> mErrorsDis;
+          std::vector<real_t> mErrorsGen;
+          std::vector<real_t> mErrorsDis;
 
   };
 
@@ -784,7 +820,7 @@ namespace provallo
 
           void exportData(bool mustProcessData = true);
 
-          void exportImage(const matrix<float>& image, size_t teachIndex, size_t sizeSide);
+          void exportImage(const matrix<real_t>& image, size_t teachIndex, size_t sizeSide);
 
           csvfile* getCSVFile();
 
@@ -802,9 +838,9 @@ namespace provallo
           struct task_configuration
           {
  
-              float step;
-              float dx;
-  	          float sigmoidParameter;
+              real_t step;
+              real_t dx;
+  	          real_t sigmoidParameter;
 
               bool networkAreImported;
               bool useAverageForBatchlearning;
@@ -851,7 +887,7 @@ namespace provallo
     
       public:
           /// Un alias pour désigner un donnée (Entrée, Sortie)
-          using Sample = std::pair<matrix<float>,matrix<float>>;
+          using Sample = std::pair<matrix<real_t>,matrix<real_t>>;
           /// Un alias pour désigner un batch de données (Entrée, Sortie)
           using Batch = std::vector<Sample>;
   		    /// Un alias pour désigner un minibatch de données (Entrée, Sortie)
@@ -865,9 +901,9 @@ namespace provallo
           learning_task();
           learning_task( const learning_task::task_configuration& config );           /// Constructeur par fonction modèle
           learning_task(neural_net::ptr network,
-                        std::function<matrix<float>(matrix<float>)> modelFunction,
-                        std::vector<matrix<float>> teachingInputs,
-                        std::vector<matrix<float>> testingInputs);
+                        std::function<matrix<real_t>(matrix<real_t>)> modelFunction,
+                        std::vector<matrix<real_t>> teachingInputs,
+                        std::vector<matrix<real_t>> testingInputs);
           
           //file path constructor
           learning_task(const std::string& configuration_file);
@@ -900,7 +936,7 @@ namespace provallo
   		 * @param limit  permet de limiter le nombre d'entrées de tests
   		 * @param returnErrorRate deprecated
            */
-          float runTestGen(int limit = -1, bool returnErrorRate = 1);
+          real_t runTestGen(int limit = -1, bool returnErrorRate = 1);
 
           /// Effectue une run de tests sur D(x)
           /**
@@ -908,17 +944,17 @@ namespace provallo
   		 * @param limit permet de limiter le nombre d'entrées de tests
   		 * @param returnErrorRate deprecated
            */
-          float runTestDis(int limit = -1, bool returnErrorRate = 1);
+          real_t runTestDis(int limit = -1, bool returnErrorRate = 1);
 
           /// Effectue une approximation du score des réseaux
-          //[deprecated] float gameScore(int nbImages);
+          //[deprecated] real_t gameScore(int nbImages);
 
           /// Génère une image à partir d'un input
           /**
            * Effectue un process de l'input par le Generateur
            * @param input un vecteur colonne, généralement, du bruit blanc
            */
-          //[deprecated]          matrix<float> genProcessing(matrix<float> input);
+          //[deprecated]          matrix<real_t> genProcessing(matrix<real_t> input);
 
   	private:
   		/// Génère un minibatch à partir d'un batch

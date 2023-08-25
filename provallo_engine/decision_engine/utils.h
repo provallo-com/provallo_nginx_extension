@@ -3315,9 +3315,8 @@ namespace provallo
 	template <typename UIntType>
 	inline bool is_pow2(const UIntType val) {
 	if (val < 0) {  // safety against signed ints.
-		std::stringstream ss;
-		ss << "error: is_pow2 argument " << val << " should be nonnegative.";
-		throw std::invalid_argument(ss.str());
+
+		throw std::invalid_argument(std::string("error: is_pow2 argument ") + std::to_string(val) + " should be nonnegative.");	
 	}
 	return !(val == 0) && !(val & (val - 1));
 	}
@@ -3325,9 +3324,7 @@ namespace provallo
 	inline UIntType next_pow2(const UIntType val) {
 	if (val < 0) {  // safety against signed ints.
 
-		std::stringstream ss;
-		ss << "error: next_pow2 argument " << val << " should be nonnegative.";
-		throw std::invalid_argument(ss.str());
+		throw std::invalid_argument(std::string("error: next_pow2 argument ") + std::to_string(val) + " should be nonnegative.");
 	}
 	if (is_pow2(val)) {
 		return val;
@@ -3341,9 +3338,8 @@ namespace provallo
 	template <typename UIntType>
 	inline UIntType prev_pow2(const UIntType val) {
 	if (val < 0) {  // safety against signed ints.
-		std::stringstream ss;
-		ss << "error: prev_pow2 argument " << val << " should be nonnegative.";
-		throw std::invalid_argument(ss.str());
+	 
+		throw std::invalid_argument(std::string("error: prev_pow2 argument ") + std::to_string(val) + " should be nonnegative.");
 	}
 	if (is_pow2(val)) {
 		return val;
@@ -3358,9 +3354,7 @@ namespace provallo
 	inline UIntType log2(const UIntType val) {
 	if (val < 0) {  // safety against signed ints.
 
-		std::stringstream ss;
-		ss << "error: log2 argument " << val << " should be nonnegative.";
-		throw std::invalid_argument(ss.str());
+	 			throw std::invalid_argument(std::string("error: log2 argument ") + std::to_string(val) + " should be nonnegative.");
 	}
 	if (val == 0) {
 		return 0;
@@ -3376,10 +3370,8 @@ namespace provallo
 	inline UIntType log2_ceil(const UIntType val) {
 	if (val < 0) {  // safety against signed ints.
 
-		std::stringstream ss;
-
-		ss << "error: log2_ceil argument " << val << " should be nonnegative.";
-		throw std::invalid_argument(ss.str());
+	 
+		throw std::invalid_argument( std::string("error: log2_ceil argument ") + std::to_string(val) + " should be nonnegative." );
 	}
 	if (val == 0) {
 		return 0;
@@ -3390,11 +3382,10 @@ namespace provallo
 		++log2;
 	}
 	return log2 + 1;
-	}
+	}//log2_ceil
 
 
-
-  	const std::string
+  const std::string
   trim (const std::string &pString, const std::string &pWhitespace);
   const std::string
   reduce (const std::string &pString, const std::string &pFill,
