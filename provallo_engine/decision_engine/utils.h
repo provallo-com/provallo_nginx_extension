@@ -18,6 +18,9 @@
 #include <set>
 #include <map>
 #include <random>
+#include <functional>
+#include <vector>
+#include <string>
 #include <bits/unique_ptr.h>
 
 #ifndef real_t
@@ -59,9 +62,6 @@
 
 #define set_return_position(x)  NULL
 #define return_to_position(x,y)
-
-
-
 
 namespace provallo
 {
@@ -106,6 +106,280 @@ namespace provallo
 #endif
 
 #define EULERS_GAMMA 0.577215664901532860606512
+
+template <typename T>
+struct loss
+{
+	typedef T value_type;
+	std::function<value_type(value_type,value_type)> loss_func;
+	std::function<value_type(value_type,value_type)> loss_grad;
+	std::function<value_type(value_type,value_type)> loss_hess;
+	loss(std::function<T(T,T)> loss_func_, std::function<T(T,T)> loss_grad_, std::function<T(T,T)> loss_hess_):
+		loss_func(loss_func_), loss_grad(loss_grad_), loss_hess(loss_hess_)
+	{
+	}
+
+	T operator()(T x, T y) const
+	{
+		return loss_func(x,y);
+	}
+	T grad(T x, T y) const
+	{
+		return loss_grad(x,y);
+	}	
+	T hess(T x, T y) const
+	{
+		return loss_hess(x,y);
+	}	
+};
+//kullback-leibler divergence loss
+template <class T>
+struct kl_loss : public loss<T>
+{
+	kl_loss():
+		loss<T>(
+			kl_loss<T>::loss_func,
+			kl_loss<T>::grad,
+			kl_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return x*log(x/y) + (1-x)*log((1-x)/(1-y));
+	}
+	static T grad(T x, T y)
+	{
+		return (log((1-x)/(1-y)) - log(x/y));
+	}
+	static T hess(T x, T y)
+	{
+		return (1/(y*(1-y)) + 1/((1-y)*y));
+	}
+};
+//cross-entropy loss
+template <class T>
+struct ce_loss : public loss<T>
+{
+	ce_loss():
+		loss<T>(ce_loss<T>::loss_func,ce_loss<T>::grad, ce_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return -x*log(y) - (1-x)*log(1-y);
+	}
+	static T grad(T x, T y)
+	{
+		return (y-x)/(y*(1-y));
+	}
+	static T hess(T x, T y)
+	{
+		return (y-x)/((y*y)*(1-y));
+	}
+
+};	
+//hinge loss
+template <class T>	
+struct hinge_loss : public loss<T>
+{
+	hinge_loss():
+		loss<T>(hinge_loss<T>::loss_func,hinge_loss<T>::grad, hinge_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return std::max(0,1-x*y);
+	}
+	static T grad(T x, T y)
+	{
+		return (x*y < 1)? -y : 0;
+	}
+	static T hess(T x, T y)
+	{
+		return 0;
+	}
+
+};	
+//huber loss
+template <class T>
+struct huber_loss : public loss<T>
+{
+	huber_loss():
+		loss<T>(huber_loss<T>::loss_func,huber_loss<T>::grad, huber_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return (x-y)*(x-y)/2;
+	}
+	static T grad(T x, T y)
+	{
+		return x-y;
+	}
+	static T hess(T x, T y)
+	{
+		return 1;
+	}
+
+};	
+//logistic loss
+template <class T>
+struct logistic_loss :public  loss<T>
+{
+	logistic_loss():
+		loss<T>(logistic_loss<T>::loss_func,logistic_loss<T>::grad, logistic_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return log(1+exp(-x*y));
+	}
+	static T grad(T x, T y)
+	{
+		return -y/(1+exp(x*y));
+	}
+	static T hess(T x, T y)
+	{
+		return y*y*exp(x*y)/((1+exp(x*y))*(1+exp(x*y)));
+	}
+
+};	
+//modified huber loss
+template <class T>
+struct modified_huber_loss : public loss<T>
+{
+	modified_huber_loss():
+		loss<T>(modified_huber_loss<T>::loss_func,modified_huber_loss<T>::grad, modified_huber_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return (x*y < 1)? (1-x*y)*(1-x*y) : 0;
+	}
+	static T grad(T x, T y)
+	{
+		return (x*y < 1)? -2*y*(1-x*y) : 0;
+	}
+	static T hess(T x, T y)
+	{
+		return (x*y < 1)? 2*y*y : 0;
+	}
+
+};	
+//quantile loss
+template <class T>
+struct quantile_loss : public loss<T> 
+{
+	quantile_loss():
+		loss<T>(quantile_loss<T>::loss_func,quantile_loss<T>::grad, quantile_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return (x-y)*(x-y)/2;
+	}
+	static T grad(T x, T y)
+	{
+		return (x-y);
+	}
+	static T hess(T x, T y)
+	{
+		return 1;
+	}
+
+};	
+//squared loss
+template <class T>
+struct squared_loss : public loss<T>
+{
+	squared_loss():
+		loss<T>(squared_loss<T>::loss_func,squared_loss<T>::grad, squared_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return (x-y)*(x-y)/2;
+	}
+	static T grad(T x, T y)
+	{
+		return (x-y);
+	}
+	static T hess(T x, T y)
+	{
+		return 1;
+	}
+
+};	
+//smoothed hinge loss
+template <class T>
+struct smoothed_hinge_loss : public loss<T>
+{
+	smoothed_hinge_loss():
+		loss<T>(smoothed_hinge_loss<T>::loss_func,smoothed_hinge_loss<T>::grad, smoothed_hinge_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return std::max(0,1-x*y);
+	}
+	static T grad(T x, T y)
+	{
+		return (x*y < 1)? -y : 0;
+	}
+	static T hess(T x, T y)
+	{
+		return 0;
+	}
+
+};		
+//squared hinge loss
+template <class T>
+struct squared_hinge_loss : public loss<T>
+{
+	squared_hinge_loss():
+		loss<T>(squared_hinge_loss<T>::loss_func,squared_hinge_loss<T>::grad, squared_hinge_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return std::max(0,1-x*y);
+	}
+	static T grad(T x, T y)
+	{
+		return (x*y < 1)? -y : 0;
+	}
+	static T hess(T x, T y)
+	{
+		return 0;
+	}
+
+};	
+//welsch loss
+template <class T>
+struct welsch_loss : public loss<T>
+{
+	welsch_loss():
+		loss<T>(welsch_loss<T>::loss_func,welsch_loss<T>::grad, welsch_loss<T>::hess)
+	{
+	}
+	static T loss_func(T x, T y)
+	{
+		return 1-exp(-(x-y)*(x-y)/2);
+	}
+	static T grad(T x, T y)
+	{
+		return (x-y)*exp(-(x-y)*(x-y)/2);
+	}
+	static T hess(T x, T y)
+	{
+		return (1-(x-y)*(x-y))*exp(-(x-y)*(x-y)/2);
+	}
+
+};		
+
+//loss functions for regression
+
+//splitting criterion
 
   extern "C"
   {
@@ -157,9 +431,8 @@ namespace provallo
       NoCrit = 0, Averaged = 1, Pooled = 2, FullGain = 3, DensityCrit = 4
     } Criterion; /* For guided splits */
 
-  } // extern "C"
-  ;
-
+  };//extern "C"
+// for imputation
   typedef struct ImputeNode
   {
     std::vector<double> num_sum;
@@ -241,7 +514,7 @@ namespace provallo
 
 
   } ImputeNode; /* this is for each tree node */
-
+//model parameters
   typedef struct
   {
     bool with_replacement;
@@ -335,7 +608,7 @@ namespace provallo
       }
     else
       {
-	y = 0.0;
+		y = 0.0;
       }
 
     y = ((-0.5 / x) - y) + std::log (x);
@@ -451,6 +724,9 @@ namespace provallo
     std::cerr << "error" << errno << std::endl;
   }
 
+  //recursion for splitting criterion 
+  //save the weights calculated by column_sampler 
+  //and the indices of the rows that are not NA
   class RecursionState
   {
   public:
@@ -3259,9 +3535,7 @@ namespace provallo
 	return 0.0;
       return x * log<Base> (x);
     }
-	
 	 
-  
   	
 	inline uint64_t
 	fnv1a (const std::string &text)

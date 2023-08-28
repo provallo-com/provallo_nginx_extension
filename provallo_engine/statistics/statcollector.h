@@ -17,6 +17,8 @@
 #include <regex>
 #include <variant>
 #include <assert.h>
+#include "../util/safe_queue.h"
+#include "../decision_engine/utils.h"
 
 //patch to_string for std::string to avoid if  
 namespace std
@@ -461,27 +463,38 @@ namespace provallo
       explicit stat_value_cell(uint64_t &value) : _type(UINT64)
       {
         u_value._ull = value;
+        _txt = std::to_string(value);
       }
       explicit stat_value_cell(const double &value) : _type(REAL)
       {
         u_value._real = value;
+                _txt = std::to_string(value);
+
       }
       explicit stat_value_cell(const uint8_t &value) : _type(BYTE)
       {
         u_value._bvalue = value;
+                _txt = std::to_string(value);
+
       }
       explicit stat_value_cell(const uint32_t &value) : _type(UINT32)
       {
         u_value._unsigned = value;
+                _txt = std::to_string(value);
+
       }
 
       explicit stat_value_cell(const int32_t &value) : _type(INT32)
       {
         u_value._signed = value;
+                _txt = std::to_string(value);
+
       }
       explicit stat_value_cell(const int64_t &value) : _type(INT64)
       {
         u_value._long = value;
+                _txt = std::to_string(value);
+
       }
 
       inline void
@@ -535,7 +548,7 @@ namespace provallo
           this->u_value._real = 0.;
         _type = REAL;
       }
-
+     
       inline std::string
       to_string()
       {

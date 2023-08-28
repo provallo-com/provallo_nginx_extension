@@ -219,7 +219,7 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
     }
 
     //predict single source 
-     virtual  std::vector<real_x> predict(const vector_src& data_){DEFAULT_IMPL(data_);}
+    virtual  std::vector<real_x> predict(const vector_src& data_){DEFAULT_IMPL(data_);}
 
     //fit:
     virtual  std::vector<real_x> fit( const std::vector<vector_src>& data_){DEFAULT_IMPL(data_);}
@@ -328,6 +328,7 @@ class tfidf
   //transform
     std::vector<std::vector<real_t> >  transform(const std::vector<std::string>& document);
     
+    void clear();
 
    //get_tf
     std::vector<real_t> get_tf( )const;
@@ -383,24 +384,26 @@ class tfidf_vectorizer : public vectorizer<std::string, real_t>
       }
       _tfidf.set_documents(corpus);
       _tfidf.process_documents();
-      return _tfidf.get_tfidf();
-    }
 
-  virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
-  virtual  std::vector<real_t> predict(const std::vector<std::string>&documents );
-  virtual  std::vector<real_t> transform(const std::vector<std::string>&documents);
-  virtual  std::vector<real_t> fit_transform(const std::vector<std::string>&documents);
+      return _tfidf.get_tfidf();
+         
+   }
+
+  virtual  std::vector<real_t> fit( const std::vector<std::string>&documents )override;
+  virtual  std::vector<real_t> predict(const std::vector<std::string>&documents )override;
+  virtual  std::vector<real_t> transform(const std::vector<std::string>&documents)override;
+  virtual  std::vector<real_t> fit_transform(const std::vector<std::string>&documents)override;
  
   //for use with inverse transformation matrices 
-  virtual std::vector<real_t> fit( const provallo::matrix<real_t>& );
-  virtual std::vector<real_t> predict(const provallo::matrix<real_t>& );
-  virtual std::vector<real_t> transform(const provallo::matrix<real_t>& );
+  virtual std::vector<real_t> fit( const provallo::matrix<real_t>& )override;
+  virtual std::vector<real_t> predict(const provallo::matrix<real_t>& )override;
+  virtual std::vector<real_t> transform(const provallo::matrix<real_t>& )override;
   virtual ~tfidf_vectorizer();
 
   protected: 
   //case by case
-  std::vector<real_t> predict (const std::string&);
-  std::vector<real_t> transform(const std::string&);
+  virtual std::vector<real_t> predict (const std::string&)  ;
+  virtual std::vector<real_t> transform(const std::string&);
 
 };
 class scaler;
@@ -506,14 +509,12 @@ class bag_of_words
 {
   //bag of words
   public:
-
-
-
+ 
   size_t get_number_of_words() const;
   size_t get_number_of_documents() const;
   size_t get_number_of_unique_tokens()const;
   size_t get_number_of_tokens() const;
-  std::vector<std::string> get_vocabulary() const;
+  const std::vector<std::string>& get_vocabulary() const;
   std::vector<real_t> get_bag_of_words() const; 
   std::vector<real_t> get_document_vector(const std::string&doc) const; 
   const matrix<real_t>& get_matrix() const{ return _bow_matrix; } 
@@ -620,6 +621,7 @@ class one_hot_vectorizer :   public vectorizer<std::string, real_t>
     virtual  std::vector<std::string> inverse_transform(const std::vector<real_t>& data_);//{ DEFAULT_IMPL(data_);}
     virtual  std::vector<std::string> inverse_transform(const provallo::matrix<real_t>& data_);//{ DEFAULT_IMPL(data_);}
     //predict:
+    virtual  std::vector<real_t> predict(const std::string& data_);
   virtual   ~one_hot_vectorizer();
   //helper functions : 
   void clear();
@@ -835,7 +837,8 @@ class pca_vectorizer : public vectorizer<std::string, real_t>
   pca_vectorizer& operator= (const pca_vectorizer &other);
   pca_vectorizer&
       operator= (pca_vectorizer &&other);
-  
+  virtual  std::vector<real_t> predict(const std::string& data_);
+
   virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
   virtual  std::vector<real_t> predict(const std::vector<std::string>&documents );
   virtual  std::vector<real_t> transform(const std::vector<std::string>&documents);
@@ -901,6 +904,10 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   std::vector<real_t> fit_transform( const std::vector<std::string>& data_);
   std::vector<std::vector<real_t>> fit_transform( const provallo::matrix<real_t>& data_);
 
+
+  //for vector<vector<string>> 
+  std::vector<std::vector<real_t>> fit( const std::vector<std::vector<std::string>>& data_); 
+  std::vector<std::vector<real_t>> predict( const std::vector<std::vector<std::string>>& data_); 
 
   //virtual std::vector<real_t> fit_transform(const std::vector<std::string>&documents); 
   //virtual std::vector<std::vector<real_t>> fit_transform(const matrix<real_t>&documents); 

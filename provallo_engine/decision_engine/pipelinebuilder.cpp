@@ -178,7 +178,7 @@ namespace provallo
     return *this;
   }
   //get vocabulary 
-  std::vector<std::string> bag_of_words::get_vocabulary() const
+  const std::vector<std::string>& bag_of_words::get_vocabulary() const
   {
     return _vocabulary;
   }
@@ -695,14 +695,22 @@ namespace provallo
   tfidf::~tfidf()
   {
   }
-
+  //tfidf::clear
+  void tfidf::clear()
+  {
+    _documents.clear();
+    _vocabulary.clear();
+    _tf.clear();
+    _idf.clear();
+    _tfidf.clear();
+  }
   // tfidf implementation:
   void tfidf::process_documents()
   {
-    this->_vocabulary.clear();
-    this->_tf.clear();
-    this->_idf.clear();
-    this->_tfidf.clear();
+    if( _documents.size() == 0)
+      return;
+
+    
     // calculate vocabulary
     for (auto &doc : _documents)
     {
@@ -781,6 +789,7 @@ namespace provallo
     {
       _tfidf[i].push_back(_tf[i] * _idf[i]);
     }
+    _documents.clear();
     // done
     return;
   }
@@ -856,25 +865,49 @@ namespace provallo
 
   std::vector<real_t> tfidf::transform(const std::string &doc)
   {
-    std::vector<real_t> result;
     std::vector<std::string> words;
     tokenize(doc, words, " ,;.:-_()[]{}!?\"\'\n\t");
+    
+    std::vector<real_t> result(words.size(),0.0);
+
+    size_t v_index=0;
     for (auto &word : _vocabulary)
     {
-      real_t count = 0.0;
+  
+      size_t res_index=0;
+
       for (auto &w : words)
       {
+
         if (w == word)
         {
-          count++;
+          result[res_index ]+= 1.0;
+          result[res_index ]*= _idf[v_index];
+
         }
+        else
+        {
+          result[res_index%words.size()]+= 0.0;
+        }
+
+
+        res_index++;
       }
-      result.push_back(count);
+      v_index++;
     }
-    for (uint32_t i = 0; i < result.size() && i < _idf.size(); ++i)
+    
+    // normalize tfidf
+    real_t sum = 0.0;
+    for (auto &value : result)
     {
-      result[i] *= _idf[i];
+      sum += value;
+    } 
+    for (auto &value : result)
+    {
+      value /= sum;
     }
+    
+    
     return result;
   }
 
@@ -946,6 +979,7 @@ namespace provallo
   std::vector<real_t>
   tfidf_vectorizer::predict(const std::string &doc)
   {
+     
     return transform(doc);
   }
   std::vector<real_t>
@@ -956,9 +990,12 @@ namespace provallo
     for (auto &doc : corpus)
     {
       predict = transform(doc);
+      result.reserve( predict.size()); 
+      size_t res_index=0;
       for (auto &res : predict)
       {
-        result.push_back(res);
+        result[res_index%result.size()]+= res;
+        res_index++;
       }
     }
     return result;
@@ -1007,8 +1044,11 @@ namespace provallo
   std::vector<real_t>
   tfidf_vectorizer::transform(const std::string &doc)
   {
+    if(_tfidf.get_vocabulary().size() == 0)
+    _tfidf.process_documents();
 
-    return _tfidf.transform(doc);
+      return _tfidf.transform(doc);
+
   }
 
   standard_scaler_vectorizer &
@@ -1125,6 +1165,12 @@ namespace provallo
 
       return ret; 
       
+  }
+
+  std::vector<real_t> pca_vectorizer::predict(const std::string& doc) 
+  {
+
+    return predict(std::vector<std::string>{doc});
   }
 
   std::vector<std::vector<real_t>>  pca_vectorizer::predict(const std::vector<std::vector<std::string>>& documents)
@@ -1603,46 +1649,26 @@ namespace provallo
   
   std::vector<real_t> principal_component_analysis::transform ( const std::string& doc) 
   {
-    //TODO: implement the transform method without modifying the vocabulary.
-    // create a vector of real_t to store the results
-
-    std::vector<real_t> results;
     // tokenize the document into words
     std::vector<std::string> words ;
-     tokenize(doc,words, " ");
-    for( auto & word : words )
-    {
-      auto occurances = std::count(words.begin(), words.end(), word);
-        
-      if  ( _vocabulary.find(word) == _vocabulary.end() )
-      {
-        //add the word to the vocabulary
-        
-        _vocabulary.insert(std::make_pair(word, occurances / _vocabulary.size()));
-        //
-        //update the word in the vocabulary
-        
-      }
-      else
-      {
-        //update the word in the vocabulary
-        _vocabulary[word] += (occurances / _vocabulary.size());
-      }
-    }   
-    //normalize the vocabulary
-    for (auto &word : _vocabulary)
-    {
-      word.second /= _vocabulary.size();
-    }
+      tokenize(doc,words, " ");
+    // create a vector of real_t to store the results
+    std::vector<real_t> results(words.size());
     // for each word in the vocabulary
-    for (auto &word : _vocabulary)
+    size_t wordindex=0;
+    for (auto &word : words)
     {
       // add the word to the results
-      results.push_back(word.second);
+      if (_vocabulary.find(word) != _vocabulary.end() ) 
+      results [wordindex] = _vocabulary[word]; 
+      else
+      results [wordindex] = 0.0;
+      wordindex++;
     }
     // return the results
     return results;
-
+    
+    
   }
   // transform method 
   std::vector<std::vector<real_t>> principal_component_analysis::transform ( const std::vector<std::string>& docs) 
@@ -2047,16 +2073,21 @@ namespace provallo
 
   std::vector<real_t> pca_vectorizer::predict(std::vector<std::string> const &documents)
   {
-    std::vector<std::vector<real_t>> ret = _pca.predict(documents);
+    std::vector<std::vector<real_t>> ret ;
     std::vector<real_t> ret_value;
+
+    for (auto & doc : documents )
+      ret.push_back( _pca.predict(doc));
+
     //flatten the vector
     for (size_t i = 0; i < ret.size(); ++i)
     {
       for (size_t j = 0; j < ret[i].size(); ++j)
       {
-        ret_value.push_back(ret[i][j]);
+        ret_value.push_back(std::round(ret[i][j]));
       }
     }
+    
     return ret_value;
   }
 
@@ -2118,8 +2149,26 @@ namespace provallo
   // tfidf_vectorizer
   std::vector<real_t> tfidf_vectorizer::predict(provallo::matrix<real_t> const &data_)
   {
-    UNDEF_REFERENCE(data_);
-    return std::vector<real_t>();
+      // use _fitted_data,mean and std to transform the data
+    // get the number of rows and columns
+    size_t rows = data_.rows();
+    size_t cols = data_.cols();
+    matrix<real_t> _std = data_.std();
+    // initialize the transformed data
+    matrix<real_t> transformed_data(rows, cols);
+    std::vector<real_t> _mean;
+    // transform the data
+    for (size_t i = 0; i < rows; ++i)
+    {
+      _mean.push_back(data_.mean());
+      for (size_t j = 0; j < cols; ++j)
+      {
+        transformed_data(i, j) = (data_(i, j) - _mean[j]) / _std(i, j);
+      }
+    } 
+    // return the transformed data
+    return std::vector<real_t>(transformed_data.begin(), transformed_data.end());
+
   }
 
   std::vector<real_t> standard_scaler_vectorizer::transform(const provallo::matrix<real_t> &data_matrix)
@@ -5949,6 +5998,8 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     one_hot_vectorizer::~one_hot_vectorizer()
     {
       //clear the one-hot vectorizer
+      _vocabulary.clear();
+
       this->clear();
     }
     //initialize the one-hot vectorizer
@@ -6003,7 +6054,7 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
         }
 
         _transformed_data = ret;
-        //return ret
+         //return ret
         return ret;
 
     }
@@ -6128,6 +6179,25 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
         }
         return ret;
     }
+    //predict single source 
+    std::vector<real_t> one_hot_vectorizer::predict(const std::string& source)
+    {
+       std::vector<real_t> ret;
+       this->_vocabulary=_bow.get_vocabulary();
+
+        //predict the source
+        std::vector<std::string> tokens;
+        //split the source
+        tokenize(source,tokens," ,\t");
+        //get the number of tokens
+        //use _bow to predict the source
+        ret = this->_bow.predict(source);
+        //transform the bow to one-hot vector with std::transform and labmda:
+        std::transform(ret.begin(),ret.end(),ret.begin(),[](real_t x){ return (x > 0.0) ? 1.0 : 0.0;}); 
+        //return the one-hot vector
+        return ret;
+        
+    }//end of predict
     //
     /* fit_transform the one-hot vectorizer
     std::vector<std::vector<real_t>> one_hot_vectorizer::fit_transform( const std::vector<std::string>& data_)
@@ -6689,6 +6759,39 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     //return ret
     return ret;
   }
+
+
+  std::vector<std::vector<real_t>> lda_vectorizer::fit( const std::vector<std::vector<std::string>>& data_)
+  {
+    //fit the data using the bag of words and update local variables
+    for ( auto doc_coll : data_ ) 
+          this->_bow.process_documents(doc_coll); 
+    
+    //copy the vocabulary
+    this->_vocabulary = this->_bow.get_vocabulary();
+    //get the bag of words
+    std::vector<real_t> bow = this->_bow.get_bag_of_words();
+    //get the number of documents
+    this->_num_docs = this->_bow.get_number_of_documents();
+    //get the number of words
+    this->_num_words = this->_bow.get_number_of_words();
+    //get the number of unique words
+    this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+    //  fill ret
+    std::vector<std::vector<real_t>> ret;
+    //fill ret
+    for ( size_t i = 0; i < this->num_unique_tokens; i++)
+    {
+      //fill ret
+      ret.push_back(bow);
+    }
+    //return ret
+    return ret; 
+
+  }
+
+  //std::vector<std::vector<real_t>> predict( const std::vector<std::vector<std::string>>& data_); 
+
   //fit_transform the lda vectorizer
   std::vector<real_t> lda_vectorizer::fit_transform( const std::vector<std::string>& data_)
   {

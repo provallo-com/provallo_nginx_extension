@@ -37,80 +37,81 @@ namespace provallo
         size_t inputDim;
         size_t hiddenDim;
         size_t outputDim;
-        T *input;
-        T *hidden;
-        T *output;
-        T *weight1;
-        T *weight2;
-        T *bias1;
-        T *bias2;
-        T *weight1Grad;
-        T *weight2Grad;
-        T *bias1Grad;
-        T *bias2Grad;
-        T *weight1Momentum;
-        T *weight2Momentum;
-        T *bias1Momentum;
-        T *bias2Momentum;
-        T *weight1Update;
-        T *weight2Update;
-        T *bias1Update;
-        T *bias2Update;
-        T *weight1Decay;
-        T *weight2Decay;
-        T *bias1Decay;
-        T *bias2Decay;
-        T *weight1Sparsity;
-        T *weight2Sparsity;
-        T *bias1Sparsity;
-        T *bias2Sparsity;
-        T *weight1SparsityHat;
-        T *weight2SparsityHat;
-        T *bias1SparsityHat;
-        T *bias2SparsityHat;
-        T *weight1SparsityGrad;
-        T *weight2SparsityGrad;
-        T *bias1SparsityGrad;
-        T *bias2SparsityGrad;
-        T *weight1SparsityGradHat;
-        T *weight2SparsityGradHat;
+        T *input = nullptr;
+        T *hidden   = nullptr;
+        T *output   = nullptr;
+        T *weight1  = nullptr;
+        T *weight2      = nullptr;
+        T *bias1    =   nullptr;
+        T *bias2    =   nullptr;
+        T *weight1Grad  =   nullptr;
+        T *weight2Grad  =   nullptr;
+        T *bias1Grad    =      nullptr;
+        T *bias2Grad    =   nullptr;
+        T *weight1Momentum = nullptr;
+        T *weight2Momentum =    nullptr;
+        T *bias1Momentum    =   nullptr;
+        T *bias2Momentum    =   nullptr;
+        T *weight1Update    =   nullptr;
+        T *weight2Update    =   nullptr;
 
-        T* weight1Inc;
-        T* weight2Inc;
-        T* weight1GradPrev;
-        T* weight2GradPrev;
+        T *bias1Update  =   nullptr;
+        T *bias2Update  =   nullptr;
+        T *weight1Decay =   nullptr;
+        T *weight2Decay =   nullptr;
+        T *bias1Decay   =   nullptr;
+        T *bias2Decay   =   nullptr;
+        T *weight1Sparsity  =   nullptr;
+        T *weight2Sparsity  =   nullptr;
+        T *bias1Sparsity    =   nullptr;
+        T *bias2Sparsity    =   nullptr;
+        T *weight1SparsityHat   =   nullptr;
+        T *weight2SparsityHat =  nullptr;
+        T *bias1SparsityHat =   nullptr;
+        T *bias2SparsityHat=        nullptr;
+        T *weight1SparsityGrad  =       nullptr;
+        T *weight2SparsityGrad =      nullptr;
+        T *bias1SparsityGrad    =      nullptr;
+        T *bias2SparsityGrad    =      nullptr;
+        T *weight1SparsityGradHat   =   nullptr;
+        T *weight2SparsityGradHat   =   nullptr;
+
+        T* weight1Inc   =   nullptr;
+        T* weight2Inc   =   nullptr;
+        T* weight1GradPrev  =   nullptr;
+        T* weight2GradPrev  =   nullptr;
 
         //prevprev
-        T* weight1GradPrevPrev;
-        T* weight2GradPrevPrev;
-        T* bias1GradPrevPrev;
-        T* bias2GradPrevPrev;
+        T* weight1GradPrevPrev  =   nullptr;
+        T* weight2GradPrevPrev  =   nullptr;
+        T* bias1GradPrevPrev    =   nullptr;
+        T* bias2GradPrevPrev    =   nullptr;
 
 
-        T* bias1Inc;
-        T* bias2Inc;
-        T* bias1GradPrev;
-        T* bias2GradPrev;
-        T* weight1Prev;
-        T* weight2Prev;
+        T* bias1Inc =   nullptr;
+        T* bias2Inc =   nullptr;
+        T* bias1GradPrev    =   nullptr;
+        T* bias2GradPrev    =   nullptr;
+        T* weight1Prev  =   nullptr;
+        T* weight2Prev =     nullptr;
 
 
 
-        real_x learningRate;
-        real_x momentum;
-        real_x weightDecay;
-        real_x sparsityParam;
-        real_x beta;
-        real_x sparsityParamHat;
-        real_x sparsityPenalty;
-        real_x sparsityGradient;
-        real_x sparsityGradientHat;
+        real_x learningRate =   real_x(0.01);
+        real_x momentum =   real_x(0.9);
+        real_x weightDecay  =   real_x(0.0001);
+        real_x sparsityParam    =   real_x(0.01);
+        real_x beta =   real_x(3);
+        real_x sparsityParamHat =   real_x(0.01);
+        real_x sparsityPenalty  =   real_x(0.0);
+        real_x sparsityGradient =   real_x(0.0);
+        real_x sparsityGradientHat  =   real_x(0.0);
 
-        T *bias1SparsityGradHat;
-        T *bias2SparsityGradHat;
+        T *bias1SparsityGradHat = nullptr;
+        T *bias2SparsityGradHat = nullptr;
         
-        T* bias1Prev;
-        T* bias2Prev;
+        T* bias1Prev = nullptr;
+        T* bias2Prev =  nullptr;
 
 
 
@@ -120,7 +121,7 @@ namespace provallo
         void initializeBias(T *bias, size_t size);
         void initializeWeight(T *weight, size_t row, size_t col);
         void conjugateGradient();
-
+        virtual void clear();
         virtual void initializeWeightGrad()
         {
             //initialize the gradients 
@@ -1509,6 +1510,32 @@ namespace provallo
         initializeBias1SparsityHat();
         initializeBias2SparsityHat();
 
+        initializeWeight1SparsityGrad();
+        initializeWeight2SparsityGrad();
+
+        initializeBias1SparsityGrad();
+        initializeBias2SparsityGrad();
+
+        initializeWeight1SparsityGradHat();
+        initializeWeight2SparsityGradHat();
+
+
+
+        initializeBias1SparsityGradHat();
+        initializeBias2SparsityGradHat();
+
+        initializeWeight1GradPrevPrev();
+        initializeWeight2GradPrevPrev();
+
+        initializeBias1GradPrevPrev();
+        initializeBias2GradPrevPrev();
+
+        //initializeWeight1SparsityGradPrev();
+        //initializeWeight2SparsityGradPrev();
+
+        //initializeBias1SparsityGradPrev();
+        //initializeBias2SparsityGradPrev();
+        //done  
 
     }   
     
@@ -1985,161 +2012,86 @@ namespace provallo
     void auto_encoder<T,real_x>::feedforward(T *input, T *output, size_t size)
     {
         //std::cout << "feedforward" << std::endl;
+        //use activation function
+        //call forward()
 
-        for (size_t i = 0; i < size; i++)
+        //assume input is inputDim size and output is size,which is not necessirly
+        //outDim size
+
+        
+        for(size_t i=0;i<inputDim;i++)
         {
-            for (size_t j = 0; j < hiddenDim; j++)
-            {
-                hidden[j] = 0;
-                for (size_t k = 0; k < inputDim; k++)
-                {
-                    hidden[j] += input[i * inputDim + k] * weight1[k * hiddenDim + j];
-                }
-                hidden[j] = sigmoid(hidden[j]);
-                //hidden[j] = relu(hidden[j]); 
-
-            }
-            for (size_t j = 0; j < outputDim; j++)
-            {
-                output[j] = 0;
-                for (size_t k = 0; k < hiddenDim; k++)
-                {
-                    output[j] += hidden[k] * weight2[k * outputDim + j];
-                }
-                output[j] = sigmoid(output[j]);
-            }
-             
-            //std::cout << "feedforward" << std::endl;
-            
+            this->input[i]=input[i];
         }
+        for(size_t i=0;i<outputDim&&i<size;i++)
+        {
+            this->output[i]=output[i];
+        }
+        //we updated the input and outputs, now we can update the weights and backpropagate
+        //the error
+        //update weights:
+        this->updateWeight1();
+        this->updateWeight2();
+        this->updateBias1();
+        this->updateBias2();
+        //call forward 
+        forward();
         //done
 
     }
 
     template <typename T, typename real_x>
-    void auto_encoder<T,real_x>::backprop(T *input, T *output, size_t size)
+    void auto_encoder<T,real_x>::backprop(T *input_param, T *output_param, size_t size)
     {
+        real_x loss = 0.0;
+        real_x MSE=0.0;
+        //assume input_param is inputDim size and output_param is size,which is not necessirly 
+        //outDim size
 
-        T *delta1 = new T[inputDim];
-        T *delta2 = new T[hiddenDim];
-        T *delta3 = new T[outputDim];
-        T *weight1Grad = new T[inputDim * hiddenDim];
-        T *weight2Grad = new T[hiddenDim * outputDim];
-        T *bias1Grad = new T[hiddenDim];
-        T *bias2Grad = new T[outputDim];
-        T *weight1GradPrev = new T[inputDim * hiddenDim];
-        T *weight2GradPrev = new T[hiddenDim * outputDim];
-        T *bias1GradPrev = new T[hiddenDim];
-        T *bias2GradPrev = new T[outputDim];
-        T *weight1Inc = new T[inputDim * hiddenDim];
-        T *weight2Inc = new T[hiddenDim * outputDim];
-        T *bias1Inc = new T[hiddenDim];
-        T *bias2Inc = new T[outputDim];
-
-        if(!delta1 || !delta2 || !delta3 || !weight1Grad || !weight2Grad || !bias1Grad || !bias2Grad || !weight1GradPrev || !weight2GradPrev || !bias1GradPrev || !bias2GradPrev || !weight1Inc || !weight2Inc || !bias1Inc || !bias2Inc)
+        for(size_t i=0;i<inputDim;i++)
         {
-            throw std::runtime_error("error in backprop");
+            input[i]=input_param[i];
         }
-        initializeWeight(delta1, inputDim);
-        initializeWeight(delta2, hiddenDim);
-        initializeWeight(delta3, outputDim);
-
-        initializeWeight(weight1Grad, inputDim * hiddenDim);
-        initializeWeight(weight2Grad, hiddenDim * outputDim);
-        initializeWeight(bias1Grad, hiddenDim);
-        initializeWeight(bias2Grad, outputDim);
-        initializeWeight(weight1GradPrev, inputDim * hiddenDim);
-        initializeWeight(weight2GradPrev, hiddenDim * outputDim);
-        initializeWeight(bias1GradPrev, hiddenDim);
-        initializeWeight(bias2GradPrev, outputDim);
-        initializeWeight(weight1Inc, inputDim * hiddenDim);
-        initializeWeight(weight2Inc, hiddenDim * outputDim);
-        initializeWeight(bias1Inc, hiddenDim);
-        initializeWeight(bias2Inc, outputDim);
+        for(size_t i=0;i<outputDim;i++)
+        {
+            output[i]=output_param[i];
+        }
+        //we updated the input and outputs, now we can update the weights and backpropagate 
+        //the error
+        //update weights:
+        this->updateWeight1();
+        this->updateWeight2();
+        this->updateBias1();
+        this->updateBias2();
+        //backpropagate the error
+        //compute the error
         for (size_t i = 0; i < size; i++)
         {
-            for (size_t j = 0; j < outputDim; j++)
+            for (size_t j = 0; j < outputDim && j<size; j++)
             {
-                delta3[j] = output[i * outputDim + j] * (1 - output[i * outputDim + j]) * (output[i * outputDim + j] - input[i * outputDim + j]);
+                loss = output[i * outputDim + j] - output_param[i * outputDim + j];
+                MSE+=loss*loss;
+                loss *= output[i * outputDim + j] * (1 - output[i * outputDim + j]);
                 for (size_t k = 0; k < hiddenDim; k++)
                 {
-                    weight2Grad[k * outputDim + j] += hidden[k] * delta3[j];
+                    weight2Grad[k * outputDim + j] += loss * hidden[i * hiddenDim + k];
+                    hidden[k] += loss * weight2[k * outputDim + j];
                 }
-                bias2Grad[j] += delta3[j];
+                bias2Grad[j] += loss;
             }
             for (size_t j = 0; j < hiddenDim; j++)
             {
-                delta2[j] = hidden[i * hiddenDim + j] * (1 - hidden[i * hiddenDim + j]);
-                for (size_t k = 0; k < outputDim; k++)
-                {
-                    delta2[j] += delta3[k] * weight2[j * outputDim + k];
-                }
+                hidden[j] *= hidden[j] * (1 - hidden[j]);
                 for (size_t k = 0; k < inputDim; k++)
                 {
-                    weight1Grad[k * hiddenDim + j] += input[i * inputDim + k] * delta2[j];
+                    weight1Grad[k * hiddenDim + j] += hidden[j] * input[i * inputDim + k];
                 }
-                bias1Grad[j] += delta2[j];
+                bias1Grad[j] += hidden[j];
             }
-        }
-
-        for (size_t i = 0; i < inputDim * hiddenDim; i++)
-        {
-            weight1Inc[i] = momentum * weight1Inc[i] + learningRate * weight1Grad[i];
-            weight1[i] -= weight1Inc[i];
-        }
-        for (size_t i = 0; i < hiddenDim * outputDim; i++)
-        {
-            weight2Inc[i] = momentum * weight2Inc[i] + learningRate * weight2Grad[i];
-            weight2[i] -= weight2Inc[i];
-        }
-        for (size_t i = 0; i < hiddenDim; i++)
-        {
-            bias1Inc[i] = momentum * bias1Inc[i] + learningRate * bias1Grad[i];
-            bias1[i] -= bias1Inc[i];
-        }
-        for (size_t i = 0; i < outputDim; i++)
-        {
-            bias2Inc[i] = momentum * bias2Inc[i] + learningRate * bias2Grad[i];
-            bias2[i] -= bias2Inc[i];
-        }
-        for (size_t i = 0; i < inputDim * hiddenDim; i++)
-        {
-            weight1GradPrev[i] = weight1Grad[i];
-        }
-        for (size_t i = 0; i < hiddenDim * outputDim; i++)
-        {
-            weight2GradPrev[i] = weight2Grad[i];
-        }
-        for (size_t i = 0; i < hiddenDim; i++)
-        {
-            bias1GradPrev[i] = bias1Grad[i];
-        }
-        for (size_t i = 0; i < outputDim; i++)
-        {
-            bias2GradPrev[i] = bias2Grad[i];
-        }
-        //std::cout << "backprop" << std::endl;
-        //std::cout << "backprop" << std::endl;
-        
-
-        delete[] delta1;
-        delete[] delta2;
-        delete[] delta3;
-        delete[] weight1Grad;
-        delete[] weight2Grad;
-        delete[] bias1Grad;
-        delete[] bias2Grad;
-        delete[] weight1GradPrev;
-        delete[] weight2GradPrev;
-        delete[] bias1GradPrev;
-        delete[] bias2GradPrev;
-        delete[] weight1Inc;
-        delete[] weight2Inc;
-        delete[] bias1Inc;
-        delete[] bias2Inc;
- 
+        }   
         //done
-
+         std::cout << "backprop MSE:" <<std::to_string(MSE)<< std::endl;
+         
     }
 
     template <typename T, typename real_x>
@@ -2738,7 +2690,26 @@ namespace provallo
         out << "weightDecay: " << weightDecay << std::endl;
         out << "sparsityParam: " << sparsityParam << std::endl;
         out << "beta: " << beta << std::endl;
-         
+         //SAVE SPARSITY
+        out << "weight1Sparsity: " << std::endl;
+        for (size_t i = 0; i < inputDim * hiddenDim; i++)
+        {
+            out << weight1Sparsity[i] << " ";
+        }
+        out << std::endl;
+        out << "weight2Sparsity: " << std::endl;
+        for (size_t i = 0; i < hiddenDim * outputDim; i++)
+        {
+            out << weight2Sparsity[i] << " ";
+        }   
+        out << std::endl;
+        out << "bias1Sparsity: " << std::endl;
+        for (size_t i = 0; i < hiddenDim; i++)
+        {
+            out << bias1Sparsity[i] << " ";
+        }
+        out << std::endl;
+        
         
         //all members are saved
 
@@ -2748,264 +2719,286 @@ namespace provallo
     template <typename T, typename real_x>
     void auto_encoder<T,real_x>::load(std::istream &in)
     {
+        std::cout<<"[+]auto_encoder load"<<std::endl;
+        clear();
         std::string line;
+        std::string name;
+        std::string value;
+        
+        //load at the same order of the dump(ofstream) 
+        //load inputDim
         std::getline(in, line);
-        inputDim = std::stoi(line.substr(line.find(':') + 1));
+        std::istringstream iss(line);
+        iss >> name >> value;
+        inputDim = std::stoi(value);
+        //load hiddenDim
         std::getline(in, line);
-        hiddenDim = std::stoi(line.substr(line.find(':') + 1));
+        iss = std::istringstream(line);
+        iss >> name >> value;
+        hiddenDim = std::stoi(value);
+        //load outputDim
         std::getline(in, line);
-        outputDim = std::stoi(line.substr(line.find(':') + 1));
+        iss = std::istringstream(line);
+        iss >> name >> value;
+        outputDim = std::stoi(value);
+        //load weight1
         std::getline(in, line);
-        std::getline(in, line);
-        std::stringstream ss(line);
-        if (weight1 != nullptr)
-        {
-            delete[] weight1;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         weight1 = new T[inputDim * hiddenDim];
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            ss >> weight1[i];
-        }
-        std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (weight2 != nullptr)
-        {
-            delete[] weight2;
-        }
+            iss >> value;
+            weight1[i] = std::stod(value);
+        }   
+        //load weight2
+        std::getline(in, line); 
+        iss = std::istringstream(line);
+        iss >> name;
         weight2 = new T[hiddenDim * outputDim];
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            ss >> weight2[i];
-        }
+            iss >> value;
+            weight2[i] = std::stod(value);
+        }   
+        //load bias1
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias1 != nullptr)
-        {
-            delete[] bias1;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         bias1 = new T[hiddenDim];
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            ss >> bias1[i];
-        }
+            iss >> value;
+            bias1[i] = std::stod(value);
+        }   
+        //load bias2
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias2 != nullptr)
-        {
-            delete[] bias2;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         bias2 = new T[outputDim];
         for (size_t i = 0; i < outputDim; i++)
         {
-            ss >> bias2[i];
+            iss >> value;
+            bias2[i] = std::stod(value);
         }
+        //load weight1Inc
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (weight1Inc != nullptr)
-        {
-            delete[] weight1Inc;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         weight1Inc = new T[inputDim * hiddenDim];
-        for (size_t i = 0; i < inputDim ; i++)
+        for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            ss >> weight1Inc[i];
-        }   
-        std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (weight2Inc != nullptr)
-        {
-            delete[] weight2Inc;
+            iss >> value;
+            weight1Inc[i] = std::stod(value);
         }
+        //load weight2Inc
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name;
         weight2Inc = new T[hiddenDim * outputDim];
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            ss >> weight2Inc[i];
-        }
-        std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias1Inc != nullptr)
-        {
-            delete[] bias1Inc;
+            iss >> value;
+            weight2Inc[i] = std::stod(value);
         }   
+        //load bias1Inc
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name;
         bias1Inc = new T[hiddenDim];
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            ss >> bias1Inc[i];
+            iss >> value;
+            bias1Inc[i] = std::stod(value);
         }
-
+        //load bias2Inc
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-
-
-        if (bias2Inc != nullptr)
-        {
-            delete[] bias2Inc;
-        }       
-
-        bias2Inc = new T[outputDim];    
+        iss = std::istringstream(line);
+        iss >> name;
+        bias2Inc = new T[outputDim];
         for (size_t i = 0; i < outputDim; i++)
         {
-            ss >> bias2Inc[i];
-        }
+            iss >> value;
+            bias2Inc[i] = std::stod(value);
+        }   
+        //load weight1Grad
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (weight1Grad != nullptr)
-        {
-            delete[] weight1Grad;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         weight1Grad = new T[inputDim * hiddenDim];
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            ss >> weight1Grad[i];
-        }
-        std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (weight2Grad != nullptr)
-        {
-            delete[] weight2Grad;
-        }
-        weight2Grad = new T[hiddenDim * outputDim];
+            iss >> value;
+            weight1Grad[i] = std::stod(value);
+        }       
+        //load weight2Grad  
+        std::getline(in, line);     
+        iss = std::istringstream(line);
+        iss >> name;
+        weight2Grad = new T[hiddenDim * outputDim]; 
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            ss >> weight2Grad[i];
-        }
-        std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias1Grad != nullptr)
-        {
-            delete[] bias1Grad;
-        }
+            iss >> value;
+            weight2Grad[i] = std::stod(value);
+        }   
+        //load bias1Grad
+        std::getline(in, line); 
+        iss = std::istringstream(line);
+        iss >> name;
         bias1Grad = new T[hiddenDim];
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            ss >> bias1Grad[i];
+            iss >> value;
+            bias1Grad[i] = std::stod(value);
         }
-        //std::cout << "bias1Grad: " << std::endl;
-
+        //load bias2Grad
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias2Grad != nullptr)
-        {
-            delete[] bias2Grad;
-        }
+        iss = std::istringstream(line); 
+        iss >> name;
         bias2Grad = new T[outputDim];
         for (size_t i = 0; i < outputDim; i++)
         {
-            ss >> bias2Grad[i];
-        }
-        std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (weight1GradPrev != nullptr)
-        {
-            delete[] weight1GradPrev;
-        }
+            iss >> value;
+            bias2Grad[i] = std::stod(value);
+        }   
+        //load weight1GradPrev
+        std::getline(in, line); 
+        iss = std::istringstream(line);
+        iss >> name;
         weight1GradPrev = new T[inputDim * hiddenDim];
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            ss >> weight1GradPrev[i];
+            iss >> value;
+            weight1GradPrev[i] = std::stod(value);
         }
+        //load weight2GradPrev
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (weight2GradPrev != nullptr)
-        {
-            delete[] weight2GradPrev;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         weight2GradPrev = new T[hiddenDim * outputDim];
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            ss >> weight2GradPrev[i];
+            iss >> value;
+            weight2GradPrev[i] = std::stod(value);
         }
+        //load bias1GradPrev
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias1GradPrev != nullptr)
-        {
-            delete[] bias1GradPrev;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         bias1GradPrev = new T[hiddenDim];
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            ss >> bias1GradPrev[i];
-        }
+            iss >> value;
+            bias1GradPrev[i] = std::stod(value);
+        }   
+        //load bias2GradPrev
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias2GradPrev != nullptr)
-        {
-            delete[] bias2GradPrev;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         bias2GradPrev = new T[outputDim];
         for (size_t i = 0; i < outputDim; i++)
         {
-            ss >> bias2GradPrev[i];
-        }
+            iss >> value;
+            bias2GradPrev[i] = std::stod(value);
+        }   
+        //load weight1GradPrevPrev
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-
-        if (weight1GradPrevPrev != nullptr)
-        {
-            delete[] weight1GradPrevPrev;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         weight1GradPrevPrev = new T[inputDim * hiddenDim];
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            ss >> weight1GradPrevPrev[i];
-        }
+            iss >> value;
+            weight1GradPrevPrev[i] = std::stod(value);
+        }   
+        //load weight2GradPrevPrev
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-
-        if (weight2GradPrevPrev != nullptr)
-        {
-            delete[] weight2GradPrevPrev;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         weight2GradPrevPrev = new T[hiddenDim * outputDim];
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            ss >> weight2GradPrevPrev[i];
-        }
+            iss >> value;
+            weight2GradPrevPrev[i] = std::stod(value);
+        }   
+        //load bias1GradPrevPrev
         std::getline(in, line);
-        std::getline(in, line);
-
-        ss = std::stringstream(line);
-        if (bias1GradPrevPrev != nullptr)
-        {
-            delete[] bias1GradPrevPrev;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         bias1GradPrevPrev = new T[hiddenDim];
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            ss >> bias1GradPrevPrev[i];
+            iss >> value;
+            bias1GradPrevPrev[i] = std::stod(value);
         }
+        //load bias2GradPrevPrev
         std::getline(in, line);
-        std::getline(in, line);
-        ss = std::stringstream(line);
-        if (bias2GradPrevPrev != nullptr)
-        {
-            delete[] bias2GradPrevPrev;
-        }
+        iss = std::istringstream(line);
+        iss >> name;
         bias2GradPrevPrev = new T[outputDim];
         for (size_t i = 0; i < outputDim; i++)
         {
-            ss >> bias2GradPrevPrev[i];
+            iss >> value;
+            bias2GradPrevPrev[i] = std::stod(value);
+        }
+        //load learningRate
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name >> value;
+        learningRate = std::stod(value);
+        //load momentum
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name >> value;
+        momentum = std::stod(value);
+        //load weightDecay
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name >> value;
+        weightDecay = std::stod(value);
+        //load sparsityParam
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name >> value;
+        sparsityParam = std::stod(value);
+        //load beta
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name >> value;
+        beta = std::stod(value);
+        //load weight1Sparsity
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name;
+        weight1Sparsity = new T[inputDim * hiddenDim];
+        for (size_t i = 0; i < inputDim * hiddenDim; i++)
+        {
+            iss >> value;
+            weight1Sparsity[i] = std::stod(value);
         }   
-        //std::cout << "bias2GradPrevPrev: " << std::endl;
-        //done
+        //load weight2Sparsity
+        std::getline(in, line); 
+        iss = std::istringstream(line);
+        iss >> name;
+        weight2Sparsity = new T[hiddenDim * outputDim];
+        for (size_t i = 0; i < hiddenDim * outputDim; i++)
+        {
+            iss >> value;
+            weight2Sparsity[i] = std::stod(value);
+        }   
+        //load bias1Sparsity
+        std::getline(in, line);
+        iss = std::istringstream(line);
+        iss >> name;
+        bias1Sparsity = new T[hiddenDim];
+        for (size_t i = 0; i < hiddenDim; i++)
+        {
+            iss >> value;
+            bias1Sparsity[i] = std::stod(value);
+        }
+        std::cout<<"[-]auto_encoder load"<<std::endl;
+
+
     }
 
 
@@ -3474,7 +3467,41 @@ namespace provallo
 
     }
 
-
+    //clear()
+    template <typename T, typename real_x >
+    void auto_encoder<T,real_x>::clear()
+    {
+        //delete everything and set to zero
+        //std::cout << "auto_encoder clear" << std::endl;
+        auto check = [](T* ptr) {if (ptr != nullptr) { delete[] ptr; ptr = nullptr; } };    
+        check(input);
+        check(hidden);
+        check(output);
+        check(weight1);
+        check(weight2);
+        check(bias1);
+        check(bias2);
+        check(weight1Grad);
+        check(weight2Grad);
+        check(bias1Grad);
+        check(bias2Grad);
+        check(weight1GradPrev);
+        check(weight2GradPrev);
+        check(bias1GradPrev);
+        check(bias2GradPrev);
+        check(weight1GradPrevPrev);
+        check(weight2GradPrevPrev);
+        check(bias1GradPrevPrev);
+        check(bias2GradPrevPrev);
+        check(weight1Inc);
+        check(weight2Inc);
+        check(bias1Inc);
+        check(bias2Inc);
+        check(weight1Sparsity);
+        check(weight2Sparsity);
+        //std::cout << "auto_encoder clear end" << std::endl;
+        
+    }
     struct tf_auto_encoder
     {
         template <typename T, typename real_x >

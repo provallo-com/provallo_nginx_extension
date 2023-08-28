@@ -96,7 +96,7 @@ namespace provallo
 			std::vector<bool> _bloom;
 
 		public:
-			bloom_filter(size_t window) : _window(window),_hash(fnv1a),_bloom(window) {}
+			bloom_filter(size_t window) : _window(window),_hash(provallo::fnv1a),_bloom(window) {}
 			void filter (const std::vector<std::string> &v)
 			{
 				for (auto e : v)

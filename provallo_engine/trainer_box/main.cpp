@@ -34,6 +34,22 @@ std::atomic_uint64_t  errorsCount(0);
 
 std::mutex queryLock; // lock for global counters
 
+ const char* vectorizer_types[] ={ 
+          "TFIDF",
+          "STANDARD_SCALER",
+          "MIN_MAX_SCALER",
+          "PCA","ONE_HOT_VECTORIZER",
+          "NEURAL_TRANSFORMER",
+          "AERONATIC_QARTERION", 
+          "SVD_OPERATOR",
+          "NGRAM_HMM_TRANSFORMER",
+          "HPLANE_TRANSFORMER",
+          "HUFFMAN_TRANSFORMER",
+          "HMM_TRANSFORMER","REGRESSION_TRANSFORMER",
+          "UMAP_VECTORIZER","TSNE_VECTORIZER","AUTOENCODER_VECTORIZER",
+          "LDA_VECTORIZER","UNKNOWN_VECTORIZER","ERROR_INDEX"
+          };
+
 bool test_fit_iso_forest();
 bool test_dataset_load();
 
@@ -49,7 +65,6 @@ which_max (std::vector<double> &v)
   auto loc_max_el = std::max_element (v.begin (), v.end ());
   return std::distance (v.begin (), loc_max_el);
 }
-
 
 bool
 test_fit_iso_forest ()
@@ -302,8 +317,7 @@ bool test_fast_knn(const std::string benchmark_folder )
 
 
         std::cout<<"-- training set matrix size : "<<std::to_string(data.size1()*data.size2())<<std::endl; 
-
-        
+         
         if( false && attributes.getSize()==14)
         {
           //will crash.
@@ -654,13 +668,11 @@ int main ( int argc, char* argv[]  ) {
   return 0;
 }
 
-bool test_vectorizers ( provallo::dataset& vectorize_set   ) 
+bool test_vectorizers ( ) 
 {
   //normalize the attributes 
 
-  UNDEF_REFERENCE(vectorize_set);
-  UNDEF_REFERENCE2(vectorize_set);
-
+ 
   bool ret = false;
   std::vector<std::string> vectorize_set_attributes({"ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN"}); 
   std::vector<std::string> vectorize_set_classes({"CLASS1","CLASS2","CLASS3","CLASS4","CLASS5","CLASS6","CLASS7","CLASS8","CLASS9","CLASS10"}); 
@@ -684,8 +696,10 @@ bool test_vectorizers ( provallo::dataset& vectorize_set   )
   std::cout << "Testing vectorizer 1" << std::endl;
   
   provallo::tfidf_vectorizer vectorizer1;
-  provallo::pca_vectorizer vectorizer2;
-  //provallo::lda_vectorizer vectorizer3;
+  //provallo::pca_vectorizer vectorizer2;
+  provallo::lda_vectorizer vectorizer3;
+  provallo::pca_vectorizer vectorizer4;
+
   //provallo::nmf_vectorizer vectorizer4;
   //provallo::svd_vectorizer vectorizer5;
   //provallo::kmeans_vectorizer vectorizer6;
@@ -695,25 +709,35 @@ bool test_vectorizers ( provallo::dataset& vectorize_set   )
   
   
   vectorizer1.fit(vectorize_set_data);
-  vectorizer2.fit(vectorize_set_data);
+  //vectorizer2.fit(vectorize_set_data);
+  vectorizer3.fit(vectorize_set_data);
+  vectorizer4.fit(vectorize_set_data);
 
   std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers;
   vectorizers.push_back(&vectorizer1);
-  vectorizers.push_back(&vectorizer2);
+  //vectorizers.push_back(&vectorizer2);
+  vectorizers.push_back(&vectorizer3);
   //vectorizers.push_back(&vectorizer3);
+  vectorizers.push_back(&vectorizer4);
+
   //vectorizers.push_back(&vectorizer4);
 
   
   for ( size_t i=0;i<vectorize_set_data.size();i++)
   {
     size_t j=0;
-    std::cout << "Testing vectorizer 1 transform" << std::endl;
+    std::cout << "Testing vectorizer pass 1 transform" << std::endl;
     for ( auto v : vectorizers   )
     {
+
+      //print vectorizer name
+      std::cout << " [+] vectorizer :  "<<vectorizer_types[v->get_type()] << std::endl; 
+
       std::vector<double> vectorized_data = v->transform(vectorize_set_data[i]);
+      j=0;
       for(auto f : vectorized_data)
       {
-        std::cout << " [+] fit :  "<<std::to_string(f) << " "<<vectorize_set_data[i][j++]<<std::endl;
+        std::cout << " [+] transform :  "<<std::to_string(f) << " "<< (vectorize_set_data[i][j++ %vectorize_set_data[i].size()])<<std::endl;
 
         ret = true;
       } 
@@ -721,8 +745,30 @@ bool test_vectorizers ( provallo::dataset& vectorize_set   )
     }
   } 
   std::cout << std::endl;
-  char x = std::getchar();
-  UNDEF_REFERENCE2(x);
+  char x = std::getchar(); 
+  x--;
+  for ( size_t i=0;i<vectorize_set_data.size();i++)
+  {
+     
+     std::cout << "Testing vectorizer pass 2 transform" << std::endl;
+    for ( auto v : vectorizers   )
+    {
+      std::vector<double> vectorized_data = v->transform(vectorize_set_data[i]);
+      size_t j=0;
+
+      std::cout << " [+] vectorizer :  "<<vectorizer_types[v->get_type()] << std::endl; 
+ 
+      for(auto f : vectorized_data)
+      {
+        std::cout << " [+] predict :  "<<std::to_string(f) << " "<<vectorize_set_data[i][j++%vectorize_set_data[i].size()]<<std::endl;
+        ret = true;
+      } 
+      std::cout << std::endl;
+    }
+  } 
+
+
+ 
   return ret;
 
 }
@@ -838,7 +884,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         std::cout<<"-- classdist: "<<ds<<std::endl;
 
         encoder.save("encoder_"+file_stem+".json");
-        encoder.load("encoder_"+file_stem+".json");
+        //encoder.load("encoder_"+file_stem+".json");
         std::cout<<"-- encoder loaded "<<std::endl;
         std::cout<<"-- encoder input size : "<<std::to_string(encoder.getInputDim())<<std::endl;
         std::cout<<"-- encoder output size : "<<std::to_string(encoder.getOutputDim())<<std::endl;
@@ -914,6 +960,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         }
       }
       encoder.test(mdata,ds);
+      
       std::cout<<"-- autoencoder test finished "<<std::endl<<std::endl;
       std::cout<<"-- autoencoder test results : "<<ds<<std::endl<<std::endl;
       
@@ -1010,21 +1057,6 @@ bool benchmark_classifiers (const std::string benchmark_folder )
     return ret;
 }// end benchmark_classifiers
  
- const char* vectorizer_types[] ={ 
-          "TFIDF",
-          "STANDARD_SCALER",
-          "MIN_MAX_SCALER",
-          "PCA,ONE_HOT_VECTORIZER",
-          "NEURAL_TRANSFORMER",
-          "AERONATIC_QARTERION", 
-          "SVD_OPERATOR",
-          "NGRAM_HMM_TRANSFORMER",
-          "HPLANE_TRANSFORMER",
-          "HUFFMAN_TRANSFORMER",
-          "HMM_TRANSFORMER","REGRESSION_TRANSFORMER",
-          "UMAP_VECTORIZER","TSNE_VECTORIZER","AUTOENCODER_VECTORIZER",
-          "LDA_VECTORIZER","UNKNOWN_VECTORIZER","ERROR_INDEX"
-          };
       
 std::vector<std::string> get_files_recursively (const std::string folder)
 {
@@ -1110,7 +1142,13 @@ bool fit_fuzzsb ( const std::string& fit_fuzzsb_folder)
 exclude_list.push_back(".gitignore");
 exclude_list.push_back(".git");
 
-  
+  //first , validate vectorizers mechanism works: 
+  if ( !test_vectorizers() ) 
+  {
+    std::cout<<"[-] vectorizers test failed "<<std::endl;
+    return false;
+  } 
+
   for (auto file : files)
   {
  
@@ -1140,10 +1178,10 @@ exclude_list.push_back(".git");
   //the pipeline will load the files, vectorize them, train the autoencoder, 
 
   //first we want to verify the vectorizers and autoencoders work properly 
-  vectorizers_attacks.push_back(new provallo::tfidf_vectorizer);
+  vectorizers_attacks.push_back(new provallo::lda_vectorizer);
   vectorizers_attacks.push_back(new provallo::one_hot_vectorizer);
   
-  vectorizers_normal.push_back(new provallo::tfidf_vectorizer);
+  vectorizers_normal.push_back(new provallo::lda_vectorizer);
   vectorizers_normal.push_back(new provallo::one_hot_vectorizer);
   //vectorizers_normal.push_back(new provallo::auto_encoder_vectorizer<real_t,real_t>(autoencoders)); 
   //create vectorizers:
@@ -1246,15 +1284,19 @@ exclude_list.push_back(".git");
   std::cout << "[+] Test Wall time elapsed in s: "
     << std::chrono::duration<double> (t_end - t_start).count ()
     << std::endl; 
- 
+  std::cout<<"[+] creating autoencoders "<<std::endl;
   for ( auto & vectorizer : vectorizers_attacks)
   {
  
     bool is_attack = false;
     std::string random_file = string_files[t_end.time_since_epoch().count()%string_files.size()]; 
-    while(!is_attack&&(random_file.find("attack")==std::string::npos||random_file.find("door")==std::string::npos))
+    while(!is_attack&&(random_file.find("attack")==std::string::npos||random_file.find("door")==std::string::npos) )  
     {
-        random_file = string_files[t_end.time_since_epoch().count()%string_files.size()]; 
+      std::cout<<"[+] skipping "<<random_file<<std::endl; 
+      t_end = std::chrono::high_resolution_clock::now ();
+      random_file = string_files[t_end.time_since_epoch().count()%string_files.size()]; 
+      if(random_file.find("attack")!=std::string::npos||random_file.find("door")!=std::string::npos )
+        break;
     }
     is_attack = true;
 
@@ -1270,6 +1312,8 @@ exclude_list.push_back(".git");
      std::cout<<"[+] creating autoencoder for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << "input size:"<<std::to_string(input_size)<<std::endl;
     if( input_size==0)
       input_size=1; //avoid zero size input
+     
+
     c_start = clock ();
     t_start = std::chrono::high_resolution_clock::now ();
   
@@ -1290,6 +1334,8 @@ exclude_list.push_back(".git");
     {
       auto & vectorizer = vectorizers_attacks[vectr++];
 
+
+      //print vectorizer type
       std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type(); 
       if ( vectorizer->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
       {
@@ -1299,15 +1345,39 @@ exclude_list.push_back(".git");
       std::vector<real_t> input =vectorizer->predict(data_string);
       std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
       std::cout<<"[+] training / loading autoencoder"<<std::endl;
-      double output[2]={1,1};
+      //print vectorize output
+      if(input.size()==0)
+      {
+        std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(vectorizer->get_output_size())<<std::endl; 
+        
+        input.resize(vectorizer->get_output_size());
+        for(size_t i=0;i<input.size();i++)
+        {
+          input[i] = 0.0;
+        } 
 
-      enc->train((real_t*)input.data(),output,1 );
+      } 
+
+      std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<std::endl; 
+
+      double output[2]={1,1};
+      do
+      {
+      //get dictionary and weight and train the autoencoder 
+      //train with vectorized data:
+      enc->train((real_t*)input.data(),output,1); 
+      //test with vectorized data 
+      std::cout<<"[+] train output[0] : "<<std::to_string(output[0])<<std::endl;
+      
+      enc->test(input.data(), output,1);
+       
+      }while(output[0]+output[1]<0.99);
+      std::cout<<"[+] training autoencoder done"<<std::endl;
 
       //evaluate the autoencoder
       std::vector<real_t> output_vector(output,output+2);
       std::cout<<"[+] evaluating autoencoder"<<std::endl;
       enc->test(input.data(),output,1);
-
 
       std::cout<<"[+] evaluating autoencoder done"<<std::endl;
       std::cout<<"[+] output[0] : "<<std::to_string(output[0])<<std::endl;
@@ -1315,12 +1385,10 @@ exclude_list.push_back(".git");
       std::cout<<"[+] training autoencoder done"<<std::endl;
       std::cout<<"[+] training autoencoder done"<<std::endl;
       enc->save("encoder_fuzzdb_"+vectorizer_type+".json");
-      enc->load ("encoder_fuzzdb_"+vectorizer_type+".json");
+      //enc->load ("encoder_fuzzdb_"+vectorizer_type+".json");
      }
-
-
-
-     c_start = clock ();
+  
+    c_start = clock ();
     t_start = std::chrono::high_resolution_clock::now ();
     std::cout << "[+] Test CPU time elapsed in s: "
     << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;

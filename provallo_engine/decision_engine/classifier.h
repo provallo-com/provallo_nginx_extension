@@ -3242,7 +3242,7 @@ namespace provallo
     size_t distance = std::distance(begin, end);
     if (distance != _attributes_info.getSize())
     {
-      std::cout << "Error: input size does not match dataset size" << std::endl;
+      std::cerr << "Error: input size does not match dataset size" << std::endl;
       return attribute();
     }
       
@@ -5329,7 +5329,7 @@ namespace provallo
       return _oob_error;
     }
 
-    ~random_forest()
+    virtual ~random_forest()
     {
       _raw_importance.clear(); 
     }

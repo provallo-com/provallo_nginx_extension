@@ -3,6 +3,11 @@
  *
  *  Created on: Jan 17, 2022
  *      Author: kardon
+ * 
+ * Process Watcher impl. 
+ * Decoupled from GLUE library.
+ * For module enumerations use glueprocessinfo.h
+ * 
  */
 
 #ifndef UTIL_PROCWATCHER_H_
@@ -18,7 +23,7 @@
 #include <sys/inotify.h>
 #include <dirent.h>
 #include <unistd.h>
-
+#include "safe_queue.h"
 namespace provallo
 {
 
@@ -83,7 +88,7 @@ namespace provallo
     class proc_watcher : observer_policy
     {
 
-      std::queue<process_desc*> _processes;
+      provallo::safe_queue<std::recursive_mutex,process_desc> _processes;
       std::string _last;
       static constexpr const int ev_size = sizeof(struct inotify_event);
       static constexpr const int ev_buf_size = (ev_size + 16) * 1024;

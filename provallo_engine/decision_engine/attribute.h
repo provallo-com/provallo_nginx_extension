@@ -635,7 +635,7 @@ namespace provallo
     {
       return 0;
     }
-     ~continous_attribute() = default;
+     virtual ~continous_attribute() {}
   };
 
   // Ignored attributes
