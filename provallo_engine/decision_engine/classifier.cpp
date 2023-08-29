@@ -18853,9 +18853,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		std::cout << "[#] dataset entropy = " << data.entropy() << std::endl;
 		std::cout << "[#] dataset gini = " << data.gini() << std::endl;
 		std::cout << "[#] dataset variance = " << data.variance() << std::endl;
-		std::cout << "[#] dataset skewness = " << data.skewness() << std::endl;
-		std::cout << "[#] dataset kurtosis = " << data.kurtosis() << std::endl;
-
+ 		std::cout << "[#] dataset mean = " << data.mean() << std::endl;
+		std::cout << "[#] dataset median = " << data.median() << std::endl;
+		std::cout << "[#] dataset mode = " << data.mode() << std::endl;
+		std::cout << "[#] dataset min = " << data.min() << std::endl;
+		std::cout << "[#] dataset max = " << data.max() << std::endl;
+		std::cout << "[#] dataset sum = " << data.sum() << std::endl;
+		
 		/*	std::cout<<"[#] dataset median = "<<data.median()<<std::endl;
 		std::cout<<"[#] dataset mode = "<<data.mode()<<std::endl;
 		std::cout<<"[#] dataset range = "<<data.range()<<std::endl;

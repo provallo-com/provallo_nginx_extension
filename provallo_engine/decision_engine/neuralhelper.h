@@ -85,9 +85,10 @@ namespace provallo
     virtual size_t
     get_input_size () =0;
   private:
-
-    virtual type_matrix
+     virtual type_matrix
     fnDerivativeMatrix () const =0;
+     size_t last_step_count=0;
+     
   };
   // 
   class fully_connected_layer : public neuron_layer
@@ -457,6 +458,9 @@ namespace provallo
   public:
     using ptr = std::shared_ptr<neural_net>;
     using type_matrix = matrix<real_t>;
+    using ActivationFun = std::function<real_t(real_t)>;
+    using ErrorFun = std::function<real_t(matrix<real_t>, matrix<real_t>)>;
+    
 
   public:
 
@@ -479,17 +483,107 @@ namespace provallo
 
 
     template<typename Container>
-      neural_net (Container layerList)
+      neural_net (Container layerList):std::list<neuron_layer::ptr> ()  ,_step(0.2),_dx(0.05),_descent_type(0)
       {
-	for (auto itr = layerList.begin (); itr != layerList.end (); ++itr)
-	  push_back (neuron_layer::ptr( *itr));
+        for (auto itr = layerList.begin (); itr != layerList.end (); ++itr)
+          push_back (neuron_layer::ptr( *itr));
+        //
+        _xnPartialDerivative = type_matrix::Zero (get_input_size (), 1);
+        _xnPartialDerivativeGen = type_matrix::Zero (get_input_size (), 1);
+        _xnPartialDerivativeDis = type_matrix::Zero (get_input_size (), 1);
+        _xnPartialDerivativeDisInvariant = type_matrix::Zero (get_input_size (), 1);
+        _xnPartialDerivativeGenInvariant = type_matrix::Zero (get_input_size (), 1);
+        //
+        _buffer_activation_level = type_matrix::Zero (get_input_size (), 1);
+        _buffer_input = type_matrix::Zero (get_input_size (), 1);
+        _buffer_input_gen = type_matrix::Zero (get_input_size (), 1);
+        _buffer_input_dis = type_matrix::Zero (get_input_size (), 1);
+        _buffer_input_dis_invariant = type_matrix::Zero (get_input_size (), 1);
+        _buffer_input_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        //
+        _sum_weight_variation = type_matrix::Zero (get_input_size (), 1);
+        _sum_bias_variation = type_matrix::Zero (get_input_size (), 1);
+        _sum_weight_variation_gen = type_matrix::Zero (get_input_size (), 1);
+        _sum_bias_variation_gen = type_matrix::Zero (get_input_size (), 1);
+        _sum_weight_variation_dis = type_matrix::Zero (get_input_size (), 1);
+        _sum_bias_variation_dis = type_matrix::Zero (get_input_size (), 1);
+        _sum_weight_variation_dis_invariant = type_matrix::Zero (get_input_size (), 1);
+        _sum_bias_variation_dis_invariant = type_matrix::Zero (get_input_size (), 1);
+        _sum_weight_variation_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        _sum_bias_variation_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        //
+        _adaptive_weight_step = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_bias_step = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_weight_step_gen = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_bias_step_gen = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_weight_step_dis = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_bias_step_dis = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_weight_step_dis_invariant = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_bias_step_dis_invariant = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_weight_step_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_bias_step_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        // 
       }
 
     type_matrix
     processNetwork (type_matrix input)
     {
-      for (auto itr = begin (); itr != end (); ++itr)
-	input = (*itr)->process_layer (input);
+            
+      for (auto itr = begin (); itr != end (); ++itr){
+        input = (*itr)->process_layer (input);
+        //update partial second deriviatives 
+        _xnPartialDerivative = (*itr)->layer_backpropagation (_xnPartialDerivative, _step);
+        _xnPartialDerivativeGen = (*itr)->layer_backdrop_invariant (_xnPartialDerivativeGen);
+        _xnPartialDerivativeDis = (*itr)->layer_backdrop_invariant (_xnPartialDerivativeDis);
+        _xnPartialDerivativeDisInvariant = (*itr)->layer_backdrop_invariant (_xnPartialDerivativeDisInvariant);
+        _xnPartialDerivativeGenInvariant = (*itr)->layer_backdrop_invariant (_xnPartialDerivativeGenInvariant);
+        //update steps :
+        _adaptive_weight_step = _adaptive_weight_step + _xnPartialDerivative.cwiseAbs ();
+        _adaptive_bias_step = _adaptive_bias_step + _xnPartialDerivative.cwiseAbs ();
+        _adaptive_weight_step_gen = _adaptive_weight_step_gen + _xnPartialDerivativeGen.cwiseAbs ();
+        _adaptive_bias_step_gen = _adaptive_bias_step_gen + _xnPartialDerivativeGen.cwiseAbs ();
+        _adaptive_weight_step_dis = _adaptive_weight_step_dis + _xnPartialDerivativeDis.cwiseAbs ();
+        _adaptive_bias_step_dis = _adaptive_bias_step_dis + _xnPartialDerivativeDis.cwiseAbs ();
+        _adaptive_weight_step_dis_invariant = _adaptive_weight_step_dis_invariant + _xnPartialDerivativeDisInvariant.cwiseAbs ();
+        _adaptive_bias_step_dis_invariant = _adaptive_bias_step_dis_invariant + _xnPartialDerivativeDisInvariant.cwiseAbs ();
+        _adaptive_weight_step_gen_invariant = _adaptive_weight_step_gen_invariant + _xnPartialDerivativeGenInvariant.cwiseAbs ();
+        _adaptive_bias_step_gen_invariant = _adaptive_bias_step_gen_invariant + _xnPartialDerivativeGenInvariant.cwiseAbs ();
+        //update buffers
+         _buffer_input = input;
+         _buffer_input_gen = input;
+         _buffer_input_dis = input;
+         _buffer_input_dis_invariant = input;
+         _buffer_input_gen_invariant = input;
+        
+        //update sums
+        _sum_weight_variation = _sum_weight_variation + _xnPartialDerivative;
+        _sum_bias_variation = _sum_bias_variation + _xnPartialDerivative;
+        _sum_weight_variation_gen = _sum_weight_variation_gen + _xnPartialDerivativeGen;
+        _sum_bias_variation_gen = _sum_bias_variation_gen + _xnPartialDerivativeGen;
+        _sum_weight_variation_dis = _sum_weight_variation_dis + _xnPartialDerivativeDis;
+        _sum_bias_variation_dis = _sum_bias_variation_dis + _xnPartialDerivativeDis;
+        _sum_weight_variation_dis_invariant = _sum_weight_variation_dis_invariant + _xnPartialDerivativeDisInvariant;
+        _sum_bias_variation_dis_invariant = _sum_bias_variation_dis_invariant + _xnPartialDerivativeDisInvariant;
+        _sum_weight_variation_gen_invariant = _sum_weight_variation_gen_invariant + _xnPartialDerivativeGenInvariant;
+        _sum_bias_variation_gen_invariant = _sum_bias_variation_gen_invariant + _xnPartialDerivativeGenInvariant;
+
+        //update steps
+        _adaptive_weight_step = _adaptive_weight_step + _xnPartialDerivative.cwiseAbs ();
+        _adaptive_bias_step = _adaptive_bias_step + _xnPartialDerivative.cwiseAbs ();
+        _adaptive_weight_step_gen = _adaptive_weight_step_gen + _xnPartialDerivativeGen.cwiseAbs ();
+        _adaptive_bias_step_gen = _adaptive_bias_step_gen + _xnPartialDerivativeGen.cwiseAbs ();
+        _adaptive_weight_step_dis = _adaptive_weight_step_dis + _xnPartialDerivativeDis.cwiseAbs ();
+        _adaptive_bias_step_dis = _adaptive_bias_step_dis + _xnPartialDerivativeDis.cwiseAbs ();
+        _adaptive_weight_step_dis_invariant = _adaptive_weight_step_dis_invariant + _xnPartialDerivativeDisInvariant.cwiseAbs ();
+        _adaptive_bias_step_dis_invariant = _adaptive_bias_step_dis_invariant + _xnPartialDerivativeDisInvariant.cwiseAbs ();
+        _adaptive_weight_step_gen_invariant = _adaptive_weight_step_gen_invariant + _xnPartialDerivativeGenInvariant.cwiseAbs ();
+        _adaptive_bias_step_gen_invariant = _adaptive_bias_step_gen_invariant + _xnPartialDerivativeGenInvariant.cwiseAbs ();
+        
+        //
+
+        //std::cout << "input: " << input << std::endl;
+        
+      }
       return input;
     }
 
@@ -521,6 +615,50 @@ namespace provallo
   public:
     friend std::ostream&
     operator<< (std::ostream &flux, neural_net network);
+  private:
+    real_t _step;
+    real_t _dx;
+    size_t _descent_type;
+    
+    //errors 
+    type_matrix _xnPartialDerivative;
+    type_matrix _xnPartialDerivativeGen;
+    type_matrix _xnPartialDerivativeDis;
+    type_matrix _xnPartialDerivativeDisInvariant;
+    type_matrix _xnPartialDerivativeGenInvariant;
+    
+    //buffers
+    type_matrix _buffer_activation_level;
+    type_matrix _buffer_input;
+    type_matrix _buffer_input_gen;
+    type_matrix _buffer_input_dis;
+    type_matrix _buffer_input_dis_invariant;
+    type_matrix _buffer_input_gen_invariant;
+    
+    //sums
+    type_matrix _sum_weight_variation;
+    type_matrix _sum_bias_variation;
+    type_matrix _sum_weight_variation_gen;
+    type_matrix _sum_bias_variation_gen;
+    type_matrix _sum_weight_variation_dis;
+    type_matrix _sum_bias_variation_dis;
+    type_matrix _sum_weight_variation_dis_invariant;
+    type_matrix _sum_bias_variation_dis_invariant;
+    type_matrix _sum_weight_variation_gen_invariant;
+    type_matrix _sum_bias_variation_gen_invariant;
+    
+
+    //adaptive steps
+    type_matrix _adaptive_weight_step;
+    type_matrix _adaptive_bias_step;
+    type_matrix _adaptive_weight_step_gen;
+    type_matrix _adaptive_bias_step_gen;
+    type_matrix _adaptive_weight_step_dis;
+    type_matrix _adaptive_bias_step_dis;
+    type_matrix _adaptive_weight_step_dis_invariant;
+    type_matrix _adaptive_bias_step_dis_invariant;
+    type_matrix _adaptive_weight_step_gen_invariant;
+    type_matrix _adaptive_bias_step_gen_invariant;
 
   };
   //

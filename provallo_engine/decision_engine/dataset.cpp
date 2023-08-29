@@ -1038,12 +1038,26 @@ namespace provallo
   entropy(const dataset &data)
   {
     attribute_tag tag = data.getattributes().get_target_tag();
-    std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0.);
+    std::vector<real_t> 
+          probs(data.getattributes().getTargetClassCount(), 0.),
+          sums(data.getattributes().getSize()-1, 0.);
     for (uint32_t i = 0; i < data.size(); ++i)
     {
-       discrete_value d = data.getattribute(i, tag).discrete();
+ 
+       if(i==tag) {
+          
+          discrete_value d = data.getattribute(i, tag).discrete();
+          //translate value to class :
+          if ( d < probs.size())
+            probs[d] += 1.0;
+          else
+            probs[0] += 1.0;
+       }
+       else
+       {
+          sums[i]+=data.getattribute(i, tag).continous();
+       }
 
-       probs[d]++;
     }
 
     // Entropy
@@ -1051,8 +1065,11 @@ namespace provallo
     for (uint32_t i = 0; i < probs.size(); ++i)
     {
       real_t prob = probs[i] / (real_t)data.size();
+      real_t sum = sums[i] / (real_t)data.size();
       if (prob != 0.0)
-        entropy += -prob * log<2>(prob);
+        entropy += -prob * log<2>(prob);  
+      if (sum != 0.0) 
+        entropy += -sum * log<2>(sum);  
     }
     // Return entropy
     return entropy;
@@ -1299,8 +1316,14 @@ namespace provallo
     attribute_tag tag = data.getattributes().get_target_tag();
     std::vector<real_t> probs(data.getattributes().getTargetClassCount(), 0.0);
     real_t min = 0.0;
-    for (uint32_t i = 0; i < data.size(); ++i)
-      probs[data.getattribute(tag, i).discrete()]++;
+    for (uint32_t i = 0; i < data.size(); ++i) {
+      // fix mislabeling discrete and continous target labels
+      discrete_value d(data.getattribute(i, tag).discrete());
+      if ( d < probs.size() )
+        probs[d]++;
+      else probs[0]++;
+      
+    }
     // min
     for (size_t i = 0; i < probs.size(); ++i)
     {
@@ -1391,6 +1414,33 @@ namespace provallo
     // Return median_absolute_deviation
     return median_absolute_deviation;
   }
+  //sum 
+   real_t sum(const dataset &data)
+   {
+    attribute_tag tag = data.getattributes().get_target_tag();
+    std::vector<real_t> probs(data.getattributes().getCount(tag), 0);
+    real_t sum = 0.0;
+    for (size_t i = 0; i < data.size(); ++i)
+    {
+       discrete_value d = data.getattribute(i, tag).discrete();
+
+      if ( d < probs.size() )
+        probs[d]++;
+      else probs[0]++;
+    }
+    // probs[data.getattribute (i, tag).discrete ()]++;
+    // sum
+    for (uint32_t i = 0; i < probs.size(); ++i)
+    {
+
+      real_t prob = probs[i] / (real_t)data.size();
+
+      sum += prob * prob;
+    }
+    // Return sum
+    return sum; 
+
+   }
 
   std::map<std::string, real_t>
   getWeightMap(const attribute_information &attrs, std::ifstream &file)

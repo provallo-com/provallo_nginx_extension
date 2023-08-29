@@ -833,6 +833,16 @@ namespace provallo
       return tmp;
     }
 
+    //cwiseAbs implementation for neural layers
+    matrix<T> cwiseAbs() const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = std::abs(data_[i * size2_ + j]);
+      return tmp;
+    }
+
     T log()
     {
       T sum = 0;

@@ -960,17 +960,24 @@ namespace provallo
       std::cout << "attribute_groups destructor called " << count << std::endl;
 #endif
     }
+    
+    inline std::vector<attribute_tag>
+    operator [](uint32_t i) const
+    {
+      return getGroup(i);
+    }
 
     // Access to group of attributes
     std::vector<attribute_tag>
     getGroup(uint32_t i) const
     {
-
-      assert(i < _groups.size1());
       std::vector<attribute_tag> group;
+      
+      if(i < _groups.size1()) {
       for (uint32_t j = 0; j < _groups.size2(); j++)
       {
         group.push_back(_groups(i, j));
+      }
       }
       return group;
 
@@ -980,16 +987,21 @@ namespace provallo
     split_type
     getsplit_type(uint32_t i) const
     {
-      assert(i < _split_type.size());
-      return _split_type[i];
+      if(i< _split_type.size())
+        return _split_type[i];
+      else
+        return _split_type[0];
+    
     }
 
     // Get type of a group (i.e. type of an effective attribute)
     attribute_type
     getattribute_type(uint32_t i) const
     {
-      assert(i < _type.size());
-      return _type[i];
+      if(i< _type.size())
+        return _type[i];
+      else
+        return _type[0];
     }
 
     // Set split type of a group

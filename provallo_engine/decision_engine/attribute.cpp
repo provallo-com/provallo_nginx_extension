@@ -342,12 +342,21 @@ namespace provallo
   attribute_information::attribute_information(
       const attribute_information &right) : _tag_map(right._tag_map), _name_map(right._name_map), _target_pos(right._target_pos), _definition_map(right._definition_map.size()), _count(right._count), _type(right._type), _groups(right._groups) 
   {
-    // clone definitions
-    for (uint32_t i = 0; i < getSize(); ++i)
+    // Clone definitions
+    for (uint32_t i = 0; i < _definition_map.size(); ++i)
+      _definition_map[i] = right._definition_map[i]->clone(); 
+    // Clone groups
+    _groups.clear();
+    
+    for(uint32_t i = 0 ; i < right._groups.size() ; ++i)
     {
-      _definition_map[i] = right._definition_map[i]->clone();
-    }
+      auto copy=right._groups.getGroup(i); 
+      auto split_type=right._groups.getsplit_type(i); 
+      auto attribute_type=right._groups.getattribute_type(i); 
+      _groups.push(copy, split_type, attribute_type);
+    
 
+     } 
   } 
 
   attribute_information::attribute_information(

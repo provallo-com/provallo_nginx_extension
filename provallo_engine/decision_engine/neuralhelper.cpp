@@ -248,8 +248,11 @@ namespace provallo
         _buffer_activation_level = (inputs * _weight) + (_noise_buffer * _noise_weights) - _bias;
         type_matrix output = _buffer_activation_level;
 
+        // update weights
         for (unsigned int i(0); i < output.size2(); i++)
             output(0, i) = _activation_functions(output(0, i));
+
+        // return output
 
         return output;
     }
@@ -574,11 +577,16 @@ namespace provallo
             for (size_t j(0); j < output.rows(); j++)
                 output(j, i) = _activation_functions(output(j, i));
 
+        //update local members 
+        _buffer_activation_level = output;
+        
+
         return output;
     }
     type_matrix convolution_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, real_t step)
     {
-        // calculate ynPartialDerivative
+        real_t mean_squared_error = 0.0;
+ 
         type_matrix ynPartialDerivative = xnPartialDerivative * fnDerivativeMatrix();
 
         size_t  weightDimension = sqrt(_weight_matrix[0].cols());
@@ -623,6 +631,17 @@ namespace provallo
             resultat = resultat + type_matrix(o);
         }
         update_layer_weights();
+
+        //calculate mean squared error  
+        for (size_t i(0); i < _buffer_activation_level.size1(); i++)
+            for (size_t j(0); j < _buffer_activation_level.size2(); j++)
+                mean_squared_error += pow(_buffer_activation_level(i, j) - resultat(i, j), 2);  
+        mean_squared_error /= _buffer_activation_level.size1() * _buffer_activation_level.size2();
+
+        //debugging:
+        std::cout << "[+]convolution mean squared error : " << mean_squared_error << std::endl;
+
+        
         return resultat;
     }
     type_matrix convolution_layer::convolution(const type_matrix &input, const type_matrix &filtre, bool sommerLignes)
