@@ -76,9 +76,7 @@ typedef struct  {
         ngx_flag_t stream_filter : 1;
         ngx_flag_t unknown_filter : 1;
     }ngx_http_provallo_filter_type_t filter;
-
-
-
+ 
     ngx_str_t name;
     ngx_array_t* ids; 
     ngx_array_t* headers;
@@ -88,9 +86,7 @@ typedef struct  {
     ngx_array_t* file_ext;
     ngx_array_t* stream;
     ngx_array_t* unknown;
-
-
-}ngx_http_provallo_filter_t;
+ }ngx_http_provallo_filter_t;
 
 
 //use adapter to fill nginx structures from our policies and rules

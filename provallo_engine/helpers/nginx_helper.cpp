@@ -32,6 +32,13 @@ void start_monitoring_requests()
 {
     //use nginx to start thread
     //nginx_thread_start(); 
+    //register nginx filter
+    //ngx_http_provallo_filter_register();
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "starting monitoring requests");
+    //initialize decision engine
+    initialize_engine();
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "monitoring requests started");
+    
    
 }
 void stop_monitoring_requests()
@@ -75,22 +82,14 @@ void initialize_engine()
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "initializing engine");
     //initialize decision engine    
     provallo::pipeline_builder* builder = new pipeline_builder();
+    builder->add_stage(new dataset_stage());
+    builder->add_stage(new vectorizer_stage());
     builder->add_stage(new classifier_stage());
     builder->add_stage(new classdist_stage());
     builder->add_stage(new kdt_stage());
     builder->add_stage(new dataset_stage());
     builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-    builder->add_stage(new decision_engine_stage());
-
-    builder->build();
+      builder->build();
     provallo_classifiers_running = builder->get_num_classifiers();
     delete builder;
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "engine initialized");
