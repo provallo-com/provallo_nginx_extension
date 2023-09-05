@@ -12,16 +12,25 @@
 
 namespace provallo
 {
-
+  //interpreter pattern with visitor pattern for encoders/decoders 
+  //and visitor pattern for parsers 
   class interpreter
   {
+
+    parser_manager* _parser_manager; 
+    
   public:
     explicit
     interpreter ();
-    bool
-    interpret (void *offset, size_t len); 
+
+    virtual bool
+    interpret (void *offset, size_t len)=0; 
+    
     virtual
     ~interpreter ();
+    //interpreter pattern with visitor pattern for encoders/decoders 
+    //and visitor pattern for parsers
+    
   };
 
 } /* namespace provallo */

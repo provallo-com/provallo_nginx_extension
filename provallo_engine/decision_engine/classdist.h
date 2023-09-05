@@ -31,31 +31,28 @@ namespace provallo
     operator<< (std::ostream &out, const class_dist &q);
 
   public:
-    class_dist () :_histogram (), _sum (0.) 
+     // Constructor
+    class_dist (size_t nbins = 0, real_t  default_value = 0.0) : _histogram (nbins, default_value), _sum (nbins*default_value) 
+    {
+        
+    }
+    //copy constructor
+    class_dist (const class_dist& other) :
+        _histogram (other._histogram), _sum (other._sum)
+    {
+    } 
+    //move constructor
+    class_dist (class_dist&& other) :
+        _histogram (std::move(other._histogram)), _sum (std::move(other._sum))
     {
     }
-    class_dist (size_t nbins) :
-	_histogram (nbins), _sum (0.0)
-    {   
-    }
+    //copy assignment
 
-    class_dist (size_t nbins, real_t weight) :
-	_histogram (nbins, (weight / double(nbins))), _sum (weight)
-    {
-    }
-    class_dist ( const class_dist& other) : _histogram(other._histogram),_sum(other._sum)
-    {
-    }
-    class_dist (  class_dist&& other) : _histogram(std::move(other._histogram)),_sum(std::move(other._sum))
-    {
-    }
-    
     const class_dist& operator = (const class_dist& other)
     {
       this->_histogram=other._histogram;
       this->_sum=other._sum;
-
-
+      
       return *this;
 
     }

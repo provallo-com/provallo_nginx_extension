@@ -380,7 +380,12 @@ namespace provallo
     {
       _bow_matrix(i, 0) = _bow[i];
     }
+    this->num_features = _vocabulary.size()-1;
+    this->num_samples = num_docs;
+    this->num_words = _bow.size();
+    this->num_tokens = _vocabulary.size();
 
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
     return result;
   }
   std::vector<std::vector<real_t>> bag_of_words::fit(const provallo::matrix<real_t> &mat)
@@ -423,6 +428,10 @@ namespace provallo
         result.push_back(0.0);
       }
     }
+    this->num_features = _vocabulary.size()-1;
+    this->num_samples = 1;
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+
     return result;  
   }
 
@@ -451,6 +460,9 @@ namespace provallo
         result.push_back(0.0);
       }
     }
+    this->num_features = _vocabulary.size()-1;
+    this->num_samples += 1;
+
     return result;
   }
 
@@ -463,6 +475,12 @@ namespace provallo
       result.push_back(transform(document));
     }
 
+    this->num_words = _vocabulary.size(); 
+    this->num_docs = documents.size();
+    this->num_samples = documents.size();
+    this->num_features = _vocabulary.size()-1;
+    this->num_tokens = _bow.size();
+    
     return result;
   }
   std::vector<std::vector<real_t>> bag_of_words::transform(const provallo::matrix<real_t> & mat)
@@ -653,9 +671,8 @@ namespace provallo
         os<<std::endl;
       }
       //done
-
-
-   }
+ 
+  }
 
   
   
@@ -2444,7 +2461,34 @@ namespace provallo
         stage->type = "pipeline";
         //stage id is   sample from chrono system time as uint64_t
         stage->stage_id = std::chrono::system_clock::now().time_since_epoch().count();
+       if(_stages.size()>1) { 
 
+        if(_stages.back()->next_stage==0)
+          _stages.back()->next_stage = stage->stage_id;
+        else
+          
+          {
+            stage->next_stage = _stages.back()->next_stage; 
+            _stages.back()->next_stage = stage->stage_id;
+             stage->previous_stage = _stages.back()->stage_id;
+              
+          }
+
+       }else
+        {
+          stage->next_stage = 0;
+          stage->previous_stage = 0;
+        }//end of if(_stages.size()>1) 
+
+        stage->input = "";
+        stage->output = "";
+        stage->input_type = "";
+        stage->output_type = "";
+        stage->input_parameters = "";
+        stage->output_parameters = "";
+        stage->parameters = "";
+         
+        // create a stage from the stage descriptor with empty initialization
         _stages.push_back(stage);
         _pipelines.push_back(stage->get_pipeline());
 
@@ -2468,13 +2512,17 @@ namespace provallo
       stage.input_parameters = "";
       stage.output_parameters = "";
       stage.parameters = ""; 
+      stage.next_stage=0;
+      stage.previous_stage =   0;
+      stage.next_stage =  0; 
       // create a stage from the stage descriptor with empty initialization
       stage_descriptor *new_stage = stage_factory_singleton::get_instance()->build_stage(stage);
       if (new_stage == nullptr)
         throw std::runtime_error("stage not found");
-      // add the stage to the pipeline
-      _stages.push_back(new_stage);
-    }
+      // add the stage to the pipeline 
+      add_stage (new_stage);
+
+     }
     else { 
       //create stage from category and name
       stage_descriptor stage;
@@ -2493,13 +2541,16 @@ namespace provallo
       if (new_stage == nullptr)
          throw std::runtime_error("stage not found");
       // add the stage to the pipeline  
-      _stages.push_back(new_stage);
+      add_stage (new_stage);
+
      }
     
   }
   // add a stage to the pipeline
   void pipeline::add_stage(stage_descriptor *stage)
   {
+    // add the stage to the pipeline
+
     _stages.push_back(stage);
   }
   // remove a stage from the pipeline
@@ -2589,13 +2640,19 @@ namespace provallo
     }
     return nullptr;
   }
+  // ------------------------------------------------
+  //
   // get the number of stages
   // from the pipeline and the pipelines it contains.
+  // ------------------------------------------------
   size_t pipeline::get_number_of_stages() const
   {
      size_t stages = 0;
     for(pipeline* pipe : _pipelines)
     {
+      //  
+      //
+      //
 
       if(pipe&& pipe->get_number_of_stages() > 0 &&pipe!=this)
       {
@@ -2725,7 +2782,7 @@ namespace provallo
   // pipeline ofstream
   std::ofstream &operator<<(std::ofstream &os, const pipeline &p)
   {
-
+ 
     os << "name:" << p.get_pipeline_name() << std::endl;
     os << "id:" << p.get_pipeline_id() << std::endl;
 
@@ -2734,12 +2791,10 @@ namespace provallo
     {
       os << *pipeline << std::endl;
     }
-
     os << "#stages:" << p.get_number_of_stages() << std::endl;
     // write the stages
     for (auto stage : p._stages)
-    {
-
+    { 
       os << *stage << std::endl;
     }
     return os;
@@ -6704,7 +6759,9 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
   std::vector<real_t> lda_vectorizer::fit(const std::string& single_doc )
   {
     //fit the data using the bag of words and update local variables
-    this->_bow.process_document(single_doc);
+    this->add_document(single_doc);
+    this->_bow.process_documents();
+
     //copy the vocabulary
     this->_vocabulary = this->_bow.get_vocabulary();
     //get the bag of words
@@ -6715,15 +6772,17 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     this->_num_words = this->_bow.get_number_of_words();
     //get the number of unique words
     this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+    //update number of topics
+    this->_n_topics = this->_bow.get_number_of_unique_tokens(); 
     //  fill ret
     std::vector<real_t> ret;
     //fill ret
-    for ( size_t i = 0; i < this->num_unique_tokens; i++)
+    for ( size_t i = 0; i < this->num_unique_tokens&&i<bow.size(); i++)
     {
       //fill ret
       ret.push_back(bow[i]);
     }
-    //return ret
+     //return ret
     return ret;
   } 
 
@@ -6748,6 +6807,12 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     this->_num_words = this->_bow.get_number_of_words();
     //get the number of unique words
     this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+    //update topics
+    this->_n_topics = this->_bow.get_number_of_unique_tokens();
+    //update the number of words
+    this->_num_words = this->_bow.get_number_of_words();
+
+    
     //  fill ret
     std::vector<real_t> ret;
     //fill ret

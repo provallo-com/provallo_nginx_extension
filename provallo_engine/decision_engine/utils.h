@@ -1138,8 +1138,8 @@ struct welsch_loss : public loss<T>
 	  UNDEF_REFERENCE(model_params)
 	  UNDEF_REFERENCE2(model_params)
 	  UNDEF_REFERENCE2(min_imp_obs)
+  	  UNDEF_REFERENCE2(imputer_tree)
 
-	  
 
       double wsum = 0.;
       bool has_weights = workspace.weights_arr.size ()
@@ -1157,15 +1157,22 @@ struct welsch_loss : public loss<T>
       
 
       imputer_tree.shrink_to_fit();
-
-      imputer.num_sum.resize (input_data.ncols_numeric, wsum );
-      imputer.num_weight.resize (input_data.ncols_numeric, wsum);
-      imputer.cat_sum.resize (input_data.ncols_categ);
-      imputer.cat_weight.resize (input_data.ncols_categ, 0);
-      imputer.num_sum.shrink_to_fit ();
-      imputer.num_weight.shrink_to_fit ();
-      imputer.cat_sum.shrink_to_fit ();
-      imputer.cat_weight.shrink_to_fit ();
+  
+	 
+      if(input_data.ncols_numeric)
+	  imputer.num_sum.resize (input_data.ncols_numeric, wsum );
+      if(input_data.ncols_numeric)
+	  imputer.num_weight.resize (input_data.ncols_numeric, wsum);
+      if(input_data.ncols_categ)
+	  imputer.cat_sum.resize (input_data.ncols_categ);
+      if(input_data.ncols_categ)
+	  imputer.cat_weight.resize (input_data.ncols_categ, 0);
+	   
+	        //don't shrink yet.
+	  //imputer.num_sum.shrink_to_fit ();
+      //imputer.num_weight.shrink_to_fit ();
+      //imputer.cat_sum.shrink_to_fit ();
+      //imputer.cat_weight.shrink_to_fit ();
 
       /* Note: in theory, 'num_weight' could be initialized to 'wsum',
        and the entries could get subtracted the weight afterwards, but due to rounding
@@ -1174,16 +1181,16 @@ struct welsch_loss : public loss<T>
        checking for possible NAs, even though it's less computationally efficient.
        For sparse matrices it's done the other way as otherwise it would be too slow. */
 
-      for (size_t col = 0; col < input_data.ncols_categ; col++)
+ 	for (size_t col = 0; col < input_data.ncols_categ; col++)
 	{
 	  imputer.cat_sum[col].resize (input_data.ncat[col]);
-	  imputer.cat_sum[col].shrink_to_fit ();
+	 // imputer.cat_sum[col].shrink_to_fit ();
 	}
 
-      double xnum;
-      int xcat;
-      double weight;
-      size_t ix;
+      double xnum = 0.;
+      int xcat = 0;
+      double weight	= 0.0;
+      size_t ix	= 0;
 
       if ((input_data.Xc_indptr == NULL && input_data.ncols_numeric)
 	  || input_data.ncols_categ)
@@ -1204,13 +1211,17 @@ struct welsch_loss : public loss<T>
 			  if (!is_na_or_inf(xnum))
 			    {
 			      cnt++;
-			      imputer.num_sum[col] += (xnum
-				  - imputer.num_sum[col]) / (ldouble_safe) cnt;
+				  real_t sum = imputer.num_sum[col];
+
+				  imputer.num_sum[col] +=  sum/ (double) cnt;
+				  imputer.num_weight[col] += 1.0;
+				  
 			    }
-			}
+			}//end of for loop
 		      imputer.num_weight[col] = (double) cnt;
 		    }
-		}
+		}//	end of if (input_data.numeric_data != NULL)
+	      if (input_data.ncols_categ)
 
 		{
 		  for (size_t col = 0; col < input_data.ncols_categ; col++)
@@ -1229,11 +1240,11 @@ struct welsch_loss : public loss<T>
 			}
 		      imputer.cat_weight[col] = (double) cnt;
 		    }
-		}
-
-	    }
+		}//end of if (input_data.ncols_categ)
+	    }//end of if (!has_weights)
 	  else
 	    {
+		//has weights
 	      ldouble_safe prod_sum, corr, val, diff;
 	      if (input_data.numeric_data != NULL)
 		{
@@ -3022,7 +3033,7 @@ struct welsch_loss : public loss<T>
       }
     return xmin;
   }
-
+  
   real_t
   calc_sd_right_to_left (real_t *x, size_t n, double *sd_arr);
 
@@ -3376,7 +3387,7 @@ struct welsch_loss : public loss<T>
 
       return alpha;
     }
-
+	
   struct wolfe_linear_search
   {
     template<typename Function, typename Gradient, typename Array>

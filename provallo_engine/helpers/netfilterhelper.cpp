@@ -1357,6 +1357,7 @@ namespace provallo
 
   dns_filter::~dns_filter ()
   {
+	
   }
 
 

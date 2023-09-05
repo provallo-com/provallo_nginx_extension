@@ -580,8 +580,8 @@ class super_tree {
             _super_tree_values.print(os);
             os<<"super_tree_values_projection:"<<std::endl;
             _super_tree_values_projection.print(os);
-            os<<"super_tree_hplane:"<<std::endl;
-            _super_tree_hplane.print(os);
+            //os<<"super_tree_hplane:"<<std::endl;
+           // _super_tree_hplane.print(os);
         }
 
         //transform the super_tree into a matrix of probabilities
@@ -948,8 +948,7 @@ class super_tree {
             }   
          
         }//process_hplanes
-        
-};
+ };
 
 }//namespace provallo
 

@@ -41,6 +41,106 @@ namespace provallo
 		double range_high = HUGE_VAL;
 		double remainder; /* only used for distance/similarity */
 
+		/* for prediction-time */
+		iso_hplane(): col_num(), col_type(), coef(), mean(), cat_coef(), chosen_cat(), fill_val(), fill_new(), split_point(), hplane_left(), hplane_right(), score(), range_low(), range_high(), remainder() {}		
+		//constructor
+			
+		iso_hplane(size_t ncols_numeric, size_t ncols_categ, size_t ncols_categ_main)
+		{
+			col_num.resize(ncols_numeric + ncols_categ);
+			col_type.resize(ncols_numeric + ncols_categ);
+			coef.resize(ncols_numeric);
+			mean.resize(ncols_numeric);
+			cat_coef.resize(ncols_categ);
+			chosen_cat.resize(ncols_categ_main);
+			fill_val.resize(ncols_numeric + ncols_categ);
+			fill_new.resize(ncols_categ);
+		}	
+		//assignment operator
+		iso_hplane &operator=(const iso_hplane &other)
+		{
+			if (this != &other)
+			{
+				col_num = other.col_num;
+				col_type = other.col_type;
+				coef = other.coef;
+				mean = other.mean;
+				cat_coef = other.cat_coef;
+				chosen_cat = other.chosen_cat;
+				fill_val = other.fill_val;
+				fill_new = other.fill_new;
+				split_point = other.split_point;
+				hplane_left = other.hplane_left;
+				hplane_right = other.hplane_right;
+				score = other.score;
+				range_low = other.range_low;
+				range_high = other.range_high;
+				remainder = other.remainder;
+			}
+			return *this;
+		}		
+		//copy constructor
+		iso_hplane(const iso_hplane &other)
+		{
+			col_num = other.col_num;
+			col_type = other.col_type;
+			coef = other.coef;
+			mean = other.mean;
+			cat_coef = other.cat_coef;
+			chosen_cat = other.chosen_cat;
+			fill_val = other.fill_val;
+			fill_new = other.fill_new;
+			split_point = other.split_point;
+			hplane_left = other.hplane_left;
+			hplane_right = other.hplane_right;
+			score = other.score;
+			range_low = other.range_low;
+			range_high = other.range_high;
+			remainder = other.remainder;
+		}
+		//move constructor
+		iso_hplane(iso_hplane &&other)
+		{
+			col_num = std::move(other.col_num);
+			col_type = std::move(other.col_type);
+			coef = std::move(other.coef);
+			mean = std::move(other.mean);
+			cat_coef = std::move(other.cat_coef);
+			chosen_cat = std::move(other.chosen_cat);
+			fill_val = std::move(other.fill_val);
+			fill_new = std::move(other.fill_new);
+			split_point = other.split_point;
+			hplane_left = other.hplane_left;
+			hplane_right = other.hplane_right;
+			score = other.score;
+			range_low = other.range_low;
+			range_high = other.range_high;
+			remainder = other.remainder;
+		}	
+		//move assignment operator
+		iso_hplane &operator=(iso_hplane &&other)
+		{
+			if (this != &other)
+			{
+				col_num = std::move(other.col_num);
+				col_type = std::move(other.col_type);
+				coef = std::move(other.coef);
+				mean = std::move(other.mean);
+				cat_coef = std::move(other.cat_coef);
+				chosen_cat = std::move(other.chosen_cat);
+				fill_val = std::move(other.fill_val);
+				fill_new = std::move(other.fill_new);
+				split_point = other.split_point;
+				hplane_left = other.hplane_left;
+				hplane_right = other.hplane_right;
+				score = other.score;
+				range_low = other.range_low;
+				range_high = other.range_high;
+				remainder = other.remainder;
+			}
+			return *this;
+		}		
+
 	} IsoHPlane;
 
 	size_t
@@ -1308,7 +1408,7 @@ namespace provallo
 				return empty;
 		}
 		split_method(const attribute_tag &factory,
-					 const std::vector<attribute_tag> &attribs) : tag_factory(factory), type(split_type::DISC), attributes(attribs)
+					 const std::vector<attribute_tag> &attribs,split_type att_type=split_type::DISC) : tag_factory(factory), type(att_type), attributes(attribs)
 		{
 			split_method::_instance_counter++;
 		}
@@ -1743,13 +1843,15 @@ namespace provallo
 					std::vector<std::pair<real_t, size_t>>::iterator end) const;
 
 		// Accept or reject splitting
-		bool
+		virtual bool
 		checkSplitting(const dataset &data, size_t begin, size_t end,
 					   size_t cut_point, const attribute_tag &tag) const
 		{
 			// Like binary split
-			std::random_device dev;
-			std::mt19937 gen(dev());
+ 			
+ 			std::mt19937 gen( _seed?_seed->operator()():std::random_device{}()  );
+
+
 			std::uniform_int_distribution<> uniform(0, RAND_MAX);
 			
 			if(data.get_target_tag()==tag )	
@@ -1765,7 +1867,7 @@ namespace provallo
 
 
 		}
-		bool binarySplit (const dataset &data, size_t begin,
+		virtual  bool binarySplit (const dataset &data, size_t begin,
 			       size_t end, const attribute_tag &tag,
 			       std::pair<size_t, real_t> &cut_pair) const;
 				   		//serialize and deserialize
@@ -1841,7 +1943,7 @@ namespace provallo
 		_compare(const split_method &other) const;
 
 		// Private copy constructor
-		cont1d(const cont1d &other) :  		  split_method(other.getFactoryTag(),std::vector<attribute_tag>(1, other.get_tag(0))),SplittingPolicy((const SplittingPolicy&)other), _interval( other._interval)
+		cont1d(const cont1d &other) :  		  split_method(other.getFactoryTag(),std::vector<attribute_tag>(1, other.get_tag(0)),SplittingPolicy::get_type() ),SplittingPolicy((const SplittingPolicy&)other), _interval( other._interval)
 		{
 
 		}
@@ -1857,14 +1959,14 @@ namespace provallo
 		}
 	 
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
-			   const dataset &data_set) : split_method(factory_tag, std::vector<attribute_tag>(1, tag))
+			   const dataset &data_set) : split_method(factory_tag, std::vector<attribute_tag>(1, tag),SplittingPolicy::get_type()) 
 		{
 			// Set interval
 			SplittingPolicy::split(data_set, get_tag(0), _interval);
 		}
 
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
-			   const dataset &data_set,const std::random_device& random_) : split_method(factory_tag, std::vector<attribute_tag>(1, tag))
+			   const dataset &data_set,const std::random_device& random_) : split_method(factory_tag, std::vector<attribute_tag>(1, tag),SplittingPolicy::get_type())	
 		{
 			// Set interval
 			//
@@ -1882,7 +1984,7 @@ namespace provallo
 		}
 
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
-			   const dataset &data_set, std::vector<real_t> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
+			   const dataset &data_set, std::vector<real_t> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag),SplittingPolicy::get_tag()), _interval(interval)
 		{
 			SplittingPolicy::set_interval(interval);	
 			
@@ -1903,7 +2005,7 @@ namespace provallo
 		{
 			SplittingPolicy::set_interval(interval);	
 		}	
-		// Extran constructor with random_device 
+		// Extra  constructor with random_device 
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
 			   const dataset &data_set, std::random_device &dev) : split_method(factory_tag, std::vector<attribute_tag>(1, tag))
 		{
@@ -1911,24 +2013,25 @@ namespace provallo
 			auto x= dev();
 			x/=++x;
 
-
-			SplittingPolicy::split(data_set, get_tag(0), _interval/*, dev*/);
+ 			SplittingPolicy::split(data_set, get_tag(0), _interval/*, dev*/);
 		}	
-		// Extran constructor with random_device
+		// Extra  constructor with random_device
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
 			   const dataset &data_set, std::random_device &dev, std::vector<real_t> interval) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), _interval(interval)
 		{
 			SplittingPolicy::set_interval(interval);	
 		}	
-		// Extran constructor with random_device and splitting policy
+		// Extra  constructor with random_device and splitting policy
 		template <class SplittingArg>
 		cont1d(attribute_tag factory_tag, const attribute_tag &tag,
 			   const dataset &data_set, SplittingArg split_arg, std::random_device &dev) : split_method(factory_tag, std::vector<attribute_tag>(1, tag)), SplittingPolicy(split_arg)
 		{
-			// Set interval
+			// Set interval 
 			auto x= dev();
+			//seed random device to splitting policy
 			x/=++x;
 
+ 
 			SplittingPolicy::split(data_set, get_tag(0), _interval);
 		}	
 
@@ -2086,10 +2189,10 @@ namespace provallo
 			SplittingPolicy::serialize(out);
 
 		}	
-
+ 
 		split_method* deserialize(std::istream& in)
 		{
-
+			
 			/**/
 			std::string line;
 			std::getline(in, line);
@@ -2099,25 +2202,23 @@ namespace provallo
 				throw std::runtime_error("Error deserializing split method");
 			
 			//if ( split_type(std::strtod( tokens[0].c_str ))!= cont1d<SplittingPolicy>::get_type())
-			//	throw std::runtime_error("Error deserializing split method");
-
-
-			size_t tag = std::stoi(tokens[1].c_str());
+			//	throw std::runtime_error("Error deserializing split method");			
+			size_t tag = std::stoi(tokens[1].c_str());	
 			size_t nintervals = std::stoi(tokens[2].c_str());
-			std::getline(in, line);	
+			std::getline(in, line);
 			std::vector<std::string> tokens2;
 			provallo::tokenize(line,tokens2, std::string(","));
 			if (tokens2.size() != nintervals)
 				throw std::runtime_error("Error deserializing split method");
 			std::vector<real_t> intervals;
 			for (size_t i = 0; i < nintervals; ++i)
-				intervals.push_back(std::stof(tokens2[i].c_str())); 
-
+				intervals.push_back(std::stof(tokens2[i].c_str()));
 			this->_interval = intervals;
 			SplittingPolicy::deserialize(in);
 			return clone();
 
 		}
+
 		 
 	};
 

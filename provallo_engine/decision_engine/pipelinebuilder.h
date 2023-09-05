@@ -209,7 +209,7 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
     {
       _fitted_data=fit({_data});
     }
-    size_t get_output_size()const
+    virtual size_t get_output_size()const
     {
       return _fitted_data.size();
     }
@@ -278,6 +278,26 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
       os<<"predicted_data:"<<vec._predicted_data;
       return os;
     } 
+    virtual void save (const std::string& filename)
+    {
+      std::ofstream ofs(filename);
+      save(ofs);
+    }
+    virtual void save(std::ofstream& ofs)
+    {
+       ofs<<*this;
+      ofs.close();
+    }
+    virtual void load(const std::string& filename)
+    {
+      std::ifstream ifs(filename);
+      load(ifs);
+    }
+    virtual void load(std::ifstream& ifs)
+    {
+      ifs>>*this;
+      ifs.close();
+    }
   };//end of vectorizer
 //helper class for tfidf vectorizer
 class tfidf 
@@ -316,6 +336,8 @@ class tfidf
   //calculate tfidf
   void  process_documents();
 
+  //override get output size:
+  
 
   //inverse transform
     std::string inverse_transform(const std::vector<real_t>& vector);
@@ -354,7 +376,7 @@ class tfidf
 
   //get_tf_idf_matrix
     std::vector<std::vector<real_t>> get_tf_idf_matrix();
- 
+
 };
 
 class tfidf_vectorizer : public vectorizer<std::string, real_t>
@@ -388,6 +410,12 @@ class tfidf_vectorizer : public vectorizer<std::string, real_t>
       return _tfidf.get_tfidf();
          
    }
+  //override get output size:
+  virtual size_t get_output_size()const override
+  {
+    return _tfidf.get_vocabulary().size();
+  }
+
 
   virtual  std::vector<real_t> fit( const std::vector<std::string>&documents )override;
   virtual  std::vector<real_t> predict(const std::vector<std::string>&documents )override;
@@ -888,7 +916,12 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   void process_document(const std::string& single_doc ); 
   void process_documents(const std::vector<std::string>& documents );
 
-  
+  //override get_output_size:
+  virtual size_t get_output_size()const override
+  {
+    return _n_topics;
+  }
+
   virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
   virtual  std::vector<real_t> predict(const std::vector<std::string>&documents );
   virtual  std::vector<real_t> transform(const std::vector<std::string>&documents);
@@ -1676,15 +1709,18 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::string output_type;
     std::string input_parameters;
     std::string output_parameters;
+    uint64_t previous_stage; //previous stage id
+    uint64_t next_stage;  //next stage id
+    
     //constructor from data.
 
-    stage_descriptor (const std::string& line) : stage_id(0), name(""), type(""), parameters(""), input(""), output(""), input_type(""), output_type(""), input_parameters(""), output_parameters("")
+    stage_descriptor (const std::string& line) : stage_id(0), name(""), type(""), parameters(""), input(""), output(""), input_type(""), output_type(""), input_parameters(""), output_parameters(""), previous_stage(0), next_stage(0) 
     {
       std::stringstream ss(line);
       ss >> stage_id >> name >> type >> parameters >> input >> output >> input_type >> output_type >> input_parameters >> output_parameters;  
     }
     //default
-    stage_descriptor () : stage_id(0), name(""), type(""), parameters(""), input(""), output(""), input_type(""), output_type(""), input_parameters(""), output_parameters("") {} 
+    stage_descriptor () : stage_id(0), name(""), type(""), parameters(""), input(""), output(""), input_type(""), output_type(""), input_parameters(""), output_parameters(""), previous_stage(0) , next_stage(0)  {} 
 
     //not pure virtual, public struct, but should be implemented in derived classes if needed.
     //additional data is optional per stage.
@@ -1702,6 +1738,8 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
       output_type = cpy.output_type;
       input_parameters = cpy.input_parameters;
       output_parameters = cpy.output_parameters;
+      previous_stage = cpy.previous_stage;
+      next_stage = cpy.next_stage;
 
     }    
     friend std::ostream& operator<<(std::ostream& os, const stage_descriptor& sd);
@@ -1711,7 +1749,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     virtual void set_additional_data(const std::string& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
     void set_stage_id(uint64_t id) { stage_id = id; }
     size_t get_stage_id() const { return stage_id; }
-
+    void set_name(const std::string& n) { name = n; } 
     //process data 
     virtual void process_data(const std::string& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
     virtual void process_data(const matrix<real_t>& data) { UNDEF_REFERENCE(data);UNDEF_REFERENCE2(data);}
@@ -3220,7 +3258,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
     virtual ~classdist_stage();
   };
-  //Knoledge transfer stage implmenets the following algorithms 
+  //Knowledge transfer stage implmenets the following algorithms 
   //https://arxiv.org/pdf/1511.06440.pdf
   //https://arxiv.org/pdf/2006.16331.pdf
   //where the transfer function, accuracy and loss function are defined as follows 

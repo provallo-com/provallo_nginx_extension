@@ -449,7 +449,7 @@ bool test_fast_knn(const std::string benchmark_folder )
   
     }//test_fast_knn
 
-  
+   
    
 bool
 test_dataset_load ()
@@ -494,6 +494,8 @@ test_dataset_load ()
 
       std::cout << "[+] CPU time elapsed in s: "
                 << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+
+
       //std::cout << "Fitting iso-forest: " << std::endl;
       //size_t sample_size = train_data.getattributesNumber();
       //size_t column_size = train_data.getattributes().getSize();
@@ -637,6 +639,11 @@ int main ( int argc, char* argv[]  ) {
 
   }
 
+  if (test_fit_iso_forest())
+  {
+    std::cout << "Test fit iso forest OK" << std::endl;
+  }
+
   if(benchmark_classifiers("./db/benchmarks"))
   {
     std::cout << "Classifiers benchmark OK" << std::endl;
@@ -777,7 +784,7 @@ bool test_vectorizers ( )
 bool benchmark_classifiers (const std::string benchmark_folder )
 {
     bool ret = false;
-    bool buse_random_forest = true;
+    bool buse_random_forest = false;
     bool test_ultra_fast_knn = false;
     //iterate all the files in the folder, if it's a descrition file, build dataset and classifiers for it
     std::vector<std::string> files = getFilesInFolder(benchmark_folder);
@@ -905,8 +912,8 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       //std::cout <<"-- allocating factory .... "<<std::endl<<std::endl;
       //provallo::split_method_factory* factory = new provallo::split_method_factory(set,rd ) ; 
       //factory->set_override_split_method(provallo::split_type::CONE_RANDOM);
-      provallo::split_method_factory* random_factory = new provallo::split_method_factory(set,rd);
-      random_factory->set_override_split_method(provallo::split_type::CONE_RANDOM);
+      provallo::split_method_factory* random_factory = buse_random_forest? new provallo::split_method_factory(set,rd):nullptr;
+      //random_factory->set_override_split_method(provallo::split_type::CONE_BINARY);
       
       provallo::isoforest_param isoparam(500/*ntrees*/,  1000 ,10,
                     256,129,10,
@@ -922,9 +929,9 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       classifiers.push_back(new provallo::iso_classifier(set,isoparam,rd,factory));   
        //push nullptr factories to initialize separately. 
 
-      classifiers.push_back(new provallo::decision_tree<provallo::GainRatio> (set,provallo::none(),rd,factory ));
-      classifiers.push_back(new provallo::decision_tree<provallo::EntropyGain> (set,provallo::none(),rd,factory ));
-      classifiers.push_back(new provallo::decision_tree<provallo::ChiSquare> (set,provallo::none(),rd,factory ));
+     // classifiers.push_back(new provallo::decision_tree<provallo::GainRatio> (set,provallo::none(),rd,factory ));
+     // classifiers.push_back(new provallo::decision_tree<provallo::EntropyGain> (set,provallo::none(),rd,factory ));
+     // classifiers.push_back(new provallo::decision_tree<provallo::ChiSquare> (set,provallo::none(),rd,factory ));
 
       std::cout<<"-- training UF classifiers  .... "<<std::endl<<std::endl; 
      
@@ -960,7 +967,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         }
       }
       encoder.test(mdata,ds);
-      
+
       std::cout<<"-- autoencoder test finished "<<std::endl<<std::endl;
       std::cout<<"-- autoencoder test results : "<<ds<<std::endl<<std::endl;
       
@@ -1187,10 +1194,12 @@ exclude_list.push_back(".git");
   //create vectorizers:
 //  vectorizers.push_back(new provallo::pca_vectorizer);
     //vectorizers.push_back(new provallo::word2vec_vectorizer);
-  clock_t c_start, c_end;
-  std::chrono::high_resolution_clock::time_point t_start, t_end;
+  clock_t c_start, c_end,c_point;
+  std::chrono::high_resolution_clock::time_point t_start, t_end,t_point;
   c_start = clock ();
   t_start = std::chrono::high_resolution_clock::now ();
+  t_point = t_start;
+  c_point = c_start;
 
   size_t total =string_files.size();
   size_t cur =  0;
@@ -1213,9 +1222,9 @@ exclude_list.push_back(".git");
       {
         vectorizer_type = vectorizer_types[vectorizer->get_type()];
       } 
-      std::cout<<"[+] vectorizing with "<<vectorizer_type<<std::endl;
+      std::cout<<"[+] vectorizing attack with "<<vectorizer_type<<std::endl;
       vectorizer->add_document(fuzz_string);
-      std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
+      std::cout<<"[+] vectorizing attack  with "<<vectorizer_type<<" done"<<std::endl;
       std::cout<<"[+] finished "<<fuzz_file<<std::to_string(cur)+"/"+std::to_string(total)<<std::endl; 
 
     }}//if is_attack
@@ -1228,9 +1237,9 @@ exclude_list.push_back(".git");
         {
           vectorizer_type = vectorizer_types[vectorizer->get_type()];
         } 
-        std::cout<<"[+] vectorizing with "<<vectorizer_type<<std::endl;
+        std::cout<<"[+] vectorizing benign with "<<vectorizer_type<<std::endl;
         vectorizer->add_document(fuzz_string);
-        std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
+        std::cout<<"[+] vectorizing benign with "<<vectorizer_type<<" done"<<std::endl;
         std::cout<<"[+] finished "<<fuzz_file<<std::to_string(cur)+"/"+std::to_string(total)<<std::endl;
       }
     }//normal case
@@ -1242,9 +1251,9 @@ exclude_list.push_back(".git");
   c_end = clock ();
   t_end = std::chrono::high_resolution_clock::now ();
   std::cout << "[+] Test CPU time elapsed in s: "
-    << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+    << (double) (c_end - c_point) / CLOCKS_PER_SEC << std::endl;
   std::cout << "[+] Test Wall time elapsed in s: "
-    << std::chrono::duration<double> (t_end - t_start).count ()
+    << std::chrono::duration<double> (t_end - t_point).count ()
     << std::endl;
   std::cout<<"[+] fitting vectorizers "<<std::endl;
 
@@ -1262,28 +1271,90 @@ exclude_list.push_back(".git");
       } 
       std::cout<<"[+] fitting vectorizer "<<vectorizer_type<<std::endl;
        v->fit();
+
       std::cout<<"[+] fitting vectorizer "<<vectorizer_type<<" done"<<std::endl;
+      
       c_end = clock ();
       t_end = std::chrono::high_resolution_clock::now ();
+
       std::cout << "[+] vectorizer CPU time elapsed in s: "
         << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
       std::cout << "[+] vectorizer Wall time elapsed in s: "
         << std::chrono::duration<double> (t_end - t_start).count ()
         << std::endl;
-
+      //print output size for each vectorizer :
+      std::cout<<"[+] vectorizer expected output size : "<<std::to_string(v->get_output_size())<<std::endl;  
   }
  
-          
+  for ( auto& v : vectorizers_normal) 
+  {
+      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//= vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
+      c_start = clock ();
+      t_start = std::chrono::high_resolution_clock::now ();
+
+      if ( v->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
+      {
+        vectorizer_type = vectorizer_types[v->get_type()];
+      } 
+      std::cout<<"[+] fitting normal vectorizer "<<vectorizer_type<<std::endl;
+       v->fit();
+
+      std::cout<<"[+] fitting normal  vectorizer "<<vectorizer_type<<" done"<<std::endl;
+      
+      c_end = clock ();
+      t_end = std::chrono::high_resolution_clock::now ();
+
+      std::cout << "[+] vectorizer CPU time elapsed in s: "
+        << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+      std::cout << "[+] vectorizer Wall time elapsed in s: "
+        << std::chrono::duration<double> (t_end - t_start).count ()
+        << std::endl;
+      //print output size for each vectorizer :
+      std::cout<<"[+] vectorizer expected output size : "<<std::to_string(v->get_output_size())<<std::endl;  
+  }
+ 
   //now that we have the autoencoders, we can train them
   //reiterate on the files and train the autoencoders 
   //print total time 
   c_end = clock ();
   t_end = std::chrono::high_resolution_clock::now ();
   std::cout << "[+] Test CPU time elapsed in s: "
-    << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;  
+    << (double) (c_end - c_point) / CLOCKS_PER_SEC << std::endl;  
   std::cout << "[+] Test Wall time elapsed in s: "
-    << std::chrono::duration<double> (t_end - t_start).count ()
+    << std::chrono::duration<double> (t_end - t_point).count ()
     << std::endl; 
+    //save vectorizers
+    size_t vectr=1;
+    for (auto & vect : vectorizers_attacks )    
+    {
+      //print vectorizer type
+      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
+      if ( vect->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
+      {
+        vectorizer_type = vectorizer_types[vect->get_type()];
+      }
+      std::cout<<"[+] saving attack vectorizer "<<vectorizer_type<<std::endl;  
+      std::ofstream vectorizer_out("vectorizer_fuzzdb_"+vectorizer_type+std::to_string(vectr)+".json");
+
+      vect->save(vectorizer_out);
+      vectr++;
+
+    }
+    for (auto & vect : vectorizers_normal )    
+    {
+      //print vectorizer type
+      std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
+      if ( vect->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
+      {
+        vectorizer_type = vectorizer_types[vect->get_type()];
+      }
+      std::cout<<"[+] saving benign vectorizer "<<vectorizer_type<<std::endl;  
+      std::ofstream vectorizer_out("vectorizer_fuzzdb_"+vectorizer_type+std::to_string(vectr)+".json");
+
+      vect->save(vectorizer_out);
+      vectr++;
+    }
+
   std::cout<<"[+] creating autoencoders "<<std::endl;
   for ( auto & vectorizer : vectorizers_attacks)
   {
@@ -1309,21 +1380,30 @@ exclude_list.push_back(".git");
     std::vector<real_t> input =vectorizer->predict(fit_file);
     size_t input_size = input.size();
 
-     std::cout<<"[+] creating autoencoder for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << "input size:"<<std::to_string(input_size)<<std::endl;
-    if( input_size==0)
-      input_size=1; //avoid zero size input
-     
+
+    if( input_size==0)//< vectorizer->get_output_size()  )
+    {
+      std::cout<<"[+] no output from random file, resizing vectorizer output size to vocabulary size : "<<std::to_string(input.size())<<"/"<<std::to_string(vectorizer->get_output_size())<<std::endl; 
+      input.resize(sqrt(sqrt(vectorizer->get_output_size())),0.0);
+      input_size = input.size();    
+    } 
+    
+    std::cout<<"[+] creating autoencoder for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << "input size:"<<std::to_string(input_size)<<std::endl;
 
     c_start = clock ();
     t_start = std::chrono::high_resolution_clock::now ();
-  
+    if(input_size==1){input.push_back(real_t(0));input_size++;}
+
     autoencoders.push_back(new provallo::auto_encoder<real_t,real_t>(input_size,input_size*(2*std::log2(input_size)),1));//input,hidden,output 
     c_end = clock ();
     t_end = std::chrono::high_resolution_clock::now ();
     std::cout << "[+] auto encoder init Test CPU time elapsed in s: " << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;    
-
-  }
-
+ 
+    std::cout << "[+] auto encoder init Test Wall time elapsed in s: " << std::chrono::duration<double> (t_end - t_start).count ()<< std::endl; 
+    std::cout<<"[+] autoencoder created "<<std::endl;
+    
+    } 
+  //now that we have the autoencoders, we can train them 
   for (auto & fuzz_file : string_files )
   {
     std::ifstream fuzz(fuzz_file);
@@ -1333,9 +1413,7 @@ exclude_list.push_back(".git");
     for (auto & enc : autoencoders   )
     {
       auto & vectorizer = vectorizers_attacks[vectr++];
-
-
-      //print vectorizer type
+       //print vectorizer type
       std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type(); 
       if ( vectorizer->get_type() < provallo::vectorizer_type::UNKNOWN_VECTORIZER)
       {
@@ -1346,11 +1424,11 @@ exclude_list.push_back(".git");
       std::cout<<"[+] vectorizing with "<<vectorizer_type<<" done"<<std::endl;
       std::cout<<"[+] training / loading autoencoder"<<std::endl;
       //print vectorize output
-      if(input.size()==0)
+      if(input.size()<2)
       {
         std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(vectorizer->get_output_size())<<std::endl; 
         
-        input.resize(vectorizer->get_output_size());
+        input.resize(sqrt(sqrt(vectorizer->get_output_size() )));
         for(size_t i=0;i<input.size();i++)
         {
           input[i] = 0.0;
@@ -1359,7 +1437,7 @@ exclude_list.push_back(".git");
       } 
 
       std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<std::endl; 
-
+      std::cout<<"[+] autoencoder input size : "<<std::to_string(enc->getInputDim())<<std::endl;
       double output[2]={1,1};
       do
       {
@@ -1391,26 +1469,37 @@ exclude_list.push_back(".git");
     c_start = clock ();
     t_start = std::chrono::high_resolution_clock::now ();
     std::cout << "[+] Test CPU time elapsed in s: "
-    << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;
+    << (double) (c_end - c_point) / CLOCKS_PER_SEC << std::endl;
     std::cout << "[+] Test Wall time elapsed in s: "
-    << std::chrono::duration<double> (t_end - t_start).count ()
+    << std::chrono::duration<double> (t_end - t_point).count ()
     << std::endl;
     std::cout<<"[+] finished "<<fuzz_file<<std::endl;
 
   } 
     
-  //then we want to fit the documents into the vectorizers
-  //for each vectorizer, we want to train an autoencoder
-  //for each autoencoder, we want to train a weak classifier
-  //first we iterate the files and fill the dictionaries of the vectorizers :
+    //then we want to fit the documents into the vectorizers
+    //for each vectorizer, we want to train an autoencoder
+    //for each autoencoder, we want to train a weak classifier
+    //first we iterate the files and fill the dictionaries of the vectorizers :
 
-  //create autoencoders:
+    //create autoencoders:
     //autoencoders.push_back(new provallo::autoencoder);
     //train auto encoders on the output of the vectorizers
     //autoencoders[0]->train(vectorizers[0]->get_output());
     //autoencoders[1]->train(vectorizers[1]->get_output());
     //autoencoders[2]->train(vectorizers[2]->get_output());
   
+    //save autoencoders
+    
+    size_t enc_index=1;
+    for (auto & enc : autoencoders   )
+    {
+        std::string file_name = "encoder_fuzzdb" +std::to_string(enc_index++) + ".json"; 
+        enc->save("encoder_fuzzdb.json");
+    }
+   //delete vectorizers : 
+
+
   for(auto& vectorizer : vectorizers_attacks)
   {
     delete vectorizer;

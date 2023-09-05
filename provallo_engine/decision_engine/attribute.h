@@ -884,6 +884,10 @@ namespace provallo
     attribute_groups(const std::vector<std::vector<attribute_tag>> &groups,
                      const std::vector<split_type> &split_type) : _groups(groups), _split_type(split_type), _type(groups.size(), CONTINUOUS )
     {
+      //copy groups
+      //copy split type
+      //set type to continuous
+      
     }
     attribute_groups(const std::vector<std::vector<attribute_tag>> &groups,
                      const std::vector<split_type> &split_type,
@@ -1077,6 +1081,7 @@ namespace provallo
     {
       return (other._groups == _groups && other._type == _type && other._split_type == _split_type);
     }
+    // Comparison operator
     bool operator!=(const attribute_groups &other) const
     {
       return other._groups != _groups || other._type != _type || other._split_type != _split_type;

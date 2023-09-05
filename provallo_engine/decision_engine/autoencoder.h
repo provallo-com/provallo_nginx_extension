@@ -121,6 +121,7 @@ namespace provallo
         void initializeBias(T *bias, size_t size);
         void initializeWeight(T *weight, size_t row, size_t col);
         void conjugateGradient();
+        void initialize_autoencoder();
         virtual void clear();
         virtual void initializeWeightGrad()
         {
@@ -233,7 +234,15 @@ namespace provallo
         void forward();
         void backward();
         void update();
-        
+        void initializeWeightsAndBiases();
+        void initializeInput();
+        void initializeHidden();
+        void initializeOutput();
+        void allocateWeightsAndBiases();
+        //void initializeWeight();
+        //void initializeBias();
+        //void initializeActivationFunction();
+        //void initializeWeightGrad();
     public:
         //constructor
         auto_encoder(size_t inputDim, size_t hiddenDim, size_t outputDim);
@@ -568,94 +577,140 @@ namespace provallo
         }
         void initializeBias1Decay()
         {
+            if(bias1Decay == nullptr)
+                bias1Decay = new T[hiddenDim];
             initializeBias(bias1Decay, hiddenDim);
         }
         void initializeBias2Decay()
         {
+            if(bias2Decay == nullptr)
+                bias2Decay = new T[outputDim]; 
             initializeBias(bias2Decay, outputDim);
         }
         void initializeWeight1Prev()
         {
+            if(weight1Prev == nullptr)
+                weight1Prev = new T[inputDim * hiddenDim];  
+
             initializeWeight(weight1Prev, inputDim, hiddenDim);
 
         }
         void initializeWeight2Prev()
         {
+            if(weight2Prev == nullptr)
+                weight2Prev = new T[hiddenDim * outputDim];
             initializeWeight(weight2Prev, hiddenDim, outputDim);
         }
         void initializeBias1Prev()
         {   
+            if(bias1Prev == nullptr)
+                bias1Prev = new T[hiddenDim];
             initializeBias(bias1Prev, hiddenDim);
 
         }
         void initializeBias2Prev()
         {
+            if(bias2Prev == nullptr)
+                bias2Prev = new T[outputDim];
             initializeBias(bias2Prev, outputDim);
         }
         void initializeWeight1Momentum()
         {
+            if(weight1Momentum == nullptr)
+                weight1Momentum = new T[inputDim * hiddenDim];  
+
             initializeWeight(weight1Momentum, inputDim, hiddenDim);
         }
         void initializeWeight2Momentum()
         {
+            if(weight2Momentum == nullptr)
+                weight2Momentum = new T[hiddenDim * outputDim]; 
             initializeWeight(weight2Momentum, hiddenDim, outputDim);
         }
         void initializeBias1Momentum()
         {
+            if(bias1Momentum == nullptr)
+                bias1Momentum = new T[hiddenDim];   
             initializeBias(bias1Momentum, hiddenDim);
         }
         void initializeBias2Momentum()
         {
+            if(bias2Momentum == nullptr)
+                bias2Momentum = new T[outputDim];   
             initializeBias(bias2Momentum, outputDim);
         }
         void initializeWeight1Update()
         {
+            if(weight1Update == nullptr)
+                weight1Update = new T[inputDim * hiddenDim];    
             initializeWeight(weight1Update, inputDim, hiddenDim);
         }
         void initializeWeight2Update()
         {
+            if(weight2Update == nullptr)
+                weight2Update = new T[hiddenDim * outputDim];   
             initializeWeight(weight2Update, hiddenDim, outputDim);
         }
         void initializeBias1Update()
         {
+            if(bias1Update == nullptr)
+                bias1Update = new T[hiddenDim]; 
             initializeBias(bias1Update, hiddenDim);
         }
         void initializeBias2Update()
         {
+            if(bias2Update == nullptr)
+                bias2Update = new T[outputDim];
             initializeBias(bias2Update, outputDim);
         }
         void initializeWeight1()
         {
+            if(weight1 == nullptr)
+                weight1 = new T[inputDim * hiddenDim];
             initializeWeight(weight1, inputDim, hiddenDim);
         }
         void initializeWeight2(){
+            if(weight2 == nullptr)
+                weight2 = new T[hiddenDim * outputDim];
             initializeWeight(weight2, hiddenDim, outputDim);
         }
 
         void initializeBias1()
         {
+            if(bias1 == nullptr)
+                bias1 = new T[hiddenDim];
             initializeBias(bias1, hiddenDim);
         }
         void initializeBias2()
         {
+            if(bias2 == nullptr)
+                bias2 = new T[outputDim];
             initializeBias(bias2, outputDim);
         }
 
 
         void initializeWeight1GradPrevPrev()
         {
+            if(weight1GradPrevPrev == nullptr)
+                weight1GradPrevPrev = new T[inputDim * hiddenDim];  
             initializeWeight(weight1GradPrevPrev, inputDim, hiddenDim);
         }
         void initializeWeight2GradPrevPrev()
         {
+            if(weight1GradPrevPrev == nullptr)
+                weight1GradPrevPrev = new T[hiddenDim * outputDim]; 
             initializeWeight(weight2GradPrevPrev, hiddenDim, outputDim);
         }
         void initializeBias1GradPrevPrev()
         {
+            if(bias1GradPrevPrev == nullptr)
+                bias1GradPrevPrev = new T[hiddenDim];
             initializeBias(bias1GradPrevPrev, hiddenDim);
         }
         void initializeBias2GradPrevPrev()
         {
+            if(bias2GradPrevPrev == nullptr)
+                bias2GradPrevPrev = new T[outputDim];
             initializeBias(bias2GradPrevPrev, outputDim);
         }
 
@@ -1398,147 +1453,23 @@ namespace provallo
         virtual void initializeWeight2Grad();
         virtual void initializeBias1Grad();
         virtual void initializeBias2Grad();
-
+        virtual void initializeWeight1Momentum();   
  
     };   
 
 
     template <typename T, typename real_x>
-    inline auto_encoder<T, real_x>::auto_encoder(size_t inputDim, size_t hiddenDim, size_t outputDim) : inputDim(inputDim), hiddenDim(hiddenDim), outputDim(outputDim), 
-    learningRate(0.1), momentum(0.9), weightDecay(0.0001), sparsityParam(0.01), beta(3), sparsityParamHat(0.01), sparsityPenalty(0), 
-    sparsityGradient(0), sparsityGradientHat(0), activationFunctionPtr(nullptr), activationGradientFunctionPtr(nullptr), activationPrimeFunctionPtr(nullptr), activationPrimeGradientFunctionPtr(nullptr), activationPrimeGradientHatFunctionPtr(nullptr)      
-
+    inline auto_encoder<T, real_x>::auto_encoder(size_t inputD, size_t hiddenD, size_t outputD) : inputDim(inputD),hiddenDim(hiddenD),outputDim(outputD)
     {
         //std::cout << "auto_encoder constructor" << std::endl;
-        input = new T[inputDim];
-        hidden = new T[hiddenDim];
-        output = new T[outputDim];
-        weight1 = new T[inputDim * hiddenDim];
-        weight2 = new T[hiddenDim * outputDim];
-        bias1 = new T[hiddenDim];
-        bias2 = new T[outputDim];
-        weight1Grad = new T[inputDim * hiddenDim];
-        weight2Grad = new T[hiddenDim * outputDim];
-        bias1Grad = new T[hiddenDim];
-        bias2Grad = new T[outputDim];
-        weight1Momentum = new T[inputDim * hiddenDim];
-        weight2Momentum = new T[hiddenDim * outputDim];
-        bias1Momentum = new T[hiddenDim];
-        bias2Momentum = new T[outputDim];
-        weight1Update = new T[inputDim * hiddenDim];
-        weight2Update = new T[hiddenDim * outputDim];
-        bias1Update = new T[hiddenDim];
-        bias2Update = new T[outputDim];
-        weight1Decay = new T[inputDim * hiddenDim];
-        weight2Decay = new T[hiddenDim * outputDim];
-        bias1Decay = new T[hiddenDim];
-        bias2Decay = new T[outputDim];
-        weight1Sparsity = new T[inputDim * hiddenDim];
-        weight2Sparsity = new T[hiddenDim * outputDim];
-        bias1Sparsity = new T[hiddenDim];
-        bias2Sparsity = new T[outputDim];
-        weight1SparsityHat = new T[inputDim * hiddenDim];
-        weight2SparsityHat = new T[hiddenDim * outputDim];
-        bias1SparsityHat = new T[hiddenDim];
-        bias2SparsityHat = new T[outputDim];
-        weight1SparsityGrad = new T[inputDim * hiddenDim];
-        weight2SparsityGrad = new T[hiddenDim * outputDim];
-        bias1SparsityGrad = new T[hiddenDim];
-        bias2SparsityGrad = new T[outputDim];
-        weight1SparsityGradHat = new T[inputDim * hiddenDim];
-        weight2SparsityGradHat = new T[hiddenDim * outputDim];
-        bias1SparsityGradHat = new T[hiddenDim];
-        bias2SparsityGradHat = new T[outputDim];
-        weight1Inc = new T[inputDim * hiddenDim];
-        weight2Inc = new T[hiddenDim * outputDim];
-        weight1GradPrev = new T[inputDim * hiddenDim];
-        weight2GradPrev = new T[hiddenDim * outputDim];
-        bias1GradPrev = new T[hiddenDim];
-        bias2GradPrev = new T[outputDim];
-        bias1Inc = new T[hiddenDim];
-        bias2Inc = new T[outputDim];
-
-        weight1Prev = new T[inputDim * hiddenDim];
-        weight2Prev = new T[hiddenDim * outputDim];
-
-        bias1Prev = new T[hiddenDim];
-        bias2Prev = new T[outputDim];
-        weight1GradPrevPrev = new T[inputDim * hiddenDim];
-        weight2GradPrevPrev = new T[hiddenDim * outputDim];
-        bias1GradPrevPrev = new T[hiddenDim];
-        bias2GradPrevPrev = new T[outputDim];
-        
-        //initialize the biases.
-        memset(bias1, 0, sizeof(T) * hiddenDim);
-        memset(bias2, 0, sizeof(T) * outputDim);
-        memset(bias1Grad, 0, sizeof(T) * hiddenDim);
-        memset(bias2Grad, 0, sizeof(T) * outputDim);
-        memset(bias1Momentum, 0, sizeof(T) * hiddenDim);
-        memset(bias2Momentum, 0, sizeof(T) * outputDim);
-        memset(bias1Update, 0, sizeof(T) * hiddenDim);
-        memset(bias2Update, 0, sizeof(T) * outputDim);
-        memset(bias1Decay, 0, sizeof(T) * hiddenDim);
-        memset(bias2Decay, 0, sizeof(T) * outputDim);
-
-        initializeWeight();
-        initializeBias();
-        initializeActivationFunction();
-        initializeWeightGrad();
-        initializeWeight1Inc();
-        initializeWeight2Inc();
-        initializeBias1Inc();
-        initializeBias2Inc();
-        initializeWeight1GradPrev();
-        initializeWeight2GradPrev();
-
-        initializeBias1GradPrev();
-        initializeBias2GradPrev();
-        initializeWeight1Decay();
-        initializeWeight2Decay();
-
-        initializeBias1Decay();
-        initializeBias2Decay();
-        initializeWeight1Sparsity();
-        initializeWeight2Sparsity();
-
-        initializeBias1Sparsity();
-        initializeBias2Sparsity();
-
-        initializeWeight1SparsityHat();
-        initializeWeight2SparsityHat();
-
-        initializeBias1SparsityHat();
-        initializeBias2SparsityHat();
-
-        initializeWeight1SparsityGrad();
-        initializeWeight2SparsityGrad();
-
-        initializeBias1SparsityGrad();
-        initializeBias2SparsityGrad();
-
-        initializeWeight1SparsityGradHat();
-        initializeWeight2SparsityGradHat();
-
-
-
-        initializeBias1SparsityGradHat();
-        initializeBias2SparsityGradHat();
-
-        initializeWeight1GradPrevPrev();
-        initializeWeight2GradPrevPrev();
-
-        initializeBias1GradPrevPrev();
-        initializeBias2GradPrevPrev();
-
-        //initializeWeight1SparsityGradPrev();
-        //initializeWeight2SparsityGradPrev();
-
-        //initializeBias1SparsityGradPrev();
-        //initializeBias2SparsityGradPrev();
-        //done  
-
-    }   
-    
+        if(inputDim==0||outputDim==0||hiddenDim==0)
+        {
+            throw std::runtime_error("auto_encoder constructor: inputDim, hiddenDim, or outputDim is zero");
+        }
+        //initialize the auto encoder
+        initialize_autoencoder();
+    }
+      
     template <typename T, typename real_x>
     auto_encoder<T, real_x>::~auto_encoder()
     {
@@ -1813,44 +1744,174 @@ namespace provallo
         
         //done
     }
+    //initialize autoencoder
+    template <typename T, typename real_x> 
+    void auto_encoder<T,real_x>::initialize_autoencoder()
+    {
+        //initialize the autoencoder
+
+        initializeInput();
+        initializeHidden();
+        initializeOutput();
+        allocateWeightsAndBiases();
+        initializeWeight();
+        initializeBias();
+        initializeActivationFunction();
+        initializeWeightGrad();
+        //done
+    } 
+    template <typename T, typename real_x> 
+    void auto_encoder<T,real_x>::allocateWeightsAndBiases()
+    {
+            //allocate the weights and biases
+ 
+            weight1 = new T[inputDim * hiddenDim];
+            weight2 = new T[hiddenDim * outputDim];
+            bias1 = new T[hiddenDim];
+            bias2 = new T[outputDim];
+            //allocate gradients for the weights and biases 
+            weight1Grad = new T[inputDim * hiddenDim];  
+            weight2Grad = new T[hiddenDim * outputDim];
+            bias1Grad = new T[hiddenDim];
+            bias2Grad = new T[outputDim];
+            //allocate the momentum for the weights and biases
+            weight1Momentum = new T[inputDim * hiddenDim];
+            weight2Momentum = new T[hiddenDim * outputDim];
+            bias1Momentum = new T[hiddenDim];
+            bias2Momentum = new T[outputDim];
+            //allocate the update for the weights and biases
+            weight1Update = new T[inputDim * hiddenDim];
+            weight2Update = new T[hiddenDim * outputDim];
+            bias1Update = new T[hiddenDim];
+            bias2Update = new T[outputDim];
+            //allocate the decay for the weights and biases
+            weight1Decay = new T[inputDim * hiddenDim];
+            weight2Decay = new T[hiddenDim * outputDim];
+            bias1Decay = new T[hiddenDim];
+            bias2Decay = new T[outputDim];
+            //allocate the sparsity for the weights and biases
+            weight1Sparsity = new T[inputDim * hiddenDim];
+            weight2Sparsity = new T[hiddenDim * outputDim];
+            bias1Sparsity = new T[hiddenDim];
+            bias2Sparsity = new T[outputDim];
+            //allocate the sparsity hat for the weights and biases
+            weight1SparsityHat = new T[inputDim * hiddenDim];
+            weight2SparsityHat = new T[hiddenDim * outputDim];
+            bias1SparsityHat = new T[hiddenDim];
+            bias2SparsityHat = new T[outputDim];
+            //allocate the sparsity grad for the weights and biases
+            weight1SparsityGrad = new T[inputDim * hiddenDim];
+            weight2SparsityGrad = new T[hiddenDim * outputDim];
+            bias1SparsityGrad = new T[hiddenDim];
+            bias2SparsityGrad = new T[outputDim];
+            //allocate the sparsity grad hat for the weights and biases
+            weight1SparsityGradHat = new T[inputDim * hiddenDim];
+            weight2SparsityGradHat = new T[hiddenDim * outputDim];
+            bias1SparsityGradHat = new T[hiddenDim];
+            bias2SparsityGradHat = new T[outputDim];
+            //allocate the increment for the weights and biases
+            weight1Inc = new T[inputDim * hiddenDim];
+            weight2Inc = new T[hiddenDim * outputDim];
+            bias1Inc = new T[hiddenDim];
+            bias2Inc = new T[outputDim];
+            //allocate the previous gradient for the weights and biases
+            weight1GradPrev = new T[inputDim * hiddenDim];
+            weight2GradPrev = new T[hiddenDim * outputDim];
+            bias1GradPrev = new T[hiddenDim];
+            bias2GradPrev = new T[outputDim];
+            //allocate the previous gradient for the weights and biases
+            weight1GradPrevPrev = new T[inputDim * hiddenDim];
+            weight2GradPrevPrev = new T[hiddenDim * outputDim];
+            bias1GradPrevPrev = new T[hiddenDim];
+            bias2GradPrevPrev = new T[outputDim];
+            //done
+
+            size_t total_memory = (12*inputDim * hiddenDim)+(12*hiddenDim * outputDim)+(12*hiddenDim)+(12*outputDim);
+            std::cout << "[+] autoencoder total memory allocated: " << std::to_string((total_memory*sizeof(real_t)/1024.0)) << std::endl; 
+
+    }   
+
+    //initialize input
+    template <typename T, typename real_x> 
+    void auto_encoder<T,real_x>::initializeInput()
+    {
+        //initialize the input
+        input = new T[inputDim];
+        if (input == nullptr)
+        {
+            std::cout << "[-] autoencoder - error in initializeInput - input is null." << std::endl;
+            return;
+        }
+        //done
+    }   
+    //initialize hidden
+    template < typename T, typename real_x> 
+    void auto_encoder<T,real_x>::initializeHidden()
+    {
+        //initialize the hidden
+        hidden = new T[hiddenDim];
+        if (hidden == nullptr)
+        {
+            std::cout << "[-] autoencoder - error in initializeHidden - hidden is null." << std::endl;
+            return;
+        }
+        //done
+    }   
+    //initialize output
+    template <typename T, typename real_x>  
+    void auto_encoder<T,real_x>::initializeOutput()
+    {
+        //initialize the output
+        output = new T[outputDim];
+        if (output == nullptr)
+        {
+            std::cout << "[-] autoencoder - error in initializeOutput - output is null." << std::endl;
+            return;
+        }
+        //done
+    }       
+    //initialize weight
+
 
     template <typename T, typename real_x>
     void auto_encoder<T,real_x>::initializeWeight()
     {
+        
+        //initialize the weight
+        
 
         initializeWeight(weight1, inputDim, hiddenDim);
         initializeWeight(weight2, hiddenDim, outputDim);
         initializeWeight(weight1Grad, inputDim, hiddenDim);
         initializeWeight(weight2Grad, hiddenDim, outputDim);
-        initializeWeight1Momentum();
-        initializeWeight2Momentum();
-        initializeWeight1Update();
-        initializeWeight2Update();
-        initializeWeight1Decay();
-        initializeWeight2Decay();
-        initializeWeight1Sparsity();
-        initializeWeight2Sparsity();
-        initializeWeight1SparsityHat();
-        initializeWeight2SparsityHat();
-        initializeWeight1SparsityGrad();
-        initializeWeight2SparsityGrad();
-        initializeWeight1SparsityGradHat();
-        initializeWeight2SparsityGradHat();
-        initializeWeight1Prev();
-        initializeWeight2Prev();
+        initializeWeight(weight1Momentum, inputDim, hiddenDim); 
+        initializeWeight(weight2Momentum, hiddenDim, outputDim);
 
-        initializeWeight1Grad();
-        initializeWeight2Grad();
-        initializeWeight1GradPrev();
-        initializeWeight2GradPrev();
-        initializeWeight1GradPrevPrev();
-        initializeWeight2GradPrevPrev();
-        initializeWeight1Inc();
-        initializeWeight2Inc();
+        initializeWeight(weight1Update, inputDim, hiddenDim);
+        initializeWeight(weight2Update, hiddenDim, outputDim);
+        initializeWeight(weight1Decay, inputDim, hiddenDim);
+        initializeWeight(weight2Decay, hiddenDim, outputDim);
+        initializeWeight(weight1Sparsity, inputDim, hiddenDim);
+        initializeWeight(weight2Sparsity, hiddenDim, outputDim);
+        initializeWeight(weight1SparsityHat, inputDim, hiddenDim);
+        initializeWeight(weight2SparsityHat, hiddenDim, outputDim);
+        initializeWeight(weight1SparsityGrad, inputDim, hiddenDim);
+        initializeWeight(weight2SparsityGrad, hiddenDim, outputDim);
+        initializeWeight(weight1SparsityGradHat, inputDim, hiddenDim);
+        initializeWeight(weight2SparsityGradHat, hiddenDim, outputDim);
+        initializeWeight(weight1Inc, inputDim, hiddenDim);
+        initializeWeight(weight2Inc, hiddenDim, outputDim);
+        initializeWeight(weight1GradPrev, inputDim, hiddenDim);
+        initializeWeight(weight2GradPrev, hiddenDim, outputDim);
+
+        initializeWeight(weight1GradPrevPrev, inputDim, hiddenDim);
+        initializeWeight(weight2GradPrevPrev, hiddenDim, outputDim);
         //done
+
 
     }
 
+    //initialize bias
     template <typename T, typename real_x>
     void auto_encoder<T,real_x>::initializeBias()
     {
@@ -1860,27 +1921,30 @@ namespace provallo
         //done
 
     }
-
+    //initialize activation function
     template <typename T, typename real_x>
     void auto_encoder<T,real_x>::initializeWeight(T *weight, size_t size)
     {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<> dis(0, 1);
+        
         for (size_t i = 0; i < size; i++)
         {
             weight[i] = dis(gen);
         }
         //done
     }
-
+    //initialize weight grad
     template <typename T, typename real_x>
     void auto_encoder<T,real_x>::initializeBias(T *bias, size_t size)
     {
         for (size_t i = 0; i < size; i++)
         {
             bias[i] = 0;
+            
         }
+
         //done
 
     }
@@ -2088,9 +2152,14 @@ namespace provallo
                 }
                 bias1Grad[j] += hidden[j];
             }
+          
         }   
+          //update mse:
+            
+        MSE/=size;  
+
         //done
-         std::cout << "backprop MSE:" <<std::to_string(MSE)<< std::endl;
+        std::cout << "backprop MSE:" <<std::to_string(MSE)<< std::endl;
          
     }
 
@@ -3043,7 +3112,53 @@ namespace provallo
     void auto_encoder<T,real_x>::forward()
     {
         //std::cout << "auto_encoder forward" << std::endl;
-        //update hidden layers
+        //update hidden dimensions
+
+        //update previous weight1GradPrevPrev 
+        for (size_t i = 0; i < inputDim * hiddenDim; i++)
+        {
+            weight1GradPrevPrev[i] = weight1GradPrev[i];
+        }
+        //update previous weight2GradPrevPrev
+        for (size_t i = 0; i < hiddenDim * outputDim; i++)
+        {
+            weight2GradPrevPrev[i] = weight2GradPrev[i];
+        }
+        //update previous bias1GradPrevPrev
+        for (size_t i = 0; i < hiddenDim; i++)
+        {
+            bias1GradPrevPrev[i] = bias1GradPrev[i];
+        }
+        //update previous bias2GradPrevPrev
+        for (size_t i = 0; i < outputDim; i++)
+        {
+            bias2GradPrevPrev[i] = bias2GradPrev[i];
+        }
+        //update previous weight1GradPrev
+        for (size_t i = 0; i < inputDim * hiddenDim; i++)
+        {
+            weight1GradPrev[i] = weight1Grad[i];
+        }
+        //update previous weight2GradPrev
+        for (size_t i = 0; i < hiddenDim * outputDim; i++)
+        {
+            weight2GradPrev[i] = weight2Grad[i];
+        }   
+        //update previous bias1GradPrev
+        for (size_t i = 0; i < hiddenDim; i++)
+        {
+            bias1GradPrev[i] = bias1Grad[i];
+        }
+        //update previous bias2GradPrev
+        for (size_t i = 0; i < outputDim; i++)
+        {
+            bias2GradPrev[i] = bias2Grad[i];
+        }
+        
+        //if not using sparsity constraint 
+        
+
+
         for (size_t i = 0; i < hiddenDim; i++)
         {
             hidden[i] = 0;
@@ -3063,8 +3178,10 @@ namespace provallo
             }
             output[i] = (this->*activationFunctionPtr)(output[i]);
         }
-        //std::cout << "auto_encoder forward end" << std::endl;
+        //update everything else 
 
+        //std::cout << "auto_encoder forward end" << std::endl; 
+        
 
 
     }   
@@ -3750,9 +3867,121 @@ namespace provallo
             in.close();
         }
     }; 
-    
+    template <class T,class real_x>
+    class variational_softmax : public softmax_classifier<T,real_x> 
+    {
+        //variational softmax
+        //https://arxiv.org/pdf/1511.06038.pdf 
+        //
+        //variational softmax is a softmax classifier with a gaussian prior on the weights
+        //the gaussian prior is learned by the autoencoder
+        //the autoencoder is trained to minimize the reconstruction error and the KL divergence between the gaussian prior and the posterior
+        //the autoencoder is trained with the conjugate gradient method  
+        //the autoencoder is trained with the variational softmax as the loss function
 
 
+        //autoencoder
+        auto_encoder<T,real_x> ae;
+        
+        //classifier input
+        matrix<real_t> input;
+        //train labels:
+        matrix<real_t> target;
+
+        //weight data:
+        matrix<real_t> weight;
+        public: 
+        //constructor
+        variational_softmax(size_t n_classes,size_t n_dimensions,real_t alpha,real_t lambda)
+        {
+            this->n_classes = n_classes;
+            this->n_dimensions = n_dimensions;
+            this->alpha = alpha;
+            this->lambda = lambda;
+            //init random weight
+            this->weight = matrix<real_t>::Random(n_classes,n_dimensions);
+            //init autoencoder
+            ae = auto_encoder<T,real_x>(n_dimensions,n_dimensions,0.01,0.01);
+        }   
+        //train
+        void train(const matrix<real_t>& input,const matrix<real_t>& target)
+        {
+            //set input
+            this->input = input;
+            //set target
+            this->target = target;
+            //train autoencoder
+            ae.train(input,input);
+            //train classifier
+            softmax_classifier<T,real_x>::train(input,target);
+        }
+        //predict
+        void predict(const matrix<real_t>& input,matrix<real_t>& output)
+        {
+            softmax_classifier<T,real_x>::predict(input,output);
+        }
+        //save
+        void save(const std::string filename)
+        {
+            std::ofstream out(filename, std::ios::binary); 
+            if (!out.is_open()) {
+                std::cout << "Cannot open file to write: " << filename << std::endl;
+                return;
+            }
+            //dont use tensorflow namespace and dependencies, just save weights and biases as binary file,no python
+            //save weights and biases
+            out.write((char*)this->weight.data(), sizeof(real_x) * this->n_classes * this->n_dimensions);
+            out.close();
+        }
+        //load
+        void load(const std::string filename)
+        {
+            std::ifstream in(filename, std::ios::binary); 
+            if (!in.is_open()) {
+                std::cout << "Cannot open file to read: " << filename << std::endl;
+                return;
+            }
+            //dont use tensorflow namespace and dependencies, just save weights and biases as binary file,no python
+            //save weights and biases
+            in.read((char*)this->weight.data(), sizeof(real_x) * this->n_classes * this->n_dimensions);
+            in.close();
+        }
+        //get weights
+        void getWeight(matrix<real_t>& weight)
+        {
+            weight = this->weight;
+        } 
+        //forward
+        void forward(const matrix<real_t>& input,matrix<real_t>& output)
+        {
+            //softmax
+            output = input * this->weight.transpose();
+            output = output.unaryExpr([](real_t x) { return std::exp(x); });
+            output = output.rowwise([](real_t x) {return x;}) / output.sum();
+        }   
+        //backward
+        void backward(const matrix<real_t>& input,const matrix<real_t>& output,const matrix<real_t>& target,matrix<real_t>& grad)
+        {
+            //softmax
+            grad = output - target;
+            //weight
+            grad = grad.transpose() * input;
+            //regularization
+            grad = grad + this->lambda * this->weight;
+        }
+        //update
+        void update(const matrix<real_t>& grad)
+        {
+            this->weight = this->weight - this->alpha * grad;
+        }
+        //get weight
+        matrix<real_t> get_weight()const
+        {
+            return this->weight;
+        }
+     };//variational_softmax
+
+        
 } // namespace provallo
 
 #endif /* PROVALLO_AUTO_ENCODER_H_ */

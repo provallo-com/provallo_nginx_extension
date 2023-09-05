@@ -34,6 +34,9 @@ namespace provallo
 		std::vector<std::pair<real_t, size_t>>::iterator it = begin + (uniform(gen) % size);
 		return (*it).second;
 	}
+
+	// Calculate entropy difference
+	
 	static real_t
 	entropy_diff(size_t ni, real_t l, real_t r, real_t li, real_t ri)
 	{
@@ -898,9 +901,7 @@ namespace provallo
 		// Target tag
 		attribute_tag target_tag = data.getattributes().get_target_tag();
 		// Number of different values of the attribute
-				
-		
-		size_t attr_count = selector.size();
+ 		size_t attr_count = selector.size();
 		if (attr_count == 1)
 			return 0.0;
 		// Number of different outcomes

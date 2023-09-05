@@ -27,8 +27,7 @@
 #ifdef _USE_GRPC_
 #include "../rpc/rpcserver.h"
 #endif
-
-
+ 
 #ifdef _USE_PCAP_
 #include "pcap_support/pcap_packet.h"
 #endif
@@ -70,9 +69,7 @@ namespace provallo
   {
   protected:
 
-
-
-    struct nfq_handle *_h;
+     struct nfq_handle *_h;
     struct nfq_q_handle *_qh;
     std::chrono::high_resolution_clock _clock;
     std::vector<packet_handler> _handlers;

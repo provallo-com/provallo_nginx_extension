@@ -73,7 +73,7 @@ namespace provallo
     //each resource value can register multiple visitors.
 
     std::map<std::string, std::vector<policy_visitor*>> visitors;
-
+    std::vector<uint8_t> _actions;
     enum actions : uint8_t
     {
       BLOCK_AND_DROP, SANDBOX_TRAFFIC, ALLOW_AND_MONITOR, ALLOW_PASSTHROUGH
@@ -102,7 +102,10 @@ namespace provallo
       return _policy_description;
     }
 
-
+    std::vector<uint8_t> get_actions() const
+    {
+        return _actions;
+    }
 
 
     //notify all visitors
@@ -139,6 +142,10 @@ namespace provallo
     {
     }
   };
+
+
+
+  
   class policy_manager
   {
   protected:

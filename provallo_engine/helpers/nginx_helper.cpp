@@ -38,7 +38,7 @@ void start_monitoring_requests()
     //initialize decision engine
     initialize_engine();
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "monitoring requests started");
-    
+
    
 }
 void stop_monitoring_requests()
@@ -80,19 +80,35 @@ void initialize_engine()
     //use nginx to start thread
     //nginx_thread_start(); 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "initializing engine");
-    //initialize decision engine    
+    //initialize decision engine : create a pipeline builder and add stages 
+
     provallo::pipeline_builder* builder = new pipeline_builder();
+    
     builder->add_stage(new dataset_stage());
+    
     builder->add_stage(new vectorizer_stage());
+
     builder->add_stage(new classifier_stage());
+
+    builder->add_stage(new cluster_stage());
+    
     builder->add_stage(new classdist_stage());
+    
     builder->add_stage(new kdt_stage());
+    
     builder->add_stage(new dataset_stage());
+    
     builder->add_stage(new decision_engine_stage());
-      builder->build();
+    
+    builder->build();
+
     provallo_classifiers_running = builder->get_num_classifiers();
+
+    //
     delete builder;
+
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "engine initialized");
+
 
 }
 
@@ -132,7 +148,6 @@ ngx_http_provallo_json_parse(ngx_http_request_ctx_t* ctx,
             ngx_http_finalize_request(r, NGX_OK);
         } 
  }
-
  
 void ngx_http_provallo_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
@@ -185,6 +200,7 @@ void ngx_http_provallo_upstream_filter(ngx_http_request_t *r, ngx_chain_t *in)
             body.append((char*)buf->pos, buf->last - buf->pos);
         }
     }
+
     result = filter_request(filter, body);
     if(result == 1)
     {

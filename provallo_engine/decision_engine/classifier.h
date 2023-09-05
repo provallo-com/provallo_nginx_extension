@@ -29,6 +29,7 @@ using std::signal;
 #include "dataset.h"
 #include "attribute.h"
 #include "parameters.h"
+#include  "kdt.h"
 #include "split_utils.hpp"
 #define _FOR_R 1
 
@@ -279,12 +280,13 @@ namespace provallo
                const std::random_device &ra = std::random_device(), split_method_factory *factory = nullptr) : _attributes_info(data.getattributes()), _split_factory(factory == nullptr ? new split_method_factory(data, ra) : factory), _rand(),_offsets(data.get_sorted_indices().size()), _name("classifier"), _data(data), _parameters(parameters)   
     {
       // Initialize the offsets
-      _offsets.reserve(data.get_sorted_indices().size());
-      _offsets.push_back(0);
-      for (size_t i = 0; i < data.get_sorted_indices().size(); ++i)
-      {
-        _offsets.push_back(_offsets.back() + data.get_sorted_indices()[i].size());
-      }
+      //set offset size
+      _offsets.resize(data.get_sorted_indices().size());
+      //fill offsets iota of size data.get_sorted_indices().size()
+      std::iota(_offsets.begin(), _offsets.end(), 0 );
+      //set the factory
+
+
       if(_split_factory == nullptr)
       {
        _split_factory = new split_method_factory(data, ra);
@@ -292,6 +294,7 @@ namespace provallo
 
       }
       else _factory_allocated = false;
+      
     }
 
     // A classifier should be constructed from a data set and a parameter object
@@ -2566,10 +2569,10 @@ namespace provallo
     }
     // Node constructor (from a data set)
     TreeNodeBase(const split_method *split_method, const TreeNodeBase *parent =
-                                                       0) : _parent(parent), _children(0), _split_method(split_method->clone())
+                                                       0) : _parent(parent), _children(0), _split_method(split_method?split_method->clone():nullptr)
     {
     }
-    TreeNodeBase(const split_method *split_method, const TreeNodeBase *parent , const class_dist& dist) : _parent(parent), _children(0), _split_method(split_method->clone()),_distribution(dist)
+    TreeNodeBase(const split_method *split_method, const TreeNodeBase *parent , const class_dist& dist) : _parent(parent), _children(0), _split_method(split_method?split_method->clone():nullptr),_distribution(dist)
     {
     } 
     // Function to print node information
@@ -2583,6 +2586,8 @@ namespace provallo
     {
       return get_type();
     }
+    //dangerous when used with light nodes  
+    // Get split method
     const split_method &
     get_split_method() const
     {
@@ -2608,13 +2613,20 @@ namespace provallo
       if (_children.size() > 0)
       {
         // Return node in the correct branch
+        if(_split_method) {
         size_t branch = _split_method->getBranch(
             begin);
 
         if (branch < _children.size())
-          return _children[branch]->getNode(begin, end);
-      }
+          return _children[branch]->getNode(begin, end); 
+        }
+        else
+        {
+          return _children[0]->getNode(begin, end); 
+        } 
 
+      }
+      // Return leaf
       return this;
     }
 
@@ -3005,6 +3017,9 @@ namespace provallo
     // Root node
     TreeNodeBase *_root;
   };
+
+
+  // A classifier based on a tree
   class tree_classifier : public classifier
   {
   protected:
@@ -3322,11 +3337,16 @@ namespace provallo
                                        const std::random_device &rm, split_method_factory *factory) : tree_classifier(data, parameters, rm, factory), _rho(0), _level(0), _min_gain(0)
   {
     _name = "Random Tree";
+    if(_split_factory==nullptr||(_split_factory&&(_split_factory->getSize()==0)))
+    {
+      _split_factory = new split_method_factory(data, rm);
+    }
+
      // Sanity check
     if (parameters.getType() != random_tree_param::_type())
       throw(std::runtime_error(
           "Bad parameter type " + std::to_string(parameters.getType()) + " in random forest"));
-      
+    
     // Cast to correct type
     const random_tree_param *local_parameters =
         static_cast<const random_tree_param *>(&parameters);
@@ -3335,14 +3355,16 @@ namespace provallo
     _rho = local_parameters->getRho();
     _level = local_parameters->getLevel();
     _min_gain = local_parameters->getMinGain();
+    // Push all attributes tags
 
     // Push all attributes tags
     std::vector<attribute_tag> attributes;
     // Push each attribute
-    for (uint32_t i = 0; i < splitFactory().getSize(); ++i)
+    for (uint32_t i = 0; i <_split_factory->getSize(); ++i)
       attributes.push_back(i);
 
-    // Create tree
+    //setup factories for each attribute
+     // Create tree
     createTree(_tree.begin(), data, attributes, 0);
   }
 
@@ -3355,6 +3377,10 @@ namespace provallo
     UNDEF_REFERENCE(os);
     UNDEF_REFERENCE2 (os);
 
+    if(_split_factory==nullptr||(_split_factory&&(_split_factory->getSize()==0)))
+    {
+      _split_factory = new split_method_factory(data, rm);
+    }
     // Sanity check
     if (parameters.getType() != random_tree_param::_type())
       throw(std::runtime_error(
@@ -3372,7 +3398,7 @@ namespace provallo
     // Push all attributes tags
     std::vector<attribute_tag> attributes;
     // Push each attribute
-    for (uint32_t i = 0; i < splitFactory().getSize(); ++i)
+    for (uint32_t i = 0; i < _split_factory->getSize(); ++i)
       attributes.push_back(i);
 
     // Create tree
@@ -3458,8 +3484,10 @@ namespace provallo
         attribute_tag tag(attributes[i]);
         // Calculate the gain
         const split_method* m=_split_factory->getMethod(tag);
-        if(m)    
+        if(m!=nullptr)    
           gain_values[i] = gain(data, std::ref(*m) );
+        else
+          gain_values[i] = 0;
 
         //skip if no split.
 
@@ -3649,7 +3677,7 @@ namespace provallo
     const split_method *target_split = splitFactory().getTargetMethod();
     // Get some counts
     uint32_t class_number(target_split->size());
-    uint32_t attrs_number(splitFactory().getSize());
+    uint32_t attrs_number(_split_factory->getSize());
     // Create container of class votes
     class_dist votes(class_number);
     ssize_t distance = std::distance(begin, end);
@@ -5088,7 +5116,7 @@ namespace provallo
     // Push all attributes tags
     std::vector<attribute_tag> attributes;
     // Push each attribute
-    for (uint32_t i = 0; i < splitFactory().getSize(); ++i)
+    for (uint32_t i = 0; i < _split_factory->getSize(); ++i)
       attributes.push_back(i);
 
     // Create tree
@@ -5103,6 +5131,10 @@ namespace provallo
   {
     // Create split factory
 
+    if(_split_factory == nullptr)
+      _split_factory = new split_method_factory(data, getRandom() );  
+
+    attribute_tag target_tag(data.getattributes().get_target_tag()); 
 
     // split_method_factory local_factory (data, getRandom ());
     std::vector<attribute_tag> att(data.getattributesNumber());
@@ -5123,16 +5155,19 @@ namespace provallo
     {
       // Calculate the gain of each attribute
       std::vector<real_t> gain_values(attributes.size());
-
-      // Calculate the gain for each attribute
+      // Get attributes
+       // Calculate the gain for each attribute
       for (uint32_t i = 0; i < gain_values.size(); ++i)
       {
         // Get tag
+        if (attributes[i] == target_tag)
+          continue;
         attribute_tag tag(attributes[i]);
         // Calculate the gain
-        const split_method *xsplit_method = splitFactory().getMethod(tag);
-        if(xsplit_method != nullptr)
-          gain_values[i] = gain(data, std::ref(*xsplit_method ));
+        
+        const split_method *xsplit_method = _split_factory->getMethod(tag);
+        if(xsplit_method != nullptr && xsplit_method->size() > 0 )
+          gain_values[i] = gain(data, *xsplit_method );
         else
           gain_values[i] = 0.0;
       }
@@ -5397,11 +5432,14 @@ namespace provallo
     const random_forest_param *local_parameters =
         static_cast<const random_forest_param *>(&parameters);
 
+    if (_split_factory == nullptr)
+      _split_factory = new split_method_factory(data, getRandom());
+
     // Get target tag
     attribute_tag target_tag = data.getattributes().get_target_tag();
 
     // Resize importance
-    _raw_importance.resize(splitFactory().getSize(), 0.0);
+    _raw_importance.resize(_split_factory->getSize(), 0.0);
 
     // Number of classifiers
     uint32_t nclass = local_parameters->getClassifiersNumber();
@@ -6145,8 +6183,312 @@ namespace provallo
 
       };
 
-      //classifiers
 
+    //kdtree classifier  - wraps kdt template from kdt.h
+    template <uint32_t N>
+    class kdtree_classifier : public classifier, public kd_tree<N,real_t> 
+    {
+      //kdtree_params :
+      // Number of classes
+      uint32_t _classes;
+      // Number of attributes
+      uint32_t _attributes;
+      // Number of samples
+      uint32_t _samples;
+      // Number of trees
+      uint32_t _trees;
+      // Number of threads
+      uint32_t _threads;
+      // Number of leaves
+      uint32_t _leaves;
+      // Number of bins
+      uint32_t _bins;
+      // Number of iterations
+      uint32_t _iterations;
+      // Number of early stopping rounds
+      uint32_t _early_stopping_rounds;
+      // Learning rate
+      real_t _learning_rate;
+      // Number of boosting iterations
+
+      uint32_t _boosting_iterations;
+      // Bagging fraction
+      real_t _bagging_fraction;
+      // Bagging frequency
+      uint32_t _bagging_freq;
+      // Bagging seed
+      uint32_t _bagging_seed;
+      // Feature fraction
+      real_t _feature_fraction;
+      // Feature fraction seed
+      uint32_t _feature_fraction_seed;
+       // Minimum sum of instance weight in one leaf
+      real_t _min_sum_hessian_in_leaf;
+      // L1 regularization
+      real_t _lambda_l1;
+      // L2 regularization
+      real_t _lambda_l2;
+      // Minimum gain to perform split
+      real_t _min_gain_to_split;
+      // Maximum number of leaves
+      uint32_t _max_leaves;
+      // Maximum depth
+      uint32_t _max_depth;
+      // Maximum bin
+      uint32_t _max_bin;
+      // Number of data points to construct feature histogram
+      // Number of data points to use for finding splits
+      uint32_t _bin_construct_sample_cnt;
+      // Number of data points to use for finding splits
+      uint32_t _num_leaves;
+      // Number of data points to use for finding splits
+      uint32_t _min_data_in_bin;
+      // Number of data points to use for finding splits
+      uint32_t _min_data_in_leaf;
+      // Minimum number of data points in one node
+      uint32_t _min_data_per_group;
+
+      // Minimum number of data points in one node
+      uint32_t _max_cat_threshold;
+      // Minimum number of data points in one node
+      uint32_t _cat_l2;
+      // Minimum number of data points in one node
+      uint32_t _cat_smooth;
+      // Minimum number of data points in one node
+      uint32_t _max_cat_to_onehot;
+      // Minimum number of data points in one node
+      uint32_t _top_k;
+      // Minimum number of data points in one node
+      uint32_t _monotone_constraints;
+
+      //classifiers : 
+      std::vector<kd_tree<N,real_t> *> _classifiers; 
+      //class distribution
+      class_dist _class_dist; // Class distribution
+      //global oob predictions
+      std::vector<class_dist> global_oob_predictions;
+      //raw importance
+      std::vector<real_t> _raw_importance;
+      //oob error
+      real_t _oob_error;
+      //mutex
+      mutable std::recursive_mutex _mutex;
+      //split method factory
+      split_method_factory* _factory;
+      
+      //constructor
+      public:
+      kdtree_classifier(const dataset &data, const parameter_base &parameters,
+      const std::random_device &random, std::ostream &out=std::cout, split_method_factory *factory=nullptr);
+      //copy constructor
+      kdtree_classifier(const kdtree_classifier &other);
+      //move constructor
+      kdtree_classifier(kdtree_classifier &&other);
+      //copy assignment
+      kdtree_classifier &operator=(const kdtree_classifier &other);
+      //move assignment
+      kdtree_classifier &operator=(kdtree_classifier &&other);
+
+      //destructor
+      virtual ~kdtree_classifier();
+      //classify
+      virtual class_dist  classify(const std::vector<attribute> &sample) const;
+      //posterior probabilities
+      virtual class_dist posterior (const std::vector<attribute> &sample) const ;
+      //print
+      virtual void
+      print(std::ostream &out) const;
+      //print
+      virtual void  print(std::ostream &out, const dataset &data) const;
+      //print
+      virtual void  print(std::ostream &out, const dataset &data, const std::vector<attribute> &predictions) const;
+      //empty print
+      virtual void  print() const;
+      //get classifiers
+      std::vector<kd_tree<N,real_t>*> get_classifiers() const { return _classifiers; }
+      //set classifiers
+
+      void set_classifiers(std::vector<kd_tree<N,real_t>*> classifiers) { _classifiers = classifiers; }
+      //get classes
+      uint32_t get_classes() const { return _classes; }
+      //set classes
+      void set_classes(uint32_t classes) { _classes = classes; }
+      //get attributes
+      uint32_t get_attributes() const { return _attributes; }
+      //set attributes
+      void set_attributes(uint32_t attributes) { _attributes = attributes; }
+      //get samples
+      uint32_t get_samples() const { return _samples; }
+      //set samples
+      void set_samples(uint32_t samples) { _samples = samples; }
+      //get trees
+      uint32_t get_trees() const { return _trees; }
+      //set trees
+      void set_trees(uint32_t trees) { _trees = trees; }
+      //get threads
+      uint32_t get_threads() const { return _threads; }
+      //set threads
+      void set_threads(uint32_t threads) { _threads = threads; }
+      //get leaves
+
+      uint32_t get_leaves() const { return _leaves; }
+      //set leaves
+      void set_leaves(uint32_t leaves) { _leaves = leaves; }
+      //get bins
+      uint32_t get_bins() const { return _bins; }
+      //set bins
+      void set_bins(uint32_t bins) { _bins = bins; }
+      //get iterations
+      uint32_t get_iterations() const { return _iterations; }
+      //set iterations
+
+      void set_iterations(uint32_t iterations) { _iterations = iterations; }
+
+
+      //get early stopping rounds
+      uint32_t get_early_stopping_rounds() const { return _early_stopping_rounds; }
+      //set early stopping rounds
+
+      void set_early_stopping_rounds(uint32_t early_stopping_rounds) { _early_stopping_rounds = early_stopping_rounds; }
+      //get learning rate
+      real_t get_learning_rate() const { return _learning_rate; }
+      //set learning rate
+      void set_learning_rate(real_t learning_rate) { _learning_rate = learning_rate; }
+      //get boosting iterations
+      uint32_t get_boosting_iterations() const { return _boosting_iterations; }
+      //set boosting iterations
+      void set_boosting_iterations(uint32_t boosting_iterations) { _boosting_iterations = boosting_iterations; }
+      //get bagging fraction
+      real_t get_bagging_fraction() const { return _bagging_fraction; }
+      //set bagging fraction
+      void set_bagging_fraction(real_t bagging_fraction) { _bagging_fraction = bagging_fraction; }
+      //get bagging frequency
+      uint32_t get_bagging_freq() const { return _bagging_freq; }
+      //set bagging frequency
+
+      void set_bagging_freq(uint32_t bagging_freq) { _bagging_freq = bagging_freq; }
+
+      //get bagging seed
+
+      uint32_t get_bagging_seed() const { return _bagging_seed; }
+      //set bagging seed
+      void set_bagging_seed(uint32_t bagging_seed) { _bagging_seed = bagging_seed; }
+      //get feature fraction
+      real_t get_feature_fraction() const { return _feature_fraction; }
+      //set feature fraction
+      void set_feature_fraction(real_t feature_fraction) { _feature_fraction = feature_fraction; }
+      //get feature fraction seed
+      uint32_t get_feature_fraction_seed() const { return _feature_fraction_seed; }
+      //set feature fraction seed
+
+      void set_feature_fraction_seed(uint32_t feature_fraction_seed) { _feature_fraction_seed = feature_fraction_seed; }
+      //get minimum sum of instance weight in one leaf
+      real_t get_min_sum_hessian_in_leaf() const { return _min_sum_hessian_in_leaf; }
+      //set minimum sum of instance weight in one leaf
+      void set_min_sum_hessian_in_leaf(real_t min_sum_hessian_in_leaf) { _min_sum_hessian_in_leaf = min_sum_hessian_in_leaf; }
+      //get l1 regularization
+      real_t get_lambda_l1() const { return _lambda_l1; }
+      //set l1 regularization
+      void set_lambda_l1(real_t lambda_l1) { _lambda_l1 = lambda_l1; }
+      //get l2 regularization
+      real_t get_lambda_l2() const { return _lambda_l2; }
+      //set l2 regularization
+      void set_lambda_l2(real_t lambda_l2) { _lambda_l2 = lambda_l2; }
+      //get minimum gain to perform split
+      real_t get_min_gain_to_split() const { return _min_gain_to_split; }
+      //set minimum gain to perform split
+      void set_min_gain_to_split(real_t min_gain_to_split) { _min_gain_to_split = min_gain_to_split; }
+      //get maximum number of leaves
+      uint32_t get_max_leaves() const { return _max_leaves; }
+      //set maximum number of leaves
+      void set_max_leaves(uint32_t max_leaves) { _max_leaves = max_leaves; }
+      //get maximum depth
+      uint32_t get_max_depth() const { return _max_depth; }
+      //set maximum depth
+      void set_max_depth(uint32_t max_depth) { _max_depth = max_depth; }
+      //get maximum bin
+      uint32_t get_max_bin() const { return _max_bin; }
+      //set maximum bin
+      void set_max_bin(uint32_t max_bin) { _max_bin = max_bin; }
+      //get number of data points to construct feature histogram
+      uint32_t get_bin_construct_sample_cnt() const { return _bin_construct_sample_cnt; }
+      //set number of data points to construct feature histogram
+      void set_bin_construct_sample_cnt(uint32_t bin_construct_sample_cnt) { _bin_construct_sample_cnt = bin_construct_sample_cnt; }
+      //get number of data points to use for finding splits
+      uint32_t get_num_leaves() const { return _num_leaves; }
+      //set number of data points to use for finding splits
+      void set_num_leaves(uint32_t num_leaves) { _num_leaves = num_leaves; }
+      //get number of data points to use for finding splits
+      uint32_t get_min_data_in_bin() const { return _min_data_in_bin; }
+      //set number of data points to use for finding splits
+      void set_min_data_in_bin(uint32_t min_data_in_bin) { _min_data_in_bin = min_data_in_bin; }
+      //get number of data points to use for finding splits
+      uint32_t get_min_data_in_leaf() const { return _min_data_in_leaf; }
+      //set number of data points to use for finding splits
+      void set_min_data_in_leaf(uint32_t min_data_in_leaf) { _min_data_in_leaf = min_data_in_leaf; }
+      //get minimum number of data points in one node
+      uint32_t get_min_data_per_group() const { return _min_data_per_group; }
+      //set minimum number of data points in one node
+      void set_min_data_per_group(uint32_t min_data_per_group) { _min_data_per_group = min_data_per_group; }
+      //get minimum number of data points in one node
+      uint32_t get_max_cat_threshold() const { return _max_cat_threshold; }
+      //set minimum number of data points in one node
+      void set_max_cat_threshold(uint32_t max_cat_threshold) { _max_cat_threshold = max_cat_threshold; }
+      //get minimum number of data points in one node
+      uint32_t get_cat_l2() const { return _cat_l2; }
+      //set minimum number of data points in one node
+      void set_cat_l2(uint32_t cat_l2) { _cat_l2 = cat_l2; }
+      //get minimum number of data points in one node
+      uint32_t get_cat_smooth() const { return _cat_smooth; }
+      //set minimum number of data points in one node
+
+      void set_cat_smooth(uint32_t cat_smooth) { _cat_smooth = cat_smooth; }
+      //get minimum number of data points in one node
+      uint32_t get_max_cat_to_onehot() const { return _max_cat_to_onehot; }
+      //set minimum number of data points in one node
+      void set_max_cat_to_onehot(uint32_t max_cat_to_onehot) { _max_cat_to_onehot = max_cat_to_onehot; }
+      //get minimum number of data points in one node
+      uint32_t get_top_k() const { return _top_k; }
+      //set minimum number of data points in one node
+      void set_top_k(uint32_t top_k) { _top_k = top_k; }
+      //get minimum number of data points in one node
+      uint32_t get_monotone_constraints() const { return _monotone_constraints; }
+      //set minimum number of data points in one node
+      void set_monotone_constraints(uint32_t monotone_constraints) { _monotone_constraints = monotone_constraints; }
+      //get minimum number of data points in one node
+      //uint32_t get_feature_contri() const { return _feature_contri; }
+      //set minimum number of data points in one node
+      //void set_feature_contri(uint32_t feature_contri) { _feature_contri = feature_contri; }
+      
+      uint32_t get_classifiers_size() const { return _classifiers.size(); }
+      //set minimum number of data points in one node
+      void set_classifiers_size(uint32_t classifiers_size) { _classifiers.resize(classifiers_size); }
+      //get minimum number of data points in one node
+      uint32_t get_classifiers_capacity() const { return _classifiers.capacity(); }   
+      //set minimum number of data points in one node
+      void set_classifiers_capacity(uint32_t classifiers_capacity) { _classifiers.reserve(classifiers_capacity); }
+      //get minimum number of data points in one node
+      uint32_t get_classifiers_max_size() const { return _classifiers.max_size(); }
+      //set minimum number of data points in one node
+      void set_classifiers_max_size(uint32_t classifiers_max_size) { _classifiers.resize(classifiers_max_size); }
+
+  //helper functions : 
+  //get classifier
+  kd_tree<N,real_t>* get_classifier(uint32_t index) const { return _classifiers[index]; }
+  //set classifier
+  void set_classifier(uint32_t index, kd_tree<N,real_t>* classifier) { _classifiers[index] = classifier; }
+  //add classifier
+  void add_classifier(kd_tree<N,real_t>* classifier) { _classifiers.push_back(classifier); }
+  //remove classifier
+  void remove_classifier(uint32_t index) { _classifiers.erase(_classifiers.begin() + index); }
+  //clear classifiers
+  void clear_classifiers() { _classifiers.clear(); }
+  //get classifiers begin
+  typename std::vector<kd_tree<N,real_t>*>::iterator get_classifiers_begin() { return _classifiers.begin(); }
+  //get classifiers end
+  typename std::vector<kd_tree<N,real_t>*>::iterator get_classifiers_end() { return _classifiers.end(); }
+    
+};//end of kdtree classifier class
 
 // utility: print classifier summary()
   void

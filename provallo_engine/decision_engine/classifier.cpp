@@ -5013,193 +5013,200 @@ namespace provallo
 					sparse_ix *tree_num,
 					real_t *tree_depth, size_t row) noexcept
 	{
-		size_t curr_lev = 0;
-		real_t xval = 0.;
-		int cval = 0;
-		real_t hval = 0.;
+    size_t  curr_lev = 0;
+    double  xval;
+    int     cval;
+    double  hval;
 
-		size_t ncols_numeric = 0, ncols_categ = 0;
+    size_t ncols_numeric, ncols_categ;
 
-		NumericConfig numeric_config;
-		if (data.Xr_indptr != NULL)
-			numeric_config = SparseCSR;
-		else if (data.Xc_indptr != NULL)
-			numeric_config = SparseCSC;
-		else if (data.is_col_major)
-			numeric_config = DenseColMajor;
-		else
-			numeric_config = DenseRowMajor;
+    NumericConfig numeric_config;
+    if (data.Xr_indptr != NULL)
+        numeric_config = SparseCSR;
+    else if (data.Xc_indptr != NULL)
+        numeric_config = SparseCSC;
+    else if (data.is_col_major)
+        numeric_config = DenseColMajor;
+    else
+        numeric_config = DenseRowMajor;
 
-		sparse_ix *row_st = NULL, *row_end = NULL;
-		size_t lb = 0, ub = 0;
-		if (numeric_config == SparseCSR)
-		{
-			row_st = data.Xr_ind + data.Xr_indptr[row];
-			row_end = data.Xr_ind + data.Xr_indptr[row + 1];
-			lb = *row_st;
-			ub = *(row_end - 1);
-		}
-		while (true)
-		{
-			// if (hplane[curr_lev].score > 0)
-			if (unlikely(hplane[curr_lev].hplane_left == 0))
-			{
-				output_depth += hplane[curr_lev].score;
-				if (unlikely(tree_num != NULL))
-					tree_num[row] = curr_lev;
-				if (unlikely(tree_depth != NULL))
-					*tree_depth = hplane[curr_lev].score;
-				if (unlikely(imputed_data != NULL))
+    sparse_ix *row_st = NULL, *row_end = NULL;
+    size_t lb, ub;
+    if (numeric_config == SparseCSR)
+    {
+        row_st  = data.Xr_ind + data.Xr_indptr[row];
+        row_end = data.Xr_ind + data.Xr_indptr[row + 1];
+        lb = *row_st;
+        ub = *(row_end-1);
+    }
+
+    while (true)
+    {
+        // if (hplane[curr_lev].score > 0)
+        if (unlikely(hplane[curr_lev].hplane_left == 0))
+        {
+            output_depth += hplane[curr_lev].score;
+            if (unlikely(tree_num != NULL))
+                tree_num[row] = curr_lev;
+            if (unlikely(tree_depth != NULL))
+                *tree_depth = hplane[curr_lev].score;
+            if (unlikely(imputed_data != NULL))
+            {
+                add_from_impute_node((*impute_nodes)[curr_lev], *imputed_data, (double)1);
+            }
+            return;
+        }
+
+        else
+        {
+            hval = 0;
+            ncols_numeric = 0; ncols_categ = 0;
+            for (size_t col = 0; col < hplane[curr_lev].col_num.size(); col++)
+            {
+				if( hplane[curr_lev].col_type.size() <=col ) 
 				{
-					add_from_impute_node((*impute_nodes)[curr_lev], *imputed_data,
-										 (real_t)1);
+
+					xval = data.numeric_data[ row * data.ncols_numeric];
+
+					break;;
 				}
-				return;
-			}
+				switch(hplane[curr_lev].col_type[col])
+                {
+                    case Numeric:
+                    {
+                        switch(numeric_config)
+                        {
+                            case DenseRowMajor:
+                            {
+                                xval = data.numeric_data[hplane[curr_lev].col_num[col] + row * data.ncols_numeric];
+                                break;
+                            }
 
-			else
-			{
-				hval = 0;
-				ncols_numeric = 0;
-				ncols_categ = 0;
-				for (size_t col = 0; col < hplane[curr_lev].col_num.size(); col++)
-				{
-					switch (hplane[curr_lev].col_type[col])
+                            case DenseColMajor:
+                            {
+                                xval = data.numeric_data[row +  hplane[curr_lev].col_num[col] *data.nrows];
+                                break;
+                            }
+
+                            case SparseCSR:
+                            {
+                                xval = extract_spR(data, row_st, row_end, hplane[curr_lev].col_num[col], lb, ub);
+                                break;
+                            }
+
+                            case SparseCSC:
+                            {
+                                xval = extract_spC(data, row, hplane[curr_lev].col_num[col]);
+                                break;
+                            }
+                        }
+
+                        if (unlikely(is_na_or_inf(xval)))
+                        {
+                            if (model_outputs.missing_action != Fail)
+                            {
+								real_t fill_val = hplane[curr_lev].fill_val.size()<col?0:hplane[curr_lev].fill_val[col]; 
+                				hval += fill_val;
+								//hval += hplane[curr_lev].fill_val[col];
+                            }
+                            else
+                            {
+                                output_depth = NAN;
+                                return;
+                            }
+                        }
+
+                        else
+                        {
+                            hval += (xval - hplane[curr_lev].mean[ncols_numeric]) * hplane[curr_lev].coef[ncols_numeric];
+                        }
+
+                        ncols_numeric++;
+                        break;
+                    }
+					break;
+                    case Categorical:
+                    {
+                        cval = data.categ_data[
+                            data.is_col_major?
+                            (row +  hplane[curr_lev].col_num[col] * data.nrows)
+                                :
+                            (hplane[curr_lev].col_num[col] + row * data.ncols_categ)
+                        ];
+                        if (unlikely(cval < 0))
+                        {
+                            if (model_outputs.missing_action != Fail)
+                            {
+                                hval += hplane[curr_lev].fill_val[col];
+                            }
+                            
+                            else
+                            {
+                                output_depth = NAN;
+                                return;
+                            }
+                        }
+
+                        else
+                        {
+                            switch(model_outputs.cat_split_type)
+                            {
+                                case SingleCateg:
+                                {
+                                    hval += (cval == hplane[curr_lev].chosen_cat[ncols_categ])? hplane[curr_lev].fill_new[ncols_categ] : 0;
+                                    break;
+                                }
+
+                                case SubSet:
+                                {
+                                    if (unlikely(cval >= (int)hplane[curr_lev].cat_coef[ncols_categ].size()))
+                                    {
+                                        if (model_outputs.new_cat_action == Random) {
+                                            cval = cval % (int)hplane[curr_lev].cat_coef[ncols_categ].size();
+                                            hval += hplane[curr_lev].cat_coef[ncols_categ][cval];
+                                        }
+
+                                        else {
+                                            hval += hplane[curr_lev].fill_new[ncols_categ];
+                                        }
+                                    }
+                                    
+                                    else
+                                    {
+                                        hval += hplane[curr_lev].cat_coef[ncols_categ][cval];
+                                    }
+                                    
+                                    break;
+                                }
+                            }
+                        }
+
+                        ncols_categ++;
+                        break;
+                    }
+					break;
+					case NotUsed:
 					{
-					case Numeric:
-					{
-						switch (numeric_config)
-						{
-						case DenseRowMajor:
-						{
-							xval =
-								data.numeric_data[hplane[curr_lev].col_num[col] + row * data.ncols_numeric];
-							break;
-						}
-
-						case DenseColMajor:
-						{
-							xval = data.numeric_data[row + hplane[curr_lev].col_num[col] * data.nrows];
-							break;
-						}
-
-						case SparseCSR:
-						{
-							xval = extract_spR(data, row_st, row_end,
-											   hplane[curr_lev].col_num[col],
-											   lb, ub);
-							break;
-						}
-
-						case SparseCSC:
-						{
-							xval = extract_spC(data, row,
-											   hplane[curr_lev].col_num[col]);
-							break;
-						}
-						}
-
-						if (unlikely(is_na_or_inf(xval)))
-						{
-							if (model_outputs.missing_action != Fail)
-							{
-								hval += hplane[curr_lev].fill_val[col];
-							}
-
-							else
-							{
-								output_depth = NAN;
-								return;
-							}
-						}
-
-						else
-						{
-							hval += (xval - hplane[curr_lev].mean[ncols_numeric]) * hplane[curr_lev].coef[ncols_numeric];
-						}
-
-						ncols_numeric++;
 						break;
 					}
 
-					case Categorical:
-					{
-						cval =
-							data.categ_data[data.is_col_major ? (row + hplane[curr_lev].col_num[col] * data.nrows) : (hplane[curr_lev].col_num[col] + row * data.ncols_categ)];
-						if (unlikely(cval < 0))
-						{
-							if (model_outputs.missing_action != Fail)
-							{
-								hval += hplane[curr_lev].fill_val[col];
-							}
+  			        /* default:
+                    {
+                        assert(0);
+                        break;
+                    }*/
+                }
 
-							else
-							{
-								output_depth = NAN;
-								return;
-							}
-						}
+            }
 
-						else
-						{
-							switch (model_outputs.cat_split_type)
-							{
-							case SingleCateg:
-							{
-								hval +=
-									(cval == hplane[curr_lev].chosen_cat[ncols_categ]) ? hplane[curr_lev].fill_new[ncols_categ] : 0;
-								break;
-							}
+            output_depth -= (hval < hplane[curr_lev].range_low) ||
+                            (hval > hplane[curr_lev].range_high);
+            curr_lev       = (hval <= hplane[curr_lev].split_point)?
+                             hplane[curr_lev].hplane_left : hplane[curr_lev].hplane_right;
+        }// end else
+    }// end while
 
-							case SubSet:
-							{
-								if (unlikely(
-										cval >= (int)hplane[curr_lev].cat_coef[ncols_categ].size()))
-								{
-									if (model_outputs.new_cat_action == Random)
-									{
-										cval =
-											cval % (int)hplane[curr_lev].cat_coef[ncols_categ].size();
-										hval +=
-											hplane[curr_lev].cat_coef[ncols_categ][cval];
-									}
-
-									else
-									{
-										hval +=
-											hplane[curr_lev].fill_new[ncols_categ];
-									}
-								}
-
-								else
-								{
-									hval +=
-										hplane[curr_lev].cat_coef[ncols_categ][cval];
-								}
-
-								break;
-							}
-							}
-						}
-
-						ncols_categ++;
-						break;
-					}
-
-					default:
-					{
-						assert(0);
-						break;
-					}
-					}
-				}
-
-				output_depth -= (hval < hplane[curr_lev].range_low) || (hval > hplane[curr_lev].range_high);
-				curr_lev =
-					(hval <= hplane[curr_lev].split_point) ? hplane[curr_lev].hplane_left : hplane[curr_lev].hplane_right;
-			}
-		}
-	}
+	}// end function
 
 	template <class ImputedData, class InputData>
 	void
@@ -5423,10 +5430,11 @@ namespace provallo
 			(real_t *)nullptr, (int64_t *)nullptr, (int64_t *)nullptr,
 			(real_t *)nullptr, (int64_t *)nullptr, (int64_t *)nullptr, nrows,
 			this->nthreads, standardize,
-			(!this->model.trees.empty()) ? &this->model : nullptr,
-			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
+			  &this->model  ,
+			  &this->model_ext ,
 			output_depths, tree_num, per_tree_depths,
-			(!this->indexer.indices.empty()) ? &this->indexer : nullptr);
+			 &this->indexer   );
+			
 	}
 
 	void
@@ -6113,9 +6121,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					output_depths[row] = score;
 				}
 			}
-		}
+		} //end if
 
-		else
+		else if (model_outputs_ext != NULL)
 		{
 			if (model_outputs_ext->missing_action == Fail && prediction.categ_data == NULL && prediction.Xc_indptr == NULL && prediction.Xr_indptr == NULL && !model_outputs_ext->has_range_penalty)
 			{
@@ -6164,7 +6172,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 						output_depths[row] = score;
 					}
 				}
-			}
+			}//end if
 
 			else
 			{
@@ -6187,7 +6195,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					}
 					output_depths[row] = score;
 				}
-			}
+			}//
 		}
 
 		/* translate sum-of-depths to outlier score */
@@ -17726,9 +17734,11 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			split_itree_recursive<InputData, WorkerMemory, lreal_t_safe>(
 				*tree_root, workspace, input_data, model_params, impute_nodes, 0);
 		}
-
 		else
 		{
+
+			//prevent crash on emplace_back
+ 
 			split_hplane_recursive<InputData, WorkerMemory, lreal_t_safe>(
 				*hplane_root, workspace, input_data, model_params, impute_nodes,
 				0);
@@ -18513,11 +18523,18 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	//copy constructor
 	confusion_matrix::confusion_matrix(const confusion_matrix &rhs) : _matrix(rhs._matrix), _class_values(rhs._class_values),_fp(rhs._fp),_fn(rhs._fn),_tp(rhs._tp),_tn(rhs._tn), _total(rhs._total),_error(rhs._error), _accuracy(rhs._accuracy), _precision(rhs._precision), _recall(rhs._recall), _f1(rhs._f1) 
 	{
-		//nothing to do
+		_class_values.resize(rhs._class_values.size());
+		for (size_t i = 0; i < rhs._class_values.size(); ++i)
+			_class_values[i] = rhs._class_values[i];
 	}
 	//move constructor
 	confusion_matrix::confusion_matrix(confusion_matrix &&rhs) : _matrix(std::move(rhs._matrix)), _class_values(std::move(rhs._class_values)),_fp(rhs._fp),_fn(rhs._fn),_tp(rhs._tp),_tn(rhs._tn), _total(rhs._total),_error(rhs._error), _accuracy(rhs._accuracy), _precision(rhs._precision), _recall(rhs._recall), _f1(rhs._f1) 
 	{
+		//update class_values 
+		_class_values.resize(rhs._class_values.size());
+		for (size_t i = 0; i < rhs._class_values.size(); ++i)
+			_class_values[i] = rhs._class_values[i];
+
 		//nothing to do
 	}
     confusion_matrix &confusion_matrix::operator=(const confusion_matrix &other)
@@ -18537,6 +18554,9 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			_recall = other._recall;
 			_f1 = other._f1;
 		}
+		_class_values.resize(other._class_values.size());
+		for (size_t i = 0; i < other._class_values.size(); ++i)
+			_class_values[i] = other._class_values[i];
 
 		return *this;
 	}
@@ -18558,7 +18578,10 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 			_recall = other._recall;
 			_f1 = other._f1;
 		}
-
+		_class_values.resize(other._class_values.size());
+		for (size_t i = 0; i < other._class_values.size(); ++i)
+			_class_values[i] = other._class_values[i];
+	
 		return *this;
 	} 
 
@@ -18578,9 +18601,13 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	{
  
 		size_t target_count =  q.getMatrixDim();
+		if(q._class_values.size()<target_count)
+		{
+			std::cerr << "class values size is different than matrix dimension" << std::endl;
+		}
 		// Print header
 		out << std::setw(10) << "+";
-		for (size_t i = 0; i < target_count; ++i)
+		for (size_t i = 0; (i < target_count&& i<q._class_values.size()); ++i)
 			out << std::setw(10)
 				//<< "(" + q._attributes.getValue(target_tag, attribute(discrete_value(i))) + ")";
 				<< "(" + q._class_values[i] + ")";
@@ -18853,13 +18880,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		std::cout << "[#] dataset entropy = " << data.entropy() << std::endl;
 		std::cout << "[#] dataset gini = " << data.gini() << std::endl;
 		std::cout << "[#] dataset variance = " << data.variance() << std::endl;
- 		std::cout << "[#] dataset mean = " << data.mean() << std::endl;
-		std::cout << "[#] dataset median = " << data.median() << std::endl;
-		std::cout << "[#] dataset mode = " << data.mode() << std::endl;
-		std::cout << "[#] dataset min = " << data.min() << std::endl;
-		std::cout << "[#] dataset max = " << data.max() << std::endl;
-		std::cout << "[#] dataset sum = " << data.sum() << std::endl;
-		
+ 		
 		/*	std::cout<<"[#] dataset median = "<<data.median()<<std::endl;
 		std::cout<<"[#] dataset mode = "<<data.mode()<<std::endl;
 		std::cout<<"[#] dataset range = "<<data.range()<<std::endl;
@@ -18961,26 +18982,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	lightgbm_classifier::lightgbm_classifier( const dataset &data, const parameter_base &parameters,
       const std::random_device &random, std::ostream &out/*default std::cout*/, split_method_factory *factory/*nullptr*/ ):ensemble_classifier(data,parameters,random,factory) 
 	{
+		
 		UNDEF_REFERENCE(data)
 		UNDEF_REFERENCE2(parameters)
 		UNDEF_REFERENCE2(random)
 		UNDEF_REFERENCE2(out)
 		UNDEF_REFERENCE2(factory)
 		//setup lightgbm parameters :
-		//1)boosting_type
-		//2)num_iterations
-		//3)learning_rate
-		//4)num_leaves
-		//5)max_depth
-		//6)min_data_in_leaf
-		//7)bagging_fraction
-		//8)feature_fraction
-		//9)num_threads
-		//10)verbose
- 
-
-		//end training :
-
+	    //cast parameters from parameter_base to lightgbm_parameter 
+		
 	}
 	//classify 	:
 	 attribute
@@ -19058,5 +19068,5 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	}
 
 
- }
+  }
 /* namespace provallo */

@@ -488,11 +488,18 @@ namespace provallo
   std::ostream &
   operator<<(std::ostream &out, const std::vector<T> &a)
   {
+    if(a.size()>0){
+
     std::size_t i = 0;
     out << std::string("(");
     for (; i < a.size() - 1; ++i)
       out << a[i] << std::string(",");
     out << a[i] << std::string(")");
+    }
+    else
+    {
+      out << std::string("()");
+    } 
     return out;
   }
 

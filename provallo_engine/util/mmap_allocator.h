@@ -528,21 +528,10 @@ namespace provallo
 
         // _Vector_base(size_type __n, const allocator_type& __a = allocator_type())
 
-
-        // _Vector_base(size_type __n, const allocator_type& __a = allocator_type())
-
-
-        // _Vector_base(size_type __n, const allocator_type& __a = allocator_type())
-
-
-        // _Vector_base(size_type __n, const allocator_type& __a = allocator_type())
-
-
-        // _Vector_base(size_type __n, const allocator_type& __a = allocator_type())
- 
+        
 
         private:
-        //debug
+
     };// class mmap_vector
 
    

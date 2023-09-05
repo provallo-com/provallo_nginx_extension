@@ -354,8 +354,6 @@ namespace provallo
       auto split_type=right._groups.getsplit_type(i); 
       auto attribute_type=right._groups.getattribute_type(i); 
       _groups.push(copy, split_type, attribute_type);
-    
-
      } 
   } 
 

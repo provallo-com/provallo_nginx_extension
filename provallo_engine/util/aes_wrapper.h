@@ -27,8 +27,7 @@ struct auto_evp_cipher_ctx
 {
   //EVP CIPHER SILLY PTR
   EVP_CIPHER_CTX * _p;
-
-
+ 
   auto_evp_cipher_ctx():_p(nullptr){
     _p = EVP_CIPHER_CTX_new();
 
@@ -60,14 +59,15 @@ namespace provallo
 		~aes_ifile();
 
 	private:
+		//private assignment & copy
  		aes_ifile(const aes_ifile &);
 		aes_ifile &operator= (const aes_ifile &);
-
+		// Streambuf methods:
 		int_type underflow();
 		int_type uflow();
 		int_type pbackfail(int_type ch);
 		std::streamsize showmanyc();
-
+		
 		// data helpers:
 
 		// Flag if file is good or not

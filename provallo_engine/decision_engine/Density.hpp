@@ -1048,7 +1048,7 @@ namespace provallo
 	split_hplane_recursive(std::vector<IsoHPlane> &hplanes,
 						   WorkerMemory &workspace, InputData &data,
 						   ModelParams &model_params,
-						   std::vector<ImputeNode> *impute_nodes,
+						   std::vector<ImputeNode>* impute_nodes,
 						   size_t curr_depth)
 	{
 		if (interrupt_switch)
@@ -1057,17 +1057,24 @@ namespace provallo
 		size_t hplane_from = hplanes.size() - 1;
 		std::unique_ptr<RecursionState> recursion_state;
 		std::vector<bool> col_is_taken;
-		hashed_set<size_t> col_is_taken_s;
-
-		/* calculate imputation statistics if desired */
-		if (impute_nodes != NULL)
+		hashed_set<size_t> col_is_taken_s; 
+		
+		/* calculate imputation statistics if desired if impute nodes were allocated.*/
+		if (impute_nodes != NULL&&impute_nodes->size()>0)
 		{
+			ImputeNode impute_node = impute_nodes->back(); 
+
 			if (data.Xc_indptr != NULL)
 				std::sort(workspace.ix_arr.begin() + workspace.st,
 						  workspace.ix_arr.begin() + workspace.end + 1);
 			build_impute_node<decltype(data), decltype(workspace), ldouble_safe>(
-				impute_nodes->back(), workspace, data, model_params,
-				*impute_nodes, curr_depth, model_params.min_imp_obs);
+				std::ref(impute_node ), workspace, data, model_params,
+				*impute_nodes, curr_depth, model_params.min_imp_obs); 
+
+			/* check for potential isolated leafs or unique splits */ 
+			if (workspace.end == workspace.st || (workspace.end - workspace.st) == 1 || curr_depth >= model_params.max_depth)
+				goto terminal_statistics;
+			
 		}
 
 		/* check for potential isolated leafs or unique splits */
@@ -1675,7 +1682,12 @@ namespace provallo
 		/* follow right branch */
 		hplanes[hplane_from].hplane_right = hplanes.size();
 		recursion_state->restore_state(workspace);
-		hplanes.emplace_back();
+ 		workspace.st = workspace.split_ix;	
+		//this emplace_back is the problem 
+		//
+		//hplanes.emplace_back();
+		// instead :
+		//hplanes.emplace_back(hplanes[hplane_from]);
 
 		if (impute_nodes != NULL)
 			impute_nodes->emplace_back(hplane_from);
@@ -1687,9 +1699,7 @@ namespace provallo
 		{
 			workspace.density_calculator.pop();
 		}
-		workspace.st = workspace.split_ix;
-		split_hplane_recursive<InputData, WorkerMemory, ldouble_safe>(
-			hplanes, workspace, data, model_params, impute_nodes, curr_depth + 1);
+
 		if (is_boxed_metric(model_params.scoring_metric))
 		{
 			workspace.density_calculator.pop_bdens_ext_right();

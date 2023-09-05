@@ -78,6 +78,14 @@ namespace provallo
         this->resource_values.push_back (
             std::pair<resource_type, std::string> (r.first, r.second));
       }
+    //set default actions these actions will be overwritten by the policy 
+    //manager
+    
+    this->_actions.push_back (BLOCK_AND_DROP);
+    this->_actions.push_back (SANDBOX_TRAFFIC);
+    //this->_actions.push_back (ALLOW_AND_MONITOR);
+    //this->_actions.push_back (ALLOW_PASSTHROUGH);
+    
   }  
 
   monitor_policy::~monitor_policy ()
@@ -101,6 +109,7 @@ namespace provallo
   {
     std::lock_guard<std::mutex> lock (m);
     policies.push_back (policy);
+    
     return true;
   }   
 
@@ -152,7 +161,7 @@ namespace provallo
           {
             for (auto r : p->get_resource_values())
               {
-                std::vector<uint8_t> actions;
+                 std::vector<uint8_t> actions;
                 //TODO: get actions from resource
                 actions.push_back (1);
                 p->notify_all (r.second, actions);
