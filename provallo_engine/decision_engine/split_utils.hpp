@@ -44,7 +44,7 @@ namespace provallo
 		/* for prediction-time */
 		iso_hplane(): col_num(), col_type(), coef(), mean(), cat_coef(), chosen_cat(), fill_val(), fill_new(), split_point(), hplane_left(), hplane_right(), score(), range_low(), range_high(), remainder() {}		
 		//constructor
-			
+
 		iso_hplane(size_t ncols_numeric, size_t ncols_categ, size_t ncols_categ_main)
 		{
 			col_num.resize(ncols_numeric + ncols_categ);
@@ -140,6 +140,18 @@ namespace provallo
 			}
 			return *this;
 		}		
+		//destructor
+		~iso_hplane()
+		{
+			col_num.clear();
+			col_type.clear();
+			coef.clear();
+			mean.clear();
+			cat_coef.clear();
+			chosen_cat.clear();
+			fill_val.clear();
+			fill_new.clear();
+		}
 
 	} IsoHPlane;
 

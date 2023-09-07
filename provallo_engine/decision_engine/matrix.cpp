@@ -16,7 +16,7 @@ namespace provallo
       data (NULL),_rows(rows),_cols(cols)
   {
     data = new double[_rows * _cols];
-	
+	//clear ();		
   }
 
   matrix_base::~matrix_base ()

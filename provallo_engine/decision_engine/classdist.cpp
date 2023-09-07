@@ -51,5 +51,28 @@ namespace provallo
       discrete_value distance  = (discrete_value)std::distance (tmp.begin(),  std::max_element (tmp.begin (),tmp.end () ));
       return std::make_pair(attribute(distance),percentage(distance));
   }
+  real_t  class_dist::entropy () const
+  {
+    real_t  entropy = 0.0;
+    for (auto &p : _histogram)
+      {
+        if (p > 0.0)
+          {
+            entropy += p * std::log2 (p);
+          }
+      }
+    return -entropy;
+  }
+
+  real_t  class_dist::gini ()const
+  {
+    real_t  gini = 0.0;
+    for (auto &p : _histogram)
+      {
+        gini += p * p;
+      }
+    return 1.0 - gini;
+  }   
+  
   
 } /* namespace provallo */

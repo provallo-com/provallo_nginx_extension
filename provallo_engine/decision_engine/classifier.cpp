@@ -2886,23 +2886,23 @@ namespace provallo
 
 	template <class ImputedData, class PredictionData>
 	void
-	initialize_impute_calc(ImputedData &imp, PredictionData &prediction_data,
+	initialize_impute_calc(ImputedData &imp, PredictionData &data,
 						   Imputer &imputer, size_t row)
 	{
 		imp.n_missing_num = 0;
 		imp.n_missing_cat = 0;
 		imp.n_missing_sp = 0;
 
-		if (prediction_data.numeric_data != NULL)
+		if (data.numeric_data != NULL)
 		{
 			if (!imp.missing_num.size())
 				imp.missing_num.resize(imputer.ncols_numeric);
 
-			if (prediction_data.is_col_major)
+			if (data.is_col_major)
 			{
 				for (size_t col = 0; col < imputer.ncols_numeric; col++)
 					if (is_na_or_inf(
-							prediction_data.numeric_data[row + col * prediction_data.nrows]))
+							data.numeric_data[row + col * data.nrows]))
 						imp.missing_num[imp.n_missing_num++] = col;
 			}
 
@@ -2910,7 +2910,7 @@ namespace provallo
 			{
 				for (size_t col = 0; col < imputer.ncols_numeric; col++)
 					if (is_na_or_inf(
-							prediction_data.numeric_data[col + row * imputer.ncols_numeric]))
+							data.numeric_data[col + row * imputer.ncols_numeric]))
 						imp.missing_num[imp.n_missing_num++] = col;
 			}
 
@@ -2927,14 +2927,14 @@ namespace provallo
 						  imp.num_weight.begin() + imp.n_missing_num, 0);
 			}
 		}
-		else if (prediction_data.Xr != NULL)
+		else if (data.Xr != NULL)
 		{
 			if (!imp.missing_sp.size())
 				imp.missing_sp.resize(imputer.ncols_numeric);
-			for (auto ix = prediction_data.Xr_indptr[row];
-				 ix < prediction_data.Xr_indptr[row + 1]; ix++)
-				if (is_na_or_inf(prediction_data.Xr[ix]))
-					imp.missing_sp[imp.n_missing_sp++] = prediction_data.Xr_ind[ix];
+			for (auto ix = data.Xr_indptr[row];
+				 ix < data.Xr_indptr[row + 1]; ix++)
+				if (is_na_or_inf(data.Xr[ix]))
+					imp.missing_sp[imp.n_missing_sp++] = data.Xr_ind[ix];
 
 			if (!imp.sp_num_sum.size())
 			{
@@ -2950,16 +2950,16 @@ namespace provallo
 						  imp.sp_num_weight.begin() + imp.n_missing_sp, 0);
 			}
 		}
-		if (prediction_data.categ_data != NULL)
+		if (data.categ_data != NULL)
 		{
 			if (!imp.missing_cat.size())
 				imp.missing_cat.resize(imputer.ncols_categ);
 
-			if (prediction_data.is_col_major)
+			if (data.is_col_major)
 			{
 				for (size_t col = 0; col < imputer.ncols_categ; col++)
 				{
-					if (prediction_data.categ_data[row + col * prediction_data.nrows] < 0)
+					if (data.categ_data[row + col * data.nrows] < 0)
 						imp.missing_cat[imp.n_missing_cat++] = col;
 				}
 			}
@@ -2968,7 +2968,7 @@ namespace provallo
 			{
 				for (size_t col = 0; col < imputer.ncols_categ; col++)
 				{
-					if (prediction_data.categ_data[col + row * imputer.ncols_categ] < 0)
+					if (data.categ_data[col + row * imputer.ncols_categ] < 0)
 						imp.missing_cat[imp.n_missing_cat++] = col;
 				}
 			}
@@ -5039,7 +5039,7 @@ namespace provallo
         lb = *row_st;
         ub = *(row_end-1);
     }
-
+		 
     while (true)
     {
         // if (hplane[curr_lev].score > 0)
@@ -5056,7 +5056,6 @@ namespace provallo
             }
             return;
         }
-
         else
         {
             hval = 0;
@@ -5068,7 +5067,7 @@ namespace provallo
 
 					xval = data.numeric_data[ row * data.ncols_numeric];
 
-					break;;
+					break; 
 				}
 				switch(hplane[curr_lev].col_type[col])
                 {
@@ -5079,26 +5078,31 @@ namespace provallo
                             case DenseRowMajor:
                             {
                                 xval = data.numeric_data[hplane[curr_lev].col_num[col] + row * data.ncols_numeric];
-                                break;
                             }
+                            break;
 
                             case DenseColMajor:
                             {
-                                xval = data.numeric_data[row +  hplane[curr_lev].col_num[col] *data.nrows];
-                                break;
-                            }
+								size_t index = row +  hplane[curr_lev].col_num[col] *data.nrows; 
+								if (data.ncols_numeric > index) 
+									xval = data.numeric_data[index];
+								else
+									xval = data.numeric_data[row+ col*data.nrows]; 
 
+                            }
+							break;
                             case SparseCSR:
                             {
                                 xval = extract_spR(data, row_st, row_end, hplane[curr_lev].col_num[col], lb, ub);
-                                break;
                             }
+							break;
 
                             case SparseCSC:
                             {
                                 xval = extract_spC(data, row, hplane[curr_lev].col_num[col]);
-                                break;
                             }
+							break;
+                            
                         }
 
                         if (unlikely(is_na_or_inf(xval)))
@@ -5127,12 +5131,14 @@ namespace provallo
 					break;
                     case Categorical:
                     {
-                        cval = data.categ_data[
+						
+						cval =data.ncols_categ
+>0? data.categ_data[
                             data.is_col_major?
                             (row +  hplane[curr_lev].col_num[col] * data.nrows)
                                 :
                             (hplane[curr_lev].col_num[col] + row * data.ncols_categ)
-                        ];
+                        ] : 0;
                         if (unlikely(cval < 0))
                         {
                             if (model_outputs.missing_action != Fail)
@@ -5189,6 +5195,8 @@ namespace provallo
 					{
 						break;
 					}
+				 	break;
+
 
   			        /* default:
                     {
@@ -5249,10 +5257,74 @@ namespace provallo
 									   size_t min_imp_obs,
 									   provallo::UseDepthImp depth_imp,
 									   provallo::WeighImpRows weigh_imp_rows,
-									   uint64_t random_seed, int nthreads) : ndim(ndim), ntry(ntry), coef_type(coef_type), coef_by_prop(coef_by_prop), with_replacement(with_replacement), weight_as_sample(weight_as_sample), sample_size(sample_size), ntrees(ntrees), max_depth(max_depth), ncols_per_tree(ncols_per_tree), limit_depth(limit_depth), penalize_range(penalize_range), standardize_data(standardize_data), scoring_metric(scoring_metric), fast_bratio(fast_bratio), weigh_by_kurt(weigh_by_kurt), prob_pick_by_gain_pl(prob_pick_by_gain_pl), prob_pick_by_gain_avg(prob_pick_by_gain_avg), prob_pick_by_full_gain(prob_pick_by_full_gain), prob_pick_by_dens(prob_pick_by_dens), prob_pick_col_by_range(prob_pick_col_by_range), prob_pick_col_by_var(prob_pick_col_by_var), prob_pick_col_by_kurt(prob_pick_col_by_kurt), min_gain(min_gain), missing_action(missing_action), cat_split_type(cat_split_type), new_cat_action(new_cat_action), all_perm(all_perm), build_imputer(build_imputer), min_imp_obs(min_imp_obs), depth_imp(depth_imp), weigh_imp_rows(weigh_imp_rows), random_seed(random_seed),nthreads(nthreads)
+									   uint64_t random_seed, int nthreads):				
+		ndim(ndim), ntry(ntry), coef_type(coef_type), coef_by_prop(coef_by_prop),
+		with_replacement(with_replacement), weight_as_sample(weight_as_sample),
+		sample_size(sample_size), ntrees(ntrees), max_depth(max_depth),
+		ncols_per_tree(ncols_per_tree), limit_depth(limit_depth),
+		penalize_range(penalize_range), standardize_data(standardize_data),
+		scoring_metric(scoring_metric), fast_bratio(fast_bratio),
+		weigh_by_kurt(weigh_by_kurt), prob_pick_by_gain_pl(prob_pick_by_gain_pl),
+		prob_pick_by_gain_avg(prob_pick_by_gain_avg),
+		prob_pick_by_full_gain(prob_pick_by_full_gain),
+		prob_pick_by_dens(prob_pick_by_dens),
+
+		prob_pick_col_by_range(prob_pick_col_by_range),
+		prob_pick_col_by_var(prob_pick_col_by_var),
+		prob_pick_col_by_kurt(prob_pick_col_by_kurt), min_gain(min_gain),
+		missing_action(missing_action), cat_split_type(cat_split_type),
+		new_cat_action(new_cat_action), all_perm(all_perm),
+		build_imputer(build_imputer), min_imp_obs(min_imp_obs),
+		depth_imp(depth_imp), weigh_imp_rows(weigh_imp_rows),
+		random_seed(random_seed), nthreads(nthreads)
 	{
-	}
-	
+		this->check_params();
+		this->is_fitted = false;
+		//model was already initialized with default 
+		//    std::vector<std::vector<iso_tree_struct>> trees;
+    	//NewCategAction new_cat_action;
+    	//CategSplit cat_split_type;
+    	//MissingAction missing_action;
+    	//ScoringMetric scoring_metric;
+    	//real_t exp_avg_depth;
+    	//real_t exp_avg_sep;
+    	//size_t orig_sample_size;
+    	//bool has_range_penalty;	
+
+		model.has_range_penalty = false;
+		model.orig_sample_size = 0;
+		model.exp_avg_sep = 0;
+		model.exp_avg_depth = 0;
+		model.scoring_metric = scoring_metric;
+		model.missing_action = missing_action;
+		model.cat_split_type = cat_split_type;
+		model.new_cat_action = new_cat_action;
+		model.trees = std::vector<std::vector<iso_tree_struct>>();	
+		model.trees.reserve(ntrees);
+		//initialize model_ext :
+		model_ext.has_range_penalty = false;
+		model_ext.orig_sample_size = 0;
+		model_ext.exp_avg_sep = 0;
+		model_ext.exp_avg_depth = 0;
+		model_ext.scoring_metric = scoring_metric;
+		model_ext.missing_action = missing_action;
+		model_ext.cat_split_type = cat_split_type;
+		model_ext.new_cat_action = new_cat_action;
+		//    std::vector<std::vector<iso_hplane>> hplanes;
+ 
+
+ 		model_ext.hplanes = std::vector<std::vector<iso_hplane>>();
+		model_ext.hplanes.reserve(ntrees);
+		
+
+
+		//model.ntrees = ntrees;
+		//model.max_depth = max_depth;
+		//model_ext was already initialized with default
+		
+	}	
+
+
 	void
 	isolation_forest::fit(real_t X[], size_t nrows, size_t ncols)
 	{
@@ -5287,6 +5359,8 @@ namespace provallo
 								   this->random_seed, false, this->nthreads);
 		if (retcode != 0)
 			unexpected_error();
+		else
+
 		this->is_fitted = true;
 	}
 
@@ -5327,6 +5401,7 @@ namespace provallo
 								   this->random_seed, false, this->nthreads);
 		if (retcode != EXIT_SUCCESS)
 			unexpected_error();
+		else
 		this->is_fitted = true;
 	}
 
@@ -5366,6 +5441,7 @@ namespace provallo
 								   this->random_seed, false, this->nthreads);
 		if (retcode != EXIT_SUCCESS)
 			unexpected_error();
+		else
 		this->is_fitted = true;
 	}
 
@@ -5379,8 +5455,8 @@ namespace provallo
 			X, (int *)nullptr, true, (size_t)0, (size_t)0, (real_t *)nullptr,
 			(int64_t *)nullptr, (int64_t *)nullptr, (real_t *)nullptr,
 			(int64_t *)nullptr, (int64_t *)nullptr, nrows, this->nthreads,
-			standardize, (!this->model.trees.empty()) ? &this->model : nullptr,
-			(!this->model_ext.hplanes.empty()) ? &this->model_ext : nullptr,
+			standardize, &this->model  ,
+			  &this->model_ext  ,
 			out.data(), (int64_t *)nullptr, (real_t *)nullptr,
 			(TreesIndexer *)nullptr);
 		return out;
@@ -5992,6 +6068,25 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		if (this->penalize_range && (this->scoring_metric == provallo::Density || this->scoring_metric == provallo::AdjDensity))
 			throw std::runtime_error(
 				"'penalize_range' is incompatible with density scoring.\n");
+	
+	
+	
+	
+		//allow for missing data
+		if (this->missing_action == Divide && this->build_imputer)
+			throw std::runtime_error(
+				"Cannot build imputer when using 'missing_action=Divide'.\n"); 
+
+		//initialize imputer if not already done
+		if (this->build_imputer && this->imputer.imputer_tree.empty())
+		{
+			//this->imputer.imputer_tree.resize(this->ntrees);
+			//call imputer.init_imputer(this->imputer, this->model, this->model_ext, this->nthreads); 
+ 			//this->imputer.col_means.resize( this->standardize_data.size1());
+			//this->imputer.col_modes.resize( this->standardize_data.size1());
+			//init imputer
+			
+		}
 	}
 
 	void
@@ -18654,14 +18749,16 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		// size_t target_tag= data.getattributes().get_target_tag();
 		// std::cout << "target tag " << target_tag << std::endl;
 
-		_seed += std::chrono::system_clock::now().time_since_epoch().count();
 
 		//_trees = 100;
 		//_subsample_size = 256;
 		//_max_depth = 10;
 		validate_data();
+
+		_seed += std::chrono::system_clock::now().time_since_epoch().count();
+
 		// create isoforest and train it
-		_isoforest = new isolation_forest();
+		_isoforest = new isolation_forest(1,100,true,1);
 		//_isoforest->set_max_depth(_max_depth);
 		//_isoforest->set_seed(_seed>>32&0xFFFFFFFF|_seed&0xFFFFFFFF );
 

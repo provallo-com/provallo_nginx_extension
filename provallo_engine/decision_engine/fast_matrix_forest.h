@@ -5,6 +5,14 @@
 //is a collection of matrices that can be used to replace trees,nodes,leafs and forests 
 //in decision trees and random forests 
 
+//super_tree is a matrix of indices that can be used to access the forest 
+//super_tree_probabilities is a matrix of probabilities that can be used to access the forest
+//super_tree_values is a matrix of values that can be used to access the forest
+
+//super_tree_values_projection is a matrix of values that can be used to access the forest
+//super_tree_hplane is a matrix of hyperplanes that can be used to access the forest
+
+
 #include <string>
 #include <vector>
 #include <map>
@@ -948,6 +956,319 @@ class super_tree {
             }   
          
         }//process_hplanes
+        //get super_tree_hplane,nodes,leaves
+        provallo::matrix<provallo::hplane> get_super_tree_hplane() const
+        {
+            return _super_tree_hplane;
+        }
+        provallo::matrix<provallo::hplane> get_super_tree_nodes_hplane() const
+        {
+            return _super_tree_hplane;
+        }
+        provallo::matrix<provallo::hplane> get_super_tree_leaves_hplane() const
+        {
+            return _super_tree_hplane;
+        }
+        //get super_tree_forest,nodes,leaves
+        std::vector<std::vector<U>> get_super_tree_forest() const
+        {
+            std::vector<std::vector<U>> super_tree_forest;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                std::vector<U> tree;
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    tree.push_back(_super_tree(i,j));
+                }
+                super_tree_forest.push_back(tree);
+            }
+            return super_tree_forest;
+        }
+        std::vector<U> get_super_tree_nodes_forest() const
+        {
+            std::vector<U> super_tree_nodes_forest;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    super_tree_nodes_forest.push_back(_super_tree(i,j));
+                }
+            }
+            return super_tree_nodes_forest;
+        }
+        std::vector<U> get_super_tree_leaves_forest() const
+        {
+            std::vector<U> super_tree_leaves_forest;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    super_tree_leaves_forest.push_back(_super_tree(i,j));
+                }
+            }
+            return super_tree_leaves_forest;
+        }
+        //get super_tree_probabilities_forest,nodes,leaves
+        std::vector<std::vector<real_t>> get_super_tree_probabilities_forest() const
+        {
+            std::vector<std::vector<real_t>> super_tree_probabilities_forest;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                std::vector<real_t> tree;
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    tree.push_back(_super_tree_probabilities(i,j));
+                }
+                super_tree_probabilities_forest.push_back(tree);
+            }
+            return super_tree_probabilities_forest;
+        }
+        //get super_tree_values_forest,nodes,leaves
+        std::vector<std::vector<T>> get_super_tree_values_forest() const
+        {
+            std::vector<std::vector<T>> super_tree_values_forest;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                std::vector<T> tree;
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    tree.push_back(_super_tree_values(i,j));
+                }
+                super_tree_values_forest.push_back(tree);
+            }
+            return super_tree_values_forest;
+        }
+        //get super_tree_values_projection_forest,nodes,leaves
+        std::vector<std::vector<T>> get_super_tree_values_projection_forest() const
+        {
+            std::vector<std::vector<T>> super_tree_values_projection_forest;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                std::vector<T> tree;
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    tree.push_back(_super_tree_values_projection(i,j));
+                }
+                super_tree_values_projection_forest.push_back(tree);
+            }
+            return super_tree_values_projection_forest;
+        }
+        //get super_tree_hplane_forest,nodes,leaves
+        std::vector<std::vector<provallo::hplane>> get_super_tree_hplane_forest() const
+        {
+            std::vector<std::vector<provallo::hplane>> super_tree_hplane_forest;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                std::vector<provallo::hplane> tree;
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    tree.push_back(_super_tree_hplane(i,j));
+                }
+                super_tree_hplane_forest.push_back(tree);
+            }
+            return super_tree_hplane_forest;
+        }
+        //get super_tree_forest,nodes,leaves
+        std::vector<std::vector<U>> get_super_tree_forest(const size_t & i) const
+        {
+            std::vector<std::vector<U>> super_tree_forest;
+            for(size_t j=0;j<_super_tree_values.cols();j++)
+            {
+                std::vector<U> tree;
+                tree.push_back(_super_tree(i,j));
+                super_tree_forest.push_back(tree);
+            }
+            return super_tree_forest;
+        }
+        std::vector<U> get_super_tree_nodes_forest(const size_t & i) const
+        {
+            std::vector<U> super_tree_nodes_forest;
+            for(size_t j=0;j<_super_tree_values.cols();j++)
+            {
+                super_tree_nodes_forest.push_back(_super_tree(i,j));
+            }
+            return super_tree_nodes_forest;
+        }   
+        std::vector<U> get_super_tree_leaves_forest(const size_t & i) const
+        {
+            std::vector<U> super_tree_leaves_forest;
+            for(size_t j=0;j<_super_tree_values.cols();j++)
+            {
+                super_tree_leaves_forest.push_back(_super_tree(i,j));
+            }
+            return super_tree_leaves_forest;
+        }   
+        //test hyperplane value projection quality
+        //return the average error
+        inline real_t test_projection_quality()
+        {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+
+            if(this->_forest.size()>0)
+            {   size_t tree=0;
+                for(auto& tree : this->_forest)
+                {
+                    for(auto& node : tree)
+                    {
+                        //get the hplane of the super_tree
+                        hplane& hplane=this->_super_tree_hplane(tree,node);
+
+
+                        //get the projection of the super_tree value
+                        real_t projected_value = this->_super_tree_values_projection(tree,node); 
+                        //get the hyperplane projection of the super_tree value
+                        real_t hyperplane_projected_value= hplane.hplane_feature_value;
+                        //get the intersection of the projection and the hyperplane projection
+                        real_t projection_intersection = hplane.distribution(projected_value);
+                        real_t hyperplane_projected_intersection = hplane.distribution(hyperplane_projected_value);
+                        //get the error
+                        real_t error = hyperplane_projected_intersection-projection_intersection;
+                        //update the error
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_min=projection_intersection;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_max=hyperplane_projected_intersection;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_range=hyperplane_projected_intersection-projection_intersection;
+                        //update the probabilities
+                        this->_super_tree_probabilities(tree,node)=projected_value/this->_super_tree_values(tree,node);
+                        //update the hplane values according to the probabilities
+                        this->_super_tree_hplane(tree,node).hplane_feature_value=projected_value;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_left=projected_value;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_right=projected_value;
+                        //update the super_tree projections according to the hplane values
+                        this->_super_tree_values_projection(tree,node)=projected_value;
+
+                    }
+                }
+            }
+            else
+            {
+                for(size_t tree=0;tree<this->_super_tree_values.rows();tree++)
+                {
+                    for(size_t node=0;node<this->_super_tree_values.cols();node++)
+                    {
+                        //get the hplane of the super_tree
+                        hplane& hplane=this->_super_tree_hplane(tree,node);
+                        //get the projection of the super_tree value
+                        real_t projected_value = this->_super_tree_values_projection(tree,node);
+                        //get the hyperplane projection of the super_tree value
+                        real_t hyperplane_projected_value= hplane.hplane_feature_value;
+                        //get the intersection of the projection and the hyperplane projection
+                        real_t projection_intersection = hplane.distribution(projected_value);
+
+                        real_t hyperplane_projected_intersection = hplane.distribution(hyperplane_projected_value);
+                        //get the error
+                        real_t error = hyperplane_projected_intersection-projection_intersection;
+                        //update the error
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_min=projection_intersection;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_max=hyperplane_projected_intersection;
+
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_range=hyperplane_projected_intersection-projection_intersection;
+                        //update the probabilities
+                        this->_super_tree_probabilities(tree,node)=projected_value/this->_super_tree_values(tree,node);
+                        //update the hplane values according to the probabilities
+                        this->_super_tree_hplane(tree,node).hplane_feature_value=projected_value;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_left=projected_value;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_right=projected_value;
+                        //update the super_tree projections according to the hplane values
+                        this->_super_tree_values_projection(tree,node)=projected_value;
+
+                    }
+                }
+
+            }
+            //calculate the average error
+            real_t average_error=0.0;
+            if(this->_forest.size()>0)
+            {   size_t tree=0;
+
+                for(auto& tree : this->_forest)
+                {
+                    for(auto& node : tree)
+                    {
+                        //get the hplane of the super_tree
+
+                        hplane& hplane=this->_super_tree_hplane(tree,node);
+                        //get the projection of the super_tree value
+                        real_t projected_value = this->_super_tree_values_projection(tree,node);
+                        //get the hyperplane projection of the super_tree value
+                        real_t hyperplane_projected_value= hplane.hplane_feature_value;
+                        //get the intersection of the projection and the hyperplane projection
+                        real_t projection_intersection = hplane.distribution(projected_value);
+
+                        real_t hyperplane_projected_intersection = hplane.distribution(hyperplane_projected_value);
+                        //get the error
+                        real_t error = hyperplane_projected_intersection-projection_intersection;
+                        //update the error
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_min=projection_intersection;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_max=hyperplane_projected_intersection;
+                        //update the average error
+                        average_error+=error;
+                    }
+                }
+            }
+            else
+            {
+                for(size_t tree=0;tree<this->_super_tree_values.rows();tree++)
+                {
+                    for(size_t node=0;node<this->_super_tree_values.cols();node++)
+                    {
+                        //get the hplane of the super_tree
+                        hplane& hplane=this->_super_tree_hplane(tree,node);
+                        //get the projection of the super_tree value
+                        real_t projected_value = this->_super_tree_values_projection(tree,node);
+                        //get the hyperplane projection of the super_tree value
+                        real_t hyperplane_projected_value= hplane.hplane_feature_value;
+                        //get the intersection of the projection and the hyperplane projection
+                        real_t projection_intersection = hplane.distribution(projected_value);
+
+                        real_t hyperplane_projected_intersection = hplane.distribution(hyperplane_projected_value);
+                        //get the error
+                        real_t error = hyperplane_projected_intersection-projection_intersection;
+                        //update the error
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_min=projection_intersection;
+                        this->_super_tree_hplane(tree,node).hplane_feature_value_max=hyperplane_projected_intersection;
+                        //update the average error
+                        average_error+=error;
+                    }
+                }
+            }
+            //calculate the average error
+            average_error/=(this->_super_tree_values.rows()*this->_super_tree_values.cols());
+            return average_error;
+        }//test_projection_quality
+        //test hyperplane value projection quality
+        //return the average error
+        inline real_t test_projection_quality(const size_t & tree,const size_t & node)
+        {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            //get the hplane of the super_tree
+            hplane& hplane=this->_super_tree_hplane(tree,node);
+            //get the projection of the super_tree value
+            real_t projected_value = this->_super_tree_values_projection(tree,node);
+            //get the hyperplane projection of the super_tree value
+            real_t hyperplane_projected_value= hplane.hplane_feature_value;
+            //get the intersection of the projection and the hyperplane projection
+            real_t projection_intersection = hplane.distribution(projected_value);
+
+            real_t hyperplane_projected_intersection = hplane.distribution(hyperplane_projected_value);
+            //get the error
+            real_t error = hyperplane_projected_intersection-projection_intersection;
+            //update the error
+            this->_super_tree_hplane(tree,node).hplane_feature_value_min=projection_intersection;
+            this->_super_tree_hplane(tree,node).hplane_feature_value_max=hyperplane_projected_intersection;
+            //update the probabilities
+            this->_super_tree_probabilities(tree,node)=projected_value/this->_super_tree_values(tree,node);
+            //update the hplane values according to the probabilities
+            this->_super_tree_hplane(tree,node).hplane_feature_value=projected_value;
+            this->_super_tree_hplane(tree,node).hplane_feature_value_left=projected_value;
+            this->_super_tree_hplane(tree,node).hplane_feature_value_right=projected_value;
+            //update the super_tree projections according to the hplane values
+            this->_super_tree_values_projection(tree,node)=projected_value;
+            //calculate the average error
+            return error;
+        }//test_projection_quality
+      
  };
 
 }//namespace provallo

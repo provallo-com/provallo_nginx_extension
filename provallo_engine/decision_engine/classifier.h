@@ -128,6 +128,42 @@ namespace provallo
     std::vector<std::vector<ImputeNode>> imputer_tree;
     std::vector<real_t> col_means;
     std::vector<int> col_modes;
+    void init(size_t ncols_numeric, size_t ncols_categ, const std::vector<int> &ncat)
+    {
+      this->ncols_numeric = ncols_numeric;
+      this->ncols_categ = ncols_categ;
+      this->ncat = ncat;
+      this->imputer_tree.resize(ncols_numeric + ncols_categ);
+      
+      if(ncols_numeric > 0)
+        this->col_means.resize(ncols_numeric);
+      if(ncols_categ > 0)
+        this->col_modes.resize(ncols_categ);
+
+      // Initialize imputer tree
+      for (auto& it : this->imputer_tree)
+        it.resize(ncols_numeric+ncols_categ);
+      // Initialize column means and modes
+      for (size_t col = 0; col < ncols_numeric; col++)
+        this->col_means[col] = NAN;
+      for (size_t col = 0; col < ncols_categ; col++)
+        this->col_modes[col] = -1;
+      // Initialize imputer tree
+
+    } /* init */
+    //default constructor
+    Imputer() = default;
+    //copy constructor
+    Imputer(const Imputer& other) = default;
+    //move constructor
+    Imputer(Imputer&& other) = default;
+    //copy assignment
+    Imputer& operator=(const Imputer& other) = default;
+    //move assignment
+    Imputer& operator=(Imputer&& other) = default;
+    //destructor
+    ~Imputer() = default;
+
   } Imputer;
 
   typedef struct SingleTreeIndex
@@ -294,7 +330,7 @@ namespace provallo
 
       }
       else _factory_allocated = false;
-      
+
     }
 
     // A classifier should be constructed from a data set and a parameter object
@@ -1045,8 +1081,8 @@ namespace provallo
     
     //isolation_forest() = default;
 
-    ~isolation_forest() = default;
-
+    ~isolation_forest() {
+     }
     isolation_forest(size_t ndim, size_t ntry, provallo::CoefType coef_type,
                      bool coef_by_prop, bool with_replacement,
                      bool weight_as_sample, size_t sample_size, size_t ntrees,
@@ -1362,11 +1398,7 @@ namespace provallo
     provallo::Imputer imputer;
     provallo::TreesIndexer indexer;
 
-
-
-
-
-
+ 
 
 
   private:
