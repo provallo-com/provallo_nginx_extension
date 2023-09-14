@@ -74,10 +74,11 @@ namespace provallo
 
     std::map<std::string, std::vector<policy_visitor*>> visitors;
     std::vector<uint8_t> _actions;
+
     enum actions : uint8_t
     {
       BLOCK_AND_DROP, SANDBOX_TRAFFIC, ALLOW_AND_MONITOR, ALLOW_PASSTHROUGH
-    };
+    } ;
   public:
     //register visitors
     bool
@@ -106,7 +107,10 @@ namespace provallo
     {
         return _actions;
     }
-
+    void set_actions(const std::vector<uint8_t> &actions)
+    {
+        _actions = actions;
+    }
 
     //notify all visitors
     void

@@ -33,6 +33,633 @@ namespace provallo
     //dataset classes
     
 
+  namespace lda
+  {
+ 
+    class LDA
+    {
+      size_t 
+      _n_topics;
+      size_t _n_features ;
+      size_t _n_samples;
+      size_t _n_components;
+      size_t _n_top_words;
+      size_t _n_iter;
+      size_t _n_jobs;
+      size_t _random_state;
+      real_t _alpha;
+      real_t _beta;
+      real_t _eta;
+      real_t _gamma;
+      real_t _theta;
+      real_t _lambda;
+      real_t _learning_decay;
+      real_t _learning_offset;
+      size_t _max_doc_update_iter;
+      size_t _total_samples;
+      real_t _mean_change_tol;
+      bool _verbose;
+
+
+      //analyzed data
+      std::vector<real_t> _lda_data;
+      std::vector<real_t> _lda_components;
+      std::vector<real_t> _lda_explained_variance;
+
+      std::vector<real_t> _lda_explained_variance_ratio;
+      std::vector<real_t> _lda_singular_values;
+      std::vector<real_t> _lda_noise_variance;
+      std::vector<real_t> _lda_mean;
+      std::vector<real_t> _lda_covariance;
+      std::vector<real_t> _lda_precision;
+      std::vector<real_t> _lda_whiten;
+      std::vector<real_t> _lda_transform;
+      std::vector<real_t> _lda_transformed_data;
+      
+
+
+      public:
+      LDA():  _n_topics(10),
+              _n_features(1000),
+              _n_samples(1000),
+              _n_components(10),
+              _n_top_words(10),
+              _n_iter(10),
+              _n_jobs(1),
+              _random_state(0),
+              _alpha(0.1),
+              _beta(0.1),
+              _eta(0.1),
+              _gamma(0.1),
+              _theta(0.1),
+              _lambda(0.1),
+              _learning_decay(0.7),
+              _learning_offset(10),
+              _max_doc_update_iter(100),
+              _total_samples(1000),
+              _mean_change_tol(0.001),
+              _verbose(false)
+      {
+
+      } 
+      LDA(size_t n_topics,
+          size_t n_features,
+          size_t n_samples,
+          size_t n_components,
+          size_t n_top_words,
+          size_t n_iter,
+          size_t n_jobs,
+          size_t random_state,
+          real_t alpha,
+          real_t beta,
+          real_t eta,
+          real_t gamma,
+          real_t theta,
+          real_t lambda,
+          real_t learning_decay,
+          real_t learning_offset,
+          size_t max_doc_update_iter,
+          size_t total_samples,
+          real_t mean_change_tol,
+          bool verbose):  _n_topics(n_topics),
+                          _n_features(n_features),
+                          _n_samples(n_samples),
+                          _n_components(n_components),
+                          _n_top_words(n_top_words),
+                          _n_iter(n_iter),
+                          _n_jobs(n_jobs),
+                          _random_state(random_state),
+                          _alpha(alpha),
+                          _beta(beta),
+                          _eta(eta),
+                          _gamma(gamma),
+                          _theta(theta),
+                          _lambda(lambda),
+                          _learning_decay(learning_decay),
+                          _learning_offset(learning_offset),
+                          _max_doc_update_iter(max_doc_update_iter),
+                          _total_samples(total_samples),
+                          _mean_change_tol(mean_change_tol),
+                          _verbose(verbose)
+      {
+
+      } 
+      LDA(const LDA &other)
+      {
+        _n_topics=other._n_topics;
+        _n_features=other._n_features;
+        _n_samples=other._n_samples;
+        _n_components=other._n_components;
+        _n_top_words=other._n_top_words;
+        _n_iter=other._n_iter;
+        _n_jobs=other._n_jobs;
+        _random_state=other._random_state;
+        _alpha=other._alpha;
+        _beta=other._beta;
+        _eta=other._eta;
+        _gamma=other._gamma;
+        _theta=other._theta;
+        _lambda=other._lambda;
+        _learning_decay=other._learning_decay;
+        _learning_offset=other._learning_offset;
+        _max_doc_update_iter=other._max_doc_update_iter;
+        _total_samples=other._total_samples;
+        _mean_change_tol=other._mean_change_tol;
+        _verbose=other._verbose;
+      } 
+
+    //fit vector<real_t> 
+    std::vector<real_t> fit(const std::vector<std::vector<real_t>>& data)
+    {
+      real_t prb_topic_given_document = 0.0;
+        real_t prb_word_given_topic = 0.0;
+        real_t prb_word_given_topic_and_document = 0.0;
+        real_t prb_word_given_topic_and_document_sum = 0.0;
+        real_t prb_word_given_topic_and_document_sum_total = 0.0;
+        
+        //real_t prb_word_given_topic_and_document_sum_total_sum = 0.0;
+        //real_t prb_word_given_topic_and_document_sum_total_sum_total = 0.0;
+        
+      std::vector<real_t> result;
+      //implement fit: 
+      //start LDA:
+      //update the probabilities :
+     // p(word w with topic t) = p(topic t | document d) * p(word w | topic t)
+       for ( const auto& sample :data )
+       {
+        //update the probabilities :
+        //p(word w with topic t) = p(topic t | document d) * p(word w | topic t)
+
+        //add components
+        for(const auto& bow_probability : sample)
+        {
+          //calculate the probabilities :
+          _n_topics = sample.size();
+          _n_features = sample.size();
+          _n_samples =data.size();
+          _n_components = sample.size();
+          _n_top_words = sample.size();
+          _n_iter = sample.size()*sample.size()*data.size();
+          prb_topic_given_document = bow_probability/_n_topics;
+          prb_word_given_topic = bow_probability/_n_topics;
+          prb_word_given_topic_and_document = prb_topic_given_document * prb_word_given_topic; 
+          prb_word_given_topic_and_document_sum = prb_word_given_topic_and_document_sum + prb_word_given_topic_and_document;
+          prb_word_given_topic_and_document_sum_total = prb_word_given_topic_and_document_sum_total + prb_word_given_topic_and_document_sum;
+
+          real_t prb_word_given_topic_and_document_sum_total_sum = prb_word_given_topic_and_document_sum_total_sum + prb_word_given_topic_and_document_sum_total;  
+          real_t prb_word_given_topic_and_document_sum_total_sum_total = prb_word_given_topic_and_document_sum_total_sum_total + prb_word_given_topic_and_document_sum_total_sum;
+          //add components:
+          _lda_components.push_back(prb_word_given_topic_and_document_sum_total_sum_total); 
+          //add explained_variance
+          _lda_explained_variance.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add explained_variance_ratio
+          _lda_explained_variance_ratio.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add singular_values
+          _lda_singular_values.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add noise_variance
+          _lda_noise_variance.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add mean
+          _lda_mean.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add covariance
+          _lda_covariance.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add precision
+          _lda_precision.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add whiten
+          _lda_whiten.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add transform
+          _lda_transform.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add data
+          _lda_data.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+          //add transformed_data
+          _lda_transformed_data.push_back(prb_word_given_topic_and_document_sum_total_sum_total);
+        }//end of for
+          
+      }//end of for
+      //return result
+
+      //normalize lda values :
+      //normalize lda components
+      real_t lda_components_sum = 0.0;
+      for(const auto& lda_component : _lda_components)
+      {
+        lda_components_sum = lda_components_sum + lda_component;
+      }
+      for(auto& lda_component : _lda_components)
+      {
+        lda_component = lda_component/lda_components_sum;
+      }
+      //normalize lda explained_variance
+      real_t lda_explained_variance_sum = 0.0;
+      for(const auto& lda_explained_variance : _lda_explained_variance)
+      {
+        lda_explained_variance_sum = lda_explained_variance_sum + lda_explained_variance;
+      }   
+      for(auto& lda_explained_variance : _lda_explained_variance)
+      {
+        lda_explained_variance = lda_explained_variance/lda_explained_variance_sum;
+      } 
+      //normalize lda explained_variance_ratio  
+      real_t lda_explained_variance_ratio_sum = 0.0;  
+      for(const auto& lda_explained_variance_ratio : _lda_explained_variance_ratio)
+      {
+        lda_explained_variance_ratio_sum = lda_explained_variance_ratio_sum + lda_explained_variance_ratio;
+      } 
+      for(auto& lda_explained_variance_ratio : _lda_explained_variance_ratio)
+      {
+        lda_explained_variance_ratio = lda_explained_variance_ratio/lda_explained_variance_ratio_sum;
+      } 
+      //normalize lda singular_values 
+      real_t lda_singular_values_sum = 0.0;
+      for(const auto& lda_singular_values : _lda_singular_values)
+      {
+        lda_singular_values_sum = lda_singular_values_sum + lda_singular_values;
+      } 
+      for(auto& lda_singular_values : _lda_singular_values)
+      {
+        lda_singular_values = lda_singular_values/lda_singular_values_sum;
+      } 
+      //normalize lda noise_variance  
+      real_t lda_noise_variance_sum = 0.0;  
+      for(const auto& lda_noise_variance : _lda_noise_variance)
+      {
+        lda_noise_variance_sum = lda_noise_variance_sum + lda_noise_variance;
+      } 
+      for(auto& lda_noise_variance : _lda_noise_variance)
+      {
+        lda_noise_variance = lda_noise_variance/lda_noise_variance_sum;
+      } 
+      //normalize lda mean
+      real_t lda_mean_sum = 0.0;  
+      for(const auto& lda_mean : _lda_mean)
+      {
+        lda_mean_sum = lda_mean_sum + lda_mean;
+      } 
+      for(auto& lda_mean : _lda_mean)
+      {
+        lda_mean = lda_mean/lda_mean_sum;
+      }
+      //normalize lda covariance
+      real_t lda_covariance_sum = 0.0;
+      for(const auto& lda_covariance : _lda_covariance)
+      {
+        lda_covariance_sum = lda_covariance_sum + lda_covariance;
+      }
+      for(auto& lda_covariance : _lda_covariance)
+      {
+        lda_covariance = lda_covariance/lda_covariance_sum;
+      }
+      //normalize lda precision
+      real_t lda_precision_sum = 0.0;
+      for(const auto& lda_precision : _lda_precision)
+      {
+        lda_precision_sum = lda_precision_sum + lda_precision;
+      }
+      for(auto& lda_precision : _lda_precision)
+      {
+        lda_precision = lda_precision/lda_precision_sum;
+      }
+      //normalize lda whiten
+      real_t lda_whiten_sum = 0.0;
+      for(const auto& lda_whiten : _lda_whiten)
+      {
+        lda_whiten_sum = lda_whiten_sum + lda_whiten;
+      }
+      for(auto& lda_whiten : _lda_whiten)
+      {
+        lda_whiten = lda_whiten/lda_whiten_sum;
+      }
+      //normalize lda transform
+      real_t lda_transform_sum = 0.0;
+      for(const auto& lda_transform : _lda_transform)
+      {
+        lda_transform_sum = lda_transform_sum + lda_transform;
+      }
+      for(auto& lda_transform : _lda_transform)
+      {
+        lda_transform = lda_transform/lda_transform_sum;
+      }
+      //normalize lda data
+      real_t lda_data_sum = 0.0;
+      for(const auto& lda_data : _lda_data)
+      {
+        lda_data_sum = lda_data_sum + lda_data;
+      }
+      for(auto& lda_data : _lda_data)
+      {
+        lda_data = lda_data/lda_data_sum;
+      }
+      //normalize lda transformed_data
+      real_t lda_transformed_data_sum = 0.0;
+      for(const auto& lda_transformed_data : _lda_transformed_data)
+      {
+        lda_transformed_data_sum = lda_transformed_data_sum + lda_transformed_data;
+      }
+      for(auto& lda_transformed_data : _lda_transformed_data)
+      {
+        lda_transformed_data = lda_transformed_data/lda_transformed_data_sum;
+      }
+      
+      
+      //update results:
+      result = _lda_transformed_data;
+
+      //return result
+
+      return result;
+       
+    }
+    //predict vector<real_t>
+    std::vector<real_t> predict(const std::vector<std::vector<real_t>>& data)
+    {
+      std::vector<real_t> result;
+      //implement predict:
+      //start LDA:
+      for (const auto& d: data)
+      {
+        for(const auto& bow_prob : d) 
+        {
+          // calculate the prediction
+          real_t prediction = bow_prob/_n_topics;
+          //add the prediction to the result
+          result.push_back(prediction);
+          
+        } 
+      }
+      //normalize result:
+      real_t result_sum = 0.0;
+      for(const auto& r : result)
+      {
+        result_sum = result_sum + r;
+      } 
+      for(auto& r : result)
+      {
+        r = r/result_sum;
+      } 
+
+
+      //return result
+      return result;
+    }
+    //mean 
+    std::vector<real_t> mean()
+    {
+      return _lda_mean; 
+    }
+    //covariance
+    std::vector<real_t> covariance()
+    {
+      return _lda_covariance; 
+
+    }
+    //precision
+    std::vector<real_t> precision()
+    {
+      //implement precision:
+      //start LDA:
+      //create a model
+     return _lda_precision;
+    }
+    //whiten
+    std::vector<real_t> whiten()
+    {
+      //implement whiten:
+      //start LDA:
+      //create a model
+      return _lda_whiten;
+
+    }
+    //transform vector<real_t>
+    std::vector<real_t> transform(const std::vector<std::vector<real_t>>& data)
+    {
+      std::vector<real_t> result;
+      //implement transform:
+      //start LDA:
+      for (const auto& d: data)
+      {
+        //create a model
+        for(const auto& bow_prob : d) 
+        {
+          //calculate the transform
+          real_t transform = bow_prob/_n_topics;
+          //add the transform to the result
+          result.push_back(transform);
+          
+        } 
+      }
+      //return result
+      return result;
+    }
+    //components
+    std::vector<real_t> components()
+    {
+      
+      return _lda_components;
+
+
+    }
+    //explained_variance
+    std::vector<real_t> explained_variance()
+    {
+    
+      return _lda_explained_variance;
+
+
+    }
+    //explained_variance_ratio
+    std::vector<real_t> explained_variance_ratio()
+    {
+      
+        return _lda_explained_variance_ratio;
+    }
+    //singular_values
+    std::vector<real_t> singular_values()
+    {
+        
+        return _lda_singular_values;
+  
+
+    } 
+    //noise_variance
+    std::vector<real_t> noise_variance()
+    {
+        
+          return _lda_noise_variance;
+
+    }   
+    //mean_change_tol
+    real_t mean_change_tol()
+    {
+      //implement mean_change_tol:
+      //start LDA:
+      //create a model
+      return _mean_change_tol;
+    } 
+    //max_doc_update_iter 
+   size_t max_doc_update_iter()
+    {
+      //implement max_doc_update_iter :
+      //start LDA:
+      //create a model
+      return _max_doc_update_iter;
+
+    } 
+    //learning_offset 
+    real_t learning_offset()
+    {
+      //implement learning_offset :
+      //start LDA:
+      //create a model
+      return _learning_offset;
+
+    } 
+    //learning_decay  
+    real_t learning_decay()
+    {
+      //implement learning_decay  :
+      //start LDA:
+      //create a model
+      return _learning_decay;
+
+    } 
+    //lambda  
+    real_t lambda()
+    {
+      //implement lambda  :
+      //start LDA:
+      //create a model
+      return _lambda;
+
+    } 
+    //theta 
+    real_t theta()
+    {
+      //implement theta :
+      //start LDA:
+      //create a model
+      return _theta;
+
+    } 
+    //gamma
+    real_t gamma()
+    {
+      //implement gamma:
+      //start LDA:
+      //create a model
+      return _gamma;
+
+    }
+    //eta
+    real_t eta()
+    {
+      //implement eta:
+      //start LDA:
+      //create a model
+      return _eta;
+    }   
+    //beta
+    real_t beta()
+    {
+      //implement beta:
+      //start LDA:
+      //create a model
+      return _beta;
+    } 
+    //alpha 
+    real_t alpha()
+    {
+      //implement alpha :
+      //start LDA:
+      //create a model
+      return _alpha;
+
+
+    }   
+    //random_state
+    size_t random_state()
+    {
+      //implement random_state:
+      //start LDA:
+      //create a model
+      return _random_state;
+
+    }   
+    //n_jobs    
+    size_t n_jobs()
+    {
+      //implement n_jobs    :
+      //start LDA:
+      //create a model
+      return _n_jobs;
+
+    } 
+    //n_iter
+    size_t n_iter()
+    {
+      //implement n_iter:
+      //start LDA:
+      //create a model
+      return _n_iter;
+    } 
+    //n_top_words
+     size_t n_top_words()
+    {
+      //implement n_top_words:
+      //start LDA:
+      //create a model
+      return _n_top_words;
+    } 
+    //n_components
+    size_t n_components()
+    {
+      //implement n_components:
+      //start LDA:
+      //create a model
+      return _n_components;
+
+    } 
+    //n_samples
+    size_t n_samples()
+    {
+      //implement n_samples:
+      //start LDA:
+      //create a model
+      return _n_samples;
+    } 
+    //n_features  
+    size_t n_features()
+    {
+      //implement n_features  :
+      //start LDA:
+      //create a model
+      return _n_features;
+
+    } 
+    //n_topics  
+    size_t  n_topics()
+    {
+      //implement n_topics  :
+      //start LDA:
+      //create a model
+      return _n_topics;
+
+    } 
+    //
+    //
+    //transform vector<real_t>
+    //    _lda_data = lda.transform(bow);
+    //_lda_components = lda.components();
+    //_lda_explained_variance = lda.explained_variance();
+    //_lda_explained_variance_ratio = lda.explained_variance_ratio();
+    //_lda_singular_values = lda.singular_values();
+    //_lda_noise_variance = lda.noise_variance();
+    //_lda_mean = lda.mean();
+    //_lda_covariance = lda.covariance();
+    //_lda_precision = lda.precision();
+    //_lda_whiten = lda.whiten();
+
+    };//end of LDA
+   }//end of namespace lda
+  
   //python style estimators (fit/predict)
   enum vectorizer_type  : uint8_t {
           TFIDF=0,
@@ -217,6 +844,10 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
     {
       return _type;
     }
+    virtual void process_documents()
+    {
+      _transformed_data=transform({_data});
+    } 
 
     //predict single source 
     virtual  std::vector<real_x> predict(const vector_src& data_){DEFAULT_IMPL(data_);}
@@ -263,11 +894,8 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
         iss.clear();
         is>>vec._predicted_data;
 
-
-      return is;
-
-
-      
+       return is;
+       
     } 
     friend std::ofstream& operator<< (std::ofstream& os, const vectorizer<vector_src,real_x>& vec)
     {
@@ -413,7 +1041,9 @@ class tfidf_vectorizer : public vectorizer<std::string, real_t>
   //override get output size:
   virtual size_t get_output_size()const override
   {
-    return _tfidf.get_vocabulary().size();
+    
+    return this->_fitted_data.size();
+
   }
 
 
@@ -432,6 +1062,7 @@ class tfidf_vectorizer : public vectorizer<std::string, real_t>
   //case by case
   virtual std::vector<real_t> predict (const std::string&)  ;
   virtual std::vector<real_t> transform(const std::string&);
+  
 
 };
 class scaler;
@@ -552,6 +1183,8 @@ class bag_of_words
   void process_documents();
 
   bag_of_words();
+
+
   //initialize with a vocabulary
   explicit bag_of_words(const std::vector<std::string>&);
   //copy constructor
@@ -685,6 +1318,33 @@ class one_hot_vectorizer :   public vectorizer<std::string, real_t>
   virtual void process_documents(const std::vector<std::string>& docs); 
 
   virtual std::vector<real_t> fit(const std::string& single_doc);
+
+  virtual void process_documents()
+  {
+    //add data_src if not added already
+    if(_data.length()>0)
+    {
+      _bow.add_document(_data);
+
+    }
+    this->num_docs = _bow.get_number_of_documents();
+    this->num_words = _bow.get_number_of_words();
+    this->num_tokens = _bow.get_number_of_tokens();
+    this->num_unique_tokens = _bow.get_number_of_unique_tokens();
+    this->num_samples = _bow.get_number_of_documents();
+
+      
+
+    _bow.process_documents();
+    _matrix = _bow.get_matrix();
+    _transformed_data = _bow.get_bag_of_words();
+    _fitted_data = _bow.get_bag_of_words();
+    _predicted_data = _bow.get_bag_of_words();
+
+     
+  }
+
+
  };
 
 class principal_component_analysis
@@ -919,7 +1579,17 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   //override get_output_size:
   virtual size_t get_output_size()const override
   {
+    if(_n_topics>0)
     return _n_topics;
+    else if(_fitted_data.size()>0) 
+    return _fitted_data.size();
+    else if(_lda_data.size()>0) 
+    return _lda_data.size();
+    else if(_lda_components.size()>0)
+    return _lda_components.size();
+
+
+    return _bow.get_number_of_tokens()  ;
   }
 
   virtual  std::vector<real_t> fit( const std::vector<std::string>&documents );
@@ -941,7 +1611,8 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   //for vector<vector<string>> 
   std::vector<std::vector<real_t>> fit( const std::vector<std::vector<std::string>>& data_); 
   std::vector<std::vector<real_t>> predict( const std::vector<std::vector<std::string>>& data_); 
-
+  virtual void process_documents()  ;
+  
   //virtual std::vector<real_t> fit_transform(const std::vector<std::string>&documents); 
   //virtual std::vector<std::vector<real_t>> fit_transform(const matrix<real_t>&documents); 
   virtual void clear();
@@ -975,7 +1646,24 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   size_t _num_words;
   size_t  num_unique_tokens;
   size_t _verbose;
- 
+  std::vector<real_t> _lda_data;
+  std::vector<real_t> _lda_components;
+  std::vector<real_t> _lda_explained_variance;
+  std::vector<real_t> _lda_explained_variance_ratio;
+  std::vector<real_t> _lda_singular_values;
+  std::vector<real_t> _lda_noise_variance;
+  std::vector<real_t> _lda_mean;
+  std::vector<real_t> _lda_covariance;
+  std::vector<real_t> _lda_precision;
+  std::vector<real_t> _lda_whiten;
+  size_t _lda_n_components_;
+  size_t  _lda_n_features_;
+  size_t  _lda_n_samples_;
+  //vocabulary
+  //lda
+  //bow
+
+
    friend std::ostream& operator<<(std::ostream& os, const lda_vectorizer& lda)
   {
     // write out individual members of s with an end of line between each one 
@@ -1001,6 +1689,17 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
     os <<"max_doc_update_iter"<<std::to_string( lda._max_doc_update_iter) <<std::endl;
     os <<"total_samples"<<std::to_string( lda._total_samples) <<std::endl;
     os <<"mean_change_tol"<<std::to_string( lda._mean_change_tol) <<std::endl;
+
+    os <<"num_docs"<<std::to_string( lda._num_docs) <<std::endl;
+    os <<"num_words"<<std::to_string( lda._num_words) <<std::endl;
+    os <<"num_unique_tokens"<<std::to_string( lda.num_unique_tokens) <<std::endl;
+    os <<"verbose"<<std::to_string( lda._verbose) <<std::endl;
+    os <<"lda_data :"<<  lda._lda_data  <<std::endl;
+    os <<"lda_components :"<<  lda._lda_components  <<std::endl;
+    os <<"lda_explained_variance :"<<  lda._lda_explained_variance  <<std::endl;
+    os <<"lda_explained_variance_ratio :"<<  lda._lda_explained_variance_ratio  <<std::endl;
+
+
     return os;
   }
    
@@ -1018,6 +1717,9 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   virtual void load(std::ifstream& in);
   //load additional parameters
   virtual void save(std::ofstream& out)const;
+
+
+
 
   };
 

@@ -1181,11 +1181,11 @@ struct welsch_loss : public loss<T>
        checking for possible NAs, even though it's less computationally efficient.
        For sparse matrices it's done the other way as otherwise it would be too slow. */
 
- 	for (size_t col = 0; col < input_data.ncols_categ; col++)
-	{
-	  imputer.cat_sum[col].resize (input_data.ncat[col]);
-	 // imputer.cat_sum[col].shrink_to_fit ();
-	}
+		for (size_t col = 0; col < input_data.ncols_categ; col++)
+		{
+			imputer.cat_sum[col].resize (input_data.ncat[col]);
+		// imputer.cat_sum[col].shrink_to_fit ();
+		}
 
       double xnum = 0.;
       int xcat = 0;

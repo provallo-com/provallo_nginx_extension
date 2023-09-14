@@ -181,10 +181,13 @@ namespace provallo
     // make sure tag is in range
     size_t target_tag = _attributes_info.get_target_tag();
     size_t number_of_discrete_classes = _attributes_info.getTargetClassCount();
-    if (tag >= getattributesNumber())
+    if (tag >=  _attributes_info.getSize())
       throw std::runtime_error("tag is out of range");
     // make sure sorted indices array is allocated
-    if (_sorted_indices[tag].size() != size())
+    if (_sorted_indices.size() != _attributes_info.getSize())
+      _sorted_indices.resize( _attributes_info.getSize() );
+    // make sure sorted indices array is allocated
+    if ( _sorted_indices[tag].size() != size())
       _sorted_indices[tag].resize(size());
     // Create pairs
     if(_distribution.size()!=number_of_discrete_classes)

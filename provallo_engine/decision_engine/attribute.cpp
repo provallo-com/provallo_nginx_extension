@@ -17,7 +17,7 @@ namespace provallo
   void
   print_error(const std::string &error_message)
   {
-    std::cerr << error_message << std::endl;
+    std::cerr <<"[=]" << error_message << std::endl;
   }
 
   void
@@ -317,7 +317,6 @@ namespace provallo
         print_error("Target attribute [" + target_name + "] does not exist");
       }
 
-
     // Check if the target attribute is not continuous
     if (_definition_map[_target_pos]->get_type() == continous_attribute::_type())
     {print_error(
@@ -340,22 +339,35 @@ namespace provallo
   }
 
   attribute_information::attribute_information(
-      const attribute_information &right) : _tag_map(right._tag_map), _name_map(right._name_map), _target_pos(right._target_pos), _definition_map(right._definition_map.size()), _count(right._count), _type(right._type), _groups(right._groups) 
+      const attribute_information &right) : _tag_map(right._tag_map), _name_map(right._name_map.begin(),right._name_map.end()), _target_pos(right._target_pos), _definition_map(right._definition_map.size(),nullptr ), _count(right._count), _type(right._type), _groups(right._groups) 
   {
-    // Clone definitions
-    for (uint32_t i = 0; i < _definition_map.size(); ++i)
-      _definition_map[i] = right._definition_map[i]->clone(); 
-    // Clone groups
-    _groups.clear();
+ 
     
-    for(uint32_t i = 0 ; i < right._groups.size() ; ++i)
+      
+    // Clone definitions
+    _definition_map.resize(right._definition_map.size(),nullptr);
+    for (uint32_t i = 0; i < _definition_map.size(); ++i)
+      _definition_map[i] = right._definition_map[i]->clone();
+    //copy groups
+
+
+    if(right._groups.size() > 0)
+      _groups = right._groups;  
+
+    // Sanity check
+    // Check if the target attribute exists
+    if (_target_pos >= _definition_map.size())
     {
-      auto copy=right._groups.getGroup(i); 
-      auto split_type=right._groups.getsplit_type(i); 
-      auto attribute_type=right._groups.getattribute_type(i); 
-      _groups.push(copy, split_type, attribute_type);
-     } 
-  } 
+      print_error("Target attribute does not exist");
+    }
+    // Check if the target attribute is not continuous
+    if (_definition_map[_target_pos]->get_type() == continous_attribute::_type())
+    {
+      print_error("Target attribute can't be a continuous value");
+    }
+    
+  }
+
 
   attribute_information::attribute_information(
       const attribute_information *deserial) : _tag_map(deserial->_tag_map), _name_map(deserial->_name_map), _target_pos(deserial->_target_pos), _definition_map(deserial->_definition_map.size()), _count(deserial->_count), _type(deserial->_type), _groups(deserial->_groups)
@@ -365,7 +377,7 @@ namespace provallo
 
   attribute_information::attribute_information(attribute_information&& mov) noexcept: _tag_map(std::move(mov._tag_map)), _name_map(std::move(mov._name_map)), _target_pos(mov._target_pos), _definition_map(std::move(mov._definition_map)), _count(std::move(mov._count)), _type(std::move(mov._type)), _groups(std::move(mov._groups))   
   {
-  
+    
   }
 
   std::string

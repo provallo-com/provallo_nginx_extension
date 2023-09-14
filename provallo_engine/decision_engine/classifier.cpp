@@ -18741,7 +18741,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
                     0.,50, std::chrono::system_clock::now().time_since_epoch().count()  ),
 	
       _isoforest(nullptr),
-      _class_dist(2)
+      _class_dist(data.get_values(data.getattributes().get_target_tag()).size() )
 	{
 
 		static uint64_t _seed = std::chrono::system_clock::now().time_since_epoch().count();

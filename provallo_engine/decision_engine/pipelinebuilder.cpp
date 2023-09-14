@@ -21,7 +21,8 @@ namespace provallo
   // bag of words implementation:
   bag_of_words::bag_of_words() : _vocabulary(), _bow()
   {
-
+      // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+      //  
   }
 
   std::vector<real_t> bag_of_words::get_bag_of_words() const
@@ -806,8 +807,12 @@ namespace provallo
     {
       _tfidf[i].push_back(_tf[i] * _idf[i]);
     }
+     
+    // clear data
     _documents.clear();
-    // done
+    // done processing
+
+    
     return;
   }
   // tfidf::get_tfidf
@@ -972,6 +977,11 @@ namespace provallo
 
     _tfidf.process_documents();
 
+
+    //update fitted_data and transformed_data of parent class
+    _fitted_data = _tfidf.get_idf();
+    _transformed_data = _tfidf.get_tf();
+
     return _tfidf.get_tf();
   }
   // tfidf_vectorizer::fit_transform
@@ -981,13 +991,9 @@ namespace provallo
   {
     std::vector<real_t> ret = fit(corpus);
     // transform :
-    provallo::matrix<real_t> ret_matrix(ret.size(), 1);
-    for (uint32_t i = 0; i < ret.size(); ++i)
-    {
-      ret_matrix(i, 0) = ret[i];
-    }
+     
 
-    return transform(ret_matrix);
+    return transform(ret);
   }
 
   //
@@ -1029,6 +1035,10 @@ namespace provallo
     }
 
     _tfidf.process_documents();
+    //update fitted_data and transformed_data of parent class
+    _fitted_data = _tfidf.get_idf();
+    _transformed_data = _tfidf.get_tf();
+
       
   }
 
@@ -6118,7 +6128,45 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     {
       //process the documents
       this->_bow.process_documents(documents);
+      //calculate the number of documents
+      this->num_docs = this->_bow.get_number_of_documents();
+      //calculate the number of words
+      this->num_words = this->_bow.get_number_of_words();
+      //calculate the number of unique tokens
+      this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
+      //copy the vocabulary
+      this->_vocabulary = this->_bow.get_vocabulary();
+      //get the bag of words
+      _fitted_data = this->_bow.get_bag_of_words();
+      //fill the transformed data
+      
+      //transform the data
 
+      //one-hot the data
+      //transform bow to one-hot vector:
+      //create a one-hot vector
+      std::vector<real_t> ret;
+      //loop over the bag of words
+      for ( size_t i = 0; i < _fitted_data.size(); i++)
+      {
+        //check if the word is in the vocabulary
+        if ( _fitted_data[i] > 0.0)
+        {
+          //set the one-hot vector
+          ret[i] = 1.0;
+          
+
+        }  
+        else
+        {
+          ret[i]=0;
+        }
+      }   
+      //set the transformed data
+      _transformed_data = ret;
+      
+
+      
     }
 
     //inverse transform 
@@ -6237,21 +6285,33 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     //predict single source 
     std::vector<real_t> one_hot_vectorizer::predict(const std::string& source)
     {
-       std::vector<real_t> ret;
-       this->_vocabulary=_bow.get_vocabulary();
-
-        //predict the source
-        std::vector<std::string> tokens;
-        //split the source
-        tokenize(source,tokens," ,\t");
-        //get the number of tokens
-        //use _bow to predict the source
-        ret = this->_bow.predict(source);
-        //transform the bow to one-hot vector with std::transform and labmda:
-        std::transform(ret.begin(),ret.end(),ret.begin(),[](real_t x){ return (x > 0.0) ? 1.0 : 0.0;}); 
-        //return the one-hot vector
-        return ret;
+       //predict the source
+        std::vector<real_t> ret = this->_bow.predict(source);
         
+        //make one-hot values out of the bow output
+        //transform bow to one-hot vector:
+        //create a one-hot vector
+        std::vector<real_t> one_hot_vector;
+        //loop over the bag of words
+        for ( size_t i = 0; i < ret.size(); i++)
+        {
+          //check if the word is in the vocabulary
+          if ( ret[i] > 0.0)
+          {
+            //set the one-hot vector
+            one_hot_vector.push_back(1.0);
+            
+
+          }  
+          else
+          {
+            one_hot_vector.push_back(0.0);
+          }
+        }
+        //return the one-hot vector
+        return one_hot_vector;
+         
+
     }//end of predict
     //
     /* fit_transform the one-hot vectorizer
@@ -6760,27 +6820,17 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
   {
     //fit the data using the bag of words and update local variables
     this->add_document(single_doc);
-    this->_bow.process_documents();
-
-    //copy the vocabulary
-    this->_vocabulary = this->_bow.get_vocabulary();
-    //get the bag of words
-    std::vector<real_t> bow = this->_bow.get_bag_of_words();
-    //get the number of documents
-    this->_num_docs = this->_bow.get_number_of_documents();
-    //get the number of words
-    this->_num_words = this->_bow.get_number_of_words();
-    //get the number of unique words
-    this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
-    //update number of topics
-    this->_n_topics = this->_bow.get_number_of_unique_tokens(); 
+    this->process_documents();
+ 
+    //
     //  fill ret
-    std::vector<real_t> ret;
+    std::vector<real_t> ret = this->_bow.get_bag_of_words();
     //fill ret
-    for ( size_t i = 0; i < this->num_unique_tokens&&i<bow.size(); i++)
+    for ( size_t i = 0; i < this->num_unique_tokens&&i<ret.size(); i++)
     {
-      //fill ret
-      ret.push_back(bow[i]);
+      //fill ret  
+      ret[i] = std::log(ret[i]) + 1.0 / this->num_unique_tokens;
+
     }
      //return ret
     return ret;
@@ -6791,6 +6841,8 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
   {
     //process the documents
     this->_bow.process_documents(documents);
+     //
+    this->process_documents();
   }
   //fit a single document :
   std::vector<real_t> lda_vectorizer::fit( const std::vector<std::string>& data_)
@@ -6798,28 +6850,15 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     //fit the data using the bag of words and update local variables
     this->_bow.process_documents(data_);
     //copy the vocabulary
-    this->_vocabulary = this->_bow.get_vocabulary();
-    //get the bag of words
-    std::vector<real_t> bow = this->_bow.get_bag_of_words();
-    //get the number of documents
-    this->_num_docs = this->_bow.get_number_of_documents();
-    //get the number of words
-    this->_num_words = this->_bow.get_number_of_words();
-    //get the number of unique words
-    this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
-    //update topics
-    this->_n_topics = this->_bow.get_number_of_unique_tokens();
-    //update the number of words
-    this->_num_words = this->_bow.get_number_of_words();
-
-    
+     this->_vocabulary = this->_bow.get_vocabulary();     
     //  fill ret
-    std::vector<real_t> ret;
+    std::vector<real_t> ret = this->_bow.get_bag_of_words();
     //fill ret
     for ( size_t i = 0; i < this->num_unique_tokens; i++)
     {
       //fill ret
-      ret.push_back(bow[i]);
+      ret[i] = std::log(ret[i]) + 1.0 / this->num_unique_tokens;
+
     }
     //return ret
     return ret;
@@ -6832,24 +6871,24 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     for ( auto doc_coll : data_ ) 
           this->_bow.process_documents(doc_coll); 
     
-    //copy the vocabulary
-    this->_vocabulary = this->_bow.get_vocabulary();
-    //get the bag of words
-    std::vector<real_t> bow = this->_bow.get_bag_of_words();
-    //get the number of documents
-    this->_num_docs = this->_bow.get_number_of_documents();
-    //get the number of words
-    this->_num_words = this->_bow.get_number_of_words();
-    //get the number of unique words
-    this->num_unique_tokens = this->_bow.get_number_of_unique_tokens();
-    //  fill ret
-    std::vector<std::vector<real_t>> ret;
-    //fill ret
-    for ( size_t i = 0; i < this->num_unique_tokens; i++)
+    this->process_documents();
+    
+
+     //  fill ret
+    std::vector<std::vector<real_t>> ret; 
+    const provallo::matrix<real_t> values= this->_bow.get_matrix();
+    ret.resize(values.rows()); 
+
+    for(size_t i=0;i<values.size1();++i)
     {
-      //fill ret
-      ret.push_back(bow);
+      ret[i].resize(values.size2());
+
+      for(size_t j=0;j< values.size2();++j)
+      {
+        ret[i][j] = std::log(values(i,j)) + 1.0 / this->num_unique_tokens;
+      }
     }
+
     //return ret
     return ret; 
 
@@ -6999,14 +7038,132 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     out<<this->num_unique_tokens;
   } 
   
+
+  //lda_vectorizer process_documents: 
+  void lda_vectorizer::process_documents ()
+ 
+  {
+        //add data_src if not added already
+    if(_data.length()>0)
+    {
+      _bow.add_document(_data);
+
+    }
+     _bow.process_documents();
+
+    const std::vector<double>& bow = _bow.get_bag_of_words();    
+
+    //calculate LDAModel: 
+    //lda
+    lda::LDA lda(_n_topics,_n_features,_n_samples,_n_components,_n_top_words,_n_iter,_n_jobs,_random_state,_alpha,_beta,_eta,_gamma,_theta,_lambda,_learning_decay,_learning_offset,_max_doc_update_iter,_total_samples,_mean_change_tol,_verbose);
+    lda.fit({bow});
+    //get the lda data
+
+    _lda_data = lda.transform({bow});
+    //  get the lda components
+    _lda_components = lda.components();
+    //get the lda explained_variance
+    _lda_explained_variance = lda.explained_variance();
+    //get the   explained_variance_ratio
+    _lda_explained_variance_ratio = lda.explained_variance_ratio();
+    //get the lda singular values
+    _lda_singular_values = lda.singular_values();
+    //get the lda noise variance
+    _lda_noise_variance = lda.noise_variance();
+    // get the lda mean
+    _lda_mean = lda.mean();
+    //get the lda covariance
+    _lda_covariance = lda.covariance();
+    _lda_precision = lda.precision();
+    _lda_whiten = lda.whiten();
+    _n_components = _lda_components.size(); 
+    
+
+    //update vectorizer<> members (fitted and transformed)
+
+    //update fitted
+    this->_fitted_data=bow ;
+    //update transformed
+    this->_transformed_data = _lda_data;
+
+      //update the number of samples
+    this->_n_samples = _bow.get_number_of_documents();
+    //update the number of features
+    this->_n_features = _bow.get_number_of_words();
+    //update the number of components
+    this->_n_components = _bow.get_number_of_unique_tokens();
+    //update the number of top words
+    this->_n_top_words = _bow.get_number_of_unique_tokens();
+    //update the number of iterations
+    this->_n_iter = _bow.get_number_of_words();
+    
+    //update the number of jobs
+    this->_n_jobs = _bow.get_number_of_words();
+    //no need to update the random state
+    //
+    //update the alpha
+    this->_alpha = 1.0/_n_topics;
+    //update the beta
+    this->_beta = 1.0/_num_words;
+    //update the eta
+    this->_eta = 1.0/_n_topics;
+    //update the gamma
+    this->_gamma = 1.0/_n_topics;
+    //update the theta
+    this->_theta = 1.0/_n_topics;
+    //update the lambda
+    this->_lambda = 1.0/_n_topics;
+    //update the learning decay
+    this->_learning_decay = 1.0/_n_topics;
+    //update the learning offset
+    this->_learning_offset = 1.0/_n_topics;
+    //update the max doc update iter
+    this->_max_doc_update_iter = 1.0/_n_topics;
+    //update the total samples
+    this->_total_samples = 1.0/_n_topics;
+    //update the mean change tol
+    this->_mean_change_tol = 1.0/_n_topics;
+    
+    //---
+    //update fitted_data
+    this->_fitted_data = _bow.get_bag_of_words();
+    //update transformed_data
+    this->_transformed_data = _lda_data;
+   
+
+    
+    }//end of process_documents
+   
   //lda predict:
   std::vector<real_t> lda_vectorizer::predict(const std::vector<std::string>& documents)
   {
     //predict the lda vectorizer
     //get the one-hot vector
-    std::vector<real_t> one_hot_vector = this->fit_transform(documents); 
-    //return the one-hot vector
-    return one_hot_vector;
+    std::vector<real_t> ret; 
+    auto ft  = _bow.predict(documents);
+    ret.resize(ft.size()*this->num_unique_tokens);
+    //calculate the lda vectorizer
+    //
+    //transform the bow prediction to lda prediction :
+    size_t i=0,j=0,k=0;
+    for(auto& vec: ft)
+    {
+      j=0;
+      for(auto& val: vec)
+      {
+        //transform the bow prediction to lda prediction
+        //get the index
+        size_t index = k * this->num_unique_tokens + j;
+        //set the value
+        ret[index] = val * _lda_data[j%_lda_data.size()];
+        
+        j++;
+
+      }i++;
+      k+=j;
+    } 
+
+    return ret;
   } 
   //lda predict:
   std::vector<real_t> lda_vectorizer::predict(const matrix<real_t>& data)

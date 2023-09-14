@@ -423,6 +423,15 @@ namespace provallo
        static size_t definition_index = 0;
          _index = definition_index++;
     }
+    //copy constructor
+    attribute_definition(const attribute_definition &other) : _name(other._name), _tag(other._tag), _index(other._index)
+    {
+    }
+    //move constructor
+    attribute_definition(const attribute_definition &&other) : _name(other._name), _tag(other._tag), _index(other._index)
+    {
+    }
+
     attribute_definition(const attribute_definition *deserial);
 
     // Get name of the attribute
@@ -747,21 +756,11 @@ namespace provallo
     discrete_attribute(const attribute_name &name, const attribute_tag &tag,
                        const std::vector<attribute_value> &attribute_values);
     discrete_attribute(const attribute_definition *deserial);
+    //copy constructor
     discrete_attribute(const discrete_attribute &other) : attribute_definition(other), _name_map(other._name_map), _values_map(other._values_map)
     {
       
-      //validate we copied the values 
-
-      for (auto& value : other._values_map)
-      {
-        if( _name_map.find(value) == _name_map.end() )
-        {
-          std::cerr<<"[-]"<<"discrete_attribute::discrete_attribute: value not found"<<std::endl;
-        } 
-
-      }
-    }
-  
+    }   
 
     attribute_definition *
     clone() const
@@ -865,6 +864,7 @@ namespace provallo
 
     virtual ~attribute_descriptor()
     {
+      
     }
   };
   // Class to handle a group of attributes
@@ -899,6 +899,11 @@ namespace provallo
                                                       _split_type(other._split_type),
                                                       _type(other._type)
     {
+      //copy groups
+      //copy split type
+      //copy type
+      //set type to continuous
+
     }
     attribute_groups(attribute_groups &other) : _groups(other._groups),
                                                 _split_type(other._split_type),

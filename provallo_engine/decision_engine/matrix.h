@@ -562,7 +562,8 @@ namespace provallo
 
 
     matrix() : size1_(0), size2_(0), data_(nullptr)
-    {
+    { 
+        //empty matrix
     }
     matrix(size_type size1, size_type size2) : size1_(size1), size2_(size2), data_(nullptr)
     {
@@ -660,6 +661,22 @@ namespace provallo
         ++i;
       }
     }
+
+    matrix(const T* ptr,size_t size1,size_t size2):size1_(size1),size2_(size2),data_(nullptr)
+    {
+      data_ = new T[size1_ * size2_];
+      std::copy(ptr, ptr + size1_ * size2_, data_);
+    }
+
+    operator matrix_base() const
+    {
+      matrix_base m(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          m(i, j) = (real_t)element(i, j);
+      return m;
+    }
+
 
     #ifdef SIM_MATRIX_ITERATOR
      
@@ -823,8 +840,8 @@ namespace provallo
     #endif // ITERATOR
 
     //rowwise & colwise implementation
-    template <typename F>
-    matrix<T> rowwise(F f) const
+    template <typename F = real_t>
+    matrix<T> rowwise(F f = 0.0) const
     {
       matrix<T> tmp(size1_, 1);
       for (size_t i = 0; i < size1_; i++)
@@ -849,6 +866,26 @@ namespace provallo
           tmp(i, j) = std::abs(data_[i * size2_ + j]);
       return tmp;
     }
+    //maxCoeff  
+    T maxCoeff() const
+    {
+      T max = data_[0];
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          if (data_[i * size2_ + j] > max)
+            max = data_[i * size2_ + j];
+      return max;
+    }
+    //minCoeff
+    T minCoeff() const
+    {
+      T min = data_[0];
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          if (data_[i * size2_ + j] < min)
+            min = data_[i * size2_ + j];
+      return min;
+    }
 
     T log()
     {
@@ -867,6 +904,16 @@ namespace provallo
       for (size_t i = 0; i < size1_; i++)
         for (size_t j = 0; j < size2_; j++)
           tmp(i, j) = f(data_[i * size2_ + j]);
+      return tmp;
+    }   
+    //unary expression of member function
+    template <typename F , typename P>
+    matrix<T> unaryExpr(F f , P* parent) const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = (parent->*f)(data_[i * size2_ + j]);
       return tmp;
     }
 
@@ -965,7 +1012,7 @@ namespace provallo
     }
     virtual ~matrix()
     {
-      if (data_ != nullptr)
+      if (data_ != nullptr && (size1_ * size2_) > 0)
         delete[] data_;
       data_ = nullptr;
     }
@@ -1012,13 +1059,29 @@ namespace provallo
     }
     const matrix<T> operator*(const matrix<T> &m) const
     {
-      matrix<T> ret = *this;
+      //returns a matrix with the same size as the first matrix 
+      //and the same number of columns as the second matrix
+      if(m.size1()!=size1_ || m.size2()!=size2_)
+        {
+         matrix<T> ret(size1_, m.size2_);
 
-      for (size_t i = 0; i < ret.size1_; i++)
-        for (size_t j = 0; j < ret.size2_; j++)
-          ret(i, j) = ret(i, j) * m(i, j);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < ret.size2_; j++) 
+          ret(i, j) = element(i, j%size2_ ) * m(i%m.size1(), j);
 
       return ret;
+        }
+        else
+        {
+          matrix<T> ret(size1_, size2_);
+          for (size_t i = 0; i < size1_; i++)
+            for (size_t j = 0; j < size2_; j++)
+              ret(i, j) = element(i, j) * m(i, j);
+          return ret;
+        }
+        //never reached
+        return matrix<T>();
+
     }
     const matrix<T> operator/(const matrix<T> &m) const
     {
@@ -1069,45 +1132,64 @@ namespace provallo
     matrix &
     operator=(const matrix &m)
     {
-      size1_ = m.size1_;
-      size2_ = m.size2_;
-      if (data_ != nullptr)
-        delete[] data_;
-      data_ = new T[size1_ * size2_];
-      std::copy(m.data_, m.data_ + size1_ * size2_, data_);
+      size_t size = size1_ * size2_;
+     
+      if(m!=*this){
+      
+      if(m.size1_==0 || m.size2_==0 || m.data_==nullptr   )
+      {
+        return *this;
+      }
+     
+      if ( size != (m.size1_ * m.size2_))
+      {
+        resize(m.size1_, m.size2_);
+      }
+      
+      size = m.size1_ * m.size2_;
+
+      std::copy(m.data_, m.data_ + size, data_);
+
+      }
       return *this;
+      
     }
     matrix &operator=(const std::vector<T> &vec)
     {
+      if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
       size1_ = vec.size();
       size2_ = 1;
-      if (data_ != nullptr)
-        delete[] data_;
+
       data_ = new T[size1_];
       std::copy(vec.begin(), vec.end(), data_);
       return *this;
     }
     matrix &operator=(const std::vector<std::vector<T>> &vec)
     {
+      if( vec.size()){
+        if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
       size1_ = vec.size();
       size2_ = vec.begin()->size();
-      if (data_ != nullptr)
-        delete[] data_;
+
       data_ = new T[size1_ * size2_];
       size_t i = 0;
       for (auto &row : vec)
       {
-        std::copy(row.begin(), row.end(), data_ + i * size2_);
+        std::copy(row.begin(), row.end(), data_ + i * size2_);  
         ++i;
       }
+      }//if vector is empty do nothing
       return *this;
     }
     matrix &operator=(const std::vector<std::initializer_list<T>> &vec)
     {
+        if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
       size1_ = vec.size();
       size2_ = vec.begin()->size();
-      if (data_ != nullptr)
-        delete[] data_;
+  
       data_ = new T[size1_ * size2_];
       size_t i = 0;
       for (auto &row : vec)
@@ -1119,10 +1201,11 @@ namespace provallo
     }
     matrix &operator=(const std::vector<std::initializer_list<T>> &&vec)
     {
+       if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
       size1_ = vec.size();
       size2_ = vec.begin()->size();
-      if (data_ != nullptr)
-        delete[] data_;
+    
       data_ = new T[size1_ * size2_];
       size_t i = 0;
       for (auto &row : vec)
@@ -1134,10 +1217,11 @@ namespace provallo
     }
     matrix &operator=(const std::initializer_list<std::initializer_list<T>> &vec)
     {
+       if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
       size1_ = vec.size();
       size2_ = vec.begin()->size();
-      if (data_ != nullptr)
-        delete[] data_;
+  
       data_ = new T[size1_ * size2_];
       size_t i = 0;
       for (auto &row : vec)
@@ -1149,10 +1233,12 @@ namespace provallo
     }
     matrix &operator=(const std::initializer_list<std::initializer_list<T>> &&vec)
     {
+       if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
+
       size1_ = vec.size();
       size2_ = vec.begin()->size();
-      if (data_ != nullptr)
-        delete[] data_;
+  
       data_ = new T[size1_ * size2_];
       size_t i = 0;
       for (auto &row : vec)
@@ -1164,43 +1250,67 @@ namespace provallo
     }
     matrix &operator=(const std::initializer_list<T> &vec)
     {
+         if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
+  
       size1_ = vec.size();
       size2_ = 1;
-      if (data_ != nullptr)
-        delete[] data_;
-      data_ = new T[size1_];
+       data_ = new T[size1_];
       std::copy(vec.begin(), vec.end(), data_);
       return *this;
     }
     matrix &operator=(const std::initializer_list<T> &&vec)
     {
+        if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
       size1_ = vec.size();
       size2_ = 1;
-      if (data_ != nullptr)
-        delete[] data_;
+   
       data_ = new T[size1_];
       std::copy(vec.begin(), vec.end(), data_);
       return *this;
     }
     matrix &operator=(const std::vector<T> &&vec)
     {
+     //move data from vec 
+     
+      if (data_ != nullptr && size1_ * size2_ > 0)
+        delete[] data_;
       size1_ = vec.size();
       size2_ = 1;
-      if (data_ != nullptr)
-        delete[] data_;
       data_ = new T[size1_];
       std::copy(vec.begin(), vec.end(), data_);
       return *this;
+      vec.clear();
+
     }
 
     void
     resize(size_type dim, size_type dim1)
     {
-      if (data_ != nullptr)
-        delete[] data_;
+      size_t size = size1_ * size2_;
+
+      if(size==dim * dim1)
+      {
+        if(size1_!=dim || size2_!=dim1)
+        {
+          size1_ = dim;
+          size2_ = dim1;
+        }
+        return;
+      }
+      else if ( size!= dim * dim1)
+        {
+          if(size>0) {
+            delete[] data_;
+          }
+          data_ = nullptr;
+        }
       size1_ = dim;
       size2_ = dim1;
-      data_ = new T[size1_ * size2_];
+      if(data_==nullptr)
+        data_ = new T[size1_ * size2_];
+
       std::fill(data_, data_ +(size1_ * size2_), value_type(0));
     }
     size_type
@@ -2008,7 +2118,9 @@ namespace provallo
   bool
   operator==(const matrix<T> &x, const matrix<T> &y)
   {
-    return std::equal(x.begin(), x.end(), y.begin());
+
+    return x.size1()==y.size1()&&x.size2()==y.size2() 
+    &&std::equal(x.begin(), x.end(), y.begin());
   }
 
   template <class T>
@@ -2128,7 +2240,7 @@ namespace provallo
   matrix<T>
   operator+(const matrix<T> &a, const matrix<T> &b)
   {
-    assert(a.size1() == b.size1() && a.size2() == b.size2());
+  //  assert(a.size1() == b.size1() && a.size2() == b.size2());
 
     matrix<T> result(a);
     std::transform(a.begin(), a.end(), b.begin(), result.begin(),
@@ -2140,11 +2252,11 @@ namespace provallo
   matrix<T>
   operator-(const matrix<T> &a, const matrix<T> &b)
   {
-    assert(a.size1() == b.size1() && a.size2() == b.size2());
     matrix<T> result(a);
     std::transform(a.begin(), a.end(), b.begin(), result.begin(),
                    std::minus<T>());
     return result;
+
   }
 
   //for x-matrix  x = 1-x

@@ -63,6 +63,19 @@ namespace provallo
       return matrix_base::pos(row,col);
     }
     dataset_base(size_t rows, size_t cols, size_t numLabels);
+
+    dataset_base(const matrix_base& other): matrix_base(other)
+    {
+      _labels = new int[other.rows()];
+      _num_of_labels = 0;
+    }
+    dataset_base(const matrix_base& other, size_t numLabels): matrix_base(other)
+    {
+      _labels = new int[other.rows()];
+      _num_of_labels = numLabels;
+    }
+    
+
     virtual ~dataset_base();
     // use splitters from
     void
@@ -1357,9 +1370,7 @@ namespace provallo
     }
     void clear()
     {
-      for (auto & sample: _samples )
-        sample.clear();
-
+      
       _samples.clear();
       _attributes_info.clear();
       //_samples.resize(_attributes_info.getSize());
@@ -1711,7 +1722,7 @@ namespace provallo
   public:
     testing_set(const attribute_information &attributes_info) : dataset(attributes_info), _nattr(attributes_info.getSize())
     {
-      
+
     }
     virtual dataset_base copy_to_base()const
     {
