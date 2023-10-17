@@ -126,19 +126,23 @@ namespace decision_engine {
     template<typename T>
     void neural_urn<T>::train() {
         for(auto& nn : neural_networks) {
-            
+            //parallelize this
             nn->train();
 
         }
     }
     template<typename T>
     void neural_urn<T>::test() {
+        //parallelize this
         for(auto& nn : neural_networks) {
             nn->test();
         }
     }
     template<typename T>
     void neural_urn<T>::add_neural_network(provallo::neural_net::ptr nn) {
+        
+        std::lock_guard<std::mutex> lg(urns_lock);
+
         neural_networks.push_back(nn);
     }
     template<typename T>

@@ -20,7 +20,7 @@ namespace provallo
     int address_type; //AF_INET (IP4)/AF_INET6(IP6)/AF_PACKET(MAC_ADDRESS)
     int flags;
     std::string address;
-
+  
   };
   class interface_info final
   {

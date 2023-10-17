@@ -341,9 +341,7 @@ namespace provallo
   attribute_information::attribute_information(
       const attribute_information &right) : _tag_map(right._tag_map), _name_map(right._name_map.begin(),right._name_map.end()), _target_pos(right._target_pos), _definition_map(right._definition_map.size(),nullptr ), _count(right._count), _type(right._type), _groups(right._groups) 
   {
- 
-    
-      
+   
     // Clone definitions
     _definition_map.resize(right._definition_map.size(),nullptr);
     for (uint32_t i = 0; i < _definition_map.size(); ++i)
@@ -377,6 +375,8 @@ namespace provallo
 
   attribute_information::attribute_information(attribute_information&& mov) noexcept: _tag_map(std::move(mov._tag_map)), _name_map(std::move(mov._name_map)), _target_pos(mov._target_pos), _definition_map(std::move(mov._definition_map)), _count(std::move(mov._count)), _type(std::move(mov._type)), _groups(std::move(mov._groups))   
   {
+    //move definitions
+    mov._definition_map.clear();
     
   }
 

@@ -57,12 +57,15 @@ namespace provallo
           _bow[i] += 1.0;
           _bow[j] = 0.0;
          //set token index to zero
-    
+          token_count++;
 
         }
         else
         {
-          _bow[j] = 0.0;
+
+          _bow[j] =   1.0 / real_t(_vocabulary.size()) ;
+
+
  
 
         }
@@ -78,6 +81,11 @@ namespace provallo
           _bow[i] += 1.0;
           _bow[j] = 0.0;
         }
+        else
+        {
+          _bow[j] = 1.0 / real_t(_vocabulary.size()) ;
+        }
+
 
       }
 
@@ -98,7 +106,7 @@ namespace provallo
     // update the bow matrix
     // matrix is the number of components x samples
     // 
-
+  
     _bow_matrix = matrix<real_t>(_vocabulary.size(), 1);
     for (size_t i = 0; i < _vocabulary.size(); ++i)
     {
@@ -458,12 +466,20 @@ namespace provallo
       else
       {
         // add token to vocabulary
-        result.push_back(0.0);
+        real_t val = 1/real_t(_vocabulary.size()-1);
+        _vocabulary.push_back(token);
+        _bow.push_back(val);
+         result.push_back(val);
+
       }
     }
     this->num_features = _vocabulary.size()-1;
     this->num_samples += 1;
-
+    //update unique tokens
+    this->num_tokens = _vocabulary.size();
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    //transform results to lda
+    
     return result;
   }
 
@@ -517,7 +533,12 @@ namespace provallo
   }
   std::vector<std::vector<real_t>> bag_of_words::predict(const std::vector<std::string> &documents)
   {
-    return transform(documents);
+    std::vector<std::vector<real_t>> result(documents.size());
+    for(auto& doc : documents)
+    {
+      result.push_back(transform(doc));
+    }
+    return result;
   }
   std::vector<std::vector<real_t>> bag_of_words::predict(const provallo::matrix<real_t> & mat)
   {
@@ -1634,6 +1655,7 @@ namespace provallo
   std::vector<real_t> principal_component_analysis::fit ( const std::string& document) 
   {
      // tokenize the document into words
+    
     std::vector<std::string> words ;
      tokenize(document,words, " ");
     for( auto & word : words )
@@ -1668,11 +1690,133 @@ namespace provallo
       // add the word to the results
       results.push_back(word.second);
     }
-    // return the results
+    //update n_samples, n_features and n_components 
+    _pca_n_samples_++;
+    _pca_n_features_ = _vocabulary.size();
+
+    _pca_n_components_ =size_t( _vocabulary.size()/real_t(_pca_n_samples_)  );
+
+    //update pca 
+    this->update_pca ( results);
+
+ 
     return results;
   }
     // create a vector of real_t to store the results
+  void principal_component_analysis::update_pca(const std::vector<real_t>& occurance_data)
+  {
+      //resize to accomodate the new data
 
+      _pca_data.resize(_pca_n_samples_*_pca_n_features_);
+      //add the new data to the pca data
+      for (size_t i=0; i<occurance_data.size(); i++)
+      {
+        _pca_data[i] = occurance_data[i];
+      }
+      //update the mean
+      _pca_mean.resize(_pca_n_features_);
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        _pca_mean[i] = _pca_data[i]; 
+        for (size_t j=1; j<_pca_n_samples_; j++)
+        {
+          _pca_mean[i] += _pca_data[j*_pca_n_features_+i];
+        }
+        _pca_mean[i] /= _pca_n_samples_;
+
+      }
+      //update the standardized data
+      _standardized_data.resize(_pca_n_samples_*_pca_n_features_);
+      for (size_t i=0; i<_pca_n_samples_; i++)
+      {
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _standardized_data[i*_pca_n_features_+j] = (_pca_data[i*_pca_n_features_+j] - _pca_mean[j]) / _pca_n_samples_;
+        }
+      }
+      //update the covariance matrix
+      _covariance_matrix.resize(_pca_n_features_*_pca_n_features_);
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _covariance_matrix[i*_pca_n_features_+j] = 0.0;
+          for (size_t k=0; k<_pca_n_samples_; k++)
+          {
+            _covariance_matrix[i*_pca_n_features_+j] += _standardized_data[k*_pca_n_features_+i] * _standardized_data[k*_pca_n_features_+j];
+          }
+          _covariance_matrix[i*_pca_n_features_+j] /= _pca_n_samples_ - 1;
+        }
+      } 
+      //update the eigen values and eigen vectors
+      _eigen_values.resize(_pca_n_features_);
+      _eigen_vectors.resize(_pca_n_features_*_pca_n_features_);
+      _pca_components.resize(_pca_n_features_*_pca_n_features_);
+      _pca_explained_variance.resize(_pca_n_features_);
+      _pca_explained_variance_ratio.resize(_pca_n_features_);
+      _pca_singular_values.resize(_pca_n_features_);
+      _pca_noise_variance.resize(_pca_n_features_);
+      _pca_components_matrix.resize(_pca_n_features_,_pca_n_features_);
+      _pca_explained_variance_matrix.resize(_pca_n_features_,_pca_n_samples_ ); 
+      _pca_explained_variance_ratio_matrix.resize(_pca_n_features_,_pca_n_samples_ );
+      _pca_singular_values_matrix.resize(_pca_n_features_,  _pca_n_samples_ );
+
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _eigen_vectors[i*_pca_n_features_+j] = 0.0;
+        }
+        _eigen_vectors[i*_pca_n_features_+i] = 1.0;
+
+        //initialize the eigen values
+        _eigen_values[i] = _covariance_matrix[i*_pca_n_features_+i];
+
+      } 
+       //update the pca components
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _pca_components[i*_pca_n_features_+j] = _eigen_vectors[i*_pca_n_features_+j];
+        }
+      }
+      //update the feat x feat matrices:
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _pca_components_matrix(i,j) = _pca_components[i*_pca_n_features_+j];
+        }
+      }
+      //update the feat x samples matrices: 
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        for (size_t j=0; j<_pca_n_samples_; j++)
+        {
+          _pca_explained_variance_matrix(i,j) = _pca_explained_variance[i*_pca_n_samples_+j];
+          _pca_explained_variance_ratio_matrix(i,j) = _pca_explained_variance_ratio[i*_pca_n_samples_+j];
+          _pca_singular_values_matrix(i,j) = _pca_singular_values[i*_pca_n_samples_+j];
+        }
+      }   
+      //update pca noise variance
+      _pca_noise_variance.resize(_pca_n_features_);
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        _pca_noise_variance[i] = 0.0;
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _pca_noise_variance[i] += _covariance_matrix[i*_pca_n_features_+j];
+        }
+        _pca_noise_variance[i] /= _pca_n_features_;
+        _pca_noise_variance[i] -= _eigen_values[i];
+        _pca_explained_variance[i] = _eigen_values[i];
+        _pca_explained_variance_ratio[i] = _eigen_values[i] / _pca_n_features_;
+        _pca_singular_values[i] = std::sqrt(_eigen_values[i]);
+
+      }  
+      
+  }
   
   std::vector<real_t> principal_component_analysis::transform ( const std::string& doc) 
   {
@@ -1974,7 +2118,31 @@ namespace provallo
 
     // initialize the transformed data
     matrix<real_t> transformed_data(rows, cols);
+    
+    //resize component matrix if not at the right size
+    if (this->_pca_components_matrix.rows() != cols || this->_pca_components_matrix.cols() != cols)
+    {
+      this->_pca_components_matrix = matrix<real_t>(cols, cols);
+      //fill with components
+      bool b =  _pca_components.size() >= cols*cols ;
+      for (size_t i = 0; i < cols; ++i)
+      {
+        for (size_t j = 0; j < cols; ++j)
+        {
+          if (b){
+                this->_pca_components_matrix(i, j) = this->_pca_components[i * cols + j];
+          }
+          else
+          {
+            this->_pca_components_matrix(i, j) = 0.0;
+          } 
 
+        }
+      }
+    }//end of resize component matrix
+
+
+ 
     // transform the data
     for (size_t i = 0; i < rows; ++i)
     {
@@ -2133,6 +2301,17 @@ namespace provallo
     return ret_value;
 
   }
+  
+  
+  
+  
+  void pca_vectorizer::gnuplot(const std::string& filename)
+  {
+    //use pca helper to gnuplot: 
+    _pca.gnuplot(filename);
+
+  } 
+  
   vectorizer_type pca_vectorizer::get_type() const
   {
     return vectorizer_type::PCA;
@@ -6166,7 +6345,7 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
       _transformed_data = ret;
       
 
-      
+
     }
 
     //inverse transform 
@@ -7126,12 +7305,20 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     
     //---
     //update fitted_data
-    this->_fitted_data = _bow.get_bag_of_words();
+    this->_fitted_data =  _bow.get_bag_of_words();
     //update transformed_data
-    this->_transformed_data = _lda_data;
-   
+    this->_transformed_data =  _lda_data;
+    //update the number of samples
+    this->_n_samples = _bow.get_number_of_documents();
+    //update the number of features
+    this->_n_features = _bow.get_number_of_words();
+    //update the number of components
+    this->_n_components = _bow.get_number_of_unique_tokens();
+    //update the number of top words
+    this->_n_top_words = _bow.get_number_of_unique_tokens();
+    //update the number of iterations
+    this->_n_iter = _bow.get_number_of_words();
 
-    
     }//end of process_documents
    
   //lda predict:
@@ -7141,6 +7328,8 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     //get the one-hot vector
     std::vector<real_t> ret; 
     auto ft  = _bow.predict(documents);
+    if ( ft.size() == 0 ) return ret;
+    
     ret.resize(ft.size()*this->num_unique_tokens);
     //calculate the lda vectorizer
     //

@@ -814,6 +814,7 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
     virtual void add_document(const vector_src& doc)
     {
       _data+=doc;
+       
     }
     vector_src& get_data() 
     {
@@ -846,7 +847,10 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
     }
     virtual void process_documents()
     {
+      _fitted_data=fit({_data});
       _transformed_data=transform({_data});
+      _predicted_data=predict({_data});
+
     } 
 
     //predict single source 
@@ -926,7 +930,53 @@ std::ofstream& operator<<(std::ofstream& os, const std::vector<real_t>& obj);
       ifs>>*this;
       ifs.close();
     }
-  };//end of vectorizer
+    //gnu plot
+      virtual void gnuplot(const std::string& filename)
+      {
+        {
+        std::ofstream ofs(filename+".dat");
+        //serialize fitted, transformed and predicted data 
+        for(size_t i=0;i<_fitted_data.size();i++)
+        {
+          std::string index =  std::to_string(i);
+          std::string fitted = std::to_string(_fitted_data[i]); 
+          std::string transformed = i<_transformed_data.size()?std::to_string(_transformed_data[i]):"0";
+          std::string predicted = i<_predicted_data.size()? std::to_string(_predicted_data[i]):"0";
+          ofs<<index<<" "<<fitted<<" "<<transformed<<" "<<predicted<<std::endl;
+
+          ofs<<_fitted_data[i]<<" "<<_transformed_data[i]<<" "<<_predicted_data[i]<<std::endl;
+        }
+        
+        
+        ofs<<_fitted_data<<std::endl;
+        ofs<<_transformed_data<<std::endl;
+        ofs<<_predicted_data<<std::endl;
+        ofs.close();
+        }
+        std::ofstream ofs(filename);
+        gnuplot(ofs);
+
+      }
+    void gnuplot(std::ofstream& ofs)
+    { 
+      //plot data
+      std::string filename = ofs.getloc().name();
+      ofs<<"set terminal png"<<std::endl;
+      ofs<<"set output \""<<filename<<".png\""<<std::endl;
+      
+      ofs<<"set title \"vectorizer\""<<std::endl; 
+      ofs<<"set xlabel \"index\""<<std::endl;
+      ofs<<"set ylabel \"value\""<<std::endl;
+      ofs<<"set grid"<<std::endl;
+      ofs<<"set key"<<std::endl;
+
+      ofs<<"plot \""<<filename<<".dat\" using 1:2 with lines title \"fitted\", \""<<filename<<".dat\" using 1:3 with lines title \"transformed\", \""<<filename<<".dat\" using 1:4 with lines title \"predicted\""<<std::endl;
+      ofs.close();
+      
+
+
+    }
+   };//end of vectorizer
 //helper class for tfidf vectorizer
 class tfidf 
 {
@@ -974,8 +1024,7 @@ class tfidf
     std::vector<std::string> inverse_transform (const std::vector<std::vector<real_t>> &corpus) ;
   //transform
     std::vector<real_t> transform(const std::string& document);
-
-  //transform
+   //transform
     std::vector<std::vector<real_t> >  transform(const std::vector<std::string>& document);
     
     void clear();
@@ -1042,8 +1091,7 @@ class tfidf_vectorizer : public vectorizer<std::string, real_t>
   virtual size_t get_output_size()const override
   {
     
-    return this->_fitted_data.size();
-
+    return this->_tfidf.get_vocabulary().size();
   }
 
 
@@ -1057,6 +1105,18 @@ class tfidf_vectorizer : public vectorizer<std::string, real_t>
   virtual std::vector<real_t> predict(const provallo::matrix<real_t>& )override;
   virtual std::vector<real_t> transform(const provallo::matrix<real_t>& )override;
   virtual ~tfidf_vectorizer();
+  virtual void gnuplot(const std::string& filename)override
+  {
+    // describe get tf,idf and vocabulary  
+    std::ofstream ofs(filename);
+    ofs<<"set terminal png"<<std::endl;
+    ofs<<"set output 'tfidf_vectorizer.png'"<<std::endl;
+    ofs<<"plot '-' with lines"<<std::endl;
+    for (auto& d : _tfidf.get_tf())
+    {
+      ofs<<d<<std::endl;
+    }
+  }
 
   protected: 
   //case by case
@@ -1230,7 +1290,96 @@ class bag_of_words
   virtual void load(std::ifstream& is);
   //explicit save
   virtual void save(std::ofstream& os) const;
+  //gnuplot - save simple word cloud on gnuplot.
+  virtual void gnuplot(const std::string& filename)
+  {
+    std::string tmp = filename+".dat";
 
+    {
+
+    std::ofstream ofs(tmp);
+    //reverse transform the _bow_matrix
+    //save _bow 
+    size_t i=0;
+    const real_t epsilon = 1e-6;
+    ofs<<"#word frequency size"<<std::endl;
+    for ( auto& word : _vocabulary) 
+    {
+      auto& frequency  = _bow[i++];
+      //avoid :enhanced text mode parser - ignoring spurious text
+      if (frequency==0) continue;
+
+      size_t size = word.size()*frequency/(_vocabulary.size()-1.0);
+      if (size==0) size=1;
+
+      ofs<<std::to_string(i)<<" "<< std::to_string(frequency+epsilon)<<  " "<<std::to_string( size )<< std::endl;
+
+     }
+
+     ofs.close();
+    //gnuplot
+    }
+
+    std::ofstream ofs(filename);
+    
+    ofs<<"set terminal png"<<std::endl;
+    //create a gif animation:
+    ofs<<"set terminal gif animate delay 10"<<std::endl;
+    ofs<<"set output '"<< filename<<"_bow.gif'"<<std::endl;
+    ofs<<"set title 'Bag of Words'"<<std::endl;
+    ofs<<"set xlabel 'Words'"<<std::endl;
+    ofs<<"set ylabel 'Frequency'"<<std::endl;
+    ofs<<"set zlabel 'Size'"<<std::endl;
+    ofs<<"set style fill solid"<<std::endl;
+    //set rotation
+    ofs<<"set view 60,30,1,1"<<std::endl;
+    ofs<<"set xrange [0:]"<<std::endl;
+    ofs<<"set yrange [0:]"<<std::endl;
+    ofs<<"set zrange [0:]"<<std::endl;
+    ofs<<"set grid"<<std::endl;
+    ofs<<"set key off"<<std::endl;
+    ofs<<"set dgrid3d 1000,1000,1000"<<std::endl;
+    ofs<<"set hidden3d"<<std::endl;
+    ofs<<"set palette rgbformulae 22,13,-31"<<std::endl;
+    ofs<<"set pm3d depthorder"<<std::endl;
+    ofs<<"set pm3d interpolate 0,0"<<std::endl;
+    ofs<<"set pm3d at b"<<std::endl;
+    ofs<<"set pm3d corners2color c1"<<std::endl;
+    //ofs<<"set pm3d lighting phong specular 0.5"<<std::endl;
+    //plot the .dat file
+    //ofs<<"splot '"<<tmp<<"' using 1:2:3   with points pt 7 ps 1.5 lc rgb variable"<<std::endl;
+    //rotate view every 10 degrees 
+    
+    
+    //plot animated gif
+
+    ofs<<"set terminal gif animate delay 10"<<std::endl;
+    ofs<<"set output '"<< filename<<"_bow.gif'"<<std::endl;
+    
+    ofs<<"do for [i=0:360] {"<<std::endl;
+    ofs<<"set view i,30,1,1"<<std::endl;
+    ofs<<"splot '"<<tmp<<"' using 1:2:3:3 with points pointtype 7   notitle"<<std::endl;
+    
+    ofs<<"}"<<std::endl;
+    ofs<<"unset multiplot"<<std::endl;
+    ofs<<"unset pm3d"<<std::endl;
+
+    
+    ofs<<"unset dgrid3d"<<std::endl;
+
+    //finish:
+    ofs<<"unset output"<<std::endl;
+    ofs<<"unset terminal"<<std::endl;
+    ofs.close();
+    //splot the data
+    //colors : 0.01-0.1 yellow, 0.1-0.5 green, 0.5-0.9 blue, 0.9-1.0 red
+    //set palette rgbformulae 22,13,-31
+    // fix both constant expression required for rgb,and too many axis requested  (>7e+03) :
+    //ofs<<"splot '"<<tmp<<"' using 1:2:3   with points pt 7 ps 1.5 lc rgb variable"<<std::endl;
+    //avoid  warning: Too many axis ticks requested (>7e+03)
+    
+ 
+  }
   protected:
   //bag of words
   std::vector<std::string> _vocabulary;
@@ -1247,9 +1396,7 @@ class bag_of_words
   size_t num_samples;
   size_t num_tokens;
   size_t num_unique_tokens;
-  
-
-
+ 
 };
 //one hot vectorizer helper class
 class one_hot_vectorizer :   public vectorizer<std::string, real_t>
@@ -1327,26 +1474,80 @@ class one_hot_vectorizer :   public vectorizer<std::string, real_t>
       _bow.add_document(_data);
 
     }
+  
+      
+
+
+    _bow.process_documents();
     this->num_docs = _bow.get_number_of_documents();
     this->num_words = _bow.get_number_of_words();
     this->num_tokens = _bow.get_number_of_tokens();
     this->num_unique_tokens = _bow.get_number_of_unique_tokens();
     this->num_samples = _bow.get_number_of_documents();
 
-      
-
-    _bow.process_documents();
     _matrix = _bow.get_matrix();
     _transformed_data = _bow.get_bag_of_words();
     _fitted_data = _bow.get_bag_of_words();
     _predicted_data = _bow.get_bag_of_words();
+    //normalize data to one-hot vector
+    for (size_t i = 0; i < _transformed_data.size(); i++)
+    {
+      _transformed_data[i] = _transformed_data[i] > 0 ? 1.0 : 0.0;
+    }
+    for (size_t i = 0; i < _fitted_data.size(); i++)
+    {
+      _fitted_data[i] = _fitted_data[i] > 0 ? 1.0 : 0.0;
+    }
+    for (size_t i = 0; i < _predicted_data.size(); i++)
+    {
+      _predicted_data[i] = _predicted_data[i] > 0 ? 1 : 0.0;
+    }
 
-     
+    //end of normalize data to one-hot vector
+
+
+    
   }
+  virtual void gnuplot(const std::string& filename)
+  {
+    //draw onehot vector  
+    //draw bag of words
+    _bow.gnuplot(filename+"_bow_cloud.gnuplot");
+    
+    //draw onehot vector:
+
+    std::ofstream ofs(filename+"_onehot.dat");
+    ofs<<"#index value"<<std::endl;
+    for (size_t i = 0; i < _transformed_data.size(); i++)
+    {
+      ofs<<std::to_string(i)<<" "<<std::to_string(_transformed_data[i])<<std::endl;
+    }
+    ofs.close();
+    
+    //gnuplot
+    ofs.open(filename+"_onehot.gnuplot");
+    ofs<<"set terminal png"<<std::endl;
+
+    ofs<<"set output '"<<filename<<"_onehot.png'"<<std::endl;
+    ofs<<"set title 'One Hot Vector'"<<std::endl;
+    ofs<<"set xlabel 'Words'"<<std::endl;
+
+    ofs<<"set ylabel 'Frequency'"<<std::endl;
+    ofs<<"set grid"<<std::endl;
+    ofs<<"set key off"<<std::endl;
+    ofs<<"set xrange [0:"<<_transformed_data.size()<<"]"<<std::endl;
+    ofs<<"set yrange [0:1]"<<std::endl;
+    ofs<<"set xtics 1"<<std::endl;
+    ofs<<"set ytics 0.1"<<std::endl;
+    ofs<<"set style fill solid"<<std::endl;
+    ofs<<"plot '"<<filename<<"_onehot.dat' using 1:2 with lines title 'onehot'"<<std::endl;
+    ofs.close();
+    
 
 
+  }
  };
-
+//tfidf vectorizer helper class
 class principal_component_analysis
 {
   
@@ -1401,6 +1602,105 @@ class principal_component_analysis
     }
     return result;
   }
+
+  //update pca data when fitting :
+  void update_pca( const std::vector<real_t>& data);
+  void gnuplot(const std::string& filename)
+  {
+    //save data in a file
+    std::ofstream ofs(filename+".dat");
+    //save scatter plot data
+    //set scatter plot data : 
+     /*
+    std::array<std::vector<real_t>,9> _scatter_plot_data;
+    _scatter_plot_data[0] = _covariance_matrix;
+    _scatter_plot_data[1] = _eigen_values;
+    _scatter_plot_data[2] = _eigen_vectors;
+    _scatter_plot_data[3] = _pca_components;
+    _scatter_plot_data[4] = _pca_explained_variance;
+
+    _scatter_plot_data[5] = _pca_singular_values;
+ 
+    _scatter_plot_data[6] = _pca_components;
+    _scatter_plot_data[7] = _pca_explained_variance;
+    _scatter_plot_data[8] = _pca_singular_values;
+
+    */
+     //end of set scatter plot data
+
+    
+    
+    ofs<<"#x y value covariance eigen_values eigen_vectors pca_components pca_explained_variance pca_singular_values"<<std::endl; 
+
+    //x - sample index
+    //y - feature index
+    //value - value of the feature
+    //covariance - covariance matrix at (x,y)
+    //eigen_values - eigen values at (x,y)
+    //eigen_vectors - eigen vectors at (x,y)
+    //pca_components - pca components at (x,y)
+    //pca_explained_variance - pca explained variance at (x,y)
+
+    //pca_singular_values - pca singular values at (x,y)
+    //set scatter plot data
+     
+    //end of save scatter plot data
+    ofs.close();
+    //gnuplot
+    std::ofstream ofs2(filename);
+    ofs2<<"set terminal png"<<std::endl;
+    ofs2<<"set output '"<<filename<<"_pca.png'"<<std::endl;
+    ofs2<<"set title 'Principal Component Analysis'"<<std::endl;
+    ofs2<<"set xlabel 'Data'"<<std::endl;
+    ofs2<<"set ylabel 'Components'"<<std::endl;
+    ofs2<<"set zlabel 'Variance'"<<std::endl; 
+    ofs2<<"set style fill solid"<<std::endl;
+    ofs2<<"set pm3d depthorder"<<std::endl;
+    //set rotation
+    ofs2<<"set view 60,30,1,1"<<std::endl;
+    ofs2<<"set xrange [0:]"<<std::endl;
+    ofs2<<"set yrange [0:]"<<std::endl;
+    ofs2<<"set zrange [0:]"<<std::endl;
+    ofs2<<"set grid"<<std::endl;
+    ofs2<<"set key off"<<std::endl;
+    ofs2<<"set dgrid3d 1000,1000,1000"<<std::endl;
+    ofs2<<"set hidden3d"<<std::endl;
+    ofs2<<"set palette rgbformulae 22,13,-31"<<std::endl;
+    ofs2<<"set pm3d depthorder"<<std::endl;
+    ofs2<<"set pm3d interpolate 0,0"<<std::endl;
+    ofs2<<"set pm3d at b"<<std::endl;
+    ofs2<<"set pm3d corners2color c1"<<std::endl;
+    //ofs2<<"set pm3d lighting phong specular 0.5"<<std::endl;
+    //plot the .dat file:
+    //set multiplot 
+    ofs2<<"set multiplot"<<std::endl;
+    //plot scatter, with eigen values,eigen vectors, scatter plot data, pca components, explained variance, singular values 
+    ofs2<<"splot '"<<filename<<".dat' using 1:2:3:3 with points pointtype 7   notitle"<<std::endl;
+    //plot covariance matrix
+    ofs2<<"splot '"<<filename<<".dat' using 1:2:4:4 with points pointtype 7   notitle"<<std::endl;
+    //plot eigen values
+    ofs2<<"splot '"<<filename<<".dat' using 1:2:5:5 with points pointtype 7   notitle"<<std::endl;
+    //plot eigen vectors
+    ofs2<<"splot '"<<filename<<".dat' using 1:2:6:6 with points pointtype 7   notitle"<<std::endl;
+    //plot pca components
+    ofs2<<"splot '"<<filename<<".dat' using 1:2:7:7 with points pointtype 7   notitle"<<std::endl;
+    //plot explained variance
+    ofs2<<"splot '"<<filename<<".dat' using 1:2:8:8 with points pointtype 7   notitle"<<std::endl;
+    //plot singular values
+    ofs2<<"splot '"<<filename<<".dat' using 1:2:9:9 with points pointtype 7   notitle"<<std::endl;
+    //end of plot scatter, with eigen values,eigen vectors, scatter plot data, pca components, explained variance, singular values
+    //end of plot the .dat file
+    //end of set multiplot
+    ofs2<<"unset multiplot"<<std::endl;
+    ofs2<<"unset pm3d"<<std::endl;
+    ofs2<<"unset dgrid3d"<<std::endl;
+    //finish:
+    ofs2<<"unset output"<<std::endl;
+    ofs2<<"unset terminal"<<std::endl;
+    ofs2.close();
+    
+  }
+
   void gauss_jordan_elimination(matrix<real_t>&elim  )
   {
       for ( size_t col =0;col < elim.cols();col++)
@@ -1470,8 +1770,8 @@ class principal_component_analysis
   //for use with inverse transformation matrices 
   //destructor
    virtual ~principal_component_analysis();
-  
-  
+   
+    
   protected:
 
 
@@ -1551,6 +1851,12 @@ class pca_vectorizer : public vectorizer<std::string, real_t>
   virtual vectorizer_type get_type() const ;
   
   virtual ~pca_vectorizer();
+
+
+
+  //gnu plot:
+  virtual void gnuplot(const std::string & filename);
+
   private:
 
   principal_component_analysis _pca;
@@ -1588,7 +1894,6 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
     else if(_lda_components.size()>0)
     return _lda_components.size();
 
-
     return _bow.get_number_of_tokens()  ;
   }
 
@@ -1621,31 +1926,31 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   bag_of_words  _bow;
   std::vector<std::string> _vocabulary;
   std::vector<std::string> _labels;
-  real_t _alpha;
-  real_t _beta;
-  real_t _eta;
-  real_t _gamma;
-  real_t _theta;
-  real_t _lambda;
-  size_t _n_iter;
-  size_t _n_topics;
-  size_t _n_features;
-  size_t _n_samples;
-  size_t _n_components;
-  size_t _n_top_words;
-  size_t _n_jobs;
-  size_t _random_state;
-  real_t _doc_topic_prior;
-  real_t _topic_word_prior;
-  real_t _learning_decay;
-  real_t _learning_offset;
-  size_t _max_doc_update_iter;
-  size_t _total_samples;
-  real_t _mean_change_tol;
-  size_t _num_docs;
-  size_t _num_words;
-  size_t  num_unique_tokens;
-  size_t _verbose;
+  real_t _alpha   =  0.1;
+  real_t _beta  =  0.1;
+  real_t _eta   =  0.1;
+  real_t _gamma =  1.0;
+  real_t _theta =  0.5;
+  real_t _lambda  =  1.0;
+  size_t _n_iter  =  10;
+  size_t _n_topics    =  10;
+  size_t _n_features        =  1000;
+  size_t _n_samples     =  1000 ;
+  size_t _n_components        =  10 ;
+  size_t _n_top_words   =  10 ;
+  size_t _n_jobs    =  1  ;
+  size_t _random_state    =  0;
+  real_t _doc_topic_prior     =  0.1  ;
+  real_t _topic_word_prior        =  0.7  ;
+  real_t _learning_decay    =  0.7  ;
+  real_t _learning_offset       =  10.0 ;
+  size_t _max_doc_update_iter   =  100  ;
+  size_t _total_samples   =  0  ;
+  real_t _mean_change_tol   =  0.0;
+  size_t _num_docs  =  0;
+  size_t _num_words=  0;
+  size_t  num_unique_tokens=  0;
+  size_t _verbose = 0;
   std::vector<real_t> _lda_data;
   std::vector<real_t> _lda_components;
   std::vector<real_t> _lda_explained_variance;
@@ -1656,9 +1961,9 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   std::vector<real_t> _lda_covariance;
   std::vector<real_t> _lda_precision;
   std::vector<real_t> _lda_whiten;
-  size_t _lda_n_components_;
-  size_t  _lda_n_features_;
-  size_t  _lda_n_samples_;
+  size_t _lda_n_components_ = 0;
+  size_t  _lda_n_features_ = 0;
+  size_t  _lda_n_samples_  = 0;
   //vocabulary
   //lda
   //bow
@@ -1718,8 +2023,98 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   //load additional parameters
   virtual void save(std::ofstream& out)const;
 
+  //gnuplot - creates gnuplot instructions to plot lda diagram using the data
+  virtual void gnuplot(const std::string& filename)
+  {
 
 
+    //plot _bow 
+    _bow.gnuplot(filename+"_bow_cloud.gnuplot");
+    //save tmp lda data to file
+    {
+      std::ofstream ofs(filename+"_lda_data.dat");
+      ofs<<"#lda data,lda_component, importance"<<std::endl;
+      for (auto& d : _lda_data)
+      { 
+        auto component_index =  (&d - &_lda_data[0] )% _lda_components.size();
+        auto importance = d * _lda_components[component_index];
+
+        ofs<<d<<" " << std::to_string( _lda_components[component_index] )<< " "<<std::to_string(importance)<<std::endl;
+
+        }
+      ofs.close();
+    }
+    //plot _lda_data
+    
+    std::ofstream ofs(filename);
+    ofs<<"reset session"<<std::endl;
+    ofs<<"set terminal png"<<std::endl;
+    ofs<<"set output '"<<filename.c_str()<<"_lda_vectorizer.png'"<<std::endl;
+    ofs<<"set title 'Latent Dirichlet Allocation'"<<std::endl;
+    ofs<<"set xlabel 'Samples'"<<std::endl;
+    ofs<<"set ylabel 'Features'"<<std::endl;
+    ofs<<"set xtics rotate by -45"<<std::endl;
+    ofs<<"set grid"<<std::endl;
+    ofs<<"set style fill solid"<<std::endl;
+    ofs<<"set boxwidth 0.5"<<std::endl;
+    //ofs<<"set yrange [0:]"<<std::endl;
+    //ofs<<"set xrange [0:"<<_lda_data.size()<<"]"<<std::endl;
+    //ofs<<"set zrange [0:]"<<std::endl;
+
+    ofs<<"set key off"<<std::endl;
+    ofs<<"set table $LDA_DATA"<<std::endl;
+    ofs<<"\t set samples "<<_lda_data.size()<<std::endl;
+    //load samples from lda data file  to LDA_DATA table
+
+    ofs<<"\t plot '"<<filename<<"_lda_data.dat' using 1:2:3 with table"<<std::endl;
+ 
+    ofs<<"# for each datapoint: how many other datapoints are within radius R"<<std::endl;
+    ofs<<"R = 0.5     # Radius to check"<<std::endl;
+    //distribution of x,y coordinates over z plane
+    ofs<<"set xrange [-1:1]"<<std::endl;
+    ofs<<"set yrange [-1:1]"<<std::endl;
+    ofs<<"set size ratio -1   # same screen units for x and y"<<std::endl;
+    ofs<<"set palette rgb 33,13,10"<<std::endl;
+    ofs<<"Dist(x0,y0,x1,y1) = sqrt((x1-x0)**2 + (y1-y0)**2) "<<std::endl; 
+
+   // ofs<<"set print $LDA_DATA"<<std::endl;
+    ofs<<"set print $Density"<<std::endl;
+
+    ofs<<"do for [i=1:|$LDA_DATA|] {"<<std::endl;
+    ofs<<"\t x0 = real(word($LDA_DATA[i],1))"<<std::endl;
+    ofs<<"\t y0 = real(word($LDA_DATA[i],2))"<<std::endl;
+    ofs<<"\t z0 = real(word($LDA_DATA[i],3))"<<std::endl;
+    //plot 3d density with x,y,z and density 
+    ofs<<"\t c  = 0"<<std::endl;
+    ofs<<"\t stats $LDA_DATA u (Dist(x0,y0,$1,$2)<=R ? c=c+1 : 0) nooutput"<<std::endl;
+    ofs<<"\t d = c / (pi * R**2)             # density: points per unit area"<<std::endl;
+    ofs<<"\t print sprintf(\"%g %g %g %d\", x0, y0, z0, d)"<<std::endl;
+    //plot x0,y0,z0 with density d
+    ofs<<"}"<<std::endl;
+    ofs<<"unset table"<<std::endl;
+
+ 
+    //plot :
+   // ofs<<"set xrange [-1:1]"<<std::endl;
+   // ofs<<"set yrange [-1:1]"<<std::endl;
+   // ofs<<"set zrange [-1:1]"<<std::endl;
+    ofs<<"set palette rgb 33,13,10"<<std::endl;
+    ofs<<"set pm3d depthorder"<<std::endl;
+    ofs<<"set hidden3d"<<std::endl;
+
+    ofs<<"set dgrid3d 5000,5000 qnorm 2"<<std::endl;
+    ofs<<"set ticslevel 0"<<std::endl;
+
+    ofs<<"set view 60,30,1,1"<<std::endl;
+    ofs<<"set isosamples 50"<<std::endl;
+    ofs<<"set contour base"<<std::endl;
+    ofs<<"set cntrparam levels 10"<<std::endl;
+    ofs<<"set size ratio -1   # same screen units for x and y"<<std::endl;
+    //plot 3d density with x,y,z and density
+ //plot $Density :
+    ofs<<"plot $Density u 1:2:3:4 w pm3d notitle"<<std::endl;
+    ofs.close();
+  }//end of gnuplot
 
   };
 
@@ -1798,7 +2193,75 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
   virtual std::vector<real_t> fit( const provallo::matrix<real_t>& );
   virtual std::vector<real_t> predict(const provallo::matrix<real_t>& );
   virtual std::vector<real_t> transform(const provallo::matrix<real_t>& );
- 
+  //load/save 
+  virtual void dump(std::ostream& out) const;
+  virtual void load(std::ifstream& in);
+  virtual void save(std::ofstream& out)const;
+  //vector<vector>> impl simply calls the vector<string> impl for each document.
+  //each document contains strings , each string contains tokens, each token is a word.
+  virtual std::vector<std::vector<real_t>>  fit( const std::vector<std::vector<std::string>>& );
+  virtual std::vector<std::vector<real_t>>  predict(const std::vector<std::vector<std::string>>& );
+  virtual std::vector<std::vector<real_t>>  transform(const std::vector<std::vector<std::string>>&);
+  //override get_type
+  virtual vectorizer_type get_type() const ;
+  //inverse_transform
+  virtual std::vector<std::string> inverse_transform(const std::vector<real_t>& data);
+  virtual std::vector<std::string> inverse_transform(const provallo::matrix<real_t>& data);
+  //print
+  
+
+
+  //gnuplot - creates gnuplot instructions to plot tsne diagram using the data 
+
+  virtual void gnuplot(const std::string& filename)
+  {
+    //
+    
+    std::string dat_filename = filename+".dat";
+    {
+      std::ofstream ofs(dat_filename);
+      ofs<<"#tsne data,tsne_component, importance"<<std::endl;
+      for (auto& d : _tsne_data)
+      { 
+        auto component_index =  (&d - &_tsne_data[0] )% _tsne_components.size();
+        auto importance = d * _tsne_components[component_index];
+
+        ofs<<d<<" " << std::to_string( _tsne_components[component_index] )<< " "<<std::to_string(importance)<<std::endl;
+
+        }
+      ofs.close();
+    }
+    //plot _tsne_data
+    std::ofstream ofs(filename);
+    ofs<<"reset session"<<std::endl;
+    ofs<<"set terminal png"<<std::endl;
+    ofs<<"set output '"<<filename.c_str()<<"_tsne_vectorizer.png'"<<std::endl;
+    ofs<<"set title 't-distributed Stochastic Neighbor Embedding'"<<std::endl;
+    ofs<<"set xlabel 'Samples'"<<std::endl;
+    ofs<<"set ylabel 'Features'"<<std::endl;
+    ofs<<"set xtics rotate by -45"<<std::endl;
+    ofs<<"set grid"<<std::endl;
+    ofs<<"set style fill solid"<<std::endl;
+
+
+    ofs<<"set key off"<<std::endl;
+    ofs<<"set table $TSNE_DATA"<<std::endl;
+    ofs<<"\t set samples "<<_tsne_data.size()<<std::endl;
+    //load samples from tsne data file  to TSNE_DATA table
+
+    ofs<<"\t plot '"<<dat_filename<<"' using 1:2:3 with table"<<std::endl;
+    //plot :
+    ofs<<"splot $TSNE_DATA u 1:2:3 w p pt 7 lc palette z notitle"<<std::endl;
+    ofs.close();
+    //plot _bow later when bow is implemented
+    // _bow.gnuplot(filename+"_bow_cloud.gnuplot");    
+    
+    //std::ofstream out(filename);
+    //draw tsne animation 
+    //out<<"reset session"<<std::endl;
+    
+  }
+
   virtual ~tsne_vectorizer();
 };
 

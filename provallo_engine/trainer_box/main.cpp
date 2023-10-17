@@ -7,6 +7,9 @@
 #include "../decision_engine/parameters.h"
 #include "../decision_engine/pipelinebuilder.h"
 #include "../decision_engine/autoencoder.h"
+#include "../decision_engine/bit_vector_attribute.h"
+#include "../decision_engine/tree_classifiers.h"
+
 #include <dirent.h>
 #include <filesystem>
 
@@ -95,30 +98,233 @@ provallo::matrix<real_t> read_data_file(const std::string& filepath )
   try
   {
   
-  provallo::bag_of_words bag;
-
+ 
   std::ifstream file(filepath);
 
   std::string line;
+  //for each feature(column) we have a map of values and counts
+  //for each row we have a map of features and values
+  std::map< size_t/*index*/, std::map<std::string/*value*/, size_t/*count*/>> BoW; 
+  std::map< size_t/*index*/, std::map<std::string/*value*/, size_t/*count*/>> BoW_labels;  
+  std::map< size_t/*index*/, std::map<std::string/*value*/, size_t/*count*/>> BoW_features;
+  
+  std::vector<provallo::bit_type<uint32_t,17>> types;
+
+  
+  std::vector<std::string> labels;
+  std::vector<std::string> features;
   std::vector<std::vector<std::string>> data;
   std::vector<std::string> row;
-  //const char* integer_or_real = "[(.)][(-|+)+[.]|][0-9]+";
-  while (std::getline(file, line))
+  //17 default types than can be mapped to each cell 
+  /*
+  bool is_label = false;
+  bool is_feature = false;
+  bool is_discrete = false;
+  bool is_continous = false;
+  bool is_vector = false;
+  bool is_matrix = false;
+  bool is_string = false;
+  bool is_bool = false;
+  bool is_date = false;
+  bool is_time = false;
+  bool is_datetime = false;
+  bool is_categorical = false;
+  bool is_ordinal = false;
+  bool is_nominal = false;
+  bool is_interval = false;
+  bool is_ratio = false;
+  bool is_count = false;
+  */
+
+
+   while (std::getline(file, line))
   {
     std::stringstream lineStream(line);
 
     std::string cell;
+    size_t column_index = 0;
+
     while (std::getline(lineStream, cell, ','))
     {
+      //check if cell is empty
        //trim cell
+      column_index++;
       cell.erase(std::remove_if(cell.begin(), cell.end(), [](char c) { return std::isspace(c); }), cell.end());  
-       row.push_back(cell);
+      if (cell.empty())
+      {
+        continue; 
+      }
+      //check if cell is a label / discrete value or a feature / continous value
+      //start :
+
+      //bit vector of 18 bits:
+      //label,feature,discrete,continous,vector,matrix,string,bool,date,time,datetime,categorical,ordinal,nominal,interval,ratio,count:
+
+      
+      std::string continous_s = "^(( )*|([0-9]+(\\.[0-9]+)?))$";
+      std::string discrete_s = "^(( )*|([0-9]+))$";
+      std::string label_s = "^(( )*|([0-9]+))$";
+      std::string feature_s = "^(( )*|([0-9]+(\\.[0-9]+)?))$";
+      std::string vector_s = "^(( )*|([0-9]+(\\.[0-9]+)?))$";
+      std::string matrix_s = "^(( )*|([0-9]+(\\.[0-9]+)?))$";
+      std::string string_s = "^$";
+      //TRUE or true or FALSE or false or 0 or 1 :
+      std::string bool_s = " ^(( )*|([0-1]+))$";
+      //date format : YYYY-MM-DD
+      std::string date_s = "\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d(?:\\.\\d+)?Z?"; 
+      //time format : HH:MM:SS.mmmmmm
+      std::string time_s = "\\d{2}:\\d{2}:\\d{2}\\.\\d{6}";
+      //datetime format : YYYY-MM-DDTHH:MM:SS.mmmmmm
+      std::string datetime_s = "\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d(?:\\.\\d+)?Z?";
+      //categorical,ordinal,nominal,interval,ratio,count
+      std::string categorical_s = "^(( )*|([0-1]+))$";
+      std::string ordinal_s = "^(( )*|([0-1]+))$";
+      std::string nominal_s = "^(( )*|([0-1]+))$";
+      std::string interval_s = "^(( )*|([0-1]+))$";
+      std::string ratio_s = "^(( )*|([0-9]+))$/^(( )*|([0-9]+(\\.[0-9]+)?))$";
+      std::string count_s = "^(( )*|([0-9]+))$";
+
+      std::regex label_regex(label_s.c_str(), std::regex_constants::icase);
+      std::regex feature_regex(feature_s.c_str(), std::regex_constants::icase);
+      std::regex discrete_regex(discrete_s.c_str(), std::regex_constants::icase);
+      std::regex continous_regex(continous_s.c_str(), std::regex_constants::icase);
+      std::regex vector_regex(vector_s.c_str(), std::regex_constants::icase);
+      std::regex matrix_regex(matrix_s.c_str(), std::regex_constants::icase);
+      std::regex string_regex(string_s.c_str(), std::regex_constants::icase);
+      std::regex bool_regex(bool_s, std::regex_constants::icase);
+      std::regex date_regex(date_s, std::regex_constants::icase);
+      std::regex time_regex("time", std::regex_constants::icase);
+      std::regex datetime_regex("datetime", std::regex_constants::icase);
+      std::regex categorical_regex("categorical", std::regex_constants::icase);
+      std::regex ordinal_regex("ordinal", std::regex_constants::icase);
+      std::regex nominal_regex("nominal", std::regex_constants::icase);
+      std::regex interval_regex("interval", std::regex_constants::icase);
+      std::regex ratio_regex("ratio", std::regex_constants::icase);
+      std::regex count_regex("count", std::regex_constants::icase);
+
+      //check and update column information
+
+ 
+      provallo::bit_type<uint32_t,17> type(0);
+      if(types.size()<column_index)
+      {
+        types.push_back(type);
+      }
+      else
+      {
+        type = types[column_index-1];
+      }
+      
+      //end
+      //check and update column information
+      if (std::regex_search(cell, label_regex))
+      {
+ //        is_label = true;
+         type.flip(0);
+      } 
+      if (std::regex_search(cell, feature_regex))
+      {
+         type.flip(1);
+   //     is_feature = true;
+      }
+      if (std::regex_search(cell, discrete_regex))
+      {
+                type.flip(2);
+
+     //   is_discrete = true;
+    //    is_continous=false;
+
+      }
+      if (std::regex_search(cell, continous_regex))
+      {
+        type.flip(3);
+  //      is_continous = true;
+ //       is_discrete=false;
+      }
+      if (std::regex_search(cell, vector_regex))
+      {
+        type.flip(4);
+ //       is_vector = true;
+      }
+       if (std::regex_search(cell, matrix_regex))
+      {
+        type.flip(5);
+//                is_matrix = true;
+      }
+       if (std::regex_search(cell, string_regex))
+      { 
+        type.flip(6);
+   //     is_string = true;
+      }
+       if (std::regex_search(cell, bool_regex))
+      {
+        type.flip(7);
+  //      is_bool = true;
+      }
+       if (std::regex_search(cell, date_regex))
+      {
+        type.flip(8);
+     //   is_date = true;
+      }
+        if (std::regex_search(cell, time_regex))
+      {
+        type.flip(9);
+ //           is_time = true;
+      }
+        if (std::regex_search(cell, datetime_regex))
+      {
+        type.flip(10);
+     //       is_datetime = true;
+        
+      }
+        if (std::regex_search(cell, categorical_regex))
+      {
+          type.flip(11);
+     //     is_categorical = true;
+      }
+        if (std::regex_search(cell, ordinal_regex))
+      {
+        type.flip(12);
+       //  is_ordinal = true;
+      }
+      if (std::regex_search(cell, nominal_regex))
+      {
+        type.flip(13);
+       // is_nominal = true;
+      }
+        if (std::regex_search(cell, interval_regex))
+      {
+        type.flip(14);
+       //  is_interval = true;
+      }
+        if (std::regex_search(cell, ratio_regex))
+      {
+        type.flip(15);
+        //is_ratio = true;
+      }
+        if (std::regex_search(cell, count_regex))
+      {
+        type.flip(16);
+       // is_count = true;
+      }
+      //end 
+      if( type==0)
+      //set continous as default
+      {
+        type.flip(3);
+      //  is_continous = true;
+      } 
+      
+      types[column_index-1]=type;
+      //end
+      row.push_back(cell);
+
     }
     data.push_back(row);
     row.clear();
-
-  } 
  
+  } 
+  
   //now we can transform the data
   provallo::matrix<real_t> X( data.size(),data[0].size());
   size_t i = 0;
@@ -194,9 +400,8 @@ provallo::isolation_forest* isoforest_single(const provallo::attribute_informati
 {
  
   static const provallo::attribute_information& att_stat = attributes ;
-
-     // fitting ISO FORESTS
-     /*
+  // fitting ISO FORESTS
+  /*
 		     size_t ndim = attributes.getGroups ().size ();
                      size_t ntry =10;
                      provallo::CoefType coef_type = provallo::CoefType::Uniform;
@@ -371,18 +576,9 @@ bool test_fast_knn(const std::string benchmark_folder )
         //std::ifstream weights_ (weights_file_name);
         //std::map<std::string,Float> weights;
         std::cout<<"-- building dataset for : "<<file_stem<<std::endl;
-        
-        
-
-
         provallo::files_collector collector = provallo::files_collector (benchmark_folder+"/"+file_stem);
- 
         const provallo::attribute_information& attributes = collector.getAttributes (),attributes_copy=collector.getAttributes ();
-
-
         //checking zero knowledge distributed kmeans 
-
- 
         std::cout<<"-- Attributes information : "<<std::endl<<std::endl;
         std::cout<< description_file<<std::endl;
         std::cout<<collector.getAttributes ()<<std::endl;
@@ -395,7 +591,7 @@ bool test_fast_knn(const std::string benchmark_folder )
           std::cout<<weight.first<<" : "<<std::to_string(weight.second)<<std::endl;
         } */
         
-         std::cout<<std::endl<<"------- attributes --------"<<std::endl<<std::endl;
+        std::cout<<std::endl<<"------- attributes --------"<<std::endl<<std::endl;
         provallo::training_set set(attributes);
         // add default weight map  to dataset itself, not classifier 
         // params. 
@@ -461,8 +657,7 @@ bool test_fast_knn(const std::string benchmark_folder )
           {
               provallo::point<14> point;
               const size_t point_size = 14;
-            
-            {
+             {
                 if(( j==0) || ( j!=0&& j != target_tag &&(j%target_tag!=0) )  )
                 {
                   point[j%point_size] = sample.continous();
@@ -487,7 +682,8 @@ bool test_fast_knn(const std::string benchmark_folder )
                 }
             }
             j++;
-          }
+          }//for each sample
+
 
 
           size_t testCnt = testData.size();
@@ -797,8 +993,7 @@ bool test_vectorizers ( )
   //provallo::pca_vectorizer vectorizer2;
   provallo::lda_vectorizer vectorizer3;
   provallo::pca_vectorizer vectorizer4;
-
-  //provallo::nmf_vectorizer vectorizer4;
+   //provallo::nmf_vectorizer vectorizer4;
   //provallo::svd_vectorizer vectorizer5;
   //provallo::kmeans_vectorizer vectorizer6;
   //provallo::knn_vectorizer vectorizer7;
@@ -911,7 +1106,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         //checking zero knowledge distributed kmeans
 
         //provallo::auto_encoder<double,double> encoder( collector.getAttributes().getSize(),collector.getAttributes().getSize()*collector.getAttributes().getSize(),collector.getAttributes().getTargetClassCount() );
-        provallo::softmax_classifier<double,double> softmax(/*nclasses*/nclasses, /*dimensions*/attributes.getSize(),/*alpha*/0.01,0.05/*lambda*/);  
+        provallo::softmax_classifier<double,double> softmax(/*nclasses*/nclasses, (size_t)/*dimensions*/attributes.getSize(),/*alpha*/(real_t)1.,(real_t)0.05/*lambda*/);  
 
         std::cout<<"-- attribute info : "<<std::endl<<std::endl;
         std::cout<< attributes <<std::endl<<std::endl;
@@ -1005,7 +1200,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
             {
               std::cout<<"-- prediction error : "<<std::to_string(max)<<" "<<std::to_string(data(i,attributes.getTargetClassCount()))<<std::endl;
               std::cout<<"-- backpropagating error "<<std::endl; 
-              softmax.backpropogate_error (mdata,odata,i);
+              softmax.backpropogate_error (mdata,odata);
 
 
             }
@@ -1131,6 +1326,8 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       std::cout<<"-- deleting description file .... "<<std::endl<<std::endl;
 
       description_file.clear();
+      mdata.resize(1,1);
+      odata.resize(1,1);
       ret = true;
 
       //clean up
@@ -1303,9 +1500,12 @@ exclude_list.push_back(".git");
   //first we want to verify the vectorizers and autoencoders work properly 
   vectorizers_attacks.push_back(new provallo::lda_vectorizer);
   vectorizers_attacks.push_back(new provallo::one_hot_vectorizer);
+  vectorizers_attacks.push_back(new provallo::pca_vectorizer);
   
   vectorizers_normal.push_back(new provallo::lda_vectorizer);
   vectorizers_normal.push_back(new provallo::one_hot_vectorizer);
+  vectorizers_normal.push_back(new provallo::pca_vectorizer);
+  
   //vectorizers_normal.push_back(new provallo::auto_encoder_vectorizer<real_t,real_t>(autoencoders)); 
   //create vectorizers:
 //  vectorizers.push_back(new provallo::pca_vectorizer);
@@ -1456,9 +1656,11 @@ exclude_list.push_back(".git");
         vectorizer_type = vectorizer_types[vect->get_type()];
       }
       std::cout<<"[+] saving attack vectorizer "<<vectorizer_type<<std::endl;  
-      std::ofstream vectorizer_out("vectorizer_fuzzdb_"+vectorizer_type+std::to_string(vectr)+".json");
+      std::ofstream vectorizer_out("vectorizer_fuzzdb_attacks"+vectorizer_type+std::to_string(vectr)+".json");
 
       vect->save(vectorizer_out);
+      vect->gnuplot("vectorizer_fuzzdb_attacks"+vectorizer_type+std::to_string(vectr)+".gnuplot");
+
       vectr++;
 
     }
@@ -1471,9 +1673,10 @@ exclude_list.push_back(".git");
         vectorizer_type = vectorizer_types[vect->get_type()];
       }
       std::cout<<"[+] saving benign vectorizer "<<vectorizer_type<<std::endl;  
-      std::ofstream vectorizer_out("vectorizer_fuzzdb_"+vectorizer_type+std::to_string(vectr)+".json");
+      std::ofstream vectorizer_out("vectorizer_fuzzdb_benign"+vectorizer_type+std::to_string(vectr)+".json");
 
       vect->save(vectorizer_out);
+      vect->gnuplot("vectorizer_fuzzdb_benign"+vectorizer_type+std::to_string(vectr)+".gnuplot");
       vectr++;
     }
 
@@ -1494,8 +1697,7 @@ exclude_list.push_back(".git");
        std::string fit_file((std::istreambuf_iterator<char>(ifrandom)),
     std::istreambuf_iterator<char>());
  
-      input =vectorizer->predict(fit_file);
-      input_size = input.size();
+    
 
       //print vectorizer type
       std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type(); 
@@ -1503,26 +1705,32 @@ exclude_list.push_back(".git");
       {
         vectorizer_type = vectorizer_types[vectorizer->get_type()];
       } 
-
-    if( input_size==0)//< vectorizer->get_output_size()  )
-    {
-      input_size =sqrt(sqrt(vectorizer->get_output_size()));
-
-      for(size_t i=input.size();i<input_size;i++)
-      {
-        input.push_back(real_t(0.0));
-      }
-    } 
+  
    
     std::cout<<"[+] creating autoencoder for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << " , input size:"<<std::to_string(input_size)<<std::endl;
 
     c_start = clock ();
     t_start = std::chrono::high_resolution_clock::now ();
+      input = vectorizer->predict(fit_file);
+      input_size = input.size();
+      if( input_size==0)//< vectorizer->get_output_size()  )
+    {
+      input_size =sqrt(vectorizer->get_output_size());
+
+      for(size_t i=input.size();i<input_size;i++)
+      {
+        input.push_back(real_t(i)/vectorizer->get_output_size());
+      }
+    } 
     if(input_size<=1){ 
       std::cout<<"[+] skipping autoencoder creation for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << " , input size:"<<std::to_string(input_size)<<std::endl;
       continue; }
+    //push softmax classifiers as autoencoders
+    provallo::auto_encoder<real_t,real_t>* ae = new provallo::softmax_classifier<real_t,real_t>(2,input_size,/*alpha*/0.1,/*lambda*/0.05);//input,hidden,output 
+    autoencoders.push_back(ae);
 
-    autoencoders.push_back(new provallo::auto_encoder<real_t,real_t>(input_size,input_size*(2*std::log2(input_size)),1));//input,hidden,output 
+    //autoencoders.push_back(new provallo::auto_encoder<real_t,real_t>(input_size,input_size*(2*std::log2(input_size)),1));//input,hidden,output   
+    //c_end = clock ();
     c_end = clock ();
     t_end = std::chrono::high_resolution_clock::now ();
     std::cout << "[+] auto encoder init Test CPU time elapsed in s: " << (double) (c_end - c_start) / CLOCKS_PER_SEC << std::endl;    
@@ -1558,11 +1766,10 @@ exclude_list.push_back(".git");
       {
         std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(vectorizer->get_output_size())<<std::endl; 
         size_t old_size = input.size();
-        input.resize(sqrt(sqrt(vectorizer->get_output_size() )));
+        input.resize(enc->getInputDim());
         for(size_t i=old_size;i<input.size();i++)
         {
-          input[i] = i/vectorizer->get_output_size();
-
+          input[i] = i/enc->getInputDim();
         } 
 
       } 
@@ -1570,7 +1777,7 @@ exclude_list.push_back(".git");
       std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<std::endl; 
       std::cout<<"[+] autoencoder input size : "<<std::to_string(enc->getInputDim())<<std::endl;
      
-     
+      //attack output
      
       double output[2]={1,1};
       //do
@@ -1581,11 +1788,11 @@ exclude_list.push_back(".git");
       for ( size_t inputs = 0 ; inputs < enc->getInputDim()*t ; inputs+=enc->getInputDim() )
       {
         enc->train((real_t*)input.data()+inputs,output,1); 
-        std::cout<<"[+] train output[0] : "<<std::to_string(output[0])<<std::endl;
-      }
+        std::cout<<"[+] train output  : "<<std::to_string(output[0])<<std::endl;
+        
+       }
       
-      //test with vectorized data 
-      
+      //test with vectorized data  
       
        
 //      }while(output[0]+output[1]<0.99);
@@ -1598,7 +1805,8 @@ exclude_list.push_back(".git");
 
       std::cout<<"[+] evaluating autoencoder done"<<std::endl;
       std::cout<<"[+] output[0] : "<<std::to_string(output[0])<<std::endl;
-       
+      //std::cout<<"[+] loss = "<<std::to_string(enc->get_loss())<<std::endl; 
+
       std::cout<<"[+] training autoencoder done"<<std::endl;
       std::cout<<"[+] training autoencoder done"<<std::endl;
       enc->save("encoder_fuzzdb_"+vectorizer_type+".json");
@@ -1614,24 +1822,33 @@ exclude_list.push_back(".git");
     << std::endl;
     std::cout<<"[+] finished "<<fuzz_file<<std::endl;
 
-  } 
-    
+  } //end for fuzz files
+  
+  //let's try without retraining softmax classfiers since the autoencoders are already trained 
+  //create softmax classifier
+  //size_t n_classes =2 ,n_dimensions  = sqrt(autoencoders[0]->getInputDim()); 
+  //real_t alpha = 1. , lambda = 0.15;
 
-  // let's construct and trian the softmax classifier
-  // the vectorizers are already trained, so we can use them to train the softmax classifier
-  // we know the LDA vectorizer is better for attacks, so we will use it for the softmax classifier
+  provallo::softmax_classifier<real_t,real_t> softmax(*(autoencoders[0])); //(n_dimensions,n_classes,alpha,lambda);
 
   auto& selected_vectorizer = vectorizers_attacks[0];
   auto& selected_normal_vectorizer = vectorizers_normal[0];
-  //create softmax classifier
-  size_t n_classes =2 ,n_dimensions  = sqrt(selected_vectorizer->get_output_size());
-  real_t alpha = 1. , lambda = 0.15;
 
-  provallo::softmax_classifier<real_t,real_t> softmax(n_dimensions,n_classes,alpha,lambda);
+  std::cout<<"[+] attack vectorizer output size = "<<std::to_string(selected_vectorizer->get_output_size())<<std::endl; 
+  std::cout<<"[+] selected normal vectorizer output size = "<<std::to_string(selected_normal_vectorizer->get_output_size())<<std::endl;
+  char x=std::getchar();
+
+
+  //create softmax classifier
+  //size_t n_classes =2 ,n_dimensions  = sqrt(selected_vectorizer->get_output_size());
+  //real_t alpha = 1. , lambda = 0.15;
+
+  //provallo::softmax_classifier<real_t,real_t> softmax(n_dimensions,n_classes,alpha,lambda);
   //train softmax classifier
   std::cout<<"[+] training softmax classifier "<<std::endl;
-  provallo::matrix<real_t> out_mat(provallo::matrix<real_t>::Zero(1,n_classes)); 
-  size_t total_cases = string_files_attacks.size()+string_files_normal.size(); 
+  size_t n_classes = 2;
+  provallo::matrix<real_t> out_mat(1,n_classes ); 
+  size_t total_cases = 0; // string_files_attacks.size()+string_files_normal.size(); 
   size_t correct_classifications = 0;
   size_t error_classifications = 0;
   size_t true_positives = 0;
@@ -1643,9 +1860,16 @@ exclude_list.push_back(".git");
   //first train with normal data
   for (auto & fuzz_file : string_files_normal )
   {
+    try {
     std::ifstream fuzz(fuzz_file);
-    out_mat.resize(1,n_classes);
-    out_mat.fill(0.0);
+  
+    if(!fuzz.is_open()|| !fuzz.good())
+    {
+      std::cout<<"[+] error opening file "<<fuzz_file<<std::endl;
+      continue;
+    } else {
+
+      
     std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
     std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
     std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_normal_vectorizer->get_type()]<<std::endl;
@@ -1656,67 +1880,183 @@ exclude_list.push_back(".git");
     {
       std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(selected_normal_vectorizer->get_output_size())<<std::endl; 
       size_t old_size = input.size();
-      input.resize(sqrt(sqrt(selected_normal_vectorizer->get_output_size() )));
+      input.resize(softmax.getInputDim());
       for(size_t i=old_size;i<input.size();i++)
       {
-        input[i] = 0.0;
+           input[i] = i/real_t(softmax.getInputDim());
+        
       } 
-
+    
     } 
+    out_mat.resize(1,n_classes);
+    out_mat.fill(0.0);
+
     provallo::matrix<real_t> input_mat = provallo::matrix<real_t>(input.data(),1,input.size()); 
       softmax.train(input,out_mat);
       std::cout<<"[+] training softmax benign case done"<<std::endl;
       std::cout<<"[+] output = "<<out_mat<<std::endl;
-     } 
- 
-    std::cout<<"[+] training softmax classifier done"<<std::endl;
+       //update confusion 
+    
+    for ( size_t i=0;i<out_mat.cols();i++)  {
+    for (size_t j=0;j<out_mat.rows();j++) 
+    {
+     total_cases++;
+      if (out_mat(j,i) <0.5 )
+      {
+        //true positive
+         true_positives++;
+         correct_classifications++;
+        std::cout<<"[+] TP benign case detected"<<std::endl;
+      }
+      else if (out_mat(j,i)==0.5)
+      {
+        //error
+        error_classifications++;
+        true_negatives++;
+        std::cout<<"[+] TN error : softmax output = 0.5"<<std::endl;
+      }
+      else if (out_mat(j,i) > 0.5 )
+      {
+        //false positive
+        false_positives++;
+        error_classifications++;
+        std::cout<<"[+] FP attack case detected"<<std::endl;
+      }     //else
+      else 
+      {
+        //false negative
+        false_negatives++;
+        error_classifications++;
+        std::cout<<"[+] FN attack case detected"<<std::endl;
+      }//else
+     } //end for softmax output
+    } //end for softmax output
+    }//and else
+    //end try
+    }catch(std::exception& e)
+    {
+      std::cout<<"[+] exception : "<<e.what()<<std::endl; 
+    }
+    
 
-    //now do the same and train with the attack data:
+  } //end for normal files
+   
+
+  std::cout<<"[+] training softmax classifier on normal cases done"<<std::endl;
+  //print confusion matrix
+  std::cout<<"[+] softmax training : " <<std::endl;
+  std::cout<<"[+] total training samples:"<<std::to_string(total_cases)<<std::endl;
+  std::cout<<"[+] false positives : "<<std::to_string(false_positives)<<std::endl;
+  std::cout<<"[+] false negatives : "<<std::to_string(false_negatives)<<std::endl;
+  std::cout<<"[+] true positives : "<<std::to_string(true_positives)<<std::endl;
+  std::cout<<"[+] true negatives : "<<std::to_string(true_negatives)<<std::endl;
+  std::cout<<"[+] correct classifications : "<<std::to_string(correct_classifications)<<std::endl;
+  std::cout<<"[+] error classifications : "<<std::to_string(error_classifications)<<std::endl;
+  std::cout<<"[+] softmax benign training done"<<std::endl;
+
+  x+= std::getchar();
+  x++;
+  //now do the same and train with the attack data a few times. 
+  for(size_t i=0;i<5;i++)
   for(auto & fuzz_file : string_files_attacks)
   {
+    try {
+
     std::ifstream fuzz(fuzz_file);
+
+    if(!fuzz.is_open()|| !fuzz.good())
+    {
+      std::cout<<"[+] error opening file "<<fuzz_file<<std::endl;
+      continue;
+    }
+    //when out_mat is allocated to 1,n_classes no allocation is done
     out_mat = (provallo::matrix<real_t>::One(1,n_classes)); 
 
     std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
     std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
     std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<std::endl;
     std::vector<real_t> input = selected_vectorizer->predict(data_string);
-    std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<" done"<<std::endl;
+    std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<" done with size:"<<std::to_string(input.size())<<std::endl;
     std::cout<<"[+] training softmax classifier"<<std::endl;
     if(input.size()<softmax.getInputDim() )
     {
-      std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(selected_normal_vectorizer->get_output_size())<<std::endl; 
+      std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(selected_vectorizer->get_output_size())<<std::endl; 
       size_t old_size = input.size();
-      input.resize(sqrt(sqrt(selected_vectorizer->get_output_size() )));
+      input.resize( softmax.getInputDim());
       for(size_t i=old_size;i<input.size();i++)
       {
-        input[i] = 0.0;
+        input[i] = i/real_t(softmax.getInputDim());
       } 
 
     } 
-    provallo::matrix<real_t> input_mat = provallo::matrix<real_t>(input.data(),1,input.size()); 
-      softmax.train(input,out_mat);
+    out_mat.resize(1,n_classes);
+    out_mat.fill(1.0);
+
+
+       provallo::matrix<real_t> input_mat = provallo::matrix<real_t>(input.data(),1,input.size()); 
+      softmax.train(input_mat,out_mat);
       std::cout<<"[+] training softmax attack cases done"<<std::endl;
       std::cout<<"[+] output = "<<out_mat<<std::endl;
 
+      for ( size_t i=0;i<out_mat.cols();i++)  {
+        for ( size_t j=0;j<out_mat.rows();++j)
+        {
+      //update confusion matrix
+      total_cases++;
+          if( out_mat(i,j) < 0.5 )
+          {
+            //true negative
+            false_positives++;
+            error_classifications++;
+            std::cout<<"[+] benign case detected"<<std::endl;
+          }
+          else if ( out_mat(i,j) > 0.5 )
+          {
+            //false positive
+            true_positives++;
+            correct_classifications++;
+            std::cout<<"[+] attack case detected"<<std::endl;
+          }     
+          else if ( out_mat(i,j) == 0.5 )
+          {
+            error_classifications++;
+            true_negatives++;
+            std::cout<<"[+] error : softmax output = 0.5"<<std::endl;
+          }
+          else 
+          {
+            false_negatives++;
+            error_classifications++;
+            std::cout<<"[+] error : softmax output = "<<std::to_string(out_mat(i,j))<<std::endl;
+          }
+          
+      }//end for softmax output
+      }//end for softmax output
+    }//end try
+    catch(std::exception& e)
+    {
+      std::cout<<"[+] exception : "<<e.what()<<std::endl;   
     } 
-
+    }//end for attack files
     std::cout<<"[+] training softmax classifier done"<<std::endl;
     //print confusion matrix 
     std::cout<<"[+] softmax training : " <<std::endl;
-    std::cout<<"[+] false positives : "<<std::to_string(false_positives/total_cases)<<std::endl; 
-    std::cout<<"[+] false negatives : "<<std::to_string(false_negatives/total_cases)<<std::endl;
-    std::cout<<"[+] true positives : "<<std::to_string(true_positives/total_cases)<<std::endl;
-    std::cout<<"[+] true negatives : "<<std::to_string(true_negatives/total_cases)<<std::endl;
-    std::cout<<"[+] correct classifications : "<<std::to_string(correct_classifications/total_cases)<<std::endl;
-    std::cout<<"[+] error classifications : "<<std::to_string(error_classifications/total_cases)<<std::endl;
+    std::cout<<"[+] false positives : "<<std::to_string(false_positives)<<std::endl; 
+    std::cout<<"[+] false negatives : "<<std::to_string(false_negatives)<<std::endl;
+    std::cout<<"[+] true positives : "<<std::to_string(true_positives)<<std::endl;
+    std::cout<<"[+] true negatives : "<<std::to_string(true_negatives)<<std::endl;
+    std::cout<<"[+] correct classifications : "<<std::to_string(correct_classifications)<<std::endl;
+    std::cout<<"[+] error classifications : "<<std::to_string(error_classifications)<<std::endl;
     std::cout<<"[+] softmax training done"<<std::endl;
-
+    //save softmax classifier
+    std::cout<<"[+] saving softmax classifier"<<std::endl;
+    softmax.save("softmax_fuzzdb_attacks_trained.json");
 
   //now test the softmax classifier
-    std::cout<<"[+] testing softmax classifier  "<<std::endl;
+  std::cout<<"[+] testing softmax classifier  "<<std::endl;
  
   //reset for test
+   total_cases = 0;
    correct_classifications = 0;
    error_classifications = 0;
    true_positives = 0;
@@ -1749,106 +2089,148 @@ exclude_list.push_back(".git");
     softmax.predict(input_mat,out_mat);
     std::cout<<"[+] testing softmax benign case done"<<std::endl;
     std::cout<<"[+] output = "<<out_mat<<std::endl;
-    if( out_mat(0,0) < 0.5 )
-    {
-      //true negative
-      true_negatives++;
-      correct_classifications++;
-      std::cout<<"[+] benign case detected"<<std::endl;
-    }
-    else
-    {
-      //false positive
-      false_positives++;
-      error_classifications++;
-      std::cout<<"[+] attack case detected"<<std::endl;
-    }
-    
-    }
+    //update confusion matrix
+    for ( size_t i=0;i<out_mat.cols();i++)  {
+      for ( size_t j=0;j<out_mat.rows();++j) {
+         total_cases++;  
+        if( out_mat(j,i) < 0.5 )
+        {
+          //true negative
+          true_negatives++;
+          correct_classifications++;
+          std::cout<<"[+] benign case detected"<<std::endl;
+        }
+        else if (out_mat(j,i) > 0.5)
+        {
+          //false positive
+          false_positives++;
+          error_classifications++;
+          std::cout<<"[+] attack case detected"<<std::endl;
+        }
+        else if (out_mat(j,i)==0.5)
+        {
+          //error
+          error_classifications++;
+          true_positives++;
+          std::cout<<"[+] error : softmax output = 0.5"<<std::endl;
+        }
+        else 
+        {
+          //error
+          error_classifications++;
+          false_negatives++;
+          std::cout<<"[+] error : softmax output = "<<std::to_string(out_mat(j,i))<<std::endl;    
+        }
+        
+    }//end for softmax output
+    }//end for softmax output
+    } //end for normal files
+
     std::cout<<"[+] testing softmax classifier done"<<std::endl;
 
     //test with attack data
     for (auto & fuzz_file : string_files_attacks )
     {
-    std::ifstream fuzz(fuzz_file);
-    provallo::matrix<real_t> out_mat(provallo::matrix<real_t>::Zero(1,n_classes));
-    std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
-    std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
-    std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<std::endl;
-    std::vector<real_t> input = selected_vectorizer->predict(data_string);
-    std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<" done"<<std::endl;
-    std::cout<<"[+] testing softmax classifier"<<std::endl;
-    if(input.size()<softmax.getInputDim() )
-    {
-      std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(selected_normal_vectorizer->get_output_size())<<std::endl;
-      size_t old_size = input.size();
-      input.resize(sqrt(sqrt(selected_vectorizer->get_output_size() )));
-      for(size_t i=old_size;i<input.size();i++)
+      std::ifstream fuzz(fuzz_file);
+      provallo::matrix<real_t> out_mat(provallo::matrix<real_t>::Zero(1,n_classes));
+      std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+      std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
+      std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<std::endl;
+      std::vector<real_t> input = selected_vectorizer->predict(data_string);
+      std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<" done"<<std::endl;
+      std::cout<<"[+] testing softmax classifier"<<std::endl;
+      if(input.size()<softmax.getInputDim() )
       {
-        input[i] = 0.0;
+        std::cout<<"[+] vectorizer output size : "<<std::to_string(input.size())<<"/"<<std::to_string(selected_normal_vectorizer->get_output_size())<<std::endl;
+        size_t old_size = input.size();
+        input.resize(sqrt(sqrt(selected_vectorizer->get_output_size() )));
+        for(size_t i=old_size;i<input.size();i++)
+        {
+          input[i] =  0.0;
+        }
+
       }
+      provallo::matrix<real_t> input_mat = provallo::matrix<real_t>(input.data(),1,input.size());
+      softmax.predict(input_mat,out_mat);
+      std::cout<<"[+] testing softmax attack case done"<<std::endl;
+      std::cout<<"[+] output = "<<out_mat<<std::endl;
+      //update confusion matrix
+      for ( size_t i=0;i<out_mat.cols();i++)  {
+        for ( size_t j=0;j<out_mat.rows();++j) {
+           total_cases++;  
+          if( out_mat(j,i) < 0.5 )
+          {
+            //true negative
+            false_positives++;
+            error_classifications++;
+            std::cout<<"[+] benign case detected"<<std::endl;
+          }
+          else if (out_mat(j,i) > 0.5)
+          {
+            //false positive
+            true_positives++;
+            correct_classifications++;
+            std::cout<<"[+] attack case detected"<<std::endl;
+          }
+          else if (out_mat(j,i)==0.5)
+          {
+            //error
+            error_classifications++;
+            true_negatives++;
+            std::cout<<"[+] error : softmax output = 0.5"<<std::endl;
+          }
+          else 
+          {
+            //error
+            error_classifications++;
+            false_negatives++;
+            std::cout<<"[+] error : softmax output = "<<std::to_string(out_mat(j,i))<<std::endl;    
+          }
+          
+      }//end for softmax output
+      }//end for softmax output   
 
-    }
-    provallo::matrix<real_t> input_mat = provallo::matrix<real_t>(input.data(),1,input.size());
-    softmax.predict(input_mat,out_mat);
-    std::cout<<"[+] testing softmax attack case done"<<std::endl;
-    std::cout<<"[+] output = "<<out_mat<<std::endl;
-    if(out_mat(0,0) < 0.5 )
-    {
-      error_classifications++;
-      //false negative
-      false_negatives++;
-      std::cout<<"[+] benign case detected"<<std::endl;
-    }
-    else
-    {
-      //true positive
-      true_positives++;
-      correct_classifications++;
-      std::cout<<"[+] attack case detected"<<std::endl;
-    }
 
-    }  
-    std::cout<<"[+] softmax test results: " <<std::endl;
-    std::cout<<"[+] false positives : "<<std::to_string(false_positives/total_cases)<<std::endl; 
-    std::cout<<"[+] false negatives : "<<std::to_string(false_negatives/total_cases)<<std::endl;
-    std::cout<<"[+] true positives : "<<std::to_string(true_positives/total_cases)<<std::endl;
-    std::cout<<"[+] true negatives : "<<std::to_string(true_negatives/total_cases)<<std::endl;
-    std::cout<<"[+] correct classifications : "<<std::to_string(correct_classifications/total_cases)<<std::endl;
-    std::cout<<"[+] error classifications : "<<std::to_string(error_classifications/total_cases)<<std::endl;
-    std::cout<<"[+] softmax training done"<<std::endl;
+      }  //end for attack files
+      std::cout<<"[+] testing softmax classifier done"<<std::endl;
+      std::cout<<"[+] softmax test results: " <<std::endl;
+      std::cout<<"[+] total test samples:"<<std::to_string(total_cases)<<std::endl;
+      std::cout<<"[+] false positives : "<<std::to_string(false_positives )<<std::endl; 
+      std::cout<<"[+] false negatives : "<<std::to_string(false_negatives )<<std::endl;
+      std::cout<<"[+] true positives : "<<std::to_string(true_positives)<<std::endl;
+      std::cout<<"[+] true negatives : "<<std::to_string(true_negatives )<<std::endl;
+      std::cout<<"[+] correct classifications : "<<std::to_string(correct_classifications)<<std::endl;
+      std::cout<<"[+] error classifications : "<<std::to_string(error_classifications)<<std::endl;
+      std::cout<<"[+] softmax training done"<<std::endl;
 
-    
-         //save softmax classifier --> softmax_softmax_fuzzdb_test.json 
-    softmax.save("softmax_fuzzdb_test.json");
-    std::cout<<"[+] saving softmax classifier done"<<std::endl;
+      //save softmax classifier
+      //save softmax classifier --> softmax_softmax_fuzzdb_test.json 
+      softmax.save("softmax_fuzzdb_test.json");
+      std::cout<<"[+] saving softmax classifier done"<<std::endl;
 
       //save autoencoders
+      size_t enc_index=1;
+      for (auto & enc : autoencoders   )
+      {
+          std::string file_name = "encoder_fuzzdb" +std::to_string(enc_index++) + ".json"; 
+          enc->save("encoder_fuzzdb.json");
+        //  delete enc;
+      }
+        //delete vectorizers : 
+        //delete autoencoders
 
-
-    size_t enc_index=1;
-    for (auto & enc : autoencoders   )
+    /*
+    for(auto& vectorizer : vectorizers_attacks)
     {
-        std::string file_name = "encoder_fuzzdb" +std::to_string(enc_index++) + ".json"; 
-        enc->save("encoder_fuzzdb.json");
+      delete vectorizer;
     }
-   //delete vectorizers : 
-
-
-  for(auto& vectorizer : vectorizers_attacks)
-  {
-    delete vectorizer;
-  }
-  for(auto& vectorizer : vectorizers_normal)
-  {
-    delete vectorizer;
-  } 
-  for ( auto& ec : autoencoders)
-  {
-    delete ec;
-  }
-  return ret;
- 
+    for(auto& vectorizer : vectorizers_normal)
+    {
+      delete vectorizer;
+    } 
+    */
+    return ret;
+  
  }//  end of fit_fuzzdb
  //-----------------------------------------------------------------------------
 

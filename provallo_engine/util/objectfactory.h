@@ -19,17 +19,17 @@ namespace provallo
     struct creator_struct
     {
       template<typename Derived>
-	static Base*
-	createMethod (Base *pb = NULL)
-	{
-	  static std::recursive_mutex lock;
-	  std::lock_guard<std::recursive_mutex> a (lock);
+      static Base*
+      createMethod (Base *pb = NULL)
+      {
+        static std::recursive_mutex lock;
+        std::lock_guard<std::recursive_mutex> a (lock);
 
-	  if (pb)
-	    return new Derived (pb);
-	  return new Derived;
-
-	}
+        if (pb)
+        return new Derived (*pb); //copy constructor
+        
+        return new Derived;
+       }
     };
 
   template<typename Abstract, typename Identifier,
@@ -50,9 +50,8 @@ namespace provallo
 	typename FunctionMap::iterator i = _creator_map.find (id);
 	if (this->_creator_map.end != i)
 	  return (i->second) (NULL);
-
-	return NULL;
-      }
+	  return NULL;
+     }
 
       Abstract*
       create (const Identifier &id, Abstract *copy)

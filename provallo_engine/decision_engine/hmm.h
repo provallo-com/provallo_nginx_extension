@@ -11,6 +11,14 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+#include <map>
+#include <stdexcept>
+#include <cmath>
+
+#include "utils.h"
 #include "matrix.h"
 
 namespace provallo
@@ -24,7 +32,7 @@ namespace provallo
       size_t _nstates;
       size_t _nobs;
       ptr _observation_sampler;
-      provallo::matrix<double> _observation;
+      provallo::matrix<real_t> _observation;
       ptr _initial_sampler;
       void
       sanity () const;
@@ -38,10 +46,10 @@ namespace provallo
       size () const;
       size_t
       observation_size () const;
-      double
+      real_t
       trans (const size_t i, const size_t j) const;
       hmm<T,container>*
-      set_initial (std::vector<double> &init);
+      set_initial (std::vector<real_t> &init);
       size_t
       sample_observation (size_t state) const;
     public:
@@ -49,13 +57,15 @@ namespace provallo
 	  _nstates (0), _nobs (0), _initial_sampler (nullptr), _observation_sampler (
 	      nullptr)
       {
+
       }
       ~hmm<T, container> ()
       {
 
+        if(_observation_sampler)
         for (auto sample : _observation_sampler)
               sample->clear ();
-
+        if(_initial_sampler)
         for (auto sample : _initial_sampler)
               sample->clear ();
 
@@ -106,7 +116,7 @@ namespace provallo
     {
       sanity ();
       in >> _nstates >> _nobs;
-      _observation = provallo::matrix<double> (_nstates, _nstates);
+      _observation = provallo::matrix<real_t> (_nstates, _nstates);
       for (size_t i = 0; i < _nstates; i++){
       for (size_t j = 0; j < _nstates; j++){
         in >> _observation (i, j);    
@@ -154,7 +164,7 @@ namespace provallo
 
   template<class T, class container>      
   hmm<T, container>*
-    hmm<T, container>::set_initial (std::vector<double> &init)
+    hmm<T, container>::set_initial (std::vector<real_t> &init)
     {
       sanity ();
       if (init.size () != _nstates) throw std::runtime_error ("hmm: invalid initial state");
@@ -173,15 +183,106 @@ namespace provallo
     }
 
   template<class T, class container>
-  double  hmm<T,container>::trans (const size_t i, const size_t j) const
+  real_t  hmm<T,container>::trans (const size_t i, const size_t j) const
   {
     sanity ();
     if (i >= _nstates || j >= _nstates) throw std::runtime_error ("hmm: invalid state");
     return _observation (i, j);
     //
   } 
+  template<class T, class container>
+  hmm<T,container>*
+  create_hmm (size_t nstates, size_t nobs)
+  {
+    if (nstates == 0) throw std::runtime_error ("hmm: no states");
+    if (nobs == 0) throw std::runtime_error ("hmm: no observations");
+    hmm<T,container> *h = new hmm<T,container> ();
+    h->_nstates = nstates;
+    h->_nobs = nobs;
+    h->_observation_sampler = new container[nstates];
+    h->_initial_sampler = new container[nstates];
+    for (size_t i = 0; i < nstates; i++)
+      {
+        h->_observation_sampler[i] = container (nobs);
+        h->_initial_sampler[i] = container (nobs);
+      }
+    return h;
+  } 
+  template<class T, class container>
+  hmm<T,container>*
+  create_hmm (std::vector<real_t> &init, std::vector<real_t> &obs)
+  {
+    if (init.size () == 0) throw std::runtime_error ("hmm: no initial state");
+    if (obs.size () == 0) throw std::runtime_error ("hmm: no observations");
+    hmm<T,container> *h = new hmm<T,container> ();
+    h->_nstates = init.size ();
+    h->_nobs = obs.size ();
+    h->_observation_sampler = new container[h->_nstates];
+    h->_initial_sampler = new container[h->_nstates];
+    for (size_t i = 0; i < h->_nstates; i++)
+      {
+        h->_observation_sampler[i] = container (h->_nobs);
+        h->_initial_sampler[i] = container (h->_nobs);
+      }
+    return h;
+  }
+  template<class T, class container>
+  hmm<T,container>*
+  create_hmm (std::vector<real_t> &init, std::vector<std::vector<real_t>> &obs)
+  {
+    if (init.size () == 0) throw std::runtime_error ("hmm: no initial state");
+    if (obs.size () == 0) throw std::runtime_error ("hmm: no observations");
+    hmm<T,container> *h = new hmm<T,container> ();
+    h->_nstates = init.size ();
+    h->_nobs = obs.size ();
+    h->_observation_sampler = new container[h->_nstates];
+    h->_initial_sampler = new container[h->_nstates];
+    for (size_t i = 0; i < h->_nstates; i++)
+      {
+        h->_observation_sampler[i] = container (h->_nobs);
+        h->_initial_sampler[i] = container (h->_nobs);
+      }
+    return h;
+  }
+  template<class T, class container>
+  hmm<T,container>*
+  create_hmm (std::vector<std::vector<real_t>> &init, std::vector<std::vector<real_t>> &obs)
+  {
+    if (init.size () == 0) throw std::runtime_error ("hmm: no initial state");
+    if (obs.size () == 0) throw std::runtime_error ("hmm: no observations");
+    hmm<T,container> *h = new hmm<T,container> ();
+    h->_nstates = init.size ();
+    h->_nobs = obs.size ();
+    h->_observation_sampler = new container[h->_nstates];
+    h->_initial_sampler = new container[h->_nstates];
+    for (size_t i = 0; i < h->_nstates; i++)
+      {
+        h->_observation_sampler[i] = container (h->_nobs);
+        h->_initial_sampler[i] = container (h->_nobs);
+      }
+    return h;
+  } 
+  template<class T, class container>
+  hmm<T,container>*
+  create_hmm (std::vector<std::vector<real_t>> &init, std::vector<real_t> &obs)
+  {
+    if (init.size () == 0) throw std::runtime_error ("hmm: no initial state");
+    if (obs.size () == 0) throw std::runtime_error ("hmm: no observations");
+    hmm<T,container> *h = new hmm<T,container> ();
+    h->_nstates = init.size ();
+    h->_nobs = obs.size ();
+    h->_observation_sampler = new container[h->_nstates];
+    h->_initial_sampler = new container[h->_nstates];
+    for (size_t i = 0; i < h->_nstates; i++)
+      {
+        h->_observation_sampler[i] = container (h->_nobs);
+        h->_initial_sampler[i] = container (h->_nobs);
+      }
+    return h;
+  } 
+  
 
-}
-;
+} // namespace provallo
+
 
 #endif /* DECISION_ENGINE_HMM_H_ */

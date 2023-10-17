@@ -6294,7 +6294,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		}
 
 		/* translate sum-of-depths to outlier score */
-		real_t ntrees, depth_divisor;
+		real_t ntrees=1., depth_divisor=0.000001;
 		if (model_outputs != NULL)
 		{
 			ntrees = (real_t)model_outputs->trees.size();

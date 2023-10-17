@@ -877,20 +877,48 @@ namespace provallo
   //source class for .names files
   class names_source : public sample_source
   {
-    public:
-        
+    enum col_type {continuous,discrete,ignore};    
+           struct col_desc {
+            std::string name;
+            size_t index; 
+            col_type type;
+            union desc_union {
 
+                struct {
+                    std::string type;
+                    std::string min;
+                    std::string max;
+                } continuous;
+
+                struct {
+                    std::vector<std::string> values;
+                } discrete;
+
+
+                desc_union() {} 
+                ~desc_union() {}
+                
+            } u; 
+
+            
+         };
+
+ 
+
+    public:
+ 
         names_source(const std::string& namesFile);
  
-        names_source(const names_source& other) = delete;
-        names_source& operator=(const names_source& other) = delete;
-        names_source(names_source&& other) = delete;
-        names_source& operator=(names_source&& other) = delete;
+        names_source(const names_source& other)    ;
+        names_source& operator=(const names_source& other)   ;
+        names_source(names_source&& other)    ;
+        names_source& operator=(names_source&& other)   ;
 
         //sample_source impl. pure virtual 
         Batch trainingBatch(bool greyLevel) const override;
         Batch testingBatch(bool greyLevel) const override;
      protected:
+
         void readNamesFile();
         void readTrainFile();
         void readTestFile();
@@ -901,11 +929,32 @@ namespace provallo
         std::vector<size_t> mLabelTest;
         std::vector<std::string> mLabelNames;
         std::vector<std::string> ColumnNames;
-        
+        std::vector<col_desc> mColumnDesc;
+        std::map<size_t /*column*/,std::map<std::string,real_t>> mDiscreteMap;
+
         std::string mNamesFile;
+        std::string mTestFile;  //.test file
+        std::string mTrainFile; //.data file
         size_t mNbClasses;
         size_t mNbTrain;
         size_t mNbTest;
+        size_t targetColumn;
+        size_t nClasses;//number of classes
+        size_t nFeatures;//number of features
+        size_t nTrain;//number of training examples
+        
+        std::vector<size_t> mLabels;
+        std::vector<size_t> mLabelsTrain;
+        std::vector<size_t> mLabelsTest;
+        std::vector<std::string> mLabelNamesTrain;
+        std::vector<std::string> mLabelNamesTest;
+        
+        std::vector<matrix<real_t>> mImageTrainVector;
+        std::vector<matrix<real_t>> mImageTestVector;
+    
+        real_t get_value(size_t col,const std::string &token);
+
+        
    };
   class mnist_reader
   {
@@ -917,6 +966,7 @@ namespace provallo
       static int reverseInt (int i);
       std::string mFullPathImage;
       std::string mFullPathLabel;
+      
   };
 
   class error_processor

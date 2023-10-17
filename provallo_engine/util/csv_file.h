@@ -32,7 +32,7 @@ public:
 		fs_.open(filename);
 	}
 
-	~csvfile()
+	virtual ~csvfile()
 	{
 		flush();
 		fs_.close();

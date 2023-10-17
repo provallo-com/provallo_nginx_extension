@@ -567,8 +567,13 @@ namespace provallo
     }
     matrix(size_type size1, size_type size2) : size1_(size1), size2_(size2), data_(nullptr)
     {
-
-      data_ = new T[size1 * size2];
+      size_t a = size1 * size2;
+      if (a>0)
+        {
+          data_ = new T[size1 * size2];
+          std::fill(data_, data_ + size1 * size2, T());
+        }
+    
     }
     matrix(size_type size1, size_type size2, const T *value) : size1_(size1), size2_(size2), data_(nullptr)
     {
@@ -595,7 +600,7 @@ namespace provallo
 				  
     data_(std::move(move_matrix.data_))                   // explicit move of a member of class type
     {
-    }
+     }
     matrix(const std::initializer_list<T> &list) : size1_(list.size()), size2_(1), data_(nullptr)
     {
       data_ = new T[size1_];
@@ -932,7 +937,43 @@ namespace provallo
         sum += data_[i * size2_ + col];
       return sum;
     }
+    T row_mean(size_t row)const
+    {
+      T sum = 0;
+      for (size_t i = 0; i < size2_; i++)
+        sum += data_[row * size2_ + i];
+      return sum / size2_;
+    }
+    //invert 
+    void invert() {
+      //invert the matrix
+      //this function is not optimized
+      //it is used for small matrices
+      //for large matrices use the invert function in the matrix class
+      //this function is used for testing purposes
+      //if sizes are different, transpose the matrix and invert it
+      if (size1_ != size2_)
+      {
+        matrix<T> tmp = transpose();
+        for(size_t i=0;i<size1_;i++)
+          for(size_t j=0;j<size2_;j++)
+            data_[i*size2_+j] = tmp(i,j);
 
+        return;
+      } 
+      else
+      {
+        //sizes are equal:
+        //invert the matrix positions
+        matrix<T> tmp = *this;
+        for (size_t i = 0; i < size1_; i++)
+          for (size_t j = 0; j < size2_; j++)
+            data_[i * size2_ + j] = tmp(j, i);
+
+
+      }
+    
+    }
     T*& row_begin(size_t row)
     {
       
@@ -1095,24 +1136,52 @@ namespace provallo
     const_reference
     operator()(size_type i, size_type j) const
     {
-      return data_[i * size2_ + j];
+      size_t k = i * size2_ + j;
+      if(k<size1_*size2_)
+      return data_[k];
+      else
+      {
+        return data_[0];
+      }
+      
     }
 
     const_reference 
     element(size_type i, size_type j)const
     {
-      return data_[i * size2_ + j];
+      size_t k = i * size2_ + j;
+      if(k<size1_*size2_)
+      return data_[k];
+      else
+      {
+        return data_[0];
+      }
+      
     }
 
     reference
     element(size_type i, size_type j)
     {
-      return data_[i * size2_ + j];
+      size_t k = i * size2_ + j;
+      if(k<size1_*size2_)
+      return data_[k];
+      else
+      {
+        return data_[0];
+      }
+      
     }
     reference
     operator()(size_type i, size_type j)
     {
-      return data_[i * size2_ + j];
+      size_t k = i * size2_ + j;
+      if(k<size1_*size2_)
+      return data_[k];
+      else
+      {
+        return data_[0];
+      }
+      
     }
     reference
     insert_element(size_type i, size_type j, const_reference t)
@@ -1133,7 +1202,7 @@ namespace provallo
     operator=(const matrix &m)
     {
       size_t size = size1_ * size2_;
-     
+      
       if(m!=*this){
       
       if(m.size1_==0 || m.size2_==0 || m.data_==nullptr   )
@@ -1297,7 +1366,7 @@ namespace provallo
           size1_ = dim;
           size2_ = dim1;
         }
-        return;
+       // return;
       }
       else if ( size!= dim * dim1)
         {
@@ -1308,7 +1377,7 @@ namespace provallo
         }
       size1_ = dim;
       size2_ = dim1;
-      if(data_==nullptr)
+      if(data_==nullptr) //dont reallocate if size is the same, just clear the data 
         data_ = new T[size1_ * size2_];
 
       std::fill(data_, data_ +(size1_ * size2_), value_type(0));
@@ -1712,6 +1781,7 @@ namespace provallo
           ret(i, j) = laplacian(i, j);
       return ret;
     }
+
     T laplacian(size_t i, size_t j)const
     {
       T ret = 0;
@@ -1728,6 +1798,7 @@ namespace provallo
       }
       return ret;   
     }
+
     matrix<T> & laplacian_normalized()const
     {
       matrix<T> ret(size1(), size2());
@@ -1737,6 +1808,7 @@ namespace provallo
 
       return ret; 
     }
+
     matrix<T> & laplacian_normalized(const matrix<T> & m)const
     {
       matrix<T> ret(size1(), size2());
@@ -1746,6 +1818,7 @@ namespace provallo
 
       return ret;
     }
+
     matrix<bool> hermitian()const
     {
       matrix<bool> ret(size1(), size2());
@@ -1754,6 +1827,7 @@ namespace provallo
           ret(i, j) = hermitian(i, j);
       return ret; 
     }
+
     bool hermitian(size_t i, size_t j)const
     {
       return element(i, j) == element(j, i);
@@ -1771,7 +1845,7 @@ namespace provallo
     {
       return element(i, j) == element(j, i);
     }
-
+    
     matrix<bool> antisymmetric()const
     {
       matrix<bool> ret(size1(), size2());
@@ -1785,10 +1859,7 @@ namespace provallo
       return element(i, j) == -element(j, i);
     }
 
-
-
- 
-     matrix<T> sqrt()
+    matrix<T> sqrt()
     {
 
       matrix<T> sqrt_prod(size2(), size1());
@@ -1897,7 +1968,10 @@ namespace provallo
     }
     // sets zero on all values
     void
-    set_zero() { this->clear(); }
+    set_zero() { 
+      this->clear(); 
+      
+      }
     const array_type &
     array() const
     {
@@ -2108,7 +2182,30 @@ namespace provallo
       return ret;
 
     }      
-
+    //print matrix
+    void print() const
+    {
+      for (size_t i = 0; i < size1_; i++)
+      {
+        for (size_t j = 0; j < size2_; j++)
+        {
+          std::cout << data_[i * size2_ + j] << " ";
+        }
+        std::cout << std::endl;
+      }
+    }
+    //print matrix
+    void print(std::ostream &out) const
+    {
+      for (size_t i = 0; i < size1_; i++)
+      {
+        for (size_t j = 0; j < size2_; j++)
+        {
+          out << data_[i * size2_ + j] << " ";
+        }
+        out << std::endl;
+      }
+    } 
   private:
     size_type size1_;
     size_type size2_;
@@ -2119,8 +2216,10 @@ namespace provallo
   operator==(const matrix<T> &x, const matrix<T> &y)
   {
 
-    return x.size1()==y.size1()&&x.size2()==y.size2() 
-    &&std::equal(x.begin(), x.end(), y.begin());
+    if (  x.size1()==y.size1()&&x.size2()==y.size2()  )
+     return std::equal(x.begin(), x.end(), y.begin());
+    else
+      return false;
   }
 
   template <class T>
@@ -2252,12 +2351,13 @@ namespace provallo
   matrix<T>
   operator-(const matrix<T> &a, const matrix<T> &b)
   {
-    matrix<T> result(a);
+    static matrix<T> result(a);
+    result.resize(a.size1(), a.size2()); 
+
     std::transform(a.begin(), a.end(), b.begin(), result.begin(),
                    std::minus<T>());
     return result;
-
-  }
+   }
 
   //for x-matrix  x = 1-x
 
@@ -2476,6 +2576,8 @@ namespace provallo
     T data_[N * M];
   };
 
+  
+
   // comparisons
   template <class T, std::size_t N, std::size_t M>
   bool
@@ -2619,6 +2721,7 @@ namespace provallo
   resizeArray(array<T, N> *values, size_t dim)
   {
   }
+  
 
   template <class T>
   void
@@ -3518,7 +3621,7 @@ namespace provallo
 
     // Generate point
     Float
-    operator()(std::random_device &rd) const
+    operator()(std::random_device &rd = std::random_device()) const
     {
       // Auxiliary parameters
       std::mt19937 gen(rd());

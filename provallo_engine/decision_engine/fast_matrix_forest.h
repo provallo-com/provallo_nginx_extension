@@ -196,6 +196,17 @@ struct  matrix_indices : public std::pair<size_t,size_t>
     {
         return (first!=other || second!=other);
     }
+    friend std::ostream & operator<<(std::ostream & os,const matrix_indices & other)
+    {
+        os<<"("<<other.first<<","<<other.second<<")";
+        return os;
+    }   
+    friend std::istream & operator>>(std::istream & is,matrix_indices & other)
+    {
+        is>>other.first>>other.second;
+        return is;
+    }
+    static std::atomic_uint64_t matrix_indices_count;
 
 };  
     
@@ -317,20 +328,73 @@ struct  matrix_indices : public std::pair<size_t,size_t>
         tag_hyperplane& operator-(const tag_hyperplane& other)
         {
             this->hplane_indices-=other.hplane_indices;
+            return *this;
         }
         tag_hyperplane& operator*(const tag_hyperplane& other)
         {
             this->hplane_indices*=other.hplane_indices;
+            return *this;
         }
         tag_hyperplane& operator/(const tag_hyperplane& other)
         {
             this->hplane_indices/=other.hplane_indices;
+            return *this;
         }
         //logical operators
         bool operator!() const
         {
             return (hplane_id==0 && hplane_indices==matrix_indices(0,0) && hplane_depth==0 && hplane_level==0 && hplane_parent==0 && hplane_left==0 && hplane_right==0 && hplane_dim==0 && hplane_feature==0 && hplane_feature_index==0 && hplane_feature_index_left==0 && hplane_feature_index_right==0 && hplane_feature_value==0.0 && hplane_feature_value_left==0.0 && hplane_feature_value_right==0.0 && hplane_feature_value_min==0.0 && hplane_feature_value_max==0.0 && hplane_feature_value_range==0.0 && weight==0.0 && score==0.0);
         }
+
+        void print(std::ostream& os)const 
+        {
+            os<<"hplane_id="<<hplane_id<<std::endl;
+            os<<"hplane_indices="<<hplane_indices<<std::endl;
+            os<<"hplane_depth="<<hplane_depth<<std::endl;
+            os<<"hplane_level="<<hplane_level<<std::endl;
+            os<<"hplane_parent="<<hplane_parent<<std::endl;
+
+            os<<"hplane_left="<<hplane_left<<std::endl;
+            os<<"hplane_right="<<hplane_right<<std::endl;
+
+
+            os<<"hplane_dim="<<hplane_dim<<std::endl;
+            os<<"hplane_feature="<<hplane_feature<<std::endl;
+            os<<"hplane_feature_index="<<hplane_feature_index<<std::endl;
+
+            os<<"hplane_feature_index_left="<<hplane_feature_index_left<<std::endl;
+            os<<"hplane_feature_index_right="<<hplane_feature_index_right<<std::endl;
+
+
+
+
+
+
+
+
+            os<<"hplane_feature_value="<<hplane_feature_value<<std::endl;
+            os<<"hplane_feature_value_left="<<hplane_feature_value_left<<std::endl;
+
+            os<<"hplane_feature_value_right="<<hplane_feature_value_right<<std::endl;
+            os<<"hplane_feature_value_min="<<hplane_feature_value_min<<std::endl;
+            os<<"hplane_feature_value_max="<<hplane_feature_value_max<<std::endl;
+            os<<"hplane_feature_value_range="<<hplane_feature_value_range<<std::endl;
+            os<<"weight="<<weight<<std::endl;
+            os<<"score="<<score<<std::endl;
+            os<<"distribution="<<distribution<<std::endl;
+
+            
+        }
+        //operator <<
+        friend std::ostream & operator<<(std::ostream & os , const tag_hyperplane& other )
+        {
+            
+            other.print(os);
+            return os;
+                        
+       }
+
+
         static std::atomic_uint64_t hplane_count;
 
 	} hplane; 
@@ -684,6 +748,8 @@ class super_tree {
             std::random_device rd;
             std::mt19937 gen(rd());
             std::uniform_real_distribution<> dis(0.0, 1.0);
+            std::uniform_real_distribution<> dis_scores(0.0, 1.0);
+            std::uniform_real_distribution<> dis_weights(0.0, 1.0);
             std::uniform_int_distribution<> dis_rows(0, _super_tree_values.rows()-1);
             std::uniform_int_distribution<> dis_cols(0, _super_tree_values.cols()-1);
             std::uniform_int_distribution<> dis_levels(0, _super_tree_values.cols()-1);
@@ -803,11 +869,11 @@ class super_tree {
                 real_t sum = 0.0;
                 for(size_t j=0;j<_super_tree_values.cols();j++)
                 {
-                    sum+=_super_tree(i,j);
+                    sum+=_super_tree_values(i,j);
                 }
                 for(size_t j=0;j<_super_tree_values.cols();j++)
                 {
-                    _super_tree(i,j)/=sum;
+                    _super_tree_values(i,j)/=sum;
                 }
             }             
         }
@@ -825,7 +891,7 @@ class super_tree {
         }   
         real_t get_leaf_hplane(const size_t & i,const size_t & j) const
         {
-            return _super_tree_hplane(i,j);
+            return _super_tree_hplane(i,j).hplane_feature_value;
         }   
         real_t get_leaf_forest(const size_t & i,const size_t & j) const
         {
@@ -833,7 +899,7 @@ class super_tree {
         }   
         real_t get_leaf_super_tree(const size_t & i,const size_t & j) const
         {
-            return _super_tree(i,j);
+            return _super_tree_values(i,j);
         }
         //get trees,nodes,leaves
         std::vector<U> get_trees() const
@@ -865,10 +931,7 @@ class super_tree {
             return leaves;
         }   
         //get super_tree,nodes,leaves
-        provallo::matrix<matrix_indices> get_super_tree() const
-        {
-            return _super_tree;
-        }   
+        
         provallo::matrix<T> get_super_tree_nodes() const
         {
             return _super_tree_values;
@@ -951,7 +1014,12 @@ class super_tree {
                     _super_tree_hplane(i,j).hplane_feature_value_range=hyperplane_projected_intersection-projection_intersection; 
                     //update weight
                     matrix<matrix_indices> hplane_indices=_super_tree_hplane(i,j).hplane_indices; 
-                    _super_tree_hplane(i,j).weight=_super_tree_values(hplane_indices.first,hplane_indices.second); 
+                    _super_tree_hplane(i,j).weight=_super_tree_values(i,j)*_super_tree_hplane(i,j).hplane_feature_value_range; 
+                    _super_tree_hplane(i,j).score= _super_tree_values_projection(i,j)/_super_tree_values(i,j);
+                    _super_tree_hplane(i,j).hplane_feature_value=projected_value;
+                    _super_tree_hplane(i,j).hplane_feature_value_left=projected_value;
+
+
                 }
             }   
          
@@ -1268,7 +1336,72 @@ class super_tree {
             //calculate the average error
             return error;
         }//test_projection_quality
-      
+
+      void print(std::ostream& out)
+      {
+            //print super tree:
+            out<<"super_tree:"<<std::endl;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    out<<std::to_string(i)<<","<<std::to_string(j)<<":"<<_super_tree(i,j).first << ","<<_super_tree(i,j).second  <<" ";  
+
+                }
+                out<<std::endl;
+            }
+            //print super tree values:
+            out<<"super_tree_values:"<<std::endl;
+            for(size_t i=0;i<_super_tree_values.rows();i++)
+            {
+                for(size_t j=0;j<_super_tree_values.cols();j++)
+                {
+                    out<<_super_tree_values(i,j)<<" ";
+                }
+                out<<std::endl;
+            }
+            //print super tree values projection:
+            out<<"super_tree_values_projection:"<<std::endl;
+            for(size_t i=0;i<_super_tree_values_projection.rows();i++)
+            {
+                for(size_t j=0;j<_super_tree_values_projection.cols();j++)
+                {
+                    out<<_super_tree_values_projection(i,j)<<" ";
+                }
+                out<<std::endl;
+            }   
+            //print super tree probabilities:
+            out<<"super_tree_probabilities:"<<std::endl;
+            for(size_t i=0;i<_super_tree_probabilities.rows();i++)
+            {
+                for(size_t j=0;j<_super_tree_probabilities.cols();j++)
+                {
+                    out<<_super_tree_probabilities(i,j)<<" ";
+                }
+                out<<std::endl;
+            }
+            //print super tree hplane:
+            out<<"super_tree_hplane:"<<std::endl;
+            for(size_t i=0;i<_super_tree_hplane.rows();i++)
+            {
+                for(size_t j=0;j<_super_tree_hplane.cols();j++)
+                {
+                    out<<_super_tree_hplane(i,j)<<" ";
+                }
+                out<<std::endl;
+            }   
+            //print forest:
+            out<<"forest:"<<std::endl;
+            for(size_t i=0;i<_forest.size();i++)
+            {
+                for(size_t j=0;j<_forest[i].size();j++)
+                {
+                    out<<_forest[i][j]<<" ";
+                }
+                out<<std::endl;
+            }   
+            
+      }
  };
 
 }//namespace provallo

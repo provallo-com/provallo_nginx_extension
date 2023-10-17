@@ -4,12 +4,13 @@
  *  Created on: May 28, 2023
  *      Author: kardon
  */
-
+#include "utils.h"
 #include "neuralhelper.h"
 #include <cmath>
 #include <iostream>
 #include <fstream>
 #include <thread>
+#include "../glue/glueprocessinfo.h"
 namespace provallo
 {
     using type_matrix = matrix<real_t>;
@@ -249,7 +250,7 @@ namespace provallo
         type_matrix output = _buffer_activation_level;
 
         // update weights
-        for (unsigned int i(0); i < output.size2(); i++)
+        for (size_t i(0); i < output.size2(); i++)
             output(0, i) = _activation_functions(output(0, i));
 
         // return output
@@ -313,7 +314,7 @@ namespace provallo
         type_matrix output = _buffer_activation_level;
 
         // size-->size1
-        for (unsigned int i(0); i < output.size1(); i++)
+        for (size_t i(0); i < output.size1(); i++)
             output(0, i) = _activation_functions(output(0, i));
 
         return output;
@@ -937,8 +938,7 @@ namespace provallo
         stream_ << "GenTest" << separator << configuration_._GenTest << std::endl;
         stream_ << "labelTrainSize" << separator << configuration_.labelTrainSize << std::endl;
         stream_ << "labelTestSize" << separator << configuration_.labelTestSize << std::endl;
-         
-         
+        
         return stream_;
         /*
         const std::string separator = " : ";
@@ -1117,7 +1117,7 @@ namespace provallo
 
     void learning_task::runExperiments()
     {
-        for (unsigned int index{0}; index < _configuration._Experiments; ++index)
+        for (size_t index{0}; index < _configuration._Experiments; ++index)
         {
 
             if (!_configuration.networkAreImported)
@@ -1150,7 +1150,7 @@ namespace provallo
     {
         mSourceProcessor[0].addResultGen(runTestGen());
 
-        for (unsigned int loopIndex{0}; loopIndex < _configuration._LoopsPerExperiment; ++loopIndex)
+        for (size_t loopIndex{0}; loopIndex < _configuration._LoopsPerExperiment; ++loopIndex)
         {
             std::cout << "Apprentissage num. : " << (loopIndex)*_configuration._TeachingsPerLoop << std::endl;
             runStochasticTeach();
@@ -1164,7 +1164,7 @@ namespace provallo
             if (loopIndex % _configuration.intervalleImg == 0)
             {
                 matrix<real_t> input;
-                for (unsigned int i(0); i < _configuration._ImgParIntervalleImg; i++)
+                for (size_t i(0); i < _configuration._ImgParIntervalleImg; i++)
                 {
                     input = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
                     mSourceProcessor.exportImage(mGenerator->processNetwork(input), loopIndex * _configuration._TeachingsPerLoop, _configuration.imageSizeSide);
@@ -1176,7 +1176,7 @@ namespace provallo
     void learning_task::runSingleMinibatchExperiment()
     {
         mSourceProcessor[0].addResultGen(runTestGen());
-        for (unsigned int loopIndex{0}; loopIndex < _configuration._LoopsPerExperiment; ++loopIndex)
+        for (size_t loopIndex{0}; loopIndex < _configuration._LoopsPerExperiment; ++loopIndex)
         {
             std::cout << "learning # : " << (loopIndex)*_configuration._TeachingsPerLoop << std::endl;
             runMinibatchTeach();
@@ -1188,7 +1188,7 @@ namespace provallo
             if (loopIndex % _configuration.intervalleImg == 0)
             {
                 matrix<real_t> input;
-                for (unsigned int i(0); i < _configuration._ImgParIntervalleImg; i++)
+                for (size_t i(0); i < _configuration._ImgParIntervalleImg; i++)
                 {
                     input = matrix<real_t>::Random(_configuration.genLayerNbChannels[0], _configuration.genLayerSizes[0]);
                     mSourceProcessor.exportImage(mGenerator->processNetwork(input), loopIndex * _configuration._TeachingsPerLoop, _configuration.imageSizeSide);
@@ -1242,9 +1242,9 @@ namespace provallo
 
     void learning_task::runMinibatchTeach()
     {
-        unsigned int minibatchWeightingCoefficient = _configuration.useAverageForBatchlearning ? _configuration.minibatchSize : 1;
+        size_t minibatchWeightingCoefficient = _configuration.useAverageForBatchlearning ? _configuration.minibatchSize : 1;
 
-        for (unsigned int index{0}; index < _configuration._TeachingsPerLoop; index++)
+        for (size_t index{0}; index < _configuration._TeachingsPerLoop; index++)
         {
             matrix<real_t> desiredOutput0 = matrix<real_t>(1, 1);
             matrix<real_t> desiredOutput1 = matrix<real_t>(1, 1);
@@ -1431,7 +1431,7 @@ namespace provallo
             _configuration.disLayerTypes.push_back(layersDis[i]["layerType"].GetUint());
             _configuration.disLayerSizes.push_back(layersDis[i]["inputSize"].GetUint());
             _configuration.disLayerNbChannels.push_back(layersDis[i]["inputChannels"].GetUint());
-            _configuration.disLayerArgs.push_back(std::vector<unsigned int>());
+            _configuration.disLayerArgs.push_back(std::vector<size_t>());
             for (int j(0); (layersDis[i]["arguments"].GetArray()).Size() > j; j++)
             {
                 _configuration.disLayerArgs[i].push_back(((layersDis[i].GetObject())["arguments"].GetArray())[j].GetUint());
@@ -1444,7 +1444,7 @@ namespace provallo
             _configuration.genLayerTypes.push_back(layersGen[i]["layerType"].GetUint());
             _configuration.genLayerSizes.push_back(layersGen[i]["inputSize"].GetUint());
             _configuration.genLayerNbChannels.push_back(layersGen[i]["inputChannels"].GetUint());
-            _configuration.genLayerArgs.push_back(std::vector<unsigned int>());
+            _configuration.genLayerArgs.push_back(std::vector<size_t>());
             for (int j(0); (layersGen[i]["arguments"].GetArray()).Size() > j; j++)
             {
                 _configuration.genLayerArgs[i].push_back(((layersGen[i].GetObject())["arguments"].GetArray())[j].GetUint());
@@ -1485,13 +1485,13 @@ namespace provallo
     void learning_task::export_weights()
     {
         csvfile csvGen(_configuration.generatorDest);
-        for (unsigned int i(0); i < _configuration.genLayerSizes.size(); i++)
+        for (size_t i(0); i < _configuration.genLayerSizes.size(); i++)
             csvGen << _configuration.genLayerSizes[i];
         csvGen << endrow;
         // csvGen << *mGenerator;
 
         csvfile csvDis(_configuration.discriminatorDest);
-        for (unsigned int i(0); i < _configuration.disLayerSizes.size(); i++)
+        for (size_t i(0); i < _configuration.disLayerSizes.size(); i++)
             csvDis << _configuration.disLayerSizes[i];
         csvDis << endrow;
         // csvDis << *mDiscriminator;
@@ -1510,10 +1510,10 @@ namespace provallo
         neural_net *ret = nullptr;
         if (ifs.good())
         {
-            unsigned int k = 0;
+            size_t k = 0;
             getline(ifs, a, '\n');
             std::string b = "";
-            for (unsigned int i(0); i < a.length(); i++)
+            for (size_t i(0); i < a.length(); i++)
             {
                 if (a[i] == ';')
                 {
@@ -1612,8 +1612,8 @@ namespace provallo
         outputTrain(0, 0) = 1.0;
 
         // Compteur permet de compter le nombre d'images dans le batch, pour ne pas dépasser mLabelTrainSize
-        unsigned int compteur(0);
-        for (unsigned int i(0); i < 50000 && compteur < mLabelTrainSize; i++)
+        size_t compteur(0);
+        for (size_t i(0); i < 50000 && compteur < mLabelTrainSize; i++)
         {
             if (cifar10_source::matchLabelWithId(mLabels, mDataset.training_labels[i]))
             {
@@ -1637,8 +1637,8 @@ namespace provallo
         outputTest(0, 0) = 1.0;
 
         // Compteur permet de compter le nombre d'images dans le batch, pour ne pas dépasser mLabelTestSize
-        unsigned int compteur(0);
-        for (unsigned int i(0); i < 50000 && compteur < mLabelTestSize; i++)
+        size_t compteur(0);
+        for (size_t i(0); i < 50000 && compteur < mLabelTestSize; i++)
         {
             if (cifar10_source::matchLabelWithId(mLabels, mDataset.test_labels[i]))
             {
@@ -1655,14 +1655,14 @@ namespace provallo
     matrix<real_t> cifar10_source::getMatrix(size_t index, bool isTrainOrTestRequired, bool greyLevel) const
     {
         // Le 3072 est hardcodé car c'est la taille d'une image cifar (32 * 32 = 1024 (nombre de pixels) et 1024 * 3 = 3072 (3 couleurs))
-        unsigned int cifarSize;
+        size_t cifarSize;
         auto dSet = isTrainOrTestRequired ? &mDataset.training_images : &mDataset.test_images;
 
         if (greyLevel)
         {
             cifarSize = 1024;
             matrix<real_t> mat = matrix<real_t>::Zero(1, cifarSize);
-            for (unsigned int pixel(0); pixel < cifarSize; pixel++)
+            for (size_t pixel(0); pixel < cifarSize; pixel++)
             {
                 mat(0, pixel) = (*dSet)[index][pixel] * 0.2126 + (*dSet)[index][pixel + 1024] * 0.7152 + (*dSet)[index][pixel + 2048] * 0.0722;
             }
@@ -1671,8 +1671,8 @@ namespace provallo
         else
         {
             cifarSize = 3072;
-            matrix<real_t> mat = matrix<real_t>::Zero(1, cifarSize);
-            for (unsigned int pixel(0); pixel < cifarSize; pixel++)
+            matrix<real_t> mat (1, cifarSize);
+            for (size_t pixel(0); pixel < cifarSize; pixel++)
             {
                 mat(0, pixel) = (*dSet)[index][pixel];
             }
@@ -1715,7 +1715,7 @@ namespace provallo
 
         size_t compteur(0);
 
-        for (unsigned int i(0); i < 60000 && compteur < mLabelTrainSize; i++)
+        for (size_t i(0); i < 60000 && compteur < mLabelTrainSize; i++)
         {
             if (mLabels[*mLabelTrain[i]])
             {
@@ -1830,4 +1830,158 @@ namespace provallo
         else
             throw std::runtime_error("mnist_reader::ReadMnist - Unable to open file : " + mFullPathLabel);
     }
+
+
+
+    //names source implementation: 
+    names_source::names_source(const std::string& fstem ) : sample_source(0,0), mNamesFile(fstem + ".names"), mTrainFile(fstem + ".data")     
+    {
+            readNamesFile();
+    }
+        //std::cout << "names_source::names_source - " << mNames.size() << " names loaded" << std::endl;
+        //std::cout << "names_source::names_source - " << mNbNames << " names loaded" << std::endl;
+    void names_source::readNamesFile()
+    {
+                //std::cout << "names_source::names_source" << std::endl; 
+        //read names file:
+        std::ifstream namesFile( mNamesFile );
+        if (!namesFile)
+        {
+            throw std::runtime_error("names_source::names_source - Failed to load " + mNamesFile  );
+        }
+        std::string line;
+        std::vector<std::string> names;
+        while (std::getline(namesFile, line))
+        {
+            names.push_back(line);
+        }
+        namesFile.close();
+      
+        //check if names file is valid:
+        if(names.size() < 2)
+        {
+            throw std::runtime_error("names_source::names_source - Invalid names file " + mNamesFile  );
+        } 
+
+         
+        //parse definition for each column descriptor ( row ) in names file:
+        ColumnNames.resize(names.size(), "" );   //length 0 size 1
+        for(size_t i=0; i < names.size(); ++i)
+        {
+            col_desc col;
+            std::vector<std::string> definition;
+            provallo::tokenize(names[i], definition, ":");
+            if(definition.size() < 2)
+            {
+                throw std::runtime_error("names_source::names_source - Invalid names file " + mNamesFile  );
+            }
+            std::string name(reduce(definition[0], ""));
+            std::string attribute_values(reduce(definition[1], ""));
+            //check if attribute is discrete or continuous:
+            if(attribute_values == "continuous")
+            {
+                col.type = col_type::continuous;
+            }
+            else
+            {
+                col.type = col_type::discrete;
+            }
+            
+            //discretize attribute values: 
+            std::vector<std::string> attribute_values_vector;
+            tokenize(attribute_values, attribute_values_vector, ",");
+            std::map<std::string,real_t> attribute_values_map;
+            for(size_t i=0; i < attribute_values_vector.size(); ++i)
+            {
+                attribute_values_map[attribute_values_vector[i]] = i;          
+            }   
+            mDiscreteMap[i] = attribute_values_map;
+            ColumnNames[i] = name;  
+            
+        }//for each column descriptor
+        
+    } 
+
+    real_t names_source::get_value(size_t column,const std::string& value)
+    {
+       //check if column is discrete or continuous:
+         if(mDiscreteMap.find(column) != mDiscreteMap.end())
+         {
+              //discrete:
+              return mDiscreteMap[column][value];
+         }
+       return std::stod(value);  
+    }
+
+    void names_source::readTrainFile()  
+    {
+        //std::cout << "names_source::readTrainFile" << std::endl; 
+        //read train file:
+        size_t i=0,j=0;
+       
+        std::ifstream trainFile( mTrainFile );
+        if (!trainFile)
+        {
+            throw std::runtime_error("names_source::readTrainFile - Failed to load " + mTrainFile  );
+        }
+        std::string line;
+        std::vector<std::string> names;
+        while (std::getline(trainFile, line))
+        {
+            names.push_back(line);
+        }
+        trainFile.close();          
+
+        for ( i=0; i < names.size(); ++i)
+        {
+            std::istringstream iss(names[i]);
+            std::string token;
+            j=0;
+            while (std::getline(iss, token, ','))
+            {
+                 mImageTrain(i,j) =  get_value(j,token);
+                j++;
+            }
+        }   
+
+        //set value for i,j translating to matrix:
+       
+    }
+     names_source::names_source(const names_source& other) : sample_source(other), 
+        mLabelTrain(other.mLabelTrain),
+        mLabelTest(other.mLabelTest),
+        mLabelNames(other.mLabelNames),
+        ColumnNames(other.ColumnNames),
+        mNamesFile(other.mNamesFile) 
+    {
+        //std::cout << "names_source::names_source - copy constructor" << std::endl; 
+    }   
+    names_source& names_source::operator=(const names_source& other)
+    {
+        //std::cout << "names_source::operator=" << std::endl; 
+        if (this != &other)
+        {
+            sample_source::operator=(other);
+            mLabelTrain = other.mLabelTrain;
+            mLabelTest = other.mLabelTest;
+            mLabelNames = other.mLabelNames;
+            ColumnNames = other.ColumnNames;
+            mNamesFile = other.mNamesFile;
+        }
+        return *this;
+    }   
+
+    sample_source::Batch names_source::trainingBatch(bool) const
+    {
+        //std::cout << "names_source::trainingBatch" << std::endl; 
+        Batch trainingBatch;
+        return trainingBatch;
+    }       
+    sample_source::Batch names_source::testingBatch(bool) const
+    {
+        //std::cout << "names_source::testingBatch" << std::endl; 
+        Batch testingBatch;
+        return testingBatch;
+    }   
+
 } /* namespace provallo */
