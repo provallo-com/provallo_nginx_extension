@@ -1698,8 +1698,15 @@ namespace provallo
 
     //update pca 
     this->update_pca ( results);
-
- 
+    //update results with eigen values
+    results.resize(_pca_n_features_+1);
+    for (size_t i=0; i<_pca_n_features_; i++)
+    {
+      results[i] = _eigen_values[i];
+    }
+    results[_pca_n_features_] = _pca_n_components_;
+    //return results
+    
     return results;
   }
     // create a vector of real_t to store the results
@@ -1708,6 +1715,14 @@ namespace provallo
       //resize to accomodate the new data
 
       _pca_data.resize(_pca_n_samples_*_pca_n_features_);
+
+
+      //update _pca_component_matrix and _pca_explained_variance_matrix
+      _pca_components_matrix.resize(_pca_n_features_,_pca_n_features_);
+      _pca_explained_variance_matrix.resize(_pca_n_features_,_pca_n_samples_ );
+      
+      //update the pca data
+
       //add the new data to the pca data
       for (size_t i=0; i<occurance_data.size(); i++)
       {
@@ -1761,6 +1776,8 @@ namespace provallo
       _pca_explained_variance_ratio_matrix.resize(_pca_n_features_,_pca_n_samples_ );
       _pca_singular_values_matrix.resize(_pca_n_features_,  _pca_n_samples_ );
 
+      //initialize the eigen vectors
+
       for (size_t i=0; i<_pca_n_features_; i++)
       {
         for (size_t j=0; j<_pca_n_features_; j++)
@@ -1773,6 +1790,16 @@ namespace provallo
         _eigen_values[i] = _covariance_matrix[i*_pca_n_features_+i];
 
       } 
+
+      //update _pca_components_matrix and _pca_explained_variance_matrix
+      _pca_components_matrix.resize(_pca_n_features_,_pca_n_features_);
+      for(size_t i=0;i<_pca_n_features_;i++)
+      {
+        for(size_t j=0;j<_pca_n_features_;j++)
+        {
+          _pca_components_matrix(i,j) = _eigen_vectors[i*_pca_n_features_+j];
+        } 
+      }
        //update the pca components
       for (size_t i=0; i<_pca_n_features_; i++)
       {
@@ -1781,15 +1808,7 @@ namespace provallo
           _pca_components[i*_pca_n_features_+j] = _eigen_vectors[i*_pca_n_features_+j];
         }
       }
-      //update the feat x feat matrices:
-      for (size_t i=0; i<_pca_n_features_; i++)
-      {
-        for (size_t j=0; j<_pca_n_features_; j++)
-        {
-          _pca_components_matrix(i,j) = _pca_components[i*_pca_n_features_+j];
-        }
-      }
-      //update the feat x samples matrices: 
+       //update the feat x samples matrices: 
       for (size_t i=0; i<_pca_n_features_; i++)
       {
         for (size_t j=0; j<_pca_n_samples_; j++)
@@ -1815,12 +1834,83 @@ namespace provallo
         _pca_singular_values[i] = std::sqrt(_eigen_values[i]);
 
       }  
+
+      //update the pca data
+      //use QRDecomposition to update the pca data
+      matrix<real_t> Q;
+      matrix<real_t> R;
+      QRDecomposition(_pca_components_matrix, Q, R);
+      //update the pca data
+      _pca_data.resize(_pca_n_samples_*_pca_n_features_);
+      for (size_t i=0; i<_pca_n_samples_; i++)
+      {
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _pca_data[i*_pca_n_features_+j] = 0.0;
+          for (size_t k=0; k<_pca_n_features_; k++)
+          {
+            _pca_data[i*_pca_n_features_+j] += _standardized_data[i*_pca_n_features_+k] * _pca_components[k*_pca_n_features_+j];
+          }
+        }
+      } 
+
+
+
+       //update the pca components
+
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _pca_components[i*_pca_n_features_+j] = 0.0;
+          for (size_t k=0; k<_pca_n_features_; k++)
+          {
+            _pca_components[i*_pca_n_features_+j] += _pca_components_matrix(i,k) * R(k,j);
+          }
+        }
+      } 
+
+      //update the feat x samples matrices:
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        for (size_t j=0; j<_pca_n_samples_; j++)
+        {
+          _pca_explained_variance_matrix(i,j) = 0.0;
+          _pca_explained_variance_ratio_matrix(i,j) = 0.0;
+          _pca_singular_values_matrix(i,j) = 0.0;
+          for (size_t k=0; k<_pca_n_features_; k++)
+          {
+            _pca_explained_variance_matrix(i,j) += _pca_explained_variance_matrix(i,k) * R(k,j);
+            _pca_explained_variance_ratio_matrix(i,j) += _pca_explained_variance_ratio_matrix(i,k) * R(k,j);
+            _pca_singular_values_matrix(i,j) += _pca_singular_values_matrix(i,k) * R(k,j);
+          }
+        }
+      }
+      //update pca noise variance
+      _pca_noise_variance.resize(_pca_n_features_);
+      for (size_t i=0; i<_pca_n_features_; i++)
+      {
+        _pca_noise_variance[i] = 0.0;
+        for (size_t j=0; j<_pca_n_features_; j++)
+        {
+          _pca_noise_variance[i] += _covariance_matrix[i*_pca_n_features_+j];
+        }
+        _pca_noise_variance[i] /= _pca_n_features_;
+        _pca_noise_variance[i] -= _eigen_values[i];
+        _pca_explained_variance[i] = _eigen_values[i];
+        _pca_explained_variance_ratio[i] = _eigen_values[i] / _pca_n_features_;
+        _pca_singular_values[i] = std::sqrt(_eigen_values[i]);
+
+      }   
+
       
   }
   
   std::vector<real_t> principal_component_analysis::transform ( const std::string& doc) 
   {
     // tokenize the document into words
+ 
+    //
     std::vector<std::string> words ;
       tokenize(doc,words, " ");
     // create a vector of real_t to store the results
@@ -1836,10 +1926,9 @@ namespace provallo
       results [wordindex] = 0.0;
       wordindex++;
     }
-    // return the results
+    //return the results
     return results;
-    
-    
+  
   }
   // transform method 
   std::vector<std::vector<real_t>> principal_component_analysis::transform ( const std::vector<std::string>& docs) 
@@ -2104,6 +2193,42 @@ namespace provallo
     }
     // get the principal components matrix
     this->_pca_components_matrix = eigenvectors_transpose;
+    
+    
+    //update fitted data
+    _pca_data.resize(rows*cols);
+    for (size_t i=0; i<rows; i++)
+    {
+      for (size_t j=0; j<cols; j++)
+      {
+        _pca_data[i*cols+j] = data_(i,j);
+      }
+    }
+    //update the mean
+    _pca_mean.resize(cols);
+    for (size_t i=0; i<cols; i++)
+    {
+      _pca_mean[i] = mean[i];
+    }
+    //update the standardized data
+    _standardized_data.resize(rows*cols);
+    for (size_t i=0; i<rows; i++)
+    {
+      for (size_t j=0; j<cols; j++)
+      {
+        _standardized_data[i*cols+j] = centered_data(i,j);
+      }
+    }
+    //update the covariance matrix
+    _covariance_matrix.resize(cols*cols);
+    for (size_t i=0; i<cols; i++)
+    {
+      for (size_t j=0; j<cols; j++)
+      {
+        _covariance_matrix[i*cols+j] = covariance_matrix(i,j);
+      }
+    }    
+    
     // return the eigenvalues
     return ret;
 
@@ -2155,7 +2280,7 @@ namespace provallo
         }
       }
     }
-  
+
     // return the transformed data
     return std::vector<real_t>(transformed_data.begin(), transformed_data.end());
   }

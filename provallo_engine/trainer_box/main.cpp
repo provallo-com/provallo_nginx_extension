@@ -9,7 +9,7 @@
 #include "../decision_engine/autoencoder.h"
 #include "../decision_engine/bit_vector_attribute.h"
 #include "../decision_engine/tree_classifiers.h"
-
+#include "../decision_engine/info_helper.h"
 #include <dirent.h>
 #include <filesystem>
 
@@ -55,6 +55,7 @@ std::mutex queryLock; // lock for global counters
 
 bool test_fit_iso_forest();
 bool test_dataset_load();
+void test_spike_train_generator();
 
 template<size_t N>
 std::vector<provallo::point<N>,int>  load_dataset_as_points_and_lables(const std::string& filename ) 
@@ -918,10 +919,13 @@ int main ( int argc, char* argv[]  ) {
     std::cout <<argv[0] << " running...." << std::endl;
     
   }
-  if (test_fit_iso_forest())
+  test_spike_train_generator();
+  
+ /* if (test_fit_iso_forest())
   {
     std::cout << "Test fit iso forest OK" << std::endl;
   }
+  */
 
   //benchmark fuzzdb dataset
   if(  fit_fuzzsb( ) ) 
@@ -990,7 +994,7 @@ bool test_vectorizers ( )
   std::cout << "Testing vectorizer 1" << std::endl;
   
   provallo::tfidf_vectorizer vectorizer1;
-  //provallo::pca_vectorizer vectorizer2;
+  provallo::pca_vectorizer vectorizer2;
   provallo::lda_vectorizer vectorizer3;
   provallo::pca_vectorizer vectorizer4;
    //provallo::nmf_vectorizer vectorizer4;
@@ -1002,13 +1006,13 @@ bool test_vectorizers ( )
   
   
   vectorizer1.fit(vectorize_set_data);
-  //vectorizer2.fit(vectorize_set_data);
+  vectorizer2.fit(vectorize_set_data);
   vectorizer3.fit(vectorize_set_data);
   vectorizer4.fit(vectorize_set_data);
 
   std::vector<provallo::vectorizer<std::string,real_t>*> vectorizers;
   vectorizers.push_back(&vectorizer1);
-  //vectorizers.push_back(&vectorizer2);
+  vectorizers.push_back(&vectorizer2);
   vectorizers.push_back(&vectorizer3);
   //vectorizers.push_back(&vectorizer3);
   vectorizers.push_back(&vectorizer4);
@@ -1505,7 +1509,7 @@ exclude_list.push_back(".git");
   vectorizers_normal.push_back(new provallo::lda_vectorizer);
   vectorizers_normal.push_back(new provallo::one_hot_vectorizer);
   vectorizers_normal.push_back(new provallo::pca_vectorizer);
-  
+
   //vectorizers_normal.push_back(new provallo::auto_encoder_vectorizer<real_t,real_t>(autoencoders)); 
   //create vectorizers:
 //  vectorizers.push_back(new provallo::pca_vectorizer);
@@ -2235,4 +2239,23 @@ exclude_list.push_back(".git");
  //-----------------------------------------------------------------------------
 
 
- 
+ void test_spike_train_generator()
+ {
+
+  real_t sigma = 1.0, mu = 0.1, dt = 0.1, t_min = 0.01 , t_max = 10000.0  ;
+  //create spike train generator
+  provallo::gaussian_spike_train_generator<real_t> test_spike_train_generator(sigma,mu,dt,t_min,t_max);
+  //generate spike train
+  std::vector<real_t> train = test_spike_train_generator.generate();
+  
+
+  //print spike train
+  std::cout<<"[+] spike train : "<<std::endl;
+  for ( auto & spike : train )
+  {
+    std::cout<<spike<<std::endl;
+  }
+  std::cout<<"[+] spike train size : "<<std::to_string(train.size())<<std::endl;
+
+  std::getchar();
+ }

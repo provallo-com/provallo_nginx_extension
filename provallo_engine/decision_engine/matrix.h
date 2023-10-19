@@ -972,7 +972,7 @@ namespace provallo
 
 
       }
-    
+
     }
     T*& row_begin(size_t row)
     {
@@ -3633,6 +3633,21 @@ namespace provallo
       Float x = _mean + _stdev * rho * cos(theta);
       Float y = _mean + _stdev * rho * sin(theta);
       return std::sqrt(x * x + y * y);
+    }
+    //set mean
+    void set_mean(Float mean)
+    {
+      _mean = mean;
+    }
+    //set standard deviation
+    void set_stddev(Float stdev)
+    {
+      _stdev = stdev;
+    }
+    //set variance
+    void set_variance(Float variance)
+    {
+      _stdev = std::sqrt(variance);
     }
 
     ~Gaussian()

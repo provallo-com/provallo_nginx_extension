@@ -847,6 +847,7 @@ namespace provallo
       out<<"Maximum Level of the Tree: "<<_level<<std::endl;
       out<<"Minimum Gain: "<<_min_gain<<std::endl;
       out<<"Number of Threads: "<<_nthreads<<std::endl;
+      
 
     }
 
