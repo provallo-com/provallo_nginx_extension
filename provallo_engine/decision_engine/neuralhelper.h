@@ -15,6 +15,7 @@
 #include <condition_variable>
 #include "../util/csv_file.h"
 #include "../third_party/cifar10.h"
+#include "../third_party/sqlite.h"
 #include "matrix.h"
 #include "utils.h" //real_t type
 
@@ -488,40 +489,40 @@ namespace provallo
         for (auto itr = layerList.begin (); itr != layerList.end (); ++itr)
           push_back (neuron_layer::ptr( *itr));
         //
-        _xnPartialDerivative = type_matrix::Zero (get_input_size (), 1);
-        _xnPartialDerivativeGen = type_matrix::Zero (get_input_size (), 1);
-        _xnPartialDerivativeDis = type_matrix::Zero (get_input_size (), 1);
-        _xnPartialDerivativeDisInvariant = type_matrix::Zero (get_input_size (), 1);
-        _xnPartialDerivativeGenInvariant = type_matrix::Zero (get_input_size (), 1);
+        _xnPartialDerivative.resize(get_input_size (), 1);
+        _xnPartialDerivativeGen.resize (get_input_size (), 1);
+        _xnPartialDerivativeDis.resize (get_input_size (), 1);
+        _xnPartialDerivativeDisInvariant.resize (get_input_size (), 1);
+        _xnPartialDerivativeGenInvariant.resize (get_input_size (), 1);
         //
-        _buffer_activation_level = type_matrix::Zero (get_input_size (), 1);
-        _buffer_input = type_matrix::Zero (get_input_size (), 1);
-        _buffer_input_gen = type_matrix::Zero (get_input_size (), 1);
-        _buffer_input_dis = type_matrix::Zero (get_input_size (), 1);
-        _buffer_input_dis_invariant = type_matrix::Zero (get_input_size (), 1);
-        _buffer_input_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        _buffer_activation_level.resize (get_input_size (), 1);
+        _buffer_input.resize (get_input_size (), 1);
+        _buffer_input_gen.resize (get_input_size (), 1);
+        _buffer_input_dis.resize (get_input_size (), 1);
+        _buffer_input_dis_invariant.resize (get_input_size (), 1);
+        _buffer_input_gen_invariant.resize (get_input_size (), 1);
         //
-        _sum_weight_variation = type_matrix::Zero (get_input_size (), 1);
-        _sum_bias_variation = type_matrix::Zero (get_input_size (), 1);
-        _sum_weight_variation_gen = type_matrix::Zero (get_input_size (), 1);
-        _sum_bias_variation_gen = type_matrix::Zero (get_input_size (), 1);
-        _sum_weight_variation_dis = type_matrix::Zero (get_input_size (), 1);
-        _sum_bias_variation_dis = type_matrix::Zero (get_input_size (), 1);
-        _sum_weight_variation_dis_invariant = type_matrix::Zero (get_input_size (), 1);
-        _sum_bias_variation_dis_invariant = type_matrix::Zero (get_input_size (), 1);
-        _sum_weight_variation_gen_invariant = type_matrix::Zero (get_input_size (), 1);
-        _sum_bias_variation_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        _sum_weight_variation.resize (get_input_size (), 1);
+        _sum_bias_variation.resize (get_input_size (), 1);
+        _sum_weight_variation_gen.resize (get_input_size (), 1);
+        _sum_bias_variation_gen.resize (get_input_size (), 1);
+        _sum_weight_variation_dis.resize (get_input_size (), 1);
+        _sum_bias_variation_dis.resize (get_input_size (), 1);
+        _sum_weight_variation_dis_invariant.resize (get_input_size (), 1);
+        _sum_bias_variation_dis_invariant.resize (get_input_size (), 1);
+        _sum_weight_variation_gen_invariant.resize (get_input_size (), 1);
+        _sum_bias_variation_gen_invariant.resize (get_input_size (), 1);
         //
-        _adaptive_weight_step = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_bias_step = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_weight_step_gen = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_bias_step_gen = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_weight_step_dis = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_bias_step_dis = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_weight_step_dis_invariant = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_bias_step_dis_invariant = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_weight_step_gen_invariant = type_matrix::Zero (get_input_size (), 1);
-        _adaptive_bias_step_gen_invariant = type_matrix::Zero (get_input_size (), 1);
+        _adaptive_weight_step.resize (get_input_size (), 1);
+        _adaptive_bias_step.resize (get_input_size (), 1);
+        _adaptive_weight_step_gen.resize (get_input_size (), 1);
+        _adaptive_bias_step_gen.resize (get_input_size (), 1);
+        _adaptive_weight_step_dis.resize (get_input_size (), 1);
+        _adaptive_bias_step_dis.resize (get_input_size (), 1);
+        _adaptive_weight_step_dis_invariant.resize (get_input_size (), 1);
+        _adaptive_bias_step_dis_invariant.resize (get_input_size (), 1);
+        _adaptive_weight_step_gen_invariant.resize (get_input_size (), 1);
+        _adaptive_bias_step_gen_invariant.resize (get_input_size (), 1);
         // 
       }
 
@@ -660,6 +661,10 @@ namespace provallo
     type_matrix _adaptive_weight_step_gen_invariant;
     type_matrix _adaptive_bias_step_gen_invariant;
 
+    //gnuplot support
+    void gnuplot(const std::string & file );
+
+ 
   };
   //
   class neural_helper
@@ -748,6 +753,11 @@ namespace provallo
     matrix<real_t>
     calculateInitialErrorVectorGen (matrix<real_t> output,
 				    matrix<real_t> desiredOutput, real_t dx);
+
+
+
+
+    void gnuplot(const std::string & file );
 
   private:
     neural_net::ptr _generator;
@@ -893,14 +903,34 @@ namespace provallo
                 struct {
                     std::vector<std::string> values;
                 } discrete;
+              //default
+              desc_union():continuous(){};
+                ~desc_union(){};
 
-
-                desc_union() {} 
-                ~desc_union() {}
-                
             } u; 
 
-            
+            const col_desc& operator =  (const col_desc& other) {
+                name = other.name;
+                index = other.index;
+                type = other.type;
+                if(type==discrete)
+                    u.discrete = other.u.discrete;
+                else if(type==continuous)
+                    u.continuous = other.u.continuous;  
+                    
+                return *this;
+            }
+            col_desc():name(""),index(0),type(ignore){ }
+ 
+            col_desc(const col_desc& other) {
+                name = other.name;
+                index = other.index;
+                type = other.type;
+                if(type==discrete)
+                    u.discrete = other.u.discrete;
+                else if(type==continuous)
+                    u.continuous = other.u.continuous;  
+            }
          };
 
  
@@ -913,16 +943,84 @@ namespace provallo
         names_source& operator=(const names_source& other)   ;
         names_source(names_source&& other)    ;
         names_source& operator=(names_source&& other)   ;
+        
+        //nclasses
+        size_t n_classes() const   {return nClasses;}
+        //nfeatures
+        size_t n_features() const   {return nFeatures;}
+        //ntrain
+        size_t n_train() const   {return mNbTrain;}
+        //ntest
+        size_t n_test() const   {return mNbTest;}
+        //target column
+        size_t target_column() const   {return targetColumn;}
+        //column names
 
-        //sample_source impl. pure virtual 
-        Batch trainingBatch(bool greyLevel) const override;
-        Batch testingBatch(bool greyLevel) const override;
+        //=======================================================================================================
+        
+        //sample_source impl. pure virtual  graylevel is not implemented for samples that 
+        //are not visual.
+        const matrix<real_t>& trainingSample(bool greyLevel = false) const 
+        {
+          if(greyLevel)
+            throw std::runtime_error("greyLevel is not implemented for non visual samples");
+
+          return mImageTrain;
+        }
+        const matrix<real_t>& testingSample(bool greyLevel = false) const  
+        {
+          if(greyLevel)
+            throw std::runtime_error("greyLevel is not implemented for non visual samples");
+          return mImageTest;
+        }
+
+        const std::vector<std::string>& trainingLabelNames() const  
+        {
+          return mLabelNamesTrain;
+        }
+        
+        //positive integer labels for training , translate to string with trainingLabelNames 
+
+        std::vector<size_t> trainingLabels() const  
+        {
+          return  mLabelTrain;
+        }
+
+        const std::vector<std::string>& testingLabelNames() const  
+        {
+          return mLabelNamesTest;
+        }
+       
+
+        Batch trainingBatch(bool greyLevel = false) const override;
+        Batch testingBatch(bool greyLevel = false) const override ;
+        void print();
+        //destructeur
+        virtual ~names_source()  
+        {
+          //std::cout << "names_source destructor" << std::endl;
+          //clear vectors
+          ColumnNames.clear();
+          mColumnDesc.clear();
+          mDiscreteMap.clear();
+          mImageTrain.clear();
+          mImageTest.clear();
+          mLabelTrain.clear();
+          mLabelTest.clear();
+          mLabelNamesTrain.clear();
+          mLabelNamesTest.clear();
+          mImageTrainVector.clear();
+          mImageTestVector.clear();
+          mLabelNames.clear();
+
+          //std::cout << "names_source destructor end" << std::endl;
+
+        }
      protected:
 
         void readNamesFile();
         void readTrainFile();
         void readTestFile();
-        
         matrix<real_t> mImageTrain;
         matrix<real_t> mImageTest;
         std::vector<size_t> mLabelTrain;
@@ -933,8 +1031,8 @@ namespace provallo
         std::map<size_t /*column*/,std::map<std::string,real_t>> mDiscreteMap;
 
         std::string mNamesFile;
-        std::string mTestFile;  //.test file
         std::string mTrainFile; //.data file
+        std::string mTestFile;  //.test file
         size_t mNbClasses;
         size_t mNbTrain;
         size_t mNbTest;
@@ -951,11 +1049,16 @@ namespace provallo
         
         std::vector<matrix<real_t>> mImageTrainVector;
         std::vector<matrix<real_t>> mImageTestVector;
-    
+        
         real_t get_value(size_t col,const std::string &token);
 
         
    };
+
+  //source class for sqlite fstem 
+
+
+
   class mnist_reader
   {
   public:
@@ -1172,22 +1275,24 @@ namespace provallo
 
       private:
 
-
           neural_net*  mDiscriminator;
           neural_net*  mGenerator;
-          /// Le teacher qui permet de superviser l'apprentissage des réseaux
+          /// trainer
           neural_helper             mTeacher;
 
-          /// Le batch contenant tous les samples d'apprentissage du projet
+          /// batch train samples
           Batch               mTeachingBatchDis;
-          /// Le batch contenant tous les samples de test du projet
+          // batch test samples for discriminator
           Batch               mTestingBatchDis;
-          
+          // batch test samples for generator
           Batch               mTestingBatchGen;
- 
+          // batch train samples for generator
+          Batch               mTeachingBatchGen;
+          
           source_processor  mSourceProcessor;
           
           task_configuration              _configuration;
+
   };
 
 

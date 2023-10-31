@@ -73,6 +73,7 @@ namespace provallo {
      };
     class RNN {
     public:
+        RNN(): RNN(1, 1,1, 1, 1, 1, 1, 1, 1) {}
         RNN(int input_size, int hidden_size, int output_size, int seq_length, int learning_rate, int epochs, int batch_size, int num_layers, int num_threads);
         ~RNN();
         void forward(vector<vector<int>> &data, vector<vector<int>> &labels);
@@ -147,8 +148,7 @@ namespace provallo {
         real_t *denoise_gru_state_grad_sum_arr;
         real_t *vad_gru_state_grad_sum_arr;
         real_t *noise_gru_state_grad_sum_arr;
-        
-
+         
      };
 
 }// namespace provallo

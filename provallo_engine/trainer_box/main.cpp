@@ -63,7 +63,7 @@ std::vector<provallo::point<N>,int>  load_dataset_as_points_and_lables(const std
   //dynamically create point<N> and labels vector from file:
 
   std::vector<provallo::point<N>,int> points;
-  std::ifstream file(filename);
+  std::ifstream file(filename , std::ios::in);
   std::string line;
   while (std::getline(file, line))
   {
@@ -100,7 +100,7 @@ provallo::matrix<real_t> read_data_file(const std::string& filepath )
   {
   
  
-  std::ifstream file(filepath);
+  std::ifstream file(filepath , std::ios::in|std::ios::binary|std::ios::ate);
 
   std::string line;
   //for each feature(column) we have a map of values and counts
@@ -347,8 +347,7 @@ provallo::matrix<real_t> read_data_file(const std::string& filepath )
     std::cout << e.what() << std::endl;
     return provallo::matrix<real_t>(1,1);
   }
-
-
+  return provallo::matrix<real_t>(1,1);
 }
 
 provallo::isolation_forest* isoforest_single(const provallo::attribute_information& attributes);
@@ -393,6 +392,9 @@ test_fit_iso_forest ()
   std::cout << std::string ("Point with highest outlier score: [")
       << X[get_ix(row_highest, 0)] << std::string (", ")
       << X[get_ix(row_highest, 1)] << std::string ("]") << std::endl;
+
+  std::cout.flush();
+  std::getchar(); 
   return true;
 }
      // fitting ISO FORESTS
@@ -738,6 +740,88 @@ bool test_fast_knn(const std::string benchmark_folder )
 
    
    
+bool test_dataset_load_msource()
+{
+  try{
+  provallo::names_source source("provallo_core/provallo_attributes");
+  //use the source to build the attributes 
+  //use the matrices and labels to train and benchmark classifiers  
+  provallo::matrix<real_t> training (source.trainingSample());
+  provallo::matrix<real_t> testing = (source.testingSample());
+  std::vector<size_t> labels = source.trainingLabels();
+  size_t nclasses = source.n_classes();
+
+  
+
+  std::cout<<"[+] training set size : "<< std::to_string (training.size1())<<std::endl;
+  std::cout<<"[+] training set attributes : "<< std::to_string (training.size2())<<std::endl;
+  std::cout<<"[+] training set labels : "<< std::to_string (labels.size())<<std::endl;
+  std::cout<<"[+] testing set size : "<< std::to_string (testing.size1())<<std::endl;
+  std::cout<<"[+] testing set attributes : "<< std::to_string (testing.size2())<<std::endl;
+
+  //initialize a softmax classifier with the training set and thelabels :
+  
+  provallo::softmax_classifier<double,double> softlassifier(/*nclasses*/nclasses, (size_t)/*dimensions*/ source.n_features(),/*alpha*/(real_t)1.,(real_t)0.05/*lambda*/);  
+
+  //fit the classifier with the training set and the labels :
+  softlassifier.train(training,labels);
+  //test the classifier with the testing set :
+  std::vector<real_t> target(testing.size1()),predictions(testing.size1());
+  //update target with testing labels :
+  for(size_t i=0;i<target.size();i++)
+  {
+    predictions[i] = target[i] =  testing(i,source.target_column());
+  }
+
+  softlassifier.test(testing,target);
+  //print the predictions errrors vs target :
+  
+  //calculate the accuracy :
+  real_t accuracy = 0.;
+  for(size_t i=0;i<target.size();i++)
+  {
+    if(target[i]==predictions[i])
+    {
+      accuracy++;
+    }
+  }
+  accuracy/=target.size();
+  std::cout<<"[+] accuracy : "<<std::to_string(accuracy)<<std::endl;
+ 
+  //calculate the confusion matrix :
+
+  std::vector<std::vector<real_t>> confusion_matrix;// =   target-predictions;
+  for(size_t i=0;i<nclasses;i++)
+  {
+    std::vector<real_t> row(nclasses);
+    for(size_t j=0;j<nclasses;j++)
+    {
+      row[j] = 0.;
+    }
+    confusion_matrix.push_back(row);
+  }
+  for(size_t i=0;i<target.size();i++)
+  {
+    confusion_matrix[target[i]][predictions[i]]++;
+  }
+ 
+  std::cout<<"[+] confusion matrix : "<<std::endl;
+  for(size_t i=0;i<confusion_matrix.size();i++)
+  {
+    for(size_t j=0;j<confusion_matrix[i].size();j++)
+    {
+      std::cout<<std::to_string(confusion_matrix[i][j])<<" ";
+    }
+    std::cout<<std::endl;
+  }
+  }
+  catch(const std::exception& e)
+  {
+    std::cout<<e.what()<<std::endl;
+    return false;
+  }
+  return true;
+}
 bool
 test_dataset_load ()
 {
@@ -928,12 +1012,21 @@ int main ( int argc, char* argv[]  ) {
   */
 
   //benchmark fuzzdb dataset
-  if(  fit_fuzzsb( ) ) 
+/*  if(  fit_fuzzsb( ) ) 
   {
     std::cout << "Fuzzdb test OK" << std::endl;
 
   }
+*/
 
+  if ( test_dataset_load_msource() ) 
+  {
+      std::cout << "Test dataset load OK" << std::endl;
+  }
+  else
+  {
+      std::cout << "Test dataset load FAILED" << std::endl;
+  }        
 
   if(benchmark_classifiers("./db/benchmarks"))
   {
@@ -955,14 +1048,7 @@ int main ( int argc, char* argv[]  ) {
     exit(-1);
   }
 
-  if ( test_dataset_load() ) 
-  {
-      std::cout << "Test dataset load OK" << std::endl;
-  }
-  else
-  {
-      std::cout << "Test dataset load FAILED" << std::endl;
-  }         
+   
   return 0;
 }
 
@@ -1102,29 +1188,28 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         std::cout<<"-- building dataset for : "<<file_stem<<std::endl;
         std::vector<provallo::classifier*> classifiers ;
  
-        provallo::files_collector collector = provallo::files_collector (benchmark_folder+"/"+file_stem);
+        //provallo::files_collector collector = provallo::files_collector (benchmark_folder+"/"+file_stem);
  
-        provallo::attribute_information attributes = collector.getAttributes ();
+        //provallo::attribute_information attributes = collector.getAttributes ();
 
-        size_t nclasses = attributes.getTargetClassCount();
+        //size_t nclasses = attributes.getTargetClassCount();
         //checking zero knowledge distributed kmeans
 
         //provallo::auto_encoder<double,double> encoder( collector.getAttributes().getSize(),collector.getAttributes().getSize()*collector.getAttributes().getSize(),collector.getAttributes().getTargetClassCount() );
-        provallo::softmax_classifier<double,double> softmax(/*nclasses*/nclasses, (size_t)/*dimensions*/attributes.getSize(),/*alpha*/(real_t)1.,(real_t)0.05/*lambda*/);  
 
-        std::cout<<"-- attribute info : "<<std::endl<<std::endl;
-        std::cout<< attributes <<std::endl<<std::endl;
-        char x =      std::getchar();
+       // std::cout<<"-- attribute info : "<<std::endl<<std::endl;
+        //std::cout<< attributes <<std::endl<<std::endl;
+        //char x =      std::getchar();
       
-        std::cout<< attributes <<std::endl<<std::endl;
+       // std::cout<< attributes <<std::endl<<std::endl;
 
        // x+= std::getchar();
         //checking zero knowledge distributed kmeans 
 
 
-        std::cout<<"-- Attributes information : "<<std::endl<<std::endl;
-        std::cout<< description_file<<std::endl;
-        std::cout<<collector.getAttributes ()<<std::endl;
+       // std::cout<<"-- Attributes information : "<<std::endl<<std::endl;
+       // std::cout<< description_file<<std::endl;
+       // std::cout<<collector.getAttributes ()<<std::endl;
         /* std::cout<<"-- checking for weights .... "<<std::endl<<std::endl;
         if(weights_.is_open()&&weights_.good())
           {
@@ -1142,7 +1227,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
           }
 
         */
-        std::cout<<"attributes size : "<<std::to_string(attributes.getSize())<<std::endl; 
+       //std::cout<<"attributes size : "<<std::to_string(attributes.getSize())<<std::endl; 
         /*std::cout<<"-- weights : "<<std::endl<<std::endl;
         for (const auto& weight : weights)
         {
@@ -1157,17 +1242,26 @@ bool benchmark_classifiers (const std::string benchmark_folder )
         // params. 
 
         //collector.pushTrainData (&set);   
-        //std::cout<<"-- training set size : "<<std::to_string(set.size() )<<std::endl;
-        provallo::matrix<real_t> data = read_data_file(data_file);
+        //std::cout<<"-- training set size : "<<std::to_string(set.size() )<<std::endl; 
+        
+        provallo::names_source source (benchmark_folder+ std::string("/") + file_stem);
+        source.print();
+        std::getchar();
+
+        provallo::matrix<real_t> data = source.trainingSample(false);
+        size_t nclasses = source.n_classes();
+
+        provallo::softmax_classifier<double,double> softmax(/*nclasses*/nclasses, (size_t)/*dimensions*/ source.n_features(),/*alpha*/(real_t)1.,(real_t)0.05/*lambda*/);  
+
+        //provallo::matrix<real_t> data = read_data_file(data_file);
 
         std::cout<<"-- training set matrix size : "<<std::to_string(data.size1()*data.size2())<<std::endl; 
         std::cout<<"-- training set matrix size1 : "<<std::to_string(data.size1())<<std::endl;
         std::cout<<"-- attribute info : "<<std::endl<<std::endl;
          //size_t nclasses = set.getattribute_info().getTargetClassCount();
         //size_t ndimention = set.getattribute_info().getSize();
-        std::cout<<"-- press enter to continue .... "<<std::endl<<std::endl;
-
-        x+=      std::getchar();
+        //std::cout<<"-- press enter to continue .... "<<std::endl<<std::endl;
+        //std::getchar();
         //train encoders 
         //provallo::class_dist ds(set.getattribute_info().getTargetClassCount());
         provallo::matrix<double> mdata(data),odata(data.size1(),nclasses);
@@ -1177,46 +1271,79 @@ bool benchmark_classifiers (const std::string benchmark_folder )
           {
             mdata(i,j) = data(i,j);
           }
-          odata(i,data(i,attributes.getTargetClassCount())) = 1.0;
+          odata(i,data(i, nclasses)) = 1.0;
         }
         //std::cout<<"-- training encoder "<<std::endl;
 
-
-         
-
         //encoder.train(mdata,ds);
-        
+        provallo::matrix<real_t> losses(odata);
         softmax.train(mdata ,odata);    
-        //get prediction accuracy
-        softmax.predict(mdata,odata); 
+
+        //update correct/error rates
         size_t correct = 0;
-        for(size_t i=0;i<data.size1();i++)
+        size_t errors = 0;
+        size_t fp=0,fn=0,tp=0,tn=0;
+        std::vector<real_t> errors_per_class(nclasses,0.0);
+        for(size_t i=0;i<odata.size1();i++)
         {
-          size_t max = 0;
-          for(size_t j=0;j<nclasses;j++)
+           real_t max_value = 0.0;
+          for(size_t j=0;j<odata.size2();j++)
           {
-            if(odata(i,j)>odata(i,max))
-              max = j;
-          }
-          if(max==data(i,attributes.getTargetClassCount()))
-            correct++;
+
+            //update max index and max value
+            if(odata(i,j)>max_value)
+            {
+              max_value = odata(i,j);
+             }
+
+            if(losses(i,j)==odata(i,j))
+            {
+              correct++;
+              //check if it's a true positive or true negative
+              if(losses(i,j)==1.0)
+              {
+                tp++;
+              }
+              else
+              {
+                tn++;
+              }
+            }
             else
             {
-              std::cout<<"-- prediction error : "<<std::to_string(max)<<" "<<std::to_string(data(i,attributes.getTargetClassCount()))<<std::endl;
-              std::cout<<"-- backpropagating error "<<std::endl; 
-              softmax.backpropogate_error (mdata,odata);
+              //check if it's a false positive or false negative
+              if(losses(i,j)==1.0)
+              {
+                fp++;
+              }
+              else
+              {
+                fn++;
+              }
+              errors++;
 
-
+              //update errors per class:
+              errors_per_class[j]++;
             }
-
-        } 
-        //
+          }
+        }
         //calculate prediction accuracy
         real_t accuracy = correct*100.0/data.size1(); 
-        std::cout<<"-- softmax accuracy : "<<std::to_string(accuracy)<<std::endl;
+        real_t error_rate = errors*100.0/data.size1();
+        std::cout<<"-- softmax train error rate : "<<std::to_string(error_rate)<<std::endl;
 
-      //calculate prediction accuracy
-      
+        //print error per class: 
+        std::cout<<"-- softmax train error per class : "<<std::endl;
+        for(size_t i=0;i<errors_per_class.size();i++)
+        {
+          std::cout<<"-- class "<<std::to_string(i)<<" : "<<std::to_string(errors_per_class[i])<<std::endl;
+        } 
+        
+        std::cout<<"-- softmax train accuracy : "<<std::to_string(accuracy)<<std::endl;
+        //gnuplot::plot(softmax.getLosses(),"softmax_loss");
+        //std::cout<<"-- training encoder "<<std::endl;
+
+ 
  
         //std::cout<<"-- encoder trained, classdist size : "<<std::to_string(ds.size())<<std::endl;
 
@@ -1278,7 +1405,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
           print_classifier_summary(file_stem,set,*class_);
       }//
       #endif //0 
-      x += std::getchar();
+      std::getchar();
   
       std::cout<<"-- building neural network .... "<<std::endl<<std::endl;
       std::cout<<"-- training classifiers .... "<<std::endl<<std::endl;
@@ -1288,8 +1415,7 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       std::cout<<"-- reading test data .... "<<std::endl<<std::endl;
       //provallo::testing_set test_set( set.getattribute_info());
       //collector.pushTestData (&test_set);
-      std::string test_data_file = benchmark_folder+"/"+file_stem+".test";
-      mdata = read_data_file(test_data_file);
+       mdata =  source.testingSample(false);
         //test autoencoder
       std::cout<<"-- testing autoencoder .... "<<std::endl<<std::endl;
       //go over the testing set and test the autoencoder
@@ -1298,21 +1424,66 @@ bool benchmark_classifiers (const std::string benchmark_folder )
       std::cout<<"-- testing softmax .... "<<std::endl<<std::endl;
       //go over the testing set and test the autoencoder
       odata.resize(mdata.size1(),mdata.size2());
+      provallo::matrix<real_t> oodata (odata);
       softmax.predict(mdata,odata);
-       
+      
       std::cout<<"-- softmax test finished "<<std::endl<<std::endl;
       std::cout<<"-- softmax test results : "<<std::endl<<odata<<std::endl<<std::endl;
       std::cout<<"-- softmax test results ---"<<std::endl<<std::endl;
 
+      //compare results with test set  output confusion matrix with labels from names_source
+      std::cout<<"-- softmax test results : "<<std::endl<<std::endl;
+      provallo::matrix<real_t> confusion_(nclasses,nclasses);
+      for(size_t i=0;i<odata.size1();i++)
+      {
+        for(size_t j=0;j<odata.size2();j++)
+        {
+           if(odata(i,j)==oodata(i,j))
+            confusion_(j,j)++;
+            else
+            confusion_(j,nclasses)++;
+
+        }
+        //normalize
+        for(size_t j=0;j<nclasses;j++)
+        {
+          confusion_(j,j)/=odata.size1();
+          confusion_(j,nclasses)/=odata.size1();
+        }
+        
+
+      }
+      //print confusion matrix
+      std::cout<<"-- softmax test results : "<<std::endl<<std::endl;
+      //print confusion matrix label names: 
+      auto labels = source.trainingLabels();
+      for(size_t j=0;j<nclasses;j++)
+      {
+        std::cout<< labels[j]<<" ";
+      }
+      std::cout<<std::endl;
+      for(size_t i=0;i<nclasses;i++)
+      {
+        std::cout << labels[i]<<" ";
+        for(size_t j=0;j<nclasses;j++)
+        {
+          std::cout<<confusion_(i,j)<<" ";
+        }
+        std::cout<<std::endl;
+      }
+        std::cout<<confusion_<<std::endl<<std::endl;
+        std::cout<<"-- softmax test results ---"<<std::endl<<std::endl;
+
       //save softmax results
       std::ofstream softmax_results("softmax_results_"+file_stem+".csv");
-      softmax_results<<odata<<std::endl;
+      softmax_results<<oodata-odata<<std::endl;
       softmax_results.close();
-      //save softmax classifier 
-      softmax.save("softmax_"+file_stem+".json");
 
-      //
-      std::cout<<odata<<std::endl<<std::endl;
+
+      //save softmax classifier 
+      softmax.save("softmax_"+file_stem+".json"); 
+      std::getchar();
+
       //test kmeans
 
       //print confusion matrix of test data
@@ -1527,10 +1698,16 @@ exclude_list.push_back(".git");
   
   for (auto & fuzz_file : string_files_attacks )
   {
-    std::ifstream fuzz(fuzz_file);
+    std::ifstream fuzz(fuzz_file );
     std::string fuzz_string((std::istreambuf_iterator<char>(fuzz)),
     std::istreambuf_iterator<char>());
      
+    if (fuzz_string.size()==0)
+    {
+      std::cout<<"[-] skipping empty attack file "<<fuzz_file<<std::endl;
+      continue;
+    }
+    
    // std::cout<<"[+] fuzzing "<<fuzz_file<< "("<<std::to_string(cur)+"/"+std::to_string(total)<<")"<<std::endl;
     for (auto & vectorizer : vectorizers_attacks )
     {
@@ -1556,7 +1733,11 @@ exclude_list.push_back(".git");
     std::string fuzz_string((std::istreambuf_iterator<char>(fuzz)),
     std::istreambuf_iterator<char>());
 
-
+    if(fuzz_string.size()==0)
+    {
+      std::cout<<"[-] skipping empty file "<<fuzz_file<<std::endl;
+      continue;
+    }
     for (auto & vectorizer : vectorizers_normal )
     { 
       std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//= vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type();
@@ -1697,11 +1878,10 @@ exclude_list.push_back(".git");
     std::cout<<"[+] loading random attack file : "<<random_file<<std::endl;
       
 
-    std::ifstream ifrandom(random_file);
-       std::string fit_file((std::istreambuf_iterator<char>(ifrandom)),
-    std::istreambuf_iterator<char>());
+    std::ifstream ifrandom(random_file, std::ios::binary|std::ios::ate);
+       std::string fit_file;//((std::istreambuf_iterator<char>(ifrandom)),    std::istreambuf_iterator<char>());
  
-    
+
 
       //print vectorizer type
       std::string vectorizer_type = vectorizer_types[provallo::vectorizer_type::UNKNOWN_VECTORIZER];//unknown vectorizer->get_type(); 
@@ -1709,26 +1889,39 @@ exclude_list.push_back(".git");
       {
         vectorizer_type = vectorizer_types[vectorizer->get_type()];
       } 
-  
+      //read file:
+      size_t nlines = 0;
+      while ( ifrandom.is_open()&&ifrandom.good())
+      {
+        std::string line;
+        ifrandom>>line;
+        
+        fit_file+=line+"\n";
+        nlines++;
+
+      }
+      ifrandom.close();
+      std::cout<<"[+] loaded random attack file : "<<random_file<<" , lines : "<<std::to_string(nlines)<<std::endl;
    
     std::cout<<"[+] creating autoencoder for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << " , input size:"<<std::to_string(input_size)<<std::endl;
 
     c_start = clock ();
     t_start = std::chrono::high_resolution_clock::now ();
-      input = vectorizer->predict(fit_file);
+      input = vectorizer->predict(fit_file.c_str());
       input_size = input.size();
       if( input_size==0)//< vectorizer->get_output_size()  )
     {
       input_size =sqrt(vectorizer->get_output_size());
 
+  if(input_size<=1||fit_file.length()<1){  
+      std::cout<<"[+] skipping autoencoder creation for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << " , input size:"<<std::to_string(input_size)<< ", file : "<<fit_file<<std::endl;
+      continue; }
       for(size_t i=input.size();i<input_size;i++)
       {
         input.push_back(real_t(i)/vectorizer->get_output_size());
       }
     } 
-    if(input_size<=1){ 
-      std::cout<<"[+] skipping autoencoder creation for vectorizer:"<< vectorizer_types[vectorizer->get_type()] << " , input size:"<<std::to_string(input_size)<<std::endl;
-      continue; }
+  
     //push softmax classifiers as autoencoders
     provallo::auto_encoder<real_t,real_t>* ae = new provallo::softmax_classifier<real_t,real_t>(2,input_size,/*alpha*/0.1,/*lambda*/0.05);//input,hidden,output 
     autoencoders.push_back(ae);
@@ -1748,9 +1941,19 @@ exclude_list.push_back(".git");
   //now that we have the autoencoders, we can train them 
   for (auto & fuzz_file : string_files_attacks )
   {
-    std::ifstream fuzz(fuzz_file);
-    std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
-    std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
+    std::ifstream fuzz(fuzz_file , std::ios::binary|std::ios::ate);
+    std::string data_string ; //((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+    size_t nlines = 0;
+    while ( fuzz.is_open()&&fuzz.good())
+    {
+      std::string line;
+      fuzz>>line;
+      data_string+=line+"\n";
+      nlines++;
+    }
+    fuzz.close();
+    std::cout<<"[+] loaded attack file : "<<fuzz_file<<" , lines : "<<std::to_string(nlines)<<std::endl;
+    //print vectorizer type
     size_t vectr=0;
     for (auto & enc : autoencoders   )
     {
@@ -1865,7 +2068,7 @@ exclude_list.push_back(".git");
   for (auto & fuzz_file : string_files_normal )
   {
     try {
-    std::ifstream fuzz(fuzz_file);
+    std::ifstream fuzz(fuzz_file , std::ios::binary|std::ios::ate);
   
     if(!fuzz.is_open()|| !fuzz.good())
     {
@@ -1874,9 +2077,18 @@ exclude_list.push_back(".git");
     } else {
 
       
-    std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
-    std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
-    std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_normal_vectorizer->get_type()]<<std::endl;
+    std::string data_string;//((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+    size_t nlines = 0;
+    while ( fuzz.is_open()&&fuzz.good())
+    {
+      std::string line;
+      fuzz>>line;
+      data_string+=line+"\n";
+      nlines++;
+    }
+    fuzz.close();
+    std::cout<<"[+] loaded normal file : "<<fuzz_file<<" , lines : "<<std::to_string(nlines)<<std::endl;
+     std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_normal_vectorizer->get_type()]<<std::endl;
     std::vector<real_t> input = selected_normal_vectorizer->predict(data_string);
     std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_normal_vectorizer->get_type()]<<" done"<<std::endl;
     std::cout<<"[+] training softmax classifier"<<std::endl;
@@ -1942,7 +2154,7 @@ exclude_list.push_back(".git");
       std::cout<<"[+] exception : "<<e.what()<<std::endl; 
     }
     
-
+ 
   } //end for normal files
    
 
@@ -1966,7 +2178,7 @@ exclude_list.push_back(".git");
   {
     try {
 
-    std::ifstream fuzz(fuzz_file);
+    std::ifstream fuzz(fuzz_file , std::ios::binary|std::ios::ate);
 
     if(!fuzz.is_open()|| !fuzz.good())
     {
@@ -1976,7 +2188,18 @@ exclude_list.push_back(".git");
     //when out_mat is allocated to 1,n_classes no allocation is done
     out_mat = (provallo::matrix<real_t>::One(1,n_classes)); 
 
-    std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+    std::string data_string;//((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+    size_t nlines = 0;
+    while ( fuzz.is_open()&&fuzz.good())
+    {
+      std::string line;
+      fuzz>>line;
+      data_string+=line+"\n";
+      nlines++;
+    }
+    fuzz.close();
+
+
     std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
     std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<std::endl;
     std::vector<real_t> input = selected_vectorizer->predict(data_string);
@@ -2070,9 +2293,20 @@ exclude_list.push_back(".git");
 
     for (auto & fuzz_file : string_files_normal )
     {
-    std::ifstream fuzz(fuzz_file);
-    provallo::matrix<real_t> out_mat(provallo::matrix<real_t>::Zero(1,n_classes));
-    std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+    std::ifstream fuzz(fuzz_file ,  std::ios::binary|std::ios::ate);
+    provallo::matrix<real_t> out_mat( 1,n_classes);
+    std::string data_string;
+    size_t nlines = 0;
+    while ( fuzz.is_open()&&fuzz.good())
+    {
+      std::string line;
+      fuzz>>line;
+      data_string+=line+"\n";
+      nlines++;
+    }
+    fuzz.close();
+    std::cout<<"[+] loaded normal file : "<<fuzz_file<<" , lines : "<<std::to_string(nlines)<<std::endl;
+    //((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
     std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
     std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_normal_vectorizer->get_type()]<<std::endl;
     std::vector<real_t> input = selected_normal_vectorizer->predict(data_string);
@@ -2135,10 +2369,20 @@ exclude_list.push_back(".git");
     //test with attack data
     for (auto & fuzz_file : string_files_attacks )
     {
-      std::ifstream fuzz(fuzz_file);
+      std::ifstream fuzz(fuzz_file ,  std::ios::binary|std::ios::ate);
       provallo::matrix<real_t> out_mat(provallo::matrix<real_t>::Zero(1,n_classes));
-      std::string data_string((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
-      std::cout<<"[+] fuzzing "<<fuzz_file<<std::endl;
+      std::string data_string;//((std::istreambuf_iterator<char>(fuzz)),std::istreambuf_iterator<char>());
+      size_t nlines = 0;
+      while ( fuzz.is_open()&&fuzz.good())
+      {
+        std::string line;
+        fuzz>>line;
+        data_string+=line+"\n";
+        nlines++;
+      }
+      fuzz.close();
+      std::cout<<"[+] loaded attack file : "<<fuzz_file<<" , lines : "<<std::to_string(nlines)<<std::endl;
+      
       std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<std::endl;
       std::vector<real_t> input = selected_vectorizer->predict(data_string);
       std::cout<<"[+] vectorizing with "<<vectorizer_types[selected_vectorizer->get_type()]<<" done"<<std::endl;
@@ -2259,3 +2503,41 @@ exclude_list.push_back(".git");
 
   std::getchar();
  }
+
+
+ void train_web_requests_patterns ()
+ {
+    //create vectorizer
+    //Dynamically build dataset from sqlite database of web reqest logs
+    //basic headers :
+    //virtual host(or service)|remote_addr(IP)|time_local(TS)|method(TXT)|url(TXT)|protocol(TXT)|status(DISCRETE)|body_bytes_sent(real)|referer|user_agent
+    //---
+    //
+    //extended headers :
+    //  
+    // referer can indicate admin page access requests 
+    // user_agent can indicate bot access requests,injection attacks,etc
+    // url can indicate injection attacks over paramerters,etc
+    // method can indicate injection attacks over method,etc
+    // protocol can indicate injection attacks over protocol,etc
+    
+    //status is the classifier's output
+    //body_bytes_sent is ignored for now
+    //time_local is parsed as a timestamp
+    //remote_addr is vectorized as real number
+    //method is vectorized as a real number
+    //url is vectorized as a real number
+    //protocol is vectorized as a real number
+    //status is vectorized as a real number
+    //referer is vectorized as a real number
+    //user_agent is vectorized as a real number
+
+  
+
+    //create dataset:
+
+  }
+
+
+    
+ 

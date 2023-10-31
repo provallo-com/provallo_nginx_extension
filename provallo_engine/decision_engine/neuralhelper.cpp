@@ -531,9 +531,9 @@ namespace provallo
           ,
           _activation_functions(activationF), _buffer_activation_level(type_matrix::Zero(nbFiltres, (_dimension_input - dimensionFiltre + 1) * (_dimension_input - dimensionFiltre + 1))) // ligne
           ,
-          _buffer_input(type_matrix::Zero(nbChannels, tailleImg)) // ligne
+          _buffer_input(type_matrix(nbChannels, tailleImg)) // ligne
           ,
-          _sum_weight_variation(std::vector<type_matrix>()), _sum_bias_variation(type_matrix::Zero(1, nbFiltres)), _input_dimension(_dimension_input), _input_channels(nbChannels)
+          _sum_weight_variation(std::vector<type_matrix>()), _sum_bias_variation(type_matrix(1, nbFiltres)), _input_dimension(_dimension_input), _input_channels(nbChannels)
     {
         // weight matrices
         for (size_t i(0); i < nbFiltres; i++)
@@ -548,9 +548,9 @@ namespace provallo
           ,
           _activation_functions(activationF), _buffer_activation_level(type_matrix::Zero(weight.size(), (_dimension_input - (size_t)sqrt(weight[0].cols()) + 1) * (_dimension_input - (size_t)sqrt(weight[0].cols()) + 1))) // ligne
           ,
-          _buffer_input(type_matrix::Zero(nbChannels, tailleImg)) // ligne
+          _buffer_input(type_matrix(nbChannels, tailleImg)) // ligne
           ,
-          _sum_weight_variation(std::vector<type_matrix>()), _sum_bias_variation(type_matrix::Zero(1, weight.size())), _input_dimension(_dimension_input), _input_channels(nbChannels)
+          _sum_weight_variation(std::vector<type_matrix>()), _sum_bias_variation(type_matrix(1, weight.size())), _input_dimension(_dimension_input), _input_channels(nbChannels)
     {
         // weight matrices
         for (size_t i(0); i < weight.size(); i++)
@@ -618,7 +618,7 @@ namespace provallo
                 }
             }
         }
-        type_matrix resultat = type_matrix::Zero(_input_channels, _buffer_input.cols()); // input tail
+        type_matrix resultat(_input_channels, _buffer_input.cols()); // input tail
         for (size_t i = 0; i < _weight_matrix.size(); i++)                               // for the channels
         {
             type_matrix ynZeroPaddingCarree = type_matrix::One(_weight_matrix[i].rows(), ynZeroPadding.rows()) * ynZeroPadding;
@@ -1834,9 +1834,17 @@ namespace provallo
 
 
     //names source implementation: 
-    names_source::names_source(const std::string& fstem ) : sample_source(0,0), mNamesFile(fstem + ".names"), mTrainFile(fstem + ".data")     
+    names_source::names_source(const std::string& fstem ) : sample_source(0,0), mNamesFile(fstem + ".names"), mTrainFile(fstem + ".data"), mTestFile(fstem + ".test")     
     {
+            
             readNamesFile();
+            {
+                readTrainFile();
+                {
+                    readTestFile();
+                }
+            }
+             
     }
         //std::cout << "names_source::names_source - " << mNames.size() << " names loaded" << std::endl;
         //std::cout << "names_source::names_source - " << mNbNames << " names loaded" << std::endl;
@@ -1844,7 +1852,7 @@ namespace provallo
     {
                 //std::cout << "names_source::names_source" << std::endl; 
         //read names file:
-        std::ifstream namesFile( mNamesFile );
+        std::ifstream namesFile( mNamesFile , std::ios::in);
         if (!namesFile)
         {
             throw std::runtime_error("names_source::names_source - Failed to load " + mNamesFile  );
@@ -1853,7 +1861,8 @@ namespace provallo
         std::vector<std::string> names;
         while (std::getline(namesFile, line))
         {
-            names.push_back(line);
+            if(line.size() > 1&& line[0] != '#')
+               names.push_back(line.c_str());
         }
         namesFile.close();
       
@@ -1863,7 +1872,9 @@ namespace provallo
             throw std::runtime_error("names_source::names_source - Invalid names file " + mNamesFile  );
         } 
 
-         
+         mColumnDesc.resize(names.size());
+         targetColumn   =   0;
+         std::string target_column_name = "";
         //parse definition for each column descriptor ( row ) in names file:
         ColumnNames.resize(names.size(), "" );   //length 0 size 1
         for(size_t i=0; i < names.size(); ++i)
@@ -1871,13 +1882,39 @@ namespace provallo
             col_desc col;
             std::vector<std::string> definition;
             provallo::tokenize(names[i], definition, ":");
-            if(definition.size() < 2)
+            mDiscreteMap[i] = std::map<std::string,real_t>();
+
+            if(definition.size() < 2 || definition[0][0]=='#' )
             {
-                throw std::runtime_error("names_source::names_source - Invalid names file " + mNamesFile  );
+                continue;
+                //throw std::runtime_error("names_source::names_source - Invalid names file " + mNamesFile  );
             }
+
+            //check if it's the target column:
+            if((definition[0] == "class" || definition[0] == "Class" || definition[0] == "CLASS" )||
+            (definition[0] == "target" || definition[0] == "Target" || definition[0] == "TARGET" ))
+            {
+                //parse target column:
+                targetColumn = i;
+                //value would be the target column name:
+                target_column_name = reduce(definition[1], "");
+                //set column type to ignore:
+                col.type = col_type::ignore;
+                //create attribute value map for target column:
+                ColumnNames[i] = "target";  
+
+
+            }
+            //check if attribute is discrete or continuous:
             std::string name(reduce(definition[0], ""));
             std::string attribute_values(reduce(definition[1], ""));
             //check if attribute is discrete or continuous:
+            if(attribute_values == "ignore")
+            {
+                col.type = col_type::ignore;
+            }
+            else
+            
             if(attribute_values == "continuous")
             {
                 col.type = col_type::continuous;
@@ -1885,31 +1922,114 @@ namespace provallo
             else
             {
                 col.type = col_type::discrete;
+                 std::vector<std::string> attribute_values_vector;
+                tokenize(attribute_values, attribute_values_vector, ",");
+                std::map<std::string,real_t> attribute_values_map;
+                for(size_t i=0; i < attribute_values_vector.size(); ++i)
+                {
+                    auto reduced = reduce(attribute_values_vector[i], "");
+                    attribute_values_map[reduced] = i;          
+                }   
+                mDiscreteMap[i] = attribute_values_map;
+
+
             }
             
             //discretize attribute values: 
-            std::vector<std::string> attribute_values_vector;
-            tokenize(attribute_values, attribute_values_vector, ",");
-            std::map<std::string,real_t> attribute_values_map;
-            for(size_t i=0; i < attribute_values_vector.size(); ++i)
-            {
-                attribute_values_map[attribute_values_vector[i]] = i;          
-            }   
-            mDiscreteMap[i] = attribute_values_map;
-            ColumnNames[i] = name;  
-            
+            ColumnNames[i] = reduce(definition[0], "");
+            col.index = i;
+            col.name = name;
+            mColumnDesc[i] = col;
+
+
         }//for each column descriptor
+
+        //check if target column is valid:
         
+        size_t old_target= targetColumn;
+        //update targetColumn to the index of the columnname pointed by target 
+        for(size_t i=0; i < ColumnNames.size(); ++i)
+        {
+            if(ColumnNames[i] == target_column_name)
+            {
+                std::cout<<"[mapping target to column "<<i<<"]"<<std::endl;
+                targetColumn = i;
+               //instread of break; 
+               //take the last occurance of the target column:
+
+            }
+        }
+        //check if target column is valid:
+        if(targetColumn == old_target )
+        {
+            std::cout <<"[-]could not find target column in names file:[" <<target_column_name<<"]"<< std::endl;
+            for(size_t i=0; i < ColumnNames.size(); ++i)
+            {
+                std::cout << "\t\t[-]["<<ColumnNames[i] <<"]"<<std::endl;
+            }
+
+            throw std::runtime_error("names_source::names_source - Invalid names file " + mNamesFile  );    
+        }
+
+        //remove old_target from column description: 
+        mColumnDesc.erase(mColumnDesc.begin() + old_target);
+        //remove old_target from column names:
+        ColumnNames.erase(ColumnNames.begin() + old_target);
+        //remove old_target from discrete map:
+        mDiscreteMap.erase(old_target);
+
+        
+        //print discrete values of target column:
+        std::cout << "[+]names_source::names_source - " << mDiscreteMap[targetColumn].size() << " labels loaded" << std::endl;
+        for(auto it = mDiscreteMap[targetColumn].begin(); it != mDiscreteMap[targetColumn].end(); ++it)
+        {
+            std::cout << "\t[+]names_source::names_source - target values:" << it->first << " : " << it->second << std::endl;
+        }
+
+
+        //update label names from the values of the target column:
+        //get the number of labels: 
+ 
+        mLabelNames.resize(mDiscreteMap[targetColumn].size(), "");
+        for(auto it = mDiscreteMap[targetColumn].begin(); it != mDiscreteMap[targetColumn].end(); ++it)
+        {
+            //updating label names:
+
+            std::cout<<"[+++] DEBUG updated label names ["<<std::to_string(it->second)<<":"<<it->first<<"]"<<std::endl;
+
+            mLabelNames[it->second] = it->first;
+            
+
+        }
+
+
+        //std::cout << "names_source::names_source - " << mLabelNames.size() << " labels loaded" << std::endl;
+
     } 
 
     real_t names_source::get_value(size_t column,const std::string& value)
     {
-       //check if column is discrete or continuous:
-         if(mDiscreteMap.find(column) != mDiscreteMap.end())
+        //check if column is discrete or continuous on the column descriptor
+ 
+         if( mColumnDesc.size()>column&&mColumnDesc[column].type==col_type::discrete && mDiscreteMap.find(column) != mDiscreteMap.end())
          {
               //discrete:
               return mDiscreteMap[column][value];
          }
+         else if (mColumnDesc.size()>column&&mColumnDesc[column].type==col_type::discrete && mDiscreteMap.find(column) == mDiscreteMap.end() )
+         {
+             //discrete but not in map:
+             mDiscreteMap[column][value] = mDiscreteMap[column].size();
+             return mDiscreteMap[column][value];
+         }
+         else if (mColumnDesc.size()>column&&mColumnDesc[column].type==col_type::continuous) 
+         {  
+                //continuous:
+                return std::stod(value);
+
+         }
+
+         //otherwise,just translate value to double:
        return std::stod(value);  
     }
 
@@ -1918,41 +2038,202 @@ namespace provallo
         //std::cout << "names_source::readTrainFile" << std::endl; 
         //read train file:
         size_t i=0,j=0;
-       
+        std::string line="";
+        std::vector<std::string> names_rows;
         std::ifstream trainFile( mTrainFile );
-        if (!trainFile)
+        if (!trainFile.good()) 
         {
             throw std::runtime_error("names_source::readTrainFile - Failed to load " + mTrainFile  );
         }
-        std::string line;
-        std::vector<std::string> names;
+        
         while (std::getline(trainFile, line))
         {
-            names.push_back(line);
+            if(line.size()>2&&line[0]!='|'&&line[0]!='#')
+                 names_rows.push_back(std::string(line.c_str()));
         }
         trainFile.close();          
 
+        mLabelsTrain.resize(names_rows.size(), 0 );   //length 0 size 1
+        mLabelTrain.resize(names_rows.size(), 0 );   //length 0 size 1
+        mImageTrain.resize(names_rows.size(), ColumnNames.size() );   //length 0 size 1
+        //parse definition for each column descriptor ( row ) in names file:
+        size_t adjust_rows = 0;
+
+        for ( i=0; i < names_rows.size(); ++i)
+        {
+
+            if (names_rows[i].length()<2|| names_rows[i][0] == '|' || names_rows[i][0] == '#') {
+                adjust_rows++;
+                continue;
+            }
+            std::istringstream iss( names_rows[i] );
+            std::string token = "#";
+            j=0;
+            while (std::getline(iss, token, ','))
+            {
+                
+                if(token[0] == '|' || token[0] == '#') {
+                    adjust_rows++;
+                    break;
+                 }
+                //reduce token:
+                token = reduce(token, "");
+                //get discrete or continuous value: translated to double
+
+                mImageTrain(i,j) =  get_value(j,token);
+
+                if(j==targetColumn)
+                {  
+
+
+                    std::cout<<"[+++ DEBUG +++] fitting label : "<<token<< "at target column :"<<targetColumn << std::endl;
+
+                    if (mDiscreteMap[targetColumn].size()>1)
+                        mLabelTrain[i] = mDiscreteMap[targetColumn][token];
+                    else
+                        mLabelTrain[i] = std::stod(token);
+                    mLabelsTrain[i] = mLabelTrain[i];
+                  }
+                j++;
+             }
+
+        }   
+        if(adjust_rows > 0) {
+            
+            mImageTrain.reduce_rows(adjust_rows);
+
+         }
+        //create a batch from train data:
+  
+        //std::cout << "names_source::readTrainFile - " << mBatchTrain.size() << " samples loaded" << std::endl;
+    
+        this->nClasses = mDiscreteMap[targetColumn].size(); 
+        mLabelTrainSize = mImageTrain.size1();
+        
+        //features are the columns that are not the target column and not ignored columns:
+        this->nFeatures = 0;
+        for(size_t i=0; i < ColumnNames.size(); ++i)
+        {
+            if(i != targetColumn && ColumnNames[i] != "ignore" && ColumnNames[i] != "target")
+            {
+                this->nFeatures++;
+            }
+        }
+
+        std::cout << "[+]names_source::readTrainFile - " <<std::to_string( this->nFeatures) << " features loaded" << std::endl;
+        std::cout << "[+]names_source::readTrainFile - " << std::to_string(this->nClasses) << " classess loaded" << std::endl;
+        std::cout << "[+]names_source::readTrainFile - " << std::to_string(mImageTrain.size1()) << " samples loaded" << std::endl;
+
+        names_rows.erase(names_rows.begin(), names_rows.end());
+        names_rows = std::vector<std::string>();
+
+     }
+    void names_source::print()
+    {
+        #ifdef __DEBUG__ 
+        //print labels:
+        std::cout << "[+]names_source::print - " << mLabelsTrain.size() << " labels loaded" << std::endl;
+        for(size_t i=0; i < mLabelsTrain.size(); ++i)
+        {
+            std::cout << "\t[+]names_source::print - " << i << " - " << mLabelsTrain[i] << std::endl;
+        }
+
+        //print features:
+        std::cout << "[+]names_source::print - " << mImageTrain.size1() << " samples loaded" << std::endl;
+        for(size_t i=0; i < mImageTrain.size1(); ++i)
+        {
+            std::cout << "\t[+]names_source::print - " << i << " - " << mImageTrain(i,0) << std::endl;
+        }
+        //print column names:
+        std::cout << "[+]names_source::print - " << ColumnNames.size() << " column names loaded" << std::endl;
+        for(size_t i=0; i < ColumnNames.size(); ++i)
+        {
+            std::cout << "\t[+]names_source::print - " << i << " - " << ColumnNames[i] << std::endl;
+        }
+        //print label names:
+        std::cout << "[+]names_source::print - " << mLabelNames.size() << " label names loaded" << std::endl;
+        for(size_t i=0; i < mLabelNames.size(); ++i)
+        {
+            std::cout << "\t[+]names_source::print - " << i << " - " << mLabelNames[i] << std::endl;
+        }
+        //print discrete map:
+        std::cout << "[+]names_source::print - " << mDiscreteMap.size() << " discrete maps loaded" << std::endl;
+        for(auto it = mDiscreteMap.begin(); it != mDiscreteMap.end(); ++it)
+        {
+            std::cout << "\t[+]names_source::print - " << it->first << " - " << it->second.size() << std::endl;
+        }   
+        //print column descriptors:
+        std::cout << "[+]names_source::print - " << mColumnDesc.size() << " column descriptors loaded" << std::endl;
+        for(size_t i=0; i < mColumnDesc.size(); ++i)
+        {
+            std::cout << "\t[+]names_source::print - " << i << " - " << mColumnDesc[i].name << std::endl;
+        }   
+        #endif
+  
+    }
+    void names_source::readTestFile()
+    {
+        //std::cout << "names_source::readTestFile" << std::endl;
+        //read test file:
+        size_t i=0,j=0;
+    
+        std::ifstream testFile( mTestFile );
+        if (!testFile)
+        {
+            throw std::runtime_error("names_source::readTestFile - Failed to load " + mTestFile  );
+        }       
+        std::string line  = "";
+        std::vector<std::string> names;
+        while (std::getline(testFile, line))
+        {
+            if(line.size()>2&&line[0]!='|'&&line[0]!='#')
+            {
+                //fix line with /000 at the end: 
+                
+                std::replace(line.begin(), line.end(), '\000', '\0'); // replace all 'x' to 'y' 
+
+                names.push_back(line.c_str());
+            }
+        }   
+        testFile.close();
+        mLabelsTest.resize(names.size(), 0 );   //length 0 size 1
+        mLabelTest.resize(names.size(), 0 );   //length 0 size 1
+        mImageTest.resize(names.size(), ColumnNames.size() );   //length 0 size 1
+        //parse definition for each column descriptor ( row ) in names file:
+        
+        //std::cout << "names_source::readTestFile - " << mBatchTest.size() << " samples loaded" << std::endl;
         for ( i=0; i < names.size(); ++i)
         {
-            std::istringstream iss(names[i]);
+            std::istringstream iss(names[i].c_str());
             std::string token;
             j=0;
             while (std::getline(iss, token, ','))
             {
-                 mImageTrain(i,j) =  get_value(j,token);
-                j++;
-            }
-        }   
+                if(token[0] == '|' || token[0] == '#') {
+                    continue;
+                 }
+                 mImageTest(i,j) =  get_value(j,token);
+                if(j==targetColumn)
+                {
+                    
+                    std::cout<<"[+++ DEBUG +++] fitting label : "<<token<<std::endl;
 
-        //set value for i,j translating to matrix:
-       
-    }
-     names_source::names_source(const names_source& other) : sample_source(other), 
-        mLabelTrain(other.mLabelTrain),
-        mLabelTest(other.mLabelTest),
-        mLabelNames(other.mLabelNames),
-        ColumnNames(other.ColumnNames),
-        mNamesFile(other.mNamesFile) 
+                    if (mDiscreteMap[targetColumn].size()>1)
+                        mLabelTest[i] = get_value(j,token);
+                    else
+                        mLabelTest[i] = std::stod(token);
+                }
+                j++;
+             }
+ 
+        }       
+        mLabelsTest= mLabelTest;
+        //create a batch from test data:
+        std::cout << "names_source::readTestFile - " << std::to_string(mImageTest.size1()*mImageTest.size2()) << " samples loaded" << std::endl;
+        names = std::vector<std::string>();
+        
+     }
+     names_source::names_source(const names_source& other) : sample_source(other),  mLabelTrain(other.mLabelTrain), mLabelTest(other.mLabelTest), mLabelNames(other.mLabelNames), ColumnNames(other.ColumnNames), mNamesFile(other.mNamesFile)      
     {
         //std::cout << "names_source::names_source - copy constructor" << std::endl; 
     }   
@@ -1976,6 +2257,7 @@ namespace provallo
         //std::cout << "names_source::trainingBatch" << std::endl; 
         Batch trainingBatch;
         return trainingBatch;
+
     }       
     sample_source::Batch names_source::testingBatch(bool) const
     {

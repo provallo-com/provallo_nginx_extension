@@ -314,6 +314,7 @@ namespace provallo
         {
           // find token in vocabulary and update its bow value
           // or add it to the vocabulary if it doesn't exists
+          token = reduce(token,"");
           auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
           if (it != _vocabulary.end())
           {
@@ -341,6 +342,7 @@ namespace provallo
         tokenize(document, tokens);
         for (auto token : tokens)
         {
+          token = reduce(token,"");
           // find token in vocabulary and update its bow value
           // or add it to the vocabulary if it doesn't exists
           auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
@@ -440,8 +442,7 @@ namespace provallo
     this->num_features = _vocabulary.size()-1;
     this->num_samples = 1;
     // std::cout<<"bow size: "<<_bow.size()<<std::endl;
-
-    return result;  
+     return result;  
   }
 
   std::vector<real_t> bag_of_words::transform(const std::string &doc)
@@ -456,6 +457,7 @@ namespace provallo
     // otherwise add 0.0
     for (auto token : tokens)
     {
+      token = reduce(token,"");
       auto it = std::find(_vocabulary.begin(), _vocabulary.end(), token);
       if (it != _vocabulary.end())
       {
@@ -1706,8 +1708,7 @@ namespace provallo
     }
     results[_pca_n_features_] = _pca_n_components_;
     //return results
-    
-    return results;
+     return results;
   }
     // create a vector of real_t to store the results
   void principal_component_analysis::update_pca(const std::vector<real_t>& occurance_data)
@@ -6468,9 +6469,7 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
       }   
       //set the transformed data
       _transformed_data = ret;
-      
-
-
+       
     }
 
     //inverse transform 
@@ -6590,32 +6589,37 @@ const std::vector<real_t>& fp, const std::vector<real_t>& fn, const std::vector<
     std::vector<real_t> one_hot_vectorizer::predict(const std::string& source)
     {
        //predict the source
-        std::vector<real_t> ret = this->_bow.predict(source);
-        
-        //make one-hot values out of the bow output
-        //transform bow to one-hot vector:
-        //create a one-hot vector
-        std::vector<real_t> one_hot_vector;
-        //loop over the bag of words
-        for ( size_t i = 0; i < ret.size(); i++)
+        if(source.empty())
         {
-          //check if the word is in the vocabulary
-          if ( ret[i] > 0.0)
+          std::cout<<"[-] source is empty"<<std::endl;
+          return {};
+        }
+        //predict the source
+        std::vector<real_t> ret = this->_bow.predict(source);
+        if(ret.size()==0)
+        {
+          //initialize to token size of source
+          std::vector<std::string> tokens;
+          tokenize(source,tokens," ,\t");
+          ret.resize(tokens.size(),0.0);
+          for ( size_t i = 0; i < tokens.size(); i++)
           {
             //set the one-hot vector
-            one_hot_vector.push_back(1.0);
-            
+            auto token = reduce  (tokens[i],"");
 
-          }  
-          else
-          {
-            one_hot_vector.push_back(0.0);
+            if( std::find(_vocabulary.begin(),_vocabulary.end(),token) != _vocabulary.end())
+            {
+              ret[i] = 1.0;
+            }
+            else
+            {
+
+              ret[i] = 0.0;
+            }
           }
         }
-        //return the one-hot vector
-        return one_hot_vector;
-         
-
+        return ret;
+ 
     }//end of predict
     //
     /* fit_transform the one-hot vectorizer

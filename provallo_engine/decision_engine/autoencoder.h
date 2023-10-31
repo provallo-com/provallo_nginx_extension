@@ -134,6 +134,7 @@ namespace provallo
         void initializeWeight(T *weight, size_t row, size_t col);
         void conjugateGradient();
         void initialize_autoencoder();
+        void backprop();
         virtual void clear();
         virtual void initializeWeightGrad()
         {
@@ -420,10 +421,8 @@ namespace provallo
 
             backward(input, output);
             update();
-
-            //update weights and biases
-
-            //done
+            
+            
 
         }
 
@@ -1607,6 +1606,8 @@ namespace provallo
         }
         //initialize the auto encoder
         initialize_autoencoder();
+        //
+
     }
       
     template <typename T, typename real_x>
@@ -1898,7 +1899,10 @@ namespace provallo
         initializeBias();
         initializeActivationFunction();
         initializeWeightGrad();
-        //done
+        initializeWeight1Momentum();
+        initializeWeight2Momentum();
+        initializeBias1Momentum();
+
     } 
     template <typename T, typename real_x> 
     void auto_encoder<T,real_x>::allocateWeightsAndBiases()
@@ -2059,6 +2063,7 @@ namespace provallo
                 bias1SparsityHat = nullptr;
             }   
             bias1SparsityHat = new T[hiddenDim];
+
             if (bias2SparsityHat) {
                 delete [] bias2SparsityHat;
                 bias2SparsityHat = nullptr;
@@ -2177,7 +2182,8 @@ namespace provallo
 
             //done
 
-            size_t total_memory = (12*inputDim * hiddenDim)+(12*hiddenDim * outputDim)+(12*hiddenDim)+(12*outputDim);
+            size_t total_memory =  outputDim*(inputDim+hiddenDim+1) + hiddenDim*(outputDim+1) + 2*inputDim*hiddenDim + 2*hiddenDim*outputDim + 2*hiddenDim + 2*outputDim;   
+
             std::cout << "[+] autoencoder total memory allocated: " << std::to_string((total_memory*sizeof(real_t)/1024.0)) << std::endl; 
 
     }   
@@ -3197,6 +3203,7 @@ namespace provallo
 
         initializeWeight(weight1GradPrevPrev, inputDim, hiddenDim);
         initializeWeight(weight2GradPrevPrev, hiddenDim, outputDim);
+
         //done
 
 
@@ -3244,7 +3251,7 @@ namespace provallo
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<> dis(0, 1);
+        std::uniform_real_distribution<> dis(0.0, 1.0);
         
         for (size_t i = 0; i < size; i++)
         {
@@ -3290,8 +3297,14 @@ namespace provallo
             std::cout << "[-] autoencoder - error in training - no input." << std::endl;
             return;
         }
+        std::cout<<"[+]DEBUG  autoencoder - training - feedforward"<<std::endl;
         feedforward(input, output, size);
+        std::cout<<"[+]DEBUG  autoencoder - training - backprop"<<std::endl;
         backprop(input, output, size);
+        std::cout<<"[+]DEBUG  autoencoder - training - update"<<std::endl; 
+        update();
+        std::cout<<"[+]DEBUG  autoencoder - training - done"<<std::endl;
+
         //done
     }
 
@@ -3318,7 +3331,9 @@ namespace provallo
 
             }
 
-            train(inputarray,outputarray,1);
+            train(inputarray,outputarray, 1);
+            //update error/loss
+           
          }
         
         for (size_t j = 0; j < outputDim && j<output.size(); j++)
@@ -3429,16 +3444,51 @@ namespace provallo
         {
             output[i]=this->output[i];
         }
- 
+
+        std::cout << "[+] autoencoder - feedforward done." << std::endl;
+
         //done
 
     }
 
     template <typename T, typename real_x>
+    void auto_encoder<T,real_x>::backprop()
+    {
+        //std::cout << "backprop" << std::endl;
+        //use activation function
+        //call forward to update input()
+        forward();
+        // call conjugategradient()
+        // then call backward()
+         
+        this->updateWeight1();
+        this->updateWeight2();
+        this->updateBias1();
+        this->updateBias2();
+        //call backward
+        backward();
+        //done
+
+    }
+    template <typename T, typename real_x>
     void auto_encoder<T,real_x>::backprop(T *input_param, T *output_param, size_t size)
     {
         real_x loss = 0.0;
         real_x MSE=0.0;
+
+
+
+        //assume input_param is inputDim size and output_param is size,which is not necessirly
+        //outDim size
+        if(!input_param || !output_param)
+        {
+            std::cout << "[-] autoencoder - error in backprop - no input or output." << std::endl;
+            return;
+        }
+        if(size < outputDim)
+        {
+            size = outputDim;
+        }
         //assume input_param is inputDim size and output_param is size,which is not necessirly 
         //outDim size
 
@@ -3450,47 +3500,26 @@ namespace provallo
         {
             output[i]=output_param[i];
         }
-        //we updated the input and outputs, now we can update the weights and backpropagate 
-        //the error
-        //update weights:
-        this->updateWeight1();
-        this->updateWeight2();
-        this->updateBias1();
-        this->updateBias2();
-        //backpropagate the error
-        //compute the error
-        for (size_t i = 0; i < size; i++)
-        {
-            for (size_t j = 0; j < outputDim && j<size; j++)
-            {
-                loss = output[i * outputDim + j] - output_param[i * outputDim + j];
-                MSE+=loss*loss;
-                loss *= output[i * outputDim + j] * (1 - output[i * outputDim + j]);
-                for (size_t k = 0; k < hiddenDim; k++)
-                {
-                    weight2Grad[k * outputDim + j] += loss * hidden[i * hiddenDim + k];
-                    hidden[k] += loss * weight2[k * outputDim + j];
-                }
-                bias2Grad[j] += loss;
-            }
-            for (size_t j = 0; j < hiddenDim; j++)
-            {
-                hidden[j] *= hidden[j] * (1 - hidden[j]);
-                for (size_t k = 0; k < inputDim; k++)
-                {
-                    weight1Grad[k * hiddenDim + j] += hidden[j] * input[i * inputDim + k];
-                }
-                bias1Grad[j] += hidden[j];
-
-              
-            }
-            //done
-        }   
-        MSE/=size;    
-
+        backprop();
+      
         //done
-        std::cout << "backprop MSE:" <<std::to_string(MSE)<< std::endl;
-         
+
+        //update error/loss
+        for(size_t i=0;i<outputDim&&i<size;i++)
+        {
+            loss += (output[i] - output_param[i]) * (output[i] - output_param[i]);
+        }
+        loss /= 2.0;
+        MSE = loss / real_t(size);
+         //done
+        //update output_param:
+        for(size_t i=0;i<outputDim&&i<size;i++)
+        {
+            output_param[i]=output[i];
+        }
+        std::cout<<"[+] DEBUG autoencoder - backprop done, MSE="<<MSE<<std::endl; 
+
+ 
     }
 
     template <typename T, typename real_x>
@@ -4672,46 +4701,25 @@ namespace provallo
     template <typename T, typename real_x>
     void auto_encoder<T,real_x>::backward()
     {
+       
         //std::cout << "auto_encoder backward" << std::endl;
-        //update weight2Grad
-        for (size_t i = 0; i < outputDim; i++)
+        //update hidden dimensions
+        for(size_t i=0;i<hiddenDim;i++)
         {
-            for (size_t j = 0; j < hiddenDim; j++)
-            {
-                weight2Grad[j * outputDim + i] += hidden[j] * (output[i] - input[i]) * (this->*activationPrimeFunctionPtr)(output[i]);
-            }
-        }   
-        //update bias2Grad
-        for (size_t i = 0; i < outputDim; i++)
-        {
-            bias2Grad[i] += (output[i] - input[i]) * (this->*activationPrimeFunctionPtr)(output[i]);
-        }
-        //update weight1Grad
-        for (size_t i = 0; i < hiddenDim; i++)
-        {
+            hidden[i] = 0;
             for (size_t j = 0; j < inputDim; j++)
             {
-                T sum = 0;
-                for (size_t k = 0; k < outputDim; k++)
-                {
-                    sum += (output[k] - input[k]) * (this->*activationPrimeFunctionPtr)(output[k]) * weight2[i * outputDim + k];
-                }
-                weight1Grad[j * hiddenDim + i] += input[j] * sum * (this->*activationPrimeFunctionPtr)(hidden[i]);
+                hidden[i] += input[j] * weight1[j * hiddenDim + i];
             }
-        }
-        //update bias1Grad
-        for (size_t i = 0; i < hiddenDim; i++)
-        {
-            T sum = 0;
-            for (size_t j = 0; j < outputDim; j++)
-            {
-                sum += (output[j] - input[j]) * (this->*activationPrimeFunctionPtr)(output[j]) * weight2[i * outputDim + j];
-            }
-            bias1Grad[i] += sum * (this->*activationPrimeFunctionPtr)(hidden[i]);
-        }
-        //update everything else :
-
-        //std::cout << "auto_encoder backward end" << std::endl;        
+            hidden[i] = (this->*activationFunctionPtr)(hidden[i]);
+         }
+       //update weights,gradients and biases:
+     
+        //debug 
+       // std::cout<<"[+] DEBUG : auto_encoder backward  hidden done. updating gradients"<<std::endl; 
+       // update();
+       // std::cout<<"[+] DEBUG : auto_encoder backward  gradients done"<<std::endl; 
+        //
 
     }
 
@@ -4720,24 +4728,101 @@ namespace provallo
     {
         //std::cout << "auto_encoder update" << std::endl;
         //update weight1
+
+        //update weight1GradPrev
+        updateWeight1GradPrev();
+        //update weight2GradPrev
+        updateWeight2GradPrev();
+        
+        //update bias1GradPrev
+        updateBias1GradPrev();
+        
+        //update bias2GradPrev
+        updateBias2GradPrev();
+        
+
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            weight1[i] -= learningRate * weight1Grad[i];
+            if(weight1[i]==weight1[i])
+                if(weight1Grad[i]==weight1Grad[i])
+                    weight1[i] -= learningRate * weight1Grad[i];
+                else
+                {
+                    //weight1Grad is nan:
+                    weight1Grad[i]=0.01*weight1[i];
+                    weight1[i] -= learningRate * weight1Grad[i];
+
+                }
+            else
+            {
+                //weight1 is nan:
+                if(weight1Grad[i]==weight1Grad[i])
+                    weight1[i]=0.01*weight1Grad[i];
+                else
+                {
+                    //weight1 and weight1Grad are nan:
+                    weight1[i]=hidden[i%hiddenDim]*input[i%inputDim]*0.01;
+                    weight1Grad[i]=0.01;
+                }   
+                
+
+            }   
         }
         //update weight2
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
-        {
-            weight2[i] -= learningRate * weight2Grad[i];
+        {   
+            if(weight2[i]==weight2[i]&&weight2Grad[i]==weight2Grad[i])
+                weight2[i] -= learningRate * weight2Grad[i];
+            else
+            {
+                //weight2 or weight2Grad is nan:
+                if(weight2[i]==weight2[i])
+                    weight2Grad[i]=0.01*weight2[i];
+                else
+                {
+                    //weight2 and weight2Grad are nan:
+                    weight2[i]=hidden[i%hiddenDim]*output[i%outputDim]*0.01;
+                    weight2Grad[i]=0.01;
+                }   
+            }   
         }
         //update bias1
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            bias1[i] -= learningRate * bias1Grad[i];
+            if(bias1[i]==bias1[i]&&bias1Grad[i]==bias1Grad[i])
+                bias1[i] -= learningRate * bias1Grad[i];
+            else
+            {
+                //bias1 or bias1Grad is nan:
+                if(bias1[i]==bias1[i])
+                    bias1Grad[i]=0.01*bias1[i];
+                else
+                {
+                    //bias1 and bias1Grad are nan:
+                    bias1[i]=hidden[i%hiddenDim]*0.01;
+                    bias1Grad[i]=0.01;
+                }   
+            }   
         }
+         
         //update bias2
         for (size_t i = 0; i < outputDim; i++)
         {
-            bias2[i] -= learningRate * bias2Grad[i];
+            if(bias2[i]==bias2[i]&&bias2Grad[i]==bias2Grad[i])
+                bias2[i] -= learningRate * bias2Grad[i];
+            else
+            {
+                //bias2 or bias2Grad is nan:
+                if(bias2[i]==bias2[i])
+                    bias2Grad[i]=0.01*bias2[i];
+                else
+                {
+                    //bias2 and bias2Grad are nan:
+                    bias2[i]=output[i%outputDim]*0.01;
+                    bias2Grad[i]=0.01;
+                }   
+            }   
+            
         }
 
         //update weight1GradPrevPrev
@@ -4775,24 +4860,120 @@ namespace provallo
 
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
+            if(weight1Inc==weight1Inc)
+                weight1Inc[i] = momentum * weight1Inc[i] + learningRate * weight1Grad[i];
+            else
+            {
+                //weight1Inc is nan:
+                weight1Inc[i]=0.01*weight1Grad[i];
+            }
+
             weight1Inc[i] = momentum * weight1Inc[i] + learningRate * weight1Grad[i];
         }
         //update weight2Inc
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            weight2Inc[i] = momentum * weight2Inc[i] + learningRate * weight2Grad[i];
+            if(weight2Inc==weight2Inc)
+                weight2Inc[i] = momentum * weight2Inc[i] + learningRate * weight2Grad[i];
+            else
+            {
+                //weight2Inc is nan:
+                weight2Inc[i]=0.01*weight2Grad[i];
+            }
+
         }
         //update bias1Inc
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            bias1Inc[i] = momentum * bias1Inc[i] + learningRate * bias1Grad[i];
-        }
+            if(bias1Inc==bias1Inc)
+                bias1Inc[i] = momentum * bias1Inc[i] + learningRate * bias1Grad[i];
+            else
+            {
+                //bias1Inc is nan:
+                bias1Inc[i]=0.01*bias1Grad[i];
+            }
+         }
         //update bias2Inc
         for (size_t i = 0; i < outputDim; i++)
         {
-            bias2Inc[i] = momentum * bias2Inc[i] + learningRate * bias2Grad[i];
-        }
+            if(bias2Inc==bias2Inc)
+                bias2Inc[i] = momentum * bias2Inc[i] + learningRate * bias2Grad[i];
+            else
+            {
+                //bias2Inc is nan:
+                bias2Inc[i]=0.01*bias2Grad[i];
+            }
+         }
+        //update weight1
+        for (size_t i = 0; i < inputDim * hiddenDim; i++)
+        {
+            if(weight1==weight1) {
+                weight1Prev[i] = weight1[i];
 
+                weight1[i] -= weight1Inc[i];
+
+            }
+            else
+            {
+                //weight1 is nan:
+                weight1Prev[i]=0.01*weight1Inc[i];  
+                weight1[i] -= weight1Inc[i];
+                
+            }
+        }
+        //update weight2
+        for (size_t i = 0; i < hiddenDim * outputDim; i++)
+        {
+            if(weight2==weight2) {
+                weight2Prev[i] = weight2[i];
+
+                weight2[i] -= weight2Inc[i];
+
+            }
+            else
+            {
+                //weight2 is nan:
+                weight2Prev[i]=0.01*weight2Inc[i];  
+                weight2[i] -= weight2Inc[i];
+                
+            }
+        }
+        //update bias1
+        for (size_t i = 0; i < hiddenDim; i++)
+        {
+            if(bias1==bias1) {
+                bias1Prev[i] = bias1[i];
+
+                bias1[i] -= bias1Inc[i];
+
+            }
+            else
+            {
+                //bias1 is nan:
+                bias1Prev[i]=0.01*bias1Inc[i];  
+                bias1[i] -= bias1Inc[i];
+                
+            }
+        }
+        //update bias2
+        for (size_t i = 0; i < outputDim; i++)
+        {
+            if(bias2==bias2) {
+                bias2Prev[i] = bias2[i];
+
+                bias2[i] -= bias2Inc[i];
+
+            }
+            else
+            {
+                //bias2 is nan:
+                bias2Prev[i]=0.01*bias2Inc[i];  
+                bias2[i] -= bias2Inc[i];
+                
+            }
+        }
+        //update everything else
+        
         //std::cout << "auto_encoder update end" << std::endl;
         //std::cout << "auto_encoder update end" << std::endl;
 
@@ -4804,8 +4985,14 @@ namespace provallo
         //std::cout << "auto_encoder updateWeight1GradPrev" << std::endl;
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            weight1GradPrev[i] = weight1Grad[i];
-        }
+            if(weight1Grad[i]==weight1Grad[i])
+                weight1GradPrev[i] = weight1Grad[i];
+            else
+            {
+                //weight1GradPrev is nan:
+                weight1GradPrev[i]=0.0001;
+            }
+         }
         //std::cout << "auto_encoder updateWeight1GradPrev end" << std::endl;
 
     }
@@ -4816,7 +5003,17 @@ namespace provallo
         //std::cout << "auto_encoder updateWeight2GradPrev" << std::endl;
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            weight2GradPrev[i] = weight2Grad[i];
+            if (weight2Grad[i]==weight2Grad[i])
+            {
+              weight2GradPrev[i] = weight2Grad[i];
+            }
+            else
+            {
+                //weight2GradPrev is nan:
+                weight2Grad[i]=0.0001*weight2[i]*2.0;
+                weight2GradPrev[i]=0.0001;
+            }
+            
         }
         //std::cout << "auto_encoder updateWeight2GradPrev end" << std::endl;
 
@@ -5002,7 +5199,15 @@ namespace provallo
         //std::cout << "auto_encoder updateWeight1" << std::endl;
         for (size_t i = 0; i < inputDim * hiddenDim; i++)
         {
-            weight1[i] -= learningRate * weight1Grad[i];
+            if(weight1Grad[i]==weight1Grad[i])
+                weight1[i] -= learningRate * weight1Grad[i];
+            else
+            {
+                //weight1Grad is nan:
+                weight1Grad[i]=0.01*weight1[i];
+                weight1[i] -= learningRate * weight1Grad[i];
+
+            }
         }
         //std::cout << "auto_encoder updateWeight1 end" << std::endl;
 
@@ -5014,7 +5219,15 @@ namespace provallo
         //std::cout << "auto_encoder updateWeight2" << std::endl;
         for (size_t i = 0; i < hiddenDim * outputDim; i++)
         {
-            weight2[i] -= learningRate * weight2Grad[i];
+            if(weight2Grad[i]==weight2Grad[i])
+                weight2[i] -= learningRate * weight2Grad[i];
+            else
+            {
+                //weight2Grad is nan:
+                weight2Grad[i]=0.01*weight2[i];
+                weight2[i] -= learningRate * weight2Grad[i];
+
+            }   
         }
         //std::cout << "auto_encoder updateWeight2 end" << std::endl;
 
@@ -5026,7 +5239,15 @@ namespace provallo
         //std::cout << "auto_encoder updateBias1" << std::endl;
         for (size_t i = 0; i < hiddenDim; i++)
         {
-            bias1[i] -= learningRate * bias1Grad[i];
+            if(bias1Grad[i]==bias1Grad[i])
+                bias1[i] -= learningRate * bias1Grad[i];
+            else
+            {
+                //bias1Grad is nan:
+                bias1Grad[i]=0.01*bias1[i];
+                bias1[i] -= learningRate * bias1Grad[i];
+
+            }
         }
         //std::cout << "auto_encoder updateBias1 end" << std::endl;
 
@@ -5038,7 +5259,16 @@ namespace provallo
         //std::cout << "auto_encoder updateBias2" << std::endl;
         for (size_t i = 0; i < outputDim; i++)
         {
-            bias2[i] -= learningRate * bias2Grad[i];
+            if(bias2Grad[i]==bias2Grad[i])
+                bias2[i] -= learningRate * bias2Grad[i];
+            else
+            {
+                //bias2Grad is nan:
+                bias2Grad[i]=0.01*bias2[i];
+                bias2[i] -= learningRate * bias2Grad[i];
+
+            }
+            
         }
         //std::cout << "auto_encoder updateBias2 end" << std::endl;
 
@@ -5064,8 +5294,24 @@ namespace provallo
         updateBias1();
         //update bias2
         updateBias2();
-        //std::cout << "auto_encoder conjugateGradient  end" << std::endl;
-
+        //update weight1GradPrevPrev
+        updateWeight1GradPrevPrev();
+        //update weight2GradPrevPrev
+        updateWeight2GradPrevPrev();
+        //update bias1GradPrevPrev
+        updateBias1GradPrevPrev();
+        //update bias2GradPrevPrev
+        updateBias2GradPrevPrev();
+        //update weight1Inc
+        updateWeight1Inc();
+        //update weight2Inc
+        updateWeight2Inc();
+        //update bias1Inc
+        updateBias1Inc();
+        //update bias2Inc
+        updateBias2Inc();
+        
+        
     }
 
     //clear()
@@ -5279,7 +5525,7 @@ namespace provallo
        real_t loss=0.;//softmax loss.
        size_t total_samples=0;
        real_t correct_samples=0.;
-
+ 
     
        friend class auto_encoder<T,real_x>;
        
@@ -5291,6 +5537,11 @@ namespace provallo
             this->alpha = alpha;
             this->lambda = lambda;
             //init random weight
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_real_distribution<> dis(0.0, 1.0);
+        
+
             weight.resize(n_classes,n_dimensions);
             //init weight from autoencoders weights and biases
             //update weight from autoencoder
@@ -5299,6 +5550,12 @@ namespace provallo
                 for (size_t j = 0; j < n_classes; j++)
                 {
                     weight(j,i) = auto_encoder<T,real_x>::weight1[i * n_classes + j];
+                    if(weight(j,i)!=weight(j,i))
+                    {
+                        //replace nan with random value
+                        weight(j,i) = dis(gen);
+
+                    }
                 }
             }       
             //update bias from autoencoder
@@ -5316,6 +5573,11 @@ namespace provallo
             this->n_dimensions = n_dimensions;
             this->alpha = alpha;
             this->lambda = lambda;
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_real_distribution<> dis(-1.0, 1.0);
+        
+
             //init random weight
             weight.resize(n_classes,n_dimensions); 
             //init weight from autoencoders weights and biases
@@ -5326,7 +5588,15 @@ namespace provallo
                 {
                     for (size_t j = 0; j < n_classes; j++)
                     {
-                        weight(j,i) = weight1[i * n_classes + j];
+                        if(weight1[i * n_classes + j]==weight1[i * n_classes + j])
+                            weight(j,i) = weight1[i * n_classes + j];
+                            else
+                            {
+                                weight(j,i) =  dis(gen);
+                                weight1[i * n_classes + j] = weight(j,i);
+
+                            }
+
                     }
                 }
             }
@@ -5336,7 +5606,13 @@ namespace provallo
                 {
                     for (size_t j = 0; j < n_dimensions; j++)
                     {
+                        if(weight2[j * n_classes + i]==weight2[j * n_classes + i ])
                         weight(i,j) = weight2[j * n_classes + i];
+                        else{
+                            weight(i,j) = dis(gen);
+                            weight2[j * n_classes + i] = weight(i,j);
+
+                        }
                     }
                 }
             }
@@ -5345,14 +5621,20 @@ namespace provallo
             {
                 for (size_t i = 0; i < n_classes; i++)
                 {
-                    weight(i,0) = bias1[i];
+                    if(bias1[i]==bias1[i])
+                     weight(i,0) = bias1[i];
+                     else
+                     bias1[i] = 0.0;
                 }
             }
             if(bias2)
             {
                 for (size_t i = 0; i < n_dimensions; i++)
                 {
-                    weight(0,i) =        bias2[i];
+                    if(bias2[i]==bias2[i])
+                     weight(0,i) =        bias2[i];
+                     else
+                        bias2[i] = 0.0;
                 }
             }
             //done.
@@ -5540,6 +5822,40 @@ namespace provallo
             
         }
         //train
+
+        void train(const matrix<T>& input,const std::vector<size_t> label_indices) 
+        {
+            //reset total samples and correct samples
+            std::cout<<"[+] DEBUG : softmax_classifier::train : "<<std::to_string(input.size1())<<" cases,"
+            <<std::to_string(input.size2())<<" features, "<<std::to_string(label_indices.size())<<" labels"
+            <<std::endl;
+            this->total_samples = 0;
+            this->correct_samples = 0;
+            this->loss = 0.;
+            this->accuracy = 1.;
+            this->cost = 0.;
+            //autoencoder :
+            std::vector<real_t> target_indices;
+            for (size_t i = 0; i < label_indices.size(); i++)
+            {
+                target_indices.push_back(real_t(label_indices[i]));
+            }
+            auto_encoder<T,real_x>::train(input.data(),target_indices.data(),input.size1()*input.size2());
+            //softmax:
+            //target:
+            matrix<real_t> target(input.rows(),n_classes);
+            for (size_t i = 0; i < input.rows(); i++)
+            {
+                for (size_t j = 0; j < n_classes; j++)
+                {
+                    target(i,j) = target_indices[i]==j?1.:0.;
+                }
+                target(i,label_indices[i]) = target_indices[i];
+            }
+            //train:
+            train(input,target);
+         }
+
         void train(const matrix<T>& input,const matrix<T>& target)
         {
             //reset total samples and correct samples
@@ -5556,13 +5872,14 @@ namespace provallo
             auto_encoder<T,real_x>::train(input.data(),output.data(),output.size1()*output.size2());
 
             //softmax:
-
+            std::cout << "[+] DEBUG : softmax FF  " << std::endl;            //feedforward
             forward(input,output);
+            std::cout << "[+] DEBUG : softmax BP  " << std::endl;
             //apply gradient on backpropogation
 
-            static matrix<real_t> grad;
+            static matrix<real_t> grad(n_classes,n_dimensions);
             //equals to matrix<>::Zero
-            grad.resize(n_classes,n_dimensions);// = matrix<real_t>::Zero(n_classes,n_dimensions);
+            
             
             backward(input,output,target,grad);
             //backward updates grad?
@@ -5580,8 +5897,9 @@ namespace provallo
             std::cout << "softmax target: " << target << std::endl;
             std::cout << "softmax error: " << (output - target)/(output.size1()*target.size2()) << std::endl;
             */
+            std::cout << "[+] DEBUG : softmax gradient update" << std::endl;
             update(grad);   
-            //std::cout << "softmax weight: " << weight << std::endl;
+            
             //loss:
             this->total_samples += input.rows();
             real_t correct  = 0.;
@@ -5605,6 +5923,8 @@ namespace provallo
             if(loss!=-NAN&&loss!=NAN)
                 this->total_loss += loss;
             
+
+
             this->loss = this->total_loss / real_t(this->total_samples);
 
             this->accuracy = correct / real_t(input.rows());
@@ -5646,7 +5966,12 @@ namespace provallo
                 }
             }   
             loss = -loss;
-            std::cout << "[+] softmax loss: " << loss << std::endl;
+
+            this->loss = loss;
+            this->accuracy = 1.0 - loss;
+            this->cost =  this->loss + this->lambda * this->auto_encoder<T,real_x>::cost(output.data(),output.data(),output.size1()*output.size2()  );
+
+            std::cout << "[+] softmax loss: " << this->loss << ",accuracy:"<<this->accuracy<< std::endl;
 
             
         }
@@ -5659,24 +5984,25 @@ namespace provallo
             this->total_samples = 0;
             this->correct_samples = 0.;
             //autoencoder :
-            matrix<T> output;
+            matrix<T> output(target);  
             forward(input,output);
             real_t error = 0.0;
             total_samples += input.rows();
             real_t loss=0.0 , loss_d=0.;
-            for (size_t i = 0; i < input.rows(); i++)
+            for (size_t i = 0; i < target.rows(); i++)
             {
-                for (size_t j = 0; j < input.cols(); j++)
+
+                //check each target class for each row
+                for (size_t j = 0; j < target.cols(); j++)
                 {
+                    error += target(i,j) == output(i,j)?1.:0;
                     loss_d = target(i,j) * std::log(output(i,j));
                     if(loss_d!=-NAN&&loss_d!=NAN)
                         loss += loss_d;
                     else
                         loss += 0.;
-                    
-                    correct_samples += target(i,j) == output(i,j)?1.:0.;//output(i,j)-target(i,j);
-                    error += std::abs(output(i,j)-target(i,j));
-                 }
+                }
+                
             }   
             
             error = -error;
@@ -5776,7 +6102,7 @@ namespace provallo
         {
             matrix<real_t> softmax;
             forward(input,softmax);
-            output = matrix<real_t>::Zero(input.rows(),1);
+            output (input.rows(),1);
             for (size_t i = 0; i < input.rows(); i++)
             {
                 real_t max =  softmax.maxCoeff();
@@ -6025,12 +6351,44 @@ namespace provallo
             //softmax
             grad = output - target;
             
-            //weight
+            this->weight = this->weight - this->alpha * grad.transpose() * input; 
+
+            //autoencoder
+            //set input
+            for ( size_t i=0;i<input.rows();++i)
+            {
+                //copy input row into input:
+                for(size_t j=0;j<this->inputDim;++j)
+                {
+                  auto_encoder<T,real_x>::input[j]=input(i,j); 
+                  //update auto encoder on the sample:
+                  forward();                    
+                }
+                
+            }
             
             grad = grad.transpose() * input;
             //regularization
             grad = grad + this->lambda * this->weight;
             
+            //update weight on autoencoder
+            for (size_t i = 0; i < this->n_dimensions; i++)
+            {
+                for (size_t j = 0; j < this->n_classes; j++)
+                {
+                    auto_encoder<T,real_x>::weight1[i * this->n_classes + j] = this->weight(j,i);
+                }
+            }
+            //update bias on autoencoder
+            for (size_t i = 0; i < this->n_classes; i++)
+            {
+                auto_encoder<T,real_x>::bias1[i] = this->weight(i,0);
+            }
+            //return output projections:
+            output = input * this->weight.transpose();
+            output = output.unaryExpr([](real_t x) { return std::exp(x); });
+            output = output.rowwise([](real_t x) {return x;}) / output.sum();
+                
         }
         //update
         void update(const matrix<real_t>& grad)
@@ -6045,7 +6403,350 @@ namespace provallo
 
 
      };//variational_softmax
+    
+     //softmax with dropout
+        template <class T,class real_x> 
+        class dropout_softmax : public softmax_classifier<T,real_x> 
+        {
+            //dropout softmax
+            //https://arxiv.org/pdf/1511.06038.pdf 
+            //
+            //dropout softmax is a softmax classifier with a gaussian prior on the weights
+            //the gaussian prior is learned by the autoencoder
+            //the autoencoder is trained to minimize the reconstruction error and the KL divergence between the gaussian prior and the posterior
+            //the autoencoder is trained with the conjugate gradient method  
+            //the autoencoder is trained with the variational softmax as the loss function      
+            //dropout softmax is a softmax classifier with dropout on the input and hidden layers
 
+            //autoencoder
+            typedef softmax_classifier<T,real_x> parent;
+            typedef auto_encoder<T,real_x> grandparent;
+
+            //dropout
+            real_t dropout_rate;
+            //dropout mask
+            matrix<real_t> dropout_mask;
+            //dropout input
+            matrix<real_t> dropout_input;
+            //dropout hidden
+            matrix<real_t> dropout_hidden;
+            //dropout output
+            matrix<real_t> dropout_output;
+            //dropout weight
+            matrix<real_t> dropout_weight;
+            //dropout bias
+            matrix<real_t> dropout_bias;
+            //dropout weight grad
+            matrix<real_t> dropout_weight_grad;
+            //dropout bias grad
+            matrix<real_t> dropout_bias_grad;
+            //dropout weight grad prev
+            matrix<real_t> dropout_weight_grad_prev;
+            //dropout bias grad prev
+            matrix<real_t> dropout_bias_grad_prev;
+            //dropout weight grad prev prev
+            matrix<real_t> dropout_weight_grad_prev_prev;
+            //dropout bias grad prev prev
+            matrix<real_t> dropout_bias_grad_prev_prev;
+            //dropout weight inc
+            matrix<real_t> dropout_weight_inc;
+            //dropout bias inc
+            matrix<real_t> dropout_bias_inc;
+            //dropout weight sparsity
+            matrix<real_t> dropout_weight_sparsity;
+            //dropout bias sparsity
+            matrix<real_t> dropout_bias_sparsity;
+            //dropout weight sparsity
+            matrix<real_t> dropout_weight_sparsity_prev;
+            //dropout bias sparsity
+            matrix<real_t> dropout_bias_sparsity_prev;
+            //dropout weight sparsity
+            matrix<real_t> dropout_weight_sparsity_prev_prev;
+            //dropout bias sparsity
+            matrix<real_t> dropout_bias_sparsity_prev_prev;
+            //dropout weight sparsity
+
+            void init_dropout()
+            {
+             
+                //matrices size n_classes x n_dimensions:
+                std::vector<matrix<real_t>*> dropout_matrices = {&dropout_weight,&dropout_weight_grad,&dropout_weight_grad_prev,&dropout_weight_grad_prev_prev,&dropout_weight_inc,&dropout_weight_sparsity,&dropout_weight_sparsity_prev,&dropout_weight_sparsity_prev_prev};
+                //matrices size n_classes x 1:
+                std::vector<matrix<real_t>*> dropout_matrices2 = {&dropout_bias,&dropout_bias_grad,&dropout_bias_grad_prev,&dropout_bias_grad_prev_prev,&dropout_bias_inc,&dropout_bias_sparsity,&dropout_bias_sparsity_prev,&dropout_bias_sparsity_prev_prev};
+                //other matrices:
+                std::vector<matrix<real_t>*> dropout_matrices3 = {&dropout_mask,&dropout_input,&dropout_hidden,&dropout_output}; 
+
+
+
+                
+
+                //seed random uniform distribution
+                std::random_device rd;
+                if(dropout_rate<0.1)
+                    dropout_rate = 0.5;
+
+                std::mt19937 gen(rd());
+                std::uniform_real_distribution<> dis(0, this->n_classes);
+                //init dropout matrices
+                for (size_t i = 0; i < dropout_matrices.size(); i++)
+                {
+                    dropout_matrices[i]->resize(this->n_classes,this->n_dimensions);
+                    //set dropout values on dropout matrices
+                    for (size_t j = 0; j < dropout_matrices[i]->size1(); j++)
+                    {
+                        for (size_t k = 0; k < dropout_matrices[i]->size2(); k++)
+                        {
+                            dropout_matrices[i]->operator()(j,k) = dis(gen) < dropout_rate?0.:1.;
+
+                        }
+                    }
+                }
+                //init dropout matrices2
+                for (size_t i = 0; i < dropout_matrices2.size(); i++)
+                {
+                    dropout_matrices2[i]->resize(this->n_classes,1);
+                    //set dropout values on dropout matrices
+                    for (size_t j = 0; j < dropout_matrices2[i]->size1(); j++)
+                    {
+                        for (size_t k = 0; k < dropout_matrices2[i]->size2(); k++)
+                        {
+                            dropout_matrices2[i]->operator()(j,k) = dis(gen) < dropout_rate?0.:1.;
+
+                        }
+                    }   
+
+                }
+                //init dropout matrices3
+                for (size_t i = 0; i < dropout_matrices3.size(); i++)
+                {
+                    dropout_matrices3[i]->resize(1,this->n_dimensions);
+                    //set dropout values on dropout matrices
+                    for (size_t j = 0; j < dropout_matrices3[i]->size1(); j++)
+                    {
+                        for (size_t k = 0; k < dropout_matrices3[i]->size2(); k++)
+                        {
+                            dropout_matrices3[i]->operator()(j,k) = dis(gen) < dropout_rate?0.:1.;
+
+                        }
+                    }   
+
+                }   
+                //init dropout weight
+                dropout_weight = dropout_weight.cwiseProduct(dropout_mask);
+                
+              }
+
+            void update_dropout_mask(const matrix<real_t>& target)
+            {
+              forward();
+                //update dropout mask
+                for (size_t i = 0; i < dropout_mask.size1(); i++)
+                {
+                    for (size_t j = 0; j < dropout_mask.size2(); j++)
+                    {
+                        dropout_mask(i,j) = dropout_rate < dropout_output(i,j)?0.:1.;
+                    }
+                }
+                //update dropout weight
+                dropout_weight = dropout_weight.cwiseProduct(dropout_mask);
+                //update dropout weight grad
+                dropout_weight_grad = dropout_weight_grad.cwiseProduct(dropout_mask);
+                //update dropout weight grad prev
+                dropout_weight_grad_prev = dropout_weight_grad_prev.cwiseProduct(dropout_mask);
+                //update dropout weight grad prev prev
+                dropout_weight_grad_prev_prev = dropout_weight_grad_prev_prev.cwiseProduct(dropout_mask);
+                //update dropout weight inc
+                dropout_weight_inc = dropout_weight_inc.cwiseProduct(dropout_mask);
+                //update dropout weight sparsity
+                dropout_weight_sparsity = dropout_weight_sparsity.cwiseProduct(dropout_mask);
+                //update dropout weight sparsity prev
+                dropout_weight_sparsity_prev = dropout_weight_sparsity_prev.cwiseProduct(dropout_mask);
+                //update dropout weight sparsity prev prev
+                dropout_weight_sparsity_prev_prev = dropout_weight_sparsity_prev_prev.cwiseProduct(dropout_mask);
+                //update dropout bias
+                dropout_bias = dropout_bias.cwiseProduct(dropout_mask);
+                //update dropout bias grad
+                dropout_bias_grad = dropout_bias_grad.cwiseProduct(dropout_mask);
+                //update dropout bias grad prev
+                dropout_bias_grad_prev = dropout_bias_grad_prev.cwiseProduct(dropout_mask);
+                //update dropout bias grad prev prev
+                dropout_bias_grad_prev_prev = dropout_bias_grad_prev_prev.cwiseProduct(dropout_mask);
+                //update dropout bias inc
+                dropout_bias_inc = dropout_bias_inc.cwiseProduct(dropout_mask);
+                //update dropout bias sparsity
+                dropout_bias_sparsity = dropout_bias_sparsity.cwiseProduct(dropout_mask);
+                //update dropout bias sparsity prev
+                dropout_bias_sparsity_prev = dropout_bias_sparsity_prev.cwiseProduct(dropout_mask);
+                
+            }
+
+            public:
+            //conversion constructor from softmax<real_t,real_x>
+            dropout_softmax (const softmax_classifier<T,real_x>& conversion ) : softmax_classifier<T,real_x>(conversion)
+            {
+                dropout_rate = 0.5;
+                init_dropout();
+            }   
+
+            //constructor
+            dropout_softmax(size_t n_classes,size_t n_dimensions,real_t alpha,real_t lambda) : softmax_classifier<T,real_x>(n_classes,n_dimensions,alpha,lambda)
+            {
+                dropout_rate = 0.5;
+                init_dropout();
+            }   
+            //train
+            void train(const matrix<real_t>& input,const matrix<real_t>& target)
+            {
+                //set input
+                this->input = input;
+                //set target
+                this->target = target;
+                //train classifier,autoencoder:
+                softmax_classifier<T,real_x>::train(input,this->target);
+                //update dropout mask
+                update_dropout_mask(target);
+            }
+            //predict
+            void predict(const matrix<real_t>& input,matrix<real_t>& output)
+            {
+                softmax_classifier<T,real_x>::predict(input,output);
+            }
+            //save
+            void save(const std::string filename)
+            {
+                std::ofstream out(filename, std::ios::binary); 
+                if (!out.is_open()) {
+                    std::cout << "Cannot open file to write: " << filename << std::endl;
+                    return;
+                }
+                //dont use tensorflow namespace and dependencies, just save weights and biases as binary file,no python
+                //save weights and biases
+                out.write((char*)this->weight.data(), sizeof(real_x) * this->n_classes * this->n_dimensions);
+                out.close();
+            }
+            //load
+            void load(const std::string filename)
+            {
+                std::ifstream in(filename, std::ios::binary); 
+                if (!in.is_open()) {
+                    std::cout << "Cannot open file to read: " << filename << std::endl;
+                    return;
+                }
+                //dont use tensorflow namespace and dependencies, just save weights and biases as binary file,no python
+                //save weights and biases
+                in.read((char*)this->weight.data(), sizeof(real_x) * this->n_classes * this->n_dimensions);
+                in.close();
+            }
+            //get weights
+            void getWeight(matrix<real_t>& weight)
+            {
+                weight = this->weight;
+            }
+            //forward
+            void forward(const matrix<real_t>& input,matrix<real_t>& output)
+            {
+                //softmax
+                output = input * this->weight.transpose();
+                output = output.unaryExpr([](real_t x) { return std::exp(x); });
+                output = output.rowwise([](real_t x) {return x;}) / output.sum();
+            }   
+            //backward
+            void backward(const matrix<real_t>& input,const matrix<real_t>& output,const matrix<real_t>& target,matrix<real_t>& grad)
+            {
+                //softmax
+                grad = output - target;
+                
+                this->weight = this->weight - this->alpha * grad.transpose() * input; 
+
+                //autoencoder
+                //set input
+                for ( size_t i=0;i<input.rows();++i)
+                {
+                    //copy input row into input:
+                    for(size_t j=0;j<this->inputDim;++j)
+                    {
+                      auto_encoder<T,real_x>::input[j]=input(i,j); 
+                      //update auto encoder on the sample:
+                      forward();                    
+                    }
+                    
+                }
+                
+                grad = grad.transpose() * input;
+                //regularization
+                grad = grad + this->lambda * this->weight;
+                
+                //update weight on autoencoder
+                for (size_t i = 0; i < this->n_dimensions; i++)
+                {
+                    for (size_t j = 0; j < this->n_classes; j++)
+                    {
+                        auto_encoder<T,real_x>::weight1[i * this->n_classes + j] = this->weight(j,i);
+                    }
+                }
+                //update bias on autoencoder
+                for (size_t i = 0; i < this->n_classes; i++)
+                {
+                    auto_encoder<T,real_x>::bias1[i] = this->weight(i,0);
+                }
+                //return output projections:
+                output = input * this->weight.transpose();
+                output = output.unaryExpr([](real_t x) { return std::exp(x); });
+                output = output.rowwise([](real_t x) {return x;}) / output.sum();
+                    
+            }   
+            //update
+            void update(const matrix<real_t>& grad)
+            {
+                this->weight = this->weight - this->alpha * grad;
+            }           
+            //get weight
+            matrix<real_t> get_weight()const
+            {
+                return this->weight;
+            }
+            //get dropout rate
+            real_t get_dropout_rate()const
+            {
+                return dropout_rate;
+            }
+            //set dropout rate
+            void set_dropout_rate(real_t dropout_rate)
+            {
+                this->dropout_rate = dropout_rate;
+                init_dropout();
+            }
+            //get dropout mask
+            matrix<real_t> get_dropout_mask()const
+            {
+                return dropout_mask;
+            }
+            //get dropout input
+            matrix<real_t> get_dropout_input()const
+            {
+                return dropout_input;
+            }
+            //get dropout hidden
+            matrix<real_t> get_dropout_hidden()const
+            {
+                return dropout_hidden;
+            }
+            //get dropout output
+            matrix<real_t> get_dropout_output()const
+            {
+                return dropout_output;
+            }
+            //get dropout weight
+            matrix<real_t> get_dropout_weight()const
+            {
+                return dropout_weight;
+            }
+            //get dropout bias
+            matrix<real_t> get_dropout_bias()const
+            {
+                return dropout_bias;
+            }
+        }; //dropout_softmax
         
 } // namespace provallo
 

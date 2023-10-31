@@ -108,7 +108,7 @@ namespace syslogger
     #if __cplusplus >= 201703L || defined(__cpp_lib_syncbuf)
     std::osyncstream dst;
     #else
-    ostream dst;
+    std::ostream dst;
     #endif
 
     std::ostream &src;

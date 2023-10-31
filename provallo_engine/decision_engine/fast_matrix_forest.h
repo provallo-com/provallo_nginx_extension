@@ -1341,12 +1341,12 @@ class super_tree {
       {
             //print super tree:
             out<<"super_tree:"<<std::endl;
+
             for(size_t i=0;i<_super_tree_values.rows();i++)
             {
                 for(size_t j=0;j<_super_tree_values.cols();j++)
                 {
                     out<<std::to_string(i)<<","<<std::to_string(j)<<":"<<_super_tree(i,j).first << ","<<_super_tree(i,j).second  <<" ";  
-
                 }
                 out<<std::endl;
             }
@@ -1400,7 +1400,8 @@ class super_tree {
                 }
                 out<<std::endl;
             }   
-            
+            //print forest values:
+                        
       }
  };
 

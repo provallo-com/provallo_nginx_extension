@@ -153,6 +153,10 @@ namespace provallo
 				}
 				catch (...)
 				{
+					// Catch malformed input
+					// Default to
+					//	
+					
 					error_f = true;
 				}
 			}

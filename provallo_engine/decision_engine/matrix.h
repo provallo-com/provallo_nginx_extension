@@ -891,7 +891,37 @@ namespace provallo
             min = data_[i * size2_ + j];
       return min;
     }
-
+    //matrix<T> cwiseProduct implementation: calculates the columnwise product of two matrices
+    matrix<T> cwiseProduct(const matrix<T> &m) const
+    {
+      assert(size1_ == m.size1_ && size2_ == m.size2_);
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = data_[i * size2_ + j] * m(i, j);
+      return tmp;
+    }
+    //matrix<T> cwiseQuotient implementation: calculates the columnwise quotient of two matrices
+    matrix<T> cwiseQuotient(const matrix<T> &m) const
+    {
+      assert(size1_ == m.size1_ && size2_ == m.size2_);
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = data_[i * size2_ + j] / m(i, j);
+      return tmp;
+    }
+    //matrix<T> cwiseProduct implementation: calculates the columnwise product of two matrices
+    matrix<T> cwiseProduct(const matrix<T> &m, size_t row) const
+    {
+      assert(size1_ == m.size1_ && size2_ == m.size2_);
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = data_[i * size2_ + j] * m(row, j);
+      return tmp;
+    } 
+    
     T log()
     {
       T sum = 0;
@@ -1007,6 +1037,29 @@ namespace provallo
       data_ = tmp;
       size2_--;
 
+    }
+    void reduce_rows(size_t nRows,bool endian=true)
+    {
+      if(nRows>size1_)
+        return;
+      size_t new_row_size = size1_ - nRows;
+      T* tmp = new T[new_row_size * size2_];
+      if(endian)
+      {
+        for (size_t i = 0; i < new_row_size; i++)
+          for (size_t j = 0; j < size2_; j++)
+            tmp[i * size2_ + j] = data_[(i + nRows) * size2_ + j];
+      }
+      else
+      {
+        for (size_t i = 0; i < new_row_size; i++)
+          for (size_t j = 0; j < size2_; j++)
+            tmp[i * size2_ + j] = data_[(i + 1) * size2_ - j - 1];
+      } 
+      delete[] data_;
+      data_ = tmp;
+      size1_ = new_row_size;
+      
     }
     std::vector<real_t> row_entropy()const 
     {

@@ -3674,7 +3674,7 @@ struct welsch_loss : public loss<T>
   trim (const std::string &pString, const std::string &pWhitespace);
   const std::string
   reduce (const std::string &pString, const std::string &pFill,
-	  const std::string &pWhitespace = "");
+	  const std::string &pWhitespace = " ");
 }//namespace
 #endif /* DECISION_ENGINE_UTILS_H_ */
 
