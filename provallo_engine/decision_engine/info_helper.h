@@ -327,7 +327,7 @@ namespace provallo
             return _p_k;
         }
 
-
+        
 
         //initialize the generator :
         void init()
@@ -404,7 +404,18 @@ namespace provallo
             this->_input.insert(this->_input.end(), input.begin(), input.end());
             std::uniform_real_distribution<real_t> distribution(0.0, 1.0);
             std::uniform_int_distribution<int> distribution_int(0, 1);
+            std::random_device rd;
+            std::mt19937 gen(rd());
             provallo::Gaussian<real_t> gaussian(0.0, 1.0);
+            if( _G.size()==0)
+            {
+                _G.resize(input.size());
+                for (size_t i = 0; i < input.size(); i++)
+                {
+                    _G[i] = distribution(gen);
+                }
+            }
+
             std::vector<real_t> results(input.size());
             matrix<real_t> gamma(input.size(), _G.size());
             matrix<real_t> SIGMA(input.size(), _G.size());
@@ -425,7 +436,11 @@ namespace provallo
                 for (size_t j = 0; j < _G.size(); j++)
                 {
                     real_t gauss = gaussian();
-
+                    if(gauss!=gauss)
+                    {
+                        //avoid -nan/nan
+                        gauss=0.0;
+                    }
                     gamma(i,j) = _G[j] * input[i]   ;
                     SIGMA(i,j)  = input[i]/2.0*gamma(i,j);
                     gv(i,j) = gamma(i,j) * _p_u_k_G[i];
@@ -442,7 +457,7 @@ namespace provallo
                     _p  +=   _p_u_k_G[i] * _p_u_G[i];
                     _q  +=   _p_u_k_G[i] * _p_u_G[i];
                     gaussian.set_mean(_G[j]);
-                    gaussian.set_variance(SIGMA(i,j));
+                    gaussian.set_variance(SIGMA(i,j)); 
                                      
                 }
                 generative[i] = _G[i] * input[i] * _p_u_k_G[i] * _p_u_G[i];
@@ -472,11 +487,7 @@ namespace provallo
             }
             
             //use the gaussian matrix to compute the inverse of the matrices : 
-            invertible_gamma= invertible_gamma * gaussian_matrix;
-            invertible_SIGMA= invertible_SIGMA * gaussian_matrix;
-            invertible_gv= invertible_gv * gaussian_matrix;
-
-
+ 
             invertible_gamma.invert();
             invertible_SIGMA.invert();
             invertible_gv.invert();
@@ -533,7 +544,7 @@ namespace provallo
             result = 0.0;
             for (size_t i = 0; i < input.size(); i++)
             {
-                result += F[i];
+                result += F[i]==F[i]?F[i]:0.0;
             }       
             //maximize the expectation of the log-likelihood :
             //use DKL to maximize the expectation of the log-likelihood :
@@ -552,11 +563,12 @@ namespace provallo
             //L(G) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v|u;G] * P[u;G] / Q[v;u] + DKL(Q[v;u],P[v|u;G] * P[u;G])
             //maximize and set _output to the results  :
 
-
+            _output.resize(input.size());
 
             for ( size_t i=0 ; i < input.size(); i++ )
             {
-                _output[i] = F[i];
+                _output[i] = F[i]==F[i]?F[i]:(0.000001*i*input[i]* result)/input.size();
+
             }
             //return the sum of the output :
 
@@ -564,7 +576,11 @@ namespace provallo
 
 
         }
-
+        //get output:
+        const std::vector<real_t> & get_output() const
+        {
+            return _output;
+        }
         //generate a spike train :
         std::vector<real_t> generate()
         {

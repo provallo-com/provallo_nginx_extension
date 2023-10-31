@@ -1256,7 +1256,7 @@ namespace provallo
     {
       size_t size = size1_ * size2_;
       
-      if(m!=*this){
+      if(m.data_!=this->data_){
       
       if(m.size1_==0 || m.size2_==0 || m.data_==nullptr   )
       {
@@ -1268,9 +1268,12 @@ namespace provallo
         resize(m.size1_, m.size2_);
       }
       
+
       size = m.size1_ * m.size2_;
+      
 
       std::copy(m.data_, m.data_ + size, data_);
+
 
       }
       return *this;
@@ -3674,9 +3677,10 @@ namespace provallo
 
     // Generate point
     Float
-    operator()(std::random_device &rd = std::random_device()) const
+    operator()() const
     {
       // Auxiliary parameters
+      std::random_device rd  ;
       std::mt19937 gen(rd());
       std::uniform_int_distribution<> uniform(0, RAND_MAX);
 

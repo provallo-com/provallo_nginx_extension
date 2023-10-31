@@ -1177,20 +1177,21 @@ namespace provallo
           };
     
       public:
-          /// Un alias pour désigner un donnée (Entrée, Sortie)
+          /// a sample is a pair of input and output
           using Sample = std::pair<matrix<real_t>,matrix<real_t>>;
-          /// Un alias pour désigner un batch de données (Entrée, Sortie)
+          /// a batch is a vector of samples
           using Batch = std::vector<Sample>;
-  		    /// Un alias pour désigner un minibatch de données (Entrée, Sortie)
+  		    ///  a minibatch is a batch
   	      using Minibatch = Batch;
 
       public:
           /// Constructeur par batchs
-          /**
-           * Ce constructeur supervise le projet par rapport au réseau de neurones donné et aux batchs de tests et d'apprentissages donnés en paramètre
-           */
+          
+          //default constructor
           learning_task();
-          learning_task( const learning_task::task_configuration& config );           /// Constructeur par fonction modèle
+          //constructor with configuration
+          learning_task( const learning_task::task_configuration& config );
+          //constructor with neural networks
           learning_task(neural_net::ptr network,
                         std::function<matrix<real_t>(matrix<real_t>)> modelFunction,
                         std::vector<matrix<real_t>> teachingInputs,

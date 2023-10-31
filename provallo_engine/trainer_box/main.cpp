@@ -2491,16 +2491,79 @@ exclude_list.push_back(".git");
   provallo::gaussian_spike_train_generator<real_t> test_spike_train_generator(sigma,mu,dt,t_min,t_max);
   //generate spike train
   std::vector<real_t> train = test_spike_train_generator.generate();
-  
-
-  //print spike train
-  std::cout<<"[+] spike train : "<<std::endl;
-  for ( auto & spike : train )
+  if(test_spike_train_generator.refine(train) > 0.0)
   {
-    std::cout<<spike<<std::endl;
+    std::cout<<"[+] spike train refined"<<std::endl;
   }
-  std::cout<<"[+] spike train size : "<<std::to_string(train.size())<<std::endl;
+  else 
+  {
+    std::cout<<"[+] spike train not refined"<<std::endl;
+  }
+  //print spike train
+   
+  std::cout<<"[+] saving spike train size : "<<std::to_string(train.size())<<std::endl;
+  std::ofstream spike_train_file("spike_train.DAT",std::ios::binary|std::ios::ate);
+  if(spike_train_file.is_open()&&spike_train_file.good())
+  {
+    size_t nlines = 0;
+    auto refined = train;
+    const auto& output_ = test_spike_train_generator.get_output();
+    for(auto& spike : train)
+    {
+      refined.push_back(spike); 
+      spike_train_file<<std::to_string(nlines)<<" "<<spike<<" "<< std::to_string(output_[nlines])<<std::endl;
+      nlines++;
+    }
+    spike_train_file.close();
 
+    std::string gnuplot_script =  "set terminal png\n"
+                                  "set output \"spikes.png\"\n"
+                                  "set title \"spike train\"\n"
+                                  "set xlabel \"time\"\n"
+                                  "set ylabel \"spike\"\n"
+                                  "set zlabel \"sum\"\n"
+                                  "set xrange [0:10000]\n"
+                                  "set yrange [0:1]\n"
+                                  "set cblabel \"spike\"\n"
+                                  "set cbtics ( 0, 1 )\n"
+                                  "set cbrange [0:1]\n"
+                                  "set pm3d map\n"
+                                  "set palette defined ( 0 \"white\", 1 \"red\" )\n"
+                                  "set view map\n"
+                                  "set grid\n"
+                                  "set key off\n"
+                                  "set ticslevel 0\n"
+                                  "set tics out nomirror\n"
+                                  "set tics scale 0.5\n"
+                                  //splot: 
+                                  //  Warning: Single isoline (scan) is not enough for a pm3d plot.
+                                  //  Hint: Missing blank lines in the data file? See 'help pm3d' and FAQ.
+                                  //  Hint: If your data is all-zeros, you may need to use the 'set dgrid3d' command. 
+                                  "set dgrid3d 500,500,500\n"
+                                  "splot \"spike_train.DAT\" using 1:2:3 with pm3d\n"
+                                  //plot:
+                                  //"plot \"spike_train.DAT\" using 1:2 with lines\n"
+                                  
+            
+    std::ofstream gnuplot_script_file("spikes.gp",std::ios::binary|std::ios::ate);
+
+    //save gnuplot script
+    if(gnuplot_script_file.is_open()&&gnuplot_script_file.good())
+    {
+      gnuplot_script_file<<gnuplot_script;
+      gnuplot_script_file.close();
+      std::cout<<"[+] spiketrain script saved"<<std::endl;
+    }
+    else 
+    {
+      std::cout<<"[+] error opening spiketrain script file"<<std::endl;
+    }
+
+  }
+  else 
+  {
+    std::cout<<"[+] error opening spike train file"<<std::endl;
+  }
   std::getchar();
  }
 
