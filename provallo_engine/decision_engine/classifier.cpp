@@ -5450,7 +5450,7 @@ namespace provallo
 	{
 		this->check_is_fitted();
 		this->check_nthreads();
-		std::vector<real_t> out(nrows);
+		std::vector<real_t> out(nrows, 0.);
 		predict_iforest(
 			X, (int *)nullptr, true, (size_t)0, (size_t)0, (real_t *)nullptr,
 			(int64_t *)nullptr, (int64_t *)nullptr, (real_t *)nullptr,
@@ -5850,7 +5850,7 @@ namespace provallo
 	}
 
 	void
-	isolation_forest::serialize(FILE *out) const
+	isolation_forest::serialize(std::FILE *out) const
 	{
 		this->serialize_template(out);
 	}
@@ -5862,7 +5862,7 @@ namespace provallo
 	}
 
 	isolation_forest
-	isolation_forest::deserialize(FILE *inp, int nthreads)
+	isolation_forest::deserialize(std::FILE *inp, int nthreads)
 	{
 		return deserialize_template(inp, nthreads);
 	}
@@ -6187,7 +6187,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								(per_tree_depths == NULL) ? NULL : (per_tree_depths + tree + row * model_outputs->trees.size()),
 								(size_t)row);
 						}
-						output_depths[row] = score;
+						output_depths[row] = score==score?score:0.0;
 					}
 				}
 			}
@@ -6213,7 +6213,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							(per_tree_depths == NULL) ? NULL : (per_tree_depths + tree + row * model_outputs->trees.size()),
 							(size_t)0);
 					}
-					output_depths[row] = score;
+					output_depths[row] = score==score?score:0.0;
 				}
 			}
 		} //end if
@@ -6226,7 +6226,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 				{
 					for (size_t row = 0; row < (decltype(row))nrows; row++)
 					{
-						real_t score = 0;
+						real_t score = 0.;
 						for (size_t tree = 0;
 							 tree < model_outputs_ext->hplanes.size(); tree++)
 						{
@@ -6239,7 +6239,8 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								(per_tree_depths == NULL) ? NULL : (per_tree_depths + tree + row * model_outputs_ext->hplanes.size()),
 								(size_t)row);
 						}
-						output_depths[row] = score;
+
+						output_depths[row] = score==score?score:0.0;
 					}
 				}
 
@@ -6264,7 +6265,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 								(per_tree_depths == NULL) ? NULL : (per_tree_depths + tree + row * model_outputs_ext->hplanes.size()),
 								(size_t)row);
 						}
-						output_depths[row] = score;
+						output_depths[row] = score==score?score:0.0;
 					}
 				}
 			}//end if
@@ -6288,7 +6289,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 							(per_tree_depths == NULL) ? NULL : (per_tree_depths + tree + row * model_outputs_ext->hplanes.size()),
 							(size_t)row);
 					}
-					output_depths[row] = score;
+					output_depths[row] = score==score?score:0.0;
 				}
 			}//
 		}
@@ -6400,14 +6401,15 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 					}
 				}
 			}
-
-			else
+ 			else
 			{
 			manual_remap:
 				remap_terminal_trees(model_outputs, model_outputs_ext,
 									 prediction, tree_num, nthreads);
 			}
 		}
+		//update output data
+		
 	}
 
 	isolation_forest::isolation_forest(size_t ndim, size_t ntrees,
@@ -18993,7 +18995,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		*/
 	}
 
-	void serialize_ExtIsoForest(	const ext_iso_forest& forest ,FILE* cstyle)
+	void serialize_ExtIsoForest(	const ext_iso_forest& forest ,std::FILE* cstyle)
 	{
 		UNDEF_REFERENCE(forest)
 		UNDEF_REFERENCE2(cstyle)
@@ -19005,7 +19007,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		UNDEF_REFERENCE2(cppstyle)
 
 	}
-	void serialize_IsoForest(	const iso_forest& forest ,FILE* cstyle)
+	void serialize_IsoForest(	const iso_forest& forest ,std::FILE* cstyle)
 	{
 		UNDEF_REFERENCE(forest)
 		UNDEF_REFERENCE2(cstyle)
@@ -19017,7 +19019,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		UNDEF_REFERENCE2(cppstyle)
 
 	}	
-	void serialize_Indexer(	const TreesIndexer& indexer ,FILE* cstyle)
+	void serialize_Indexer(	const TreesIndexer& indexer ,std::FILE* cstyle)
 	{
 		UNDEF_REFERENCE(indexer)
 		UNDEF_REFERENCE2(cstyle)
@@ -19038,19 +19040,19 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 	
 
 	//deserialize_IsoForest (cstyle) 
-	void deserialize_IsoForest( iso_forest& forest, FILE* cstyle)
+	void deserialize_IsoForest( iso_forest& forest, std::FILE* cstyle)
 	{
 		UNDEF_REFERENCE(cstyle)
 		UNDEF_REFERENCE2(forest);
 	}	
 	//deserialize_Imputer (cstyle)
-	void deserialize_Imputer(Imputer& imputer ,FILE* cstyle)
+	void deserialize_Imputer(Imputer& imputer ,std::FILE* cstyle)
 	{
 		UNDEF_REFERENCE(cstyle)
 		UNDEF_REFERENCE2(imputer)
  	}	
 	//deserialize_Indexer (cstyle)
-	void deserialize_Indexer(TreesIndexer& indexer ,FILE* cstyle)
+	void deserialize_Indexer(TreesIndexer& indexer ,std::FILE* cstyle)
 	{
 		UNDEF_REFERENCE(cstyle)
 		UNDEF_REFERENCE2(indexer)
@@ -19064,7 +19066,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 
 	}	
 	
-	void deserialize_ExtIsoForest(ext_iso_forest& indexer ,FILE* cstyle)
+	void deserialize_ExtIsoForest(ext_iso_forest& indexer ,std::FILE* cstyle)
 	{
 		UNDEF_REFERENCE(cstyle)
 		UNDEF_REFERENCE2(indexer)

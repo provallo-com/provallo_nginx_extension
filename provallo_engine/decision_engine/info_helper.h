@@ -260,14 +260,7 @@ namespace provallo
         {
             return _q;
         }
-        void set_generative_model(const std::vector<real_t> &G)
-        {
-            _G = G;
-        }   
-        const std::vector<real_t> & get_generative_model() const
-        {
-            return _G;
-        }
+         
         void set_random_distribution(const std::vector<real_t> &p_u_k_G)
         {
             _p_u_k_G = p_u_k_G;
@@ -541,7 +534,6 @@ namespace provallo
                 F[i] = Q[i] - DKL[i] + W[i] * DKL[i] ;
             }
             //sum everything 
-            result = 0.0;
             for (size_t i = 0; i < input.size(); i++)
             {
                 result += F[i]==F[i]?F[i]:0.0;
@@ -563,17 +555,16 @@ namespace provallo
             //L(G) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v|u;G] * P[u;G] / Q[v;u] + DKL(Q[v;u],P[v|u;G] * P[u;G])
             //maximize and set _output to the results  :
 
+            //maximize the expectation of the log-likelihood :
             _output.resize(input.size());
+            //use DKL to maximize the expectation of the log-likelihood :
+           //DKL = sum_v P[v|u;G] * P[u;G] * log(P[v|u;G] * P[u;G] / P[v;G])
 
             for ( size_t i=0 ; i < input.size(); i++ )
             {
-                _output[i] = F[i]==F[i]?F[i]:(0.000001*i*input[i]* result)/input.size();
-
-            }
-            //return the sum of the output :
-
+                _output[i] = F[i]==F[i]?F[i] : 0.;
+            } 
             return result;
-
 
         }
         //get output:
@@ -644,7 +635,7 @@ namespace provallo
             set_dt(dt);
             set_t_min(t_min);
             set_t_max(t_max);
-            set_generative_model(G);
+            _G = G;
             return refine(input);
         }
         //gnuplot output :
@@ -959,9 +950,664 @@ namespace provallo
 
             
         }
+        void set_random_uniform_distribution(const std::vector<real_t> &p_u_k)
+        {
+            _generator.set_random_uniform_distribution(p_u_k);
+        }
+        const std::vector<real_t> & get_random_uniform_distribution() const
+        {
+            return _generator.get_random_uniform_distribution();
+        }
+        void set_p_u(const std::vector<real_t> &p_u)
+        {
+            _generator.set_p_u(p_u);
+        }
+        const std::vector<real_t> & get_p_u() const
+        {
+            return _generator.get_p_u();
+        }
+        void set_p_k(const std::vector<real_t> &p_k)
+        {
+            _generator.set_p_k(p_k);
+        }
+        const std::vector<real_t> & get_p_k() const
+        {
+            return _generator.get_p_k();
+        }
+        void set_input(const std::vector<real_t> &input)
+        {
+            _input = input;
+        }
+        const std::vector<real_t> & get_input() const
+        {
+            return _input;
+        }
+        void set_output(const std::vector<real_t> &output)
+        {
+            _output = output;
+        }
+        const std::vector<real_t> & get_output() const
+        {
+            return _output;
+        }
+       
+         
+           
+        void set_F_phase(const std::vector<real_t> &F_phase)
+        {
+            _F_phase = F_phase;
+        }
+        const std::vector<real_t> & get_F_phase() const
+        {
+            return _F_phase;
+        }
+        void set_W_phase(const std::vector<real_t> &W_phase)
+        {
+            _W_phase = W_phase;
+        }
+        const std::vector<real_t> & get_W_phase() const
+        {
+            return _W_phase;
+        }
+        void set_Q_phase(const std::vector<real_t> &Q_phase)
+        {
+            _Q_phase = Q_phase;
+        }
+        const std::vector<real_t> & get_Q_phase() const
+        {
+            return _Q_phase;
+        }
+        void set_DKL_phase(const std::vector<real_t> &DKL_phase)
+        {
+            _DKL_phase = DKL_phase;
+        }
+
+        const std::vector<real_t> & get_DKL_phase() const
+        {
+            return _DKL_phase;
+        }
+        void set_n(size_t n)
+        {
+            _n = n;
+        }
+        size_t get_n() const
+        {
+            return _n;
+        }
+        void set_m(size_t m)
+        {
+            _m = m;
+        }
+        size_t get_m() const
+        {
+            return _m;
+        }
+        void set_k(size_t k)
+        {
+            _k = k;
+        }
+        size_t get_k() const
+        {
+            return _k;
+        }
+        void set_l(size_t l)
+        {
+            _l = l;
+        }
+        size_t get_l() const
+        {
+            return _l;
+        }
+        void set_t(size_t t)
+        {
+            _t = t;
+        }
+        
+        void set_t_step(size_t t_step)
+        {
+            _t_step = t_step;
+        }
+        //learning rules : 
+        //wake sleep algorithm :
+        //https://en.wikipedia.org/wiki/Wake-sleep_algorithm
+        //https://en.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm
+
+        //wake : u ~P[u],v~Q[v;u,W] 
+        //       g-> g+eta(v-f(g))
+        //       h-> h+eta(u-f(h+Gv))
+        //       G-> G+eta(u-f(h+Gv))v
+        //sleep : v ~P[v;G],u~P[u|v;G]
+        //        w-> w+eta(v-f(w+W dot u))
+        //        W-> W+eta(v-f(w+W dot u))u
+        //        
+        
+        void update_sleep()
+        {
+            //apply the sleep phase :
+
+            reset();
+            //generate a spike train :
+            _input = _generator();
+            //refine the generator :
+            _output = _generator(_input);
+            //update the recognition model :
+            _recognition_model = _generator.get_recognition_model();
+            //update the recognition distribution :
+            _recognition_distribution = _generator.get_recognition_distribution();
+            //update the random distribution :
+            _random_distribution = _generator.get_random_distribution();
+            //update the joint distribution :
+            _joint_distribution = _generator.get_joint_distribution();
+            //update the random uniform distribution :
+            _random_uniform_distribution = _generator.get_random_uniform_distribution();
+            //update the F phase :
+            _F_phase = _generator.get_F_phase();
+
+            //update the W phase :
+            _W_phase = _generator.get_W_phase();
+
+            //update the Q phase :
+            _Q_phase = _generator.get_Q_phase();
+
+            //update the DKL phase :
+            _DKL_phase = _generator.get_DKL_phase();
+
+            //update the generative model :
+            _generative_model = _generator.get_generative_model();
+
+            //apply the sleep phase :
+            //u ~P[u],v~Q[v;u,W]
+            //g-> g+eta(v-f(g))
+            //h-> h+eta(u-f(h+Gv))
+            //G-> G+eta(u-f(h+Gv))v
+
+            //update the generative model :
+            _generative_model = _generator.get_generative_model();
+            //update the random distribution :
+            _random_distribution = _generator.get_random_distribution();
+            //update the joint distribution :
+            _joint_distribution = _generator.get_joint_distribution();
+            //update the recognition distribution :
+            _recognition_distribution = _generator.get_recognition_distribution();
+        }
+        void update_wake()
+        {
+            //apply the wake phase :
+            reset();
+            //generate a spike train :
+            _input = _generator();
+            //refine the generator :
+            _output = _generator(_input);
+            //update the recognition model :
+            _recognition_model = _generator.get_recognition_model();
+            //update the recognition distribution :
+            _recognition_distribution = _generator.get_recognition_distribution();
+            //update the random distribution :
+            _random_distribution = _generator.get_random_distribution();
+            //update the joint distribution :
+            _joint_distribution = _generator.get_joint_distribution();
+            //update the random uniform distribution :
+            _random_uniform_distribution = _generator.get_random_uniform_distribution();
+            //update the F phase :
+            _F_phase = _generator.get_F_phase();
+
+            //update the W phase :
+            _W_phase = _generator.get_W_phase();
+
+            //update the Q phase :
+            _Q_phase = _generator.get_Q_phase();
+
+            //update the DKL phase :
+            _DKL_phase = _generator.get_DKL_phase();
+
+
+            //update the generative model :
+            _generative_model = _generator.get_generative_model();
+
+            //apply the wake phase :
+            //v ~P[v;G],u~P[u|v;G]
+            //w-> w+eta(v-f(w+W dot u))
+
+
+        }   
+
+        //refine the generator with EM algorithm :
+        //gamma : mixing proportions
+        //https://en.wikipedia.org/wiki/Mixture_model#Gaussian_mixture_model
+        
+
 
     };
+    //implementation of boltzmann machine :
+    //https://en.wikipedia.org/wiki/Boltzmann_machine
+    //https://en.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm
+    //https://en.wikipedia.org/wiki/Generative_model
+    //https://en.wikipedia.org/wiki/Recognition_model
 
+
+
+    template <typename T>
+    class boltzman_base
+    {
+        private:
+        size_t _n;//number of layers
+        size_t _m;//number of neurons
+        size_t _k;//number of spikes
+        size_t _l;//number of spikes
+        size_t _t;//time
+        size_t _t_step;//time step
+        T _sigma;
+        T _mu;
+        T _dt;
+        T _t_min;
+        T _t_max;
+        T _p;
+        T _q;
+
+        std::vector<T> _input;
+        std::vector<T> _output;
+        std::vector<real_t> _generative_model;
+
+        std::vector<real_t> _recognition_model;
+        std::vector<real_t> _recognition_distribution;
+        std::vector<real_t> _random_distribution;
+        std::vector<real_t> _joint_distribution;
+        std::vector<real_t> _random_uniform_distribution;
+        std::vector<real_t> _F_phase;
+        std::vector<real_t> _W_phase;
+        std::vector<real_t> _Q_phase;
+        std::vector<real_t> _DKL_phase;
+        //generator :
+        gaussian_spike_train_generator<T> _generator;
+        public:
+        
+        boltzman_base( size_t n=1, size_t m=1, size_t k=1, size_t l=1, size_t t=1, size_t t_step=1):_generator(n,m,k,l,t,t_step)
+        {
+            //initialize the random distribution :
+            //p[u,k;G] = p[u|k;G] * p[k;G]
+            Gaussian<real_t> gaussian(0.0, 1.0);
+            
+            _random_distribution.resize(n);
+            _generative_model.resize(n);
+            _recognition_model.resize(n);
+            _joint_distribution.resize(n);
+            _recognition_distribution.resize(n);
+            _random_uniform_distribution.resize(n);
+            //set random values for the generative model :
+            for (size_t i = 0; i < n; i++)
+            {
+                _random_distribution[i] =gaussian();
+                _generative_model[i] = gaussian();
+                _recognition_model[i] = gaussian();
+                _joint_distribution[i] = gaussian();
+                _recognition_distribution[i] = gaussian();
+                _random_uniform_distribution[i] = gaussian();
+                gaussian.set_mean(_generator.get_generative_model()[i]);
+                gaussian.set_variance(_generator.get_sigma());
+
+            }
+            //set gaussian /mixed  distribution :
+            //p[u,k;G] = p[u|k;G] * p[k;G]
+            //p[u|k;G] = p[u,k;G] / p[k;G]
+            //p[k;G] = sum_u p[u,k;G]
+            //p[u|k;G] = p[u,k;G] / sum_u p[u,k;G]
+            
+            for (size_t i = 0; i < n; i++)
+            {
+                _generative_model[i] = _generative_model[i] * _random_distribution[i];
+                _recognition_model[i] = _recognition_model[i] * _random_distribution[i];
+                _joint_distribution[i] = _joint_distribution[i] * _random_distribution[i];
+                _recognition_distribution[i] = _recognition_distribution[i] * _random_distribution[i];
+                _random_uniform_distribution[i] = _random_uniform_distribution[i] * _random_distribution[i];
+            }   
+            //set the generator :
+            
+            //iterate once to update values :
+            //generate a spike train :
+            _input = _generator();
+            //refine the generator :
+            _output = _generator(_input);
+            //update the recognition model :
+            _recognition_model = _generator.get_recognition_model();
+            //update the recognition distribution :
+            _recognition_distribution = _generator.get_recognition_distribution();
+            //update the random distribution :
+            _random_distribution = _generator.get_random_distribution();
+            //update the joint distribution :
+            _joint_distribution = _generator.get_joint_distribution();
+            //update the random uniform distribution :
+            _random_uniform_distribution = _generator.get_random_uniform_distribution();
+            //update the F phase :
+            _F_phase = _generator.get_F_phase();
+
+            //update the W phase :
+            _W_phase = _generator.get_W_phase();
+
+            //update the Q phase :
+            _Q_phase = _generator.get_Q_phase();
+            //update the DKL phase :
+            _DKL_phase = _generator.get_DKL_phase();
+            //update the generative model :
+            _generative_model = _generator.get_generative_model();
+             
+
+            
+        }   
+        ~boltzman_base()
+        {
+        }
+        void reset()
+        {
+            _generator.reset();
+
+            if(_n>0){
+            //reset the generator :
+            //reset the input :
+            _input.resize(_n,0.0);
+            //reset the output :
+            _output.resize(_n,0.0);
+            //reset the generative model :
+            _generative_model.resize(_n,0.0);
+            //reset the recognition model :
+            _recognition_model.resize(_n,0.0);
+            //reset the recognition distribution :
+            _recognition_distribution.resize(_n,0.0);
+            //reset the random distribution :
+            _random_distribution.resize(_n,0.0);
+            //reset the joint distribution :
+            _joint_distribution.resize(_n,0.0);
+            //reset the random uniform distribution :
+            _random_uniform_distribution.resize(_n,0.0);
+            //reset the F phase :
+            _F_phase.resize(_n,0.0);
+
+            //reset the W phase :
+            _W_phase.resize(_n,0.0);
+            }
+        }
+        void set_sigma(real_t sigma)
+        {
+            _sigma = sigma;
+        }
+    //Lyapunov  L(I) = <lnQ[v]-lnP[v]>_Q + Nvk  -lnZ
+    //free energy F(I) = -L(I)
+    //KL divergence DKL(I) = -L(I) - H(I)
+    //entropy H(I) = -<lnQ[v]>_Q - Nvk + lnZ
+    //Z = sum_v P[v] = sum_v exp(-L(I))
+
+        void set_mu(real_t mu)
+        {
+            _mu = mu;
+        }
+        void set_dt(real_t dt)
+        {
+            _dt = dt;
+        }
+        void set_t_min(real_t t_min)
+        {
+            _t_min = t_min;
+        }
+        void set_t_max(real_t t_max)
+        {
+            _t_max = t_max;
+        }
+        void set_t_step(real_t t_step)
+        {
+            _t_step = t_step;
+        }
+        real_t get_sigma() const
+        {
+            return _sigma;
+        }
+        real_t get_mu() const
+        {
+            return _mu;
+        }
+        real_t get_dt() const
+        {
+            return _dt;
+        }
+        real_t get_t_min() const
+        {
+            return _t_min;
+        }
+        real_t get_t_max() const
+        {
+            return _t_max;
+        }
+        real_t get_t_step() const
+        {
+            return _t_step;
+        }
+        real_t get_t() const
+        {
+            return _t;
+        }
+        void set_p(real_t p)
+        {
+            _p = p;
+        }
+        void set_q(real_t q)
+        {
+            _q = q;
+        }
+        real_t get_p() const
+        {
+            return _p;
+        }
+        real_t get_q() const
+        {
+            return _q;
+        }
+
+        void set_generative_model(const std::vector<real_t> &G)
+        {
+            _generative_model = G;
+        }
+        const std::vector<real_t> & get_generative_model() const
+        {
+            return _generative_model;
+        }
+        void set_random_distribution(const std::vector<real_t> &p_u_k_G)
+        {
+            _random_distribution = p_u_k_G;
+        }
+        const std::vector<real_t> & get_random_distribution() const
+        {
+            return _random_distribution;
+        }
+
+        void set_joint_distribution(const std::vector<real_t> &joint_distribution)
+        {
+            _joint_distribution = joint_distribution;
+        }
+        const std::vector<real_t> & get_joint_distribution() const
+        {
+            return _joint_distribution;
+        }
+        void set_recognition_distribution(const std::vector<real_t> &recognition_distribution)
+        {
+            _recognition_distribution = recognition_distribution;
+        }
+        const std::vector<real_t> & get_recognition_distribution() const
+        {
+            return _recognition_distribution;
+        }
+
+        //calculate the lyaounov :
+        real_t lyapunov()
+        {
+
+            //L(I) = <lnQ[v]-lnP[v]>_Q + Nvk  -lnZ
+            real_t result = 0.0;
+            for (size_t i = 0; i < _output.size(); i++)
+            {
+                result += _output[i] * std::log(_output[i]) - _output[i] * std::log(_output[i]);
+
+            }
+            result = result / _output.size();
+
+            return -result;
+        }
+        //calculate the free energy :
+        real_t free_energy()
+        {
+            return -lyapunov();
+        }
+        //calculate the KL divergence :
+        real_t KL_divergence()
+        {
+            return -lyapunov() - entropy();
+        }
+        //calculate the entropy :
+        real_t entropy()
+        {
+            real_t result = 0.0;
+            //Z = sum_v P[v] = sum_v exp(-L(I))
+            real_t Z = 0.0;
+            for (size_t i = 0; i < _output.size(); i++)
+            {
+                Z += std::exp(-lyapunov());
+            }
+            return -result - _output.size() * _dt + std::log(Z);
+        }
+        //calculate the cross entropy :
+        real_t cross_entropy()
+        {
+            real_t result = 0.0;
+            //Z = sum_v P[v] = sum_v exp(-L(I))
+            real_t Z = 0.0;
+            for (size_t i = 0; i < _output.size(); i++)
+            {
+                for(size_t i=0;i<_input.size();i++)
+                {
+                    result += _output[i]*std::log(_input[i]);
+                }
+                Z += std::exp(-lyapunov());
+            }
+            //
+            result = result / _output.size();
+
+            return -result - _output.size() * _dt + std::log(Z);
+        }   
+        //calculate the mean :
+        real_t mean()
+        {
+            real_t result = 0.0;
+            for (size_t i = 0; i < _output.size(); i++)
+            {
+                result += _output[i];
+            }
+            return result / _output.size();
+        }   
+        //calculate the variance :
+        real_t variance()
+        {
+            real_t result = 0.0;
+            real_t mean = this->mean();
+            for (size_t i = 0; i < _output.size(); i++)
+            {
+                result += (_output[i] - mean) * (_output[i] - mean);
+            }
+            return result / _output.size();
+        }
+        //calculate the standard deviation :
+        real_t standard_deviation()
+        {
+            return std::sqrt(variance());
+        }
+        //calculate the skewness :
+        real_t skewness()
+        {
+            real_t result = 0.0;
+            real_t mean = this->mean();
+            real_t standard_deviation = this->standard_deviation();
+            for (size_t i = 0; i < _output.size(); i++)
+            {
+                result += (_output[i] - mean) * (_output[i] - mean) * (_output[i] - mean);
+            }
+            return result / (_output.size() * standard_deviation * standard_deviation * standard_deviation);
+        }
+        //calculate the kurtosis :
+        real_t kurtosis()
+        {
+            real_t result = 0.0;
+            real_t mean = this->mean();
+            real_t standard_deviation = this->standard_deviation();
+            for (size_t i = 0; i < _output.size(); i++)
+            {
+                result += (_output[i] - mean) * (_output[i] - mean) * (_output[i] - mean) * (_output[i] - mean);
+            }
+            return result / (_output.size() * standard_deviation * standard_deviation * standard_deviation * standard_deviation);
+        }
+
+        // maximize the expectation of the log-likelihood :
+        // use DKL to maximize the expectation of the log-likelihood :
+        // DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
+        
+
+        real_t  maximize()
+        {
+            //maximize the expectation of the log-likelihood :
+            //use DKL to maximize the expectation of the log-likelihood :
+            //DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
+            //maximize and set _output to the results  :
+            real_t result = 0.0;
+            //update the phases :   
+            //update the F phase :
+            _F_phase = _generator.get_F_phase();
+            //update the W phase :
+            _W_phase = _generator.get_W_phase();
+            //update the Q phase :
+            _Q_phase = _generator.get_Q_phase();
+            //update the DKL phase :
+            _DKL_phase = _generator.get_DKL_phase();
+            //maximize the expectation of the log-likelihood : 
+            //use DKL to maximize the expectation of the log-likelihood :
+            //DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
+            //maximize and set _output to the results  :
+            size_t n = std::min(_DKL_phase.size(), _output.size());
+            for (size_t i = 0; i < n; i++)
+            {
+                result += _DKL_phase[i];
+                _output[i] = _DKL_phase[i];
+            }
+            return result;    
+        }
+        //minimize the expectation of the log-likelihood :
+        //use DKL to minimize the expectation of the log-likelihood :
+        //DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
+        real_t minimize()
+        {
+            real_t result=0.;
+            //update the phases :
+            //update the F phase :
+            _F_phase = _generator.get_F_phase();
+            //update the W phase :
+            _W_phase = _generator.get_W_phase();
+            //update the Q phase :
+            _Q_phase = _generator.get_Q_phase();
+            //update the DKL phase :
+            _DKL_phase = _generator.get_DKL_phase();
+            //minimize the expectation of the log-likelihood :
+            //use DKL to minimize the expectation of the log-likelihood :
+            //DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
+            //minimize and set _output to the results  :
+            size_t n = std::min(_DKL_phase.size(), _output.size());
+            for (size_t i = 0; i < n; i++)
+            {
+                result += _DKL_phase[i];
+                _output[i] = _DKL_phase[i];
+            }
+             return result;
+        }
+
+
+
+
+            
+
+    };
 
 
 }

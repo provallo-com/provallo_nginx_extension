@@ -58,15 +58,14 @@ namespace provallo
           _bow[j] = 0.0;
          //set token index to zero
           token_count++;
-
-        }
+         }
         else
         {
 
           _bow[j] =   1.0 / real_t(_vocabulary.size()) ;
 
 
- 
+
 
         }
    
@@ -120,7 +119,6 @@ namespace provallo
     this->num_docs = number_of_documents;
     this->num_samples = sample_size;
 
-    
     // std::cout<<"bow size: "<<_bow.size()<<std::endl;
     // std::cout<<"bow: "<<_bow<<std::endl;
   }
@@ -448,7 +446,10 @@ namespace provallo
   std::vector<real_t> bag_of_words::transform(const std::string &doc)
   {
     std::vector<real_t> result;
-    std::vector<std::string> tokens;
+    std::vector<std::string> tokens; 
+    if( doc.length() == 0)
+      return result;
+
     tokenize(doc, tokens);
 
     // for each token in the document
@@ -469,7 +470,7 @@ namespace provallo
       {
         // add token to vocabulary
         real_t val = 1/real_t(_vocabulary.size()-1);
-        _vocabulary.push_back(token);
+        _vocabulary.push_back(token.c_str());
         _bow.push_back(val);
          result.push_back(val);
 
@@ -481,7 +482,7 @@ namespace provallo
     this->num_tokens = _vocabulary.size();
     // std::cout<<"bow size: "<<_bow.size()<<std::endl;
     //transform results to lda
-    
+    tokens.clear();
     return result;
   }
 
@@ -703,6 +704,635 @@ namespace provallo
   // bag of words end
   
 
+
+  //hashed bag of words implementation:
+  hashed_bag_of_words::hashed_bag_of_words()
+  {
+    //counters :
+    num_classes = 0;
+    num_features = 0;
+    num_samples = 0;
+    
+    num_tokens = 0;
+    num_docs = 0;
+    num_words = 0;
+
+    //add index 0 to hash("")
+    uint64_t index = hash("");
+    _hashes.push_back(index);
+    _hash_map.insert(std::make_pair(index,0));
+
+    
+  }
+  // constructor from vocabulary
+  hashed_bag_of_words::hashed_bag_of_words(const std::vector<std::string> &vocabulary) : _vocabulary(vocabulary), _bow(vocabulary.size(), 0.0)
+  {
+
+    //update hashes and vocabulary
+    for (size_t i = 0; i < _vocabulary.size(); ++i)
+    {
+      //get hash index
+      uint64_t index = hash(_vocabulary[i]); 
+      this->_hashes.push_back(index); //hash index should be mapped to the vocabulary index 
+      this->_hash_map.insert(std::make_pair(index,i)); 
+      
+    }
+ 
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+  } 
+  // copy constructor
+  hashed_bag_of_words::hashed_bag_of_words(const hashed_bag_of_words &other) : _vocabulary(other._vocabulary), _bow(other._bow), _bow_matrix(other._bow_matrix),  _hash_map(other._hash_map), _hashes(other._hashes),_bow_transformed(other._bow_transformed), _bow_transformed_inverse(other._bow_transformed_inverse)
+  {
+    //counters :
+    num_classes = other.num_classes;
+    num_features = other.num_features;
+    num_samples = other.num_samples;
+
+    num_tokens = other.num_tokens;
+
+    num_words = other.num_words;
+    num_docs = other.num_docs;
+
+  }   
+
+  // move constructor
+  hashed_bag_of_words::hashed_bag_of_words(hashed_bag_of_words &&other)
+  {
+    _vocabulary = std::move(other._vocabulary);
+    _bow = std::move(other._bow);
+    _bow_matrix = std::move(other._bow_matrix);
+    _bow_transformed = std::move(other._bow_transformed);
+    _bow_transformed_inverse = std::move(other._bow_transformed_inverse);
+    _hash_map = std::move(other._hash_map);
+    _hashes = std::move(other._hashes);
+    //counters :
+    num_classes = other.num_classes;
+    num_features = other.num_features;
+    num_samples = other.num_samples;
+
+    num_tokens = other.num_tokens;
+
+    num_words = other.num_words;
+    num_docs = other.num_docs;
+
+
+    other._vocabulary.clear();
+    other._bow.clear();
+    other._bow_matrix.clear();
+    other._bow_transformed.clear();
+    other._bow_transformed_inverse.clear();
+
+    other._vocabulary.shrink_to_fit();
+    other._bow.shrink_to_fit();
+    other._bow_transformed.shrink_to_fit();
+    other._bow_transformed_inverse.shrink_to_fit();
+
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    
+  } 
+  // assignment
+  hashed_bag_of_words & hashed_bag_of_words::operator=(const hashed_bag_of_words &other)
+  {
+    if (this != &other)
+    {
+      _vocabulary = other._vocabulary;
+      _bow = other._bow;
+      _bow_matrix = other._bow_matrix;
+      _bow_transformed = other._bow_transformed;
+      _bow_transformed_inverse = other._bow_transformed_inverse;
+      _hash_map = other._hash_map;
+      _hashes = other._hashes;
+      num_classes = other.num_classes;
+      num_features = other.num_features;
+      num_samples = other.num_samples;
+      num_tokens = other.num_tokens;
+      num_words = other.num_words;
+      num_docs = other.num_docs;
+
+    }
+    return *this;
+  } 
+  // move assignment
+  hashed_bag_of_words & hashed_bag_of_words::operator=(hashed_bag_of_words &&other)
+  {
+    if (this != &other)
+    {
+      _vocabulary = std::move(other._vocabulary);
+      _bow = std::move(other._bow);
+      _bow_matrix = std::move(other._bow_matrix);
+      _bow_transformed = std::move(other._bow_transformed);
+      _bow_transformed_inverse = std::move(other._bow_transformed_inverse);
+      _hash_map = std::move(other._hash_map);
+      _hashes = std::move(other._hashes);
+      num_classes = other.num_classes;
+      num_features = other.num_features;
+      num_samples = other.num_samples;
+      num_tokens = other.num_tokens;
+      num_words = other.num_words;
+      num_docs = other.num_docs;
+
+    }
+    return *this;
+  } 
+  //get vocabulary
+  const std::vector<std::string>& hashed_bag_of_words::get_vocabulary() const
+  {
+    return _vocabulary;
+  } 
+  //get_number_of_documents
+  size_t hashed_bag_of_words::get_number_of_documents() const
+  {
+    return _bow_matrix.size1()*_bow_matrix.size2() ;
+  }
+  //get_number_of_words
+  size_t hashed_bag_of_words::get_number_of_words() const
+  {
+    return _vocabulary.size();
+  }
+  //get_number_of_tokens
+  size_t hashed_bag_of_words::get_number_of_tokens() const
+  {
+    return _bow.size();
+  }
+  //get_number_of_unique_tokens
+  size_t hashed_bag_of_words::get_number_of_unique_tokens() const
+  {
+    return _hashes.size();
+  }
+  //get_number_of_classes
+   
+
+  //clear
+  void hashed_bag_of_words::clear()
+  {
+    _vocabulary.clear();
+    _bow.clear();
+    _bow_matrix.clear();
+    _bow_transformed.clear();
+    _bow_transformed_inverse.clear();
+    _hash_map.clear();
+    _hashes.clear();
+
+    _vocabulary.shrink_to_fit();
+    _bow.shrink_to_fit();
+    _bow_transformed.shrink_to_fit();
+    _bow_transformed_inverse.shrink_to_fit();
+  
+     _hashes.shrink_to_fit();
+  } 
+  //process the documents
+  //  virtual void add_document(const std::string&);
+  //  tokenize the document and update the vocabulary, hashes and bow
+  void hashed_bag_of_words::add_document(const std::string& doc)
+  {
+    // tokenize the document
+    std::vector<std::string> tokens;
+    tokenize(doc, tokens);
+    size_t token_count = 0;
+    //size_t _bow_size = _bow.size();
+     // update vocabulary and bow matrices
+    for (auto token : tokens)
+    {
+       
+      //hash the token
+      bool is_unique = true;
+      uint64_t index = hash(token);
+      
+      //find hash in the hash map 
+      auto it = _hash_map.find(index); 
+      if (it != _hash_map.end())
+      {
+        // update bow value
+        size_t index = std::distance(_hash_map.begin(), it);
+        if(index<_bow.size())
+          _bow[index] += 1.0;
+          else
+          {
+            _bow.push_back(1.0);
+          }
+        is_unique = false;
+      }
+      else
+      {
+        //add index to hashes
+        _hashes.push_back(index);
+        
+        //not in vocabulary or _bow : 
+
+        // add token to vocabulary
+        _vocabulary.push_back(token);
+        
+        // update bow value
+        _bow.push_back(1.0);
+        
+        //add index to map
+        _hash_map.insert(std::make_pair(index,_vocabulary.size()-1));
+        
+        token_count++;
+        num_tokens++;
+      } 
+      if(is_unique)
+      {
+        //update samples,tokens,features counters 
+        num_features++;
+      
+       }
+      
+      
+
+    } // end for
+    
+    num_samples++;
+    num_docs++;
+    //done
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    // std::cout<<"bow matrix: "<<_bow_matrix<<std::endl;
+    return ;
+    //done
+
+  }
+  //hash function for the tokens, use the existing utility for string hashing included from the provallo library functions 
+  //defined in utils.h such as fnv1a and murmur3,waner hash,etc. 
+  uint64_t hashed_bag_of_words::hash(const std::string& token)
+  {
+    //use fnv1a hash
+    return fnv1a(token);
+  }
+
+  //fit
+  std::vector<std::vector<real_t>> hashed_bag_of_words::fit(const std::vector<std::string>& documents)
+  {
+    std::vector<std::vector<real_t>> result(documents.size());
+    // already a matrix, just return it formatted as a vector of vectors
+    for (size_t i = 0; i < documents.size(); i++)
+    {
+      std::vector<std::string> tokens;
+      tokenize(documents[i], tokens);
+      for (auto token : tokens)
+      {
+        //hash the token
+        bool is_unique = true;
+        uint64_t index = hash(token);
+        
+        //find hash in the hash map 
+        auto it = _hash_map.find(index); 
+        if (it != _hash_map.end())
+        {
+          // update bow value
+          size_t index = std::distance(_hash_map.begin(), it);
+          _bow[index] += 1.0;
+          is_unique = false;
+        }
+        else
+        {
+          //add index to hashes
+          _hashes.push_back(index);
+          
+          //not in vocabulary or _bow : 
+
+          // add token to vocabulary
+          _vocabulary.push_back(token);
+          
+          // update bow value
+          _bow.push_back(1.0);
+          
+          //add index to map
+          _hash_map.insert(std::make_pair(index,_vocabulary.size()-1));
+          
+          num_tokens++;
+        } 
+        if(is_unique)
+        {
+          //update samples,tokens,features counters 
+          num_features++;
+        
+         }
+        
+      }
+      
+      // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+      // std::cout<<"bow matrix: "<<_bow_matrix<<std::endl;
+      return result;
+      //done
+    }
+    return result;
+  } 
+  std::vector<std::vector<real_t>> hashed_bag_of_words::fit(const provallo::matrix<real_t>& mat)
+  {
+    std::vector<std::vector<real_t>> result(mat.rows(), std::vector<real_t>(mat.cols(), 0.0));
+
+    // already a matrix, just return it formatted as a vector of vectors
+    for (size_t i = 0; i < mat.rows(); i++)
+    {
+      for (size_t j = 0; j < mat.cols(); j++)
+      {
+        result[i][j] = mat(i, j);
+      }
+    }
+    return result;
+  }
+  std::vector<real_t> hashed_bag_of_words::fit(const std::string& doc)
+  {
+    std::vector<real_t> result;
+    std::vector<std::string> tokens;
+    tokenize(doc, tokens);
+
+    // for each token in the document
+    // find it in the vocabulary
+    // if it exists, add its bow value to the result
+    // otherwise add 0.0
+    for (auto token : tokens)
+    {
+      //hash the token
+      bool is_unique = true;
+      uint64_t index = hash(token);
+      
+      //find hash in the hash map 
+      auto it = _hash_map.find(index); 
+      if (it != _hash_map.end())
+      {
+        // update bow value
+        size_t index = std::distance(_hash_map.begin(), it);
+        result.push_back(_bow[index]);
+        is_unique = false;
+      }
+      else
+      {
+        //add index to hashes
+        _hashes.push_back(index);
+        
+        //not in vocabulary or _bow : 
+
+        // add token to vocabulary
+        _vocabulary.push_back(token);
+        
+        // update bow value
+        _bow.push_back(1.0);
+        
+        //add index to map
+        _hash_map.insert(std::make_pair(index,_vocabulary.size()-1));
+        
+        num_tokens++;
+      } 
+      if(is_unique)
+      {
+        //update samples,tokens,features counters 
+        num_features++;
+      
+       }
+      num_words++;
+    }
+    num_samples++;
+    num_docs++;
+
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    // std::cout<<"bow matrix: "<<_bow_matrix<<std::endl;
+    return result;
+    //done
+  }
+
+  //transform
+  std::vector<real_t> hashed_bag_of_words::transform(const std::string& doc)
+  {
+    std::vector<real_t> result;
+    std::vector<std::string> tokens;
+    tokenize(doc, tokens);
+
+    // for each token in the document
+    // find it in the vocabulary
+    // if it exists, add its bow value to the result
+    // otherwise add 0.0
+    for (auto token : tokens)
+    {
+      //hash the token
+      //bool is_unique = true;
+      uint64_t index = hash(token);
+      
+      //find hash in the hash map 
+      auto it = _hash_map.find(index); 
+      if (it != _hash_map.end())
+      {
+        // update bow value
+        size_t index = std::distance(_hash_map.begin(), it);
+        result.push_back(_bow[index]);
+        //is_unique = false;
+      }
+      else
+      {
+        //add index to hashes
+        _hashes.push_back(index);
+        
+        //not in vocabulary or _bow : 
+
+        // add token to vocabulary
+        _vocabulary.push_back(token);
+        
+        // update bow value
+        _bow.push_back(1.0);
+        
+        //add index to map
+        _hash_map.insert(std::make_pair(index,_vocabulary.size()-1));
+        
+        num_tokens++;
+      } 
+    
+      
+    }
+     for (size_t i = 0; i < _bow_matrix.size1(); ++i)
+    {
+      for (size_t j = 0; j < _bow_matrix.size2(); ++j)
+      {
+        _bow_matrix(i, j) = _bow[j%_bow.size()];
+      }
+    }
+    // std::cout<<"bow size: "<<_bow.size()<<std::endl;
+    // std::cout<<"bow matrix: "<<_bow_matrix<<std::endl;
+    return result;
+    //done
+  }
+
+  std::vector<std::vector<real_t>> hashed_bag_of_words::transform(const std::vector<std::string>& documents)
+  {
+    std::vector<std::vector<real_t>> result;
+    for (auto document : documents)
+    {
+      result.push_back(transform(document));
+    }
+    return result;
+  }
+  std::vector<std::vector<real_t>> hashed_bag_of_words::transform(const provallo::matrix<real_t>& mat)
+  {
+    std::vector<std::vector<real_t>> result;
+    return transform(fit(mat));
+  }
+  //fit_transform
+  std::vector<std::vector<real_t>> hashed_bag_of_words::fit_transform(const std::vector<std::string>& documents)
+  {
+    std::vector<std::vector<real_t>> result;
+    for(auto document : documents)
+    {
+      result.push_back(fit(document));
+    }
+    return result;
+  }
+  std::vector<std::vector<real_t>> hashed_bag_of_words::fit_transform(const provallo::matrix<real_t>& mat)
+  {
+    std::vector<std::vector<real_t>> result;
+    return transform(fit(mat));
+  }
+  //predict
+  std::vector<real_t> hashed_bag_of_words::predict(const std::string& doc)
+  {
+    return transform(doc);
+  } 
+  std::vector<std::vector<real_t>> hashed_bag_of_words::predict(const std::vector<std::string>& documents)
+  {
+    std::vector<std::vector<real_t>> result(documents.size());
+    for(auto& doc : documents)
+    {
+      result.push_back(transform(doc));
+    }
+    return result;
+  }
+  std::vector<std::vector<real_t>> hashed_bag_of_words::predict(const provallo::matrix<real_t>& mat)
+  {
+    return transform(mat);
+  }
+  //inverse_transform
+  std::string hashed_bag_of_words::inverse_transform(const std::vector<real_t>& reverse_tokens)
+  {
+    std::string result;
+    for (auto token : reverse_tokens)
+    {
+      auto it = std::find(_bow.begin(), _bow.end(), token);
+      if (it != _bow.end())
+      {
+        // update bow value
+        size_t index = std::distance(_bow.begin(), it);
+        result += _vocabulary[index];
+      }
+      else
+      {
+        // add token to vocabulary
+        result += " ";
+      }
+    }
+    return result;
+  }
+  std::vector<std::string> hashed_bag_of_words::inverse_transform(const std::vector<std::vector<real_t>>& mat)
+  {
+    std::vector<std::string> result;
+    for (auto document : mat)
+    {
+      result.push_back(inverse_transform(document));
+    }
+    return result;
+  }
+  std::vector<std::string> hashed_bag_of_words::inverse_transform(const provallo::matrix<real_t>& mat)
+  {
+    std::vector<std::string> result;
+    return inverse_transform(fit(mat));
+  }
+  //vtable functions:
+  void hashed_bag_of_words::dump(std::ostream& out) const
+  {
+    out<<"vocabulary: "<<std::endl;
+    for(auto& word:_vocabulary)
+    {
+      out<<word<<std::endl;
+    }
+    out<<"bow: "<<std::endl;
+    for(auto& b:_bow)
+    {
+      out<<b<<std::endl;
+    }
+    out<<"bow matrix: "<<std::endl;
+    out<<_bow_matrix<<std::endl;
+    out<<"bow transformed: "<<std::endl;
+    out<<_bow_transformed<<std::endl;
+    out<<"bow transformed inverse: "<<std::endl;
+    out<<_bow_transformed_inverse<<std::endl;
+  }
+  void hashed_bag_of_words::load(std::ifstream& is)
+  {
+   //load hashes and maps:
+    std::string line;
+    while(std::getline(is,line))
+    {
+      if (line.empty()||line=="\n"||line=="\r"||line=="\r\n")
+        break;
+      _hashes.push_back(std::stoull(line));
+    } 
+    while(std::getline(is,line))
+    {
+      if (line.empty()||line=="\n"||line=="\r"||line=="\r\n")
+        break;
+      std::vector<std::string> tokens;
+      tokenize(line,tokens," ");
+      _hash_map.insert(std::make_pair(std::stoull(tokens[0]),std::stoull(tokens[1])));
+    }
+    //load vocabulary
+    while(std::getline(is,line))
+    {
+      if (line.empty()||line=="\n"||line=="\r"||line=="\r\n")
+        break;
+      _vocabulary.push_back(line);
+    }
+    //load bow
+    while(std::getline(is,line))
+    {
+      if (line.empty()||line=="\n"||line=="\r"||line=="\r\n")
+        break;
+      _bow.push_back(std::stod(line));
+    }
+  }
+  void hashed_bag_of_words::save(std::ofstream& os) const
+  {
+
+    //save hashes and maps : 
+    for(auto& hash:_hashes)
+    {
+      os<<hash<<std::endl;
+    }
+    for(auto& map:_hash_map)
+    {
+      os<<map.first<<" "<<map.second<<std::endl;
+    }
+
+    //save vocabulary
+    for(auto& word:_vocabulary)
+    {
+      os<<word<<std::endl;
+    } 
+    //save bow
+    for(auto& b:_bow)
+    {
+      os<<b<<std::endl;
+    }
+    //save bow matrix
+    os<<_bow_matrix<<std::endl;
+    //done
+  } 
+  //process the documents
+  //  process_documents implemention: 
+  void hashed_bag_of_words::process_documents(const std::vector<std::string>& documents)
+  {
+        for(auto & document : documents)
+        {
+          process_document(document);
+        }
+  }   
+  //process_document implementation:
+  void hashed_bag_of_words::process_document(const std::string& doc)
+  {
+    //fit the document
+    fit(doc);
+    //transform the document
+    transform(doc);
+    //done
+   }    
+  //hashed bag of words end
+
   tfidf::tfidf(const tfidf &other) : _tf(other._tf), _idf(other._idf)
   {
   }
@@ -914,33 +1544,41 @@ namespace provallo
     tokenize(doc, words, " ,;.:-_()[]{}!?\"\'\n\t");
     
     std::vector<real_t> result(words.size(),0.0);
+    //refactor this: 
+    //instead of looping through the vocabulary and the words 
+    //loop through the words and check if they are in the vocabulary
+    //if they are, add their tfidf value to the result
+    //otherwise add 0.0
 
-    size_t v_index=0;
-    for (auto &word : _vocabulary)
+
+
+    size_t res_index=0;
+
+
+    for (auto& w : words)
     {
-  
-      size_t res_index=0;
-
-      for (auto &w : words)
+      auto f =  std::find(_vocabulary.begin(), _vocabulary.end(), w);
+      if (f != _vocabulary.end())
       {
-
-        if (w == word)
+        size_t index = std::distance(_vocabulary.begin(), f);
+        if(index < _tfidf.size() && res_index < result.size())
+        result[res_index ]+= _tfidf[index][0];
+        else if (res_index < result.size())
         {
-          result[res_index ]+= 1.0;
-          result[res_index ]*= _idf[v_index];
-
+          result[res_index ]+= 0.0;
         }
         else
         {
-          result[res_index%words.size()]+= 0.0;
+         result[res_index ]=0.0;
         }
 
-
-        res_index++;
       }
-      v_index++;
+      else
+      {
+        result[res_index ]+= 0.0;
+      }
+      res_index++; 
     }
-    
     // normalize tfidf
     real_t sum = 0.0;
     for (auto &value : result)
@@ -2373,9 +3011,7 @@ namespace provallo
       {
         std::copy(fitret[j].begin(), fitret[j].end(), ret[i].begin() + j*fitret[j].size());
       }
-      
-
-    }
+     }
 
     // return the transformed documents
     return ret;
@@ -2621,11 +3257,19 @@ namespace provallo
       for (size_t j = 0; j < transformed_data[i].size(); ++j)
         transformed_ret[i] += transformed_data[i][j] / real_t(transformed_data[i].size());
     }
+ 
 
-    // flatten the data
+    //update the fitted data
+    _fitted_data.resize(rows);
+    _transformed_data.resize(rows);
+    for (size_t i = 0; i < rows; ++i)
+    {
+      _fitted_data[i] = transformed_ret[i]; 
+      _transformed_data[i] = transformed_ret[i];
 
-    // return the transformed data
+    }
     return transformed_ret;
+    
   }
 
   std::vector<real_t> tfidf_vectorizer::transform(const matrix<real_t> &trans)
@@ -4067,9 +4711,9 @@ namespace provallo
  // squared sum distance 
     std::vector<real_t> cluster_stage::squared_sum_distances(const matrix<real_t> &data) 
     { 
-      matrix<real_t> sqsum;
+      
       std::vector<real_t> ret;
-      sqsum = data * transpose(data);
+      matrix<real_t> sqsum( data * transpose(data));
       for (size_t i = 0; i < data.rows(); i++) {
         for (size_t j = 0; j < data.rows(); j++) {
           ret[i * data.rows() + j] = sqsum(i, i) + sqsum(j, j) - 2 * sqsum(i, j);
@@ -7124,6 +7768,36 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
     this->_bow.clear();
   }
   //fit the lda vectorizer to the data
+
+  //predict single source
+  std::vector<real_t> lda_vectorizer::predict(const std::string& source)
+  {
+    //predict the source
+    if(source.empty())
+    {
+      std::cout<<"[-] source is empty"<<std::endl;
+      return {};
+    }
+    
+    std::vector<real_t> ret;
+    std::vector<std::string> tokens; 
+    provallo::tokenize(source,tokens);
+    //predict each token
+    for ( auto& token : tokens)
+    {
+      //predict the token
+      std::vector<real_t> pred = this->_bow.predict(token.c_str());
+      //transform bow prediction to lda prediction 
+      //get the number of topics
+      
+      //append the prediction
+      ret.insert(ret.end(),pred.begin(),pred.end());
+    } 
+    //return the prediction
+    return ret;
+    
+  }//end of predict 
+
   std::vector<real_t> lda_vectorizer::fit(const std::string& single_doc )
   {
     //fit the data using the bag of words and update local variables
@@ -7455,11 +8129,15 @@ std::vector<real_t>  one_hot_vectorizer::fit_transform  (const matrix<real_t>& d
   {
     //predict the lda vectorizer
     //get the one-hot vector
+    if( this->num_unique_tokens == 0 ) {
+      //set ad-hoc lda vectorizer
+      this->num_unique_tokens = documents.size(); 
+    }
     std::vector<real_t> ret; 
     auto ft  = _bow.predict(documents);
     if ( ft.size() == 0 ) return ret;
-    
-    ret.resize(ft.size()*this->num_unique_tokens);
+    //resize the ret vector :    
+    ret.resize(ft.size()*this->num_unique_tokens ,0.0);
     //calculate the lda vectorizer
     //
     //transform the bow prediction to lda prediction :

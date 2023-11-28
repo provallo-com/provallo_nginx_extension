@@ -3670,9 +3670,9 @@ struct welsch_loss : public loss<T>
 	}//log2_ceil
 
 
-  const std::string
+   std::string
   trim (const std::string &pString, const std::string &pWhitespace);
-  const std::string
+   std::string
   reduce (const std::string &pString, const std::string &pFill,
 	  const std::string &pWhitespace = " ");
 }//namespace

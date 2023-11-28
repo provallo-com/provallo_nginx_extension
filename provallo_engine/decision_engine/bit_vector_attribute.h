@@ -17,7 +17,13 @@
 #include "dataset.h"
 #include "../util/csv_file.h"
 
-//provallo namespace
+
+//============================================================================== //
+//--------------------------bit vector attribute-------------------------------- //
+//             * this class is used to represent a bit vector attribute        * //
+//--------------------------bit vector attribute-------------------------------- //
+//============================================================================== // 
+ 
 namespace provallo {
 
     #pragma pack(0)
@@ -44,6 +50,8 @@ namespace provallo {
         bit_type(const bit_type &other) : _bits(other._bits) {}
         bit_type(bit_type &&other) : _bits(other._bits) {}
         bit_type(const T &other) : _bits(other) {}
+        bit_type(T &&other) : _bits(other) {}
+        bit_type(size_t i) : _bits(1 << i) {}
 
 
         bit_type & operator=(const bit_type &other) { 
@@ -146,7 +154,17 @@ namespace provallo {
 
         friend bool operator<=(const bit_type &a, const T &b) { return a._bits <= b; }
         friend bool operator>=(const bit_type &a, const T &b) { return a._bits >= b; }
-            
+        
+        T & value() { return _bits; }
+        const T & value() const { return _bits; }
+        operator T() const { return _bits; }
+        operator T&() { return _bits; }
+        operator const T&() const { return _bits; }
+        operator T*() { return &_bits; }
+        operator const T*() const { return &_bits; }
+        operator T&() const { return _bits; }
+        operator const T&() { return _bits; }
+        
         
      };
 
@@ -187,7 +205,7 @@ namespace provallo {
         }
         return in;
     }   
-
+    //to string
     template <class T,size_t N>
     std::string to_string(const bit_type<T,N> &b)
     {
@@ -195,7 +213,7 @@ namespace provallo {
         ss << b;
         return ss.str();
     }   
-
+    //n
     template <class T,size_t N> 
     std::string to_string(const bit_type<T,N> &b, size_t n)
     {
@@ -204,7 +222,94 @@ namespace provallo {
             ss << b[i];
         return ss.str();
     }   
+    //separator     
+    template <class T,size_t N>
+    std::string to_string(const bit_type<T,N> &b, const std::string &sep)
+    {
+        std::stringstream ss;
+        for (size_t i = 0; i < N; i++)
+        {
+            if (i > 0)
+                ss << sep;
+            ss << b[i];
+        }
+        return ss.str();
+    } 
+    template <class T,size_t N>
+    bit_type<T,N>  unique_set_to_bit_type( const std::vector<T> &v)
+    {
+        bit_type<T,N> b;
+        for (size_t i = 0; i < v.size(); i++)
+            b.set(v[i]);
+        return b;
+    } 
+    template <class T>
+    std::vector<T>  
+    unique_subset(const std::vector<T>& unique) 
+    {
+
+        std::vector<T> subset;
+        for (size_t i = 0; i < unique.size(); i++)
+            {
+                //if not in subset, add it
+                if (std::find(subset.begin(), subset.end(), unique[i]) == subset.end())
+                    subset.push_back(unique[i]);
+                    
+            }
+        return subset;
+    }
+
+
+    template <class T>
+    std::vector<T>  
+    unique_subset(  std::vector<T>& unique) 
+    {
+        //sort
+        std::sort(unique.begin(), unique.end());
+        //remove duplicates
+        std::vector<T> subset;
+        for (size_t i = 0; i < unique.size(); i++)
+            {
+                //if not in subset, add it
+                if (std::find(subset.begin(), subset.end(), unique[i]) == subset.end())
+                    subset.push_back(unique[i]);
+                    
+            }
+        return subset;
+    }
+    //specialize unique subset for real_t
+    template <>
+    std::vector<real_t>
+    unique_subset(  std::vector<real_t>& unique) 
+    {
+        //sort
+        std::sort(unique.begin(), unique.end());
+        real_t min=unique[0];
+        real_t max=unique[unique.size()-1];
         
+        //remove duplicates
+        std::vector<real_t> subset;
+        for (size_t i = 0; i < unique.size(); i++)
+            {
+                //if not in subset, add it
+                if (std::find(subset.begin(), subset.end(), unique[i]) == subset.end())
+                    subset.push_back(unique[i]);
+                    
+            } 
+        size_t steps = subset.size();
+        real_t step = (max-min)/steps;
+        for (size_t i = 0; i < subset.size(); i++)
+        {
+                subset[i] = min + i*step;
+        }
+        return subset;
+    }   
+
+
+    //---------------------------------------------------------------------------------//   
+    //bitwise operators:
+    //---------------------------------------------------------------------------------//
+
 
     #pragma pack()
 

@@ -284,19 +284,33 @@ namespace provallo
   //tokenize with with find_first_of
   template<class Container>
   void tokenize(const std::string& str, Container& tokens, const std::string& delimiters = ",") {
-      // Skip delimiters at beginning
-      std::string::size_type last = str.find_first_not_of(delimiters, 0);
-      // Find first non-delimiter
-      std::string::size_type pos = str.find_first_of(delimiters, last);
-
-      while (std::string::npos != pos || std::string::npos != last) {
-          // Found a token, add it to the vector
-          tokens.push_back(str.substr(last, pos - last));
-          // Skip delimiters
-          last = str.find_first_not_of(delimiters, pos);
-          // Find next non-delimiter
-          pos = str.find_first_of(delimiters, last);
+      Container copy;
+      //use find_first_of to find the first delimiter
+      std::string::size_type initial_delim = str.find_first_not_of(delimiters, 0);
+      std::string::size_type delim = str.find_first_of(delimiters, initial_delim);
+      while (std::string::npos != delim || std::string::npos != initial_delim) {
+          // Found a token, add it to the vector.
+          // validate the token
+          std::string token = str.substr(initial_delim, delim - initial_delim);
+          if (token.length() > 0)
+          {
+              while (std::isspace(token[0]))
+              {
+                  token.erase(token.begin());
+                  if (token.length() == 1)
+                      break;
+              }
+              if (token.length() > 0)
+              copy.push_back(token);
+          } 
+          //just empty? skip it
+          // Skip delimiters.  Note the "not_of"
+          initial_delim = str.find_first_not_of(delimiters, delim);
+          // Find next "non-delimiter"
+          delim = str.find_first_of(delimiters, initial_delim);
       }
+      
+      tokens = copy;
   }
   //specialization for real_t
 

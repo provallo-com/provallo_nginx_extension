@@ -18,6 +18,7 @@
 #include <vector>
 #include <iostream>
 #include <set>
+#include <cstdio>
 
 namespace provallo
 {
@@ -1117,11 +1118,12 @@ class tfidf_vectorizer : public vectorizer<std::string, real_t>
       ofs<<d<<std::endl;
     }
   }
+    //case by case
 
-  protected: 
-  //case by case
   virtual std::vector<real_t> predict (const std::string&)  ;
   virtual std::vector<real_t> transform(const std::string&);
+
+  protected: 
   
 
 };
@@ -1223,7 +1225,7 @@ class normalizer_vectorizer : public vectorizer<std::string, real_t>
 
  
 };
-//pca helper class
+//BoW 
 class bag_of_words 
 {
   //bag of words
@@ -1398,6 +1400,179 @@ class bag_of_words
   size_t num_unique_tokens;
  
 };
+
+
+
+class hashed_bag_of_words 
+{
+  //bag of words
+  public:
+ 
+  size_t get_number_of_words() const ;
+  size_t get_number_of_documents() const;
+  size_t get_number_of_unique_tokens()const;
+  size_t get_number_of_tokens() const;
+  const std::vector<std::string>& get_vocabulary() const;
+  std::vector<real_t> get_bag_of_words() const{ return _bow;}
+  std::vector<real_t> get_document_vector(const std::string&doc) const; 
+  const matrix<real_t>& get_matrix() const{ return _bow_matrix; } 
+  //clear
+  void clear();
+
+  void process_documents(){}; //do nothing
+
+  hashed_bag_of_words();    //initialize with a vocabulary
+  explicit hashed_bag_of_words(const std::vector<std::string>&);
+  //copy constructor
+  hashed_bag_of_words(const hashed_bag_of_words &other);
+  hashed_bag_of_words(hashed_bag_of_words &&other); //move constructor
+  hashed_bag_of_words& operator= (const hashed_bag_of_words &other);
+  hashed_bag_of_words&
+      operator= (hashed_bag_of_words &&other);
+  //fit
+    std::vector<real_t> fit(const std::string &doc);
+    std::vector<std::vector<real_t>> fit(const std::vector<std::string>&documents);
+    std::vector<std::vector<real_t>> fit(const provallo::matrix<real_t>&);  
+  //transform
+    std::vector<real_t> transform(const std::string&doc);
+
+    std::vector<std::vector<real_t>> transform(const std::vector<std::string>&documents);
+    std::vector<std::vector<real_t>> transform(const provallo::matrix<real_t>&);  
+  //fit_transform
+    std::vector<std::vector<real_t>> fit_transform(const std::vector<std::string>&documents);
+    std::vector<std::vector<real_t>> fit_transform(const provallo::matrix<real_t>&);  
+  //inverse_transform
+  //virtual std::string inverse_transform( real_t bow_value);
+    std::string inverse_transform(const std::vector<real_t>&); 
+    std::vector<std::string> inverse_transform(const std::vector<std::vector<real_t>>&);
+    std::vector<std::string> inverse_transform(const provallo::matrix<real_t>&);  
+  //predict
+    std::vector<std::vector<real_t>> predict(const std::vector<std::string>&documents);
+    std::vector<real_t> predict(const std::string& doc);
+    std::vector<std::vector<real_t>> predict(const provallo::matrix<real_t>&);  
+     ~hashed_bag_of_words()= default;
+  virtual void add_document(const std::string&);
+  virtual void process_document(const std::string&);
+  virtual void process_documents(const std::vector<std::string>&);
+  //dump
+  virtual void dump(std::ostream& os) const;
+    //dump    
+  friend std::ostream& operator<<(std::ostream& os, const hashed_bag_of_words& bow);
+  //save
+  friend std::ofstream& operator<<(std::ofstream& os, const hashed_bag_of_words& bow);
+  //load
+  friend std::istream& operator>>(std::istream& is, hashed_bag_of_words& bow);
+  //explicit load
+  virtual void load(std::ifstream& is);
+  //explicit save
+  virtual void save(std::ofstream& os) const;
+  //gnuplot - save simple word cloud on gnuplot : 
+    virtual void gnuplot(const std::string& filename)
+    {   
+      std::string tmp = filename+".dat";
+      {
+      std::ofstream ofs(tmp);
+      //reverse transform the _bow_matrix
+      //save _bow 
+      size_t i=0;
+      const real_t epsilon = 1e-6;
+      ofs<<"#word frequency size"<<std::endl;
+      for ( auto& word : _vocabulary) 
+      {
+        auto& frequency  = _bow[i++];
+        //avoid :enhanced text mode parser - ignoring spurious text
+        if (frequency==0) continue;
+
+        size_t size = word.size()*frequency/(_vocabulary.size()-1.0);
+        if (size==0) size=1;
+
+        ofs<<std::to_string(i)<<" "<< std::to_string(frequency+epsilon)<<  " "<<std::to_string( size )<< std::endl;
+
+      }
+
+      ofs.close();
+      //gnuplot
+      }
+
+      std::ofstream ofs(filename);
+
+      ofs<<"set terminal png"<<std::endl;
+      //create a gif animation:
+      ofs<<"set terminal gif animate delay 10"<<std::endl;
+      ofs<<"set output '"<< filename<<"_bow.gif'"<<std::endl;
+      ofs<<"set title 'Bag of Words'"<<std::endl;
+      ofs<<"set xlabel 'Words'"<<std::endl;
+      ofs<<"set ylabel 'Frequency'"<<std::endl;
+      ofs<<"set zlabel 'Size'"<<std::endl;
+      ofs<<"set style fill solid"<<std::endl;
+      //set rotation
+      ofs<<"set view 60,30,1,1"<<std::endl;
+      ofs<<"set xrange [0:]"<<std::endl;
+      ofs<<"set yrange [0:]"<<std::endl;
+      ofs<<"set zrange [0:]"<<std::endl;
+      ofs<<"set grid"<<std::endl;
+      ofs<<"set key off"<<std::endl;
+      ofs<<"set dgrid3d 1000,1000,1000"<<std::endl;
+      ofs<<"set hidden3d"<<std::endl;
+      ofs<<"set palette rgbformulae 22,13,-31"<<std::endl;
+      ofs<<"set pm3d depthorder"<<std::endl;
+      ofs<<"set pm3d interpolate 0,0"<<std::endl;
+      ofs<<"set pm3d at b"<<      std::endl;  
+      ofs<<"set pm3d corners2color c1"<<std::endl;
+      //ofs<<"set pm3d lighting phong specular 0.5"<<std::endl; 
+
+
+
+      //plot the .dat file  
+      //ofs<<"splot '"<<tmp<<"' using 1:2:3   with points pt 7 ps 1.5 lc rgb variable"<<std::endl;  
+      //rotate view every 10 degrees
+      ofs<<"set terminal gif animate delay 10"<<std::endl;
+      ofs<<"set output '"<< filename<<"_bow.gif'"<<std::endl;
+      
+      ofs<<"do for [i=0:360] {"<<std::endl;
+      ofs<<"set view i,30,1,1"<<std::endl;
+      ofs<<"splot '"<<tmp<<"' using 1:2:3:3 with points pointtype 7   notitle"<<std::endl;
+      
+      ofs<<"}"<<std::endl;
+      ofs<<"unset multiplot"<<std::endl;
+      ofs<<"unset pm3d"<<std::endl;
+      
+    }
+  private: 
+  //bag of words
+  std::vector<std::string> _vocabulary;
+  std::vector<real_t> _bow;
+  matrix<real_t> _bow_matrix;
+
+  //hashes :
+  std::map<uint64_t, size_t> _hash_map;
+    std::vector<uint64_t> _hashes;
+
+
+
+  //hash functions
+
+  uint64_t hash(const std::string& word);
+  size_t hash_index(const std::string& word);
+  size_t hash_index(uint64_t hash);
+
+
+
+  size_t num_classes;
+  size_t num_features;
+  size_t num_words;
+  size_t num_docs;
+  size_t num_samples;
+  size_t num_tokens;
+  size_t num_unique_tokens;
+  
+  //inverses and transformations
+  std::vector<std::vector<real_t>> _bow_transformed;
+  std::vector<std::vector<real_t>> _bow_transformed_inverse;
+  std::vector<uint64_t> _hashes_transformed;
+  std::vector<uint64_t> _hashes_transformed_inverse;
+
+};
 //one hot vectorizer helper class
 class one_hot_vectorizer :   public vectorizer<std::string, real_t>
 {
@@ -1547,7 +1722,9 @@ class one_hot_vectorizer :   public vectorizer<std::string, real_t>
 
   }
  };
-//tfidf vectorizer helper class
+
+
+//PCA vectorizer helper class
 class principal_component_analysis
 {
   
@@ -1917,10 +2094,15 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   std::vector<std::vector<real_t>> fit( const std::vector<std::vector<std::string>>& data_); 
   std::vector<std::vector<real_t>> predict( const std::vector<std::vector<std::string>>& data_); 
   virtual void process_documents()  ;
-  
+  virtual std::vector<real_t> predict(const std::string& data_);
   //virtual std::vector<real_t> fit_transform(const std::vector<std::string>&documents); 
   //virtual std::vector<std::vector<real_t>> fit_transform(const matrix<real_t>&documents); 
   virtual void clear();
+
+  virtual void load(std::ifstream& in);
+  //load additional parameters
+  virtual void save(std::ofstream& out)const;
+
   virtual ~lda_vectorizer();
   private:
   bag_of_words  _bow;
@@ -1968,7 +2150,8 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   //lda
   //bow
 
-
+   //predict single doc 
+  
    friend std::ostream& operator<<(std::ostream& os, const lda_vectorizer& lda)
   {
     // write out individual members of s with an end of line between each one 
@@ -2018,10 +2201,6 @@ class lda_vectorizer : public vectorizer<std::string, real_t>
   
   virtual void dump(std::ostream& out) const;
   //
-
-  virtual void load(std::ifstream& in);
-  //load additional parameters
-  virtual void save(std::ofstream& out)const;
 
   //gnuplot - creates gnuplot instructions to plot lda diagram using the data
   virtual void gnuplot(const std::string& filename)

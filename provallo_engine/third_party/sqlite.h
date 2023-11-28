@@ -257,6 +257,14 @@ namespace io
 	    ::sqlite3_prepare_v2 (db.get (), sql, -1, &_stmt, nullptr));
       }
 
+	  stmt(db* db, const char* sql)
+	  {
+		  impl::check(
+			  ::sqlite3_prepare_v2(db->get(), sql, -1, &_stmt, nullptr));
+
+	  }
+
+
       ~stmt ()
       {
 	if (_stmt)
@@ -422,7 +430,10 @@ namespace io
       {
 	return binder (*this);
       }
-
+	  size_t column_count()const
+	  {
+		  return ::sqlite3_column_count(_stmt);
+	  }
       bool
       step ()
       {
@@ -509,6 +520,8 @@ namespace io
 		return reader (*this);
       }
 
+
+	  
     private:
       ::sqlite3_stmt *_stmt;
 

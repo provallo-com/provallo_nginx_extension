@@ -1632,23 +1632,28 @@ namespace provallo
 		hplane.fill_new.shrink_to_fit();
 	}
 
-	const std::string
+	  std::string
 	trim(const std::string &pString, const std::string &pWhitespace)
 	{
 		const std::string::size_type beginStr = pString.find_first_not_of(
 			pWhitespace);
+		static const std::string empty("");
+
 		if (beginStr == std::string::npos)
 		{
 			// No content
-			return "";
+			return empty;
 		}
 		const std::string::size_type endStr = pString.find_last_not_of(
 			pWhitespace);
 		const std::string::size_type range = endStr - beginStr + 1;
+	
+	    if(range == std::string::npos)
+			return  empty;
 		return pString.substr(beginStr, range);
 	}
 
-	const std::string
+	  std::string
 	reduce(const std::string &pString, const std::string &pFill,
 		   const std::string &pWhitespace)
 	{
@@ -1656,6 +1661,9 @@ namespace provallo
 		std::string result(trim(pString, pWhitespace));
 
 		// Replace sub ranges
+		if(result.empty())
+			return result;
+		
 		std::string::size_type beginSpace = result.find_first_of(pWhitespace);
 		while (beginSpace != std::string::npos)
 		{

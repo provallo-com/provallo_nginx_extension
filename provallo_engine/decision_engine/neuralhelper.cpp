@@ -2002,6 +2002,9 @@ namespace provallo
 
         }
 
+        mLabelNamesTest=mLabelNames;
+        mLabelNamesTrain=mLabelNames;
+        splitDataFile();
 
         //std::cout << "names_source::names_source - " << mLabelNames.size() << " labels loaded" << std::endl;
 
@@ -2032,7 +2035,59 @@ namespace provallo
          //otherwise,just translate value to double:
        return std::stod(value);  
     }
+    void names_source::splitDataFile()
+    {
+        //check if train/test files exists : 
+        if (std::ifstream(mTrainFile) && std::ifstream(mTestFile))
+        {
+            std::cout << "[+] names_source::splitDataFile - train/test files already exist" << std::endl;
+            return;
+        }
+        //split data file to train and test files: 
+        std::ofstream trainFile( mTrainFile );
+        std::ofstream testFile( mTestFile );
 
+        std::ifstream dataFile( mTrainFileOut );
+
+        if (!dataFile.good()) 
+        {
+            throw std::runtime_error("names_source::splitDataFile - Failed to load " + mNamesFile  );
+        }
+
+        //get file size:
+        dataFile.seekg(0, std::ios::end);
+        size_t fileSize = dataFile.tellg();
+        dataFile.seekg(0, std::ios::beg);
+        //estimate number of lines:
+        dataFile.unsetf(std::ios_base::skipws);
+
+        //determine average field size*number of fields: 
+        size_t nFields = mColumnDesc.size();
+        
+        size_t nLines = fileSize/real_t(nFields*4.5);
+
+        size_t split_point = nLines*split_ratio;
+
+        //write to train file until split point is reached:
+        std::string line;
+        size_t i=0;
+        while (std::getline(dataFile, line))
+        {
+            if(i<split_point)
+            {
+                trainFile << line << std::endl;
+            }
+            else
+            {
+                testFile << line << std::endl;
+            }
+            i++;
+        }   
+        trainFile.close();
+        testFile.close();
+        dataFile.close();
+        
+    }
     void names_source::readTrainFile()  
     {
         //std::cout << "names_source::readTrainFile" << std::endl; 
@@ -2079,7 +2134,7 @@ namespace provallo
                 //reduce token:
                 token = reduce(token, "");
                 //get discrete or continuous value: translated to double
-
+                
                 mImageTrain(i,j) =  get_value(j,token);
 
                 if(j==targetColumn)
@@ -2106,7 +2161,7 @@ namespace provallo
         //create a batch from train data:
   
         //std::cout << "names_source::readTrainFile - " << mBatchTrain.size() << " samples loaded" << std::endl;
-    
+
         this->nClasses = mDiscreteMap[targetColumn].size(); 
         mLabelTrainSize = mImageTrain.size1();
         
@@ -2114,7 +2169,7 @@ namespace provallo
         this->nFeatures = 0;
         for(size_t i=0; i < ColumnNames.size(); ++i)
         {
-            if(i != targetColumn && ColumnNames[i] != "ignore" && ColumnNames[i] != "target")
+            if(i != targetColumn && this->mColumnDesc[i].type!=col_type::ignore&& ColumnNames[i] != "ignore" && ColumnNames[i] != "target")
             {
                 this->nFeatures++;
             }
@@ -2124,10 +2179,25 @@ namespace provallo
         std::cout << "[+]names_source::readTrainFile - " << std::to_string(this->nClasses) << " classess loaded" << std::endl;
         std::cout << "[+]names_source::readTrainFile - " << std::to_string(mImageTrain.size1()) << " samples loaded" << std::endl;
 
+       
+        //remove columns from image train that are ignored or target column:
+        for(size_t i=0; i < ColumnNames.size(); ++i)
+        {
+            if(i == targetColumn || this->mColumnDesc[i].type==col_type::ignore || ColumnNames[i] == "ignore" || ColumnNames[i] == "target")
+            {
+                mImageTrain.remove_column(i);
+            }
+        }
+
+
+
         names_rows.erase(names_rows.begin(), names_rows.end());
+
+        
+
         names_rows = std::vector<std::string>();
 
-     }
+    }
     void names_source::print()
     {
         #ifdef __DEBUG__ 
@@ -2229,6 +2299,14 @@ namespace provallo
         }       
         mLabelsTest= mLabelTest;
         //create a batch from test data:
+        //remove columns from image test that are ignored or target column:
+        for(size_t i=0; i < ColumnNames.size(); ++i)
+        {
+            if(i == targetColumn || this->mColumnDesc[i].type==col_type::ignore || ColumnNames[i] == "ignore" || ColumnNames[i] == "target")
+            {
+                mImageTest.remove_column(i);
+            }
+        }
         std::cout << "names_source::readTestFile - " << std::to_string(mImageTest.size1()*mImageTest.size2()) << " samples loaded" << std::endl;
         names = std::vector<std::string>();
         

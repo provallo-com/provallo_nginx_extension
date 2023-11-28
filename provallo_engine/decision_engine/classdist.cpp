@@ -36,13 +36,12 @@ namespace provallo
   }
   std::pair<attribute,real_t> class_dist::mode_and_percentage () const
   {
- 
       discrete_value distance  = (discrete_value)std::distance (_histogram.begin(),  std::max_element (_histogram.begin (),_histogram.end () ));
       return std::make_pair(attribute(distance),percentage(distance));
   }
   std::pair<attribute,real_t> class_dist::mode_and_percentage (const std::vector<discrete_value>& exclude) const
   {
- 
+      //copy the histogram
       std::vector<real_t> tmp(_histogram);
       for(auto e:exclude)
       {
@@ -56,7 +55,7 @@ namespace provallo
     real_t  entropy = 0.0;
     for (auto &p : _histogram)
       {
-        if (p > 0.0)
+        if (p==p&&p > 0.0)
           {
             entropy += p * std::log2 (p);
           }
@@ -66,11 +65,13 @@ namespace provallo
 
   real_t  class_dist::gini ()const
   {
+    //gini impurity
     real_t  gini = 0.0;
     for (auto &p : _histogram)
       {
-        gini += p * p;
-      }
+       if(p==p) //ignore nan
+          gini += ( p * p ) ;
+       }
     return 1.0 - gini;
   }   
   

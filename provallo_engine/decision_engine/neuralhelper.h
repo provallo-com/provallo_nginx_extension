@@ -46,8 +46,7 @@ namespace provallo
   ErrorFun
   genKLDiv ();
 
-
-  //  template<class T> class matrix;
+  //nueron layer interface 
   class neuron_layer
   {
   public:
@@ -91,7 +90,7 @@ namespace provallo
      size_t last_step_count=0;
      
   };
-  // 
+  // fully connected layer
   class fully_connected_layer : public neuron_layer
   {
   public:
@@ -167,7 +166,7 @@ namespace provallo
 
     size_t _update_count;
   };
-
+  //convolution operator for convolution layer :  
   class convolution_operator
   {
   protected:
@@ -218,7 +217,7 @@ namespace provallo
             delete _result;
           }
   };
-  //
+  //convolution layer
 
   class convolution_layer : public neuron_layer
   {
@@ -309,7 +308,7 @@ namespace provallo
     size_t _input_channels;
 
   };
-  //
+  // noise layer
   class noisy_layer : public fully_connected_layer
   {
   public:
@@ -336,7 +335,7 @@ namespace provallo
     type_matrix _noise_variation_sum;
 
   };
-  //
+  //zero padding layer
   class zero_pad_layer : public neuron_layer
   {
   public:
@@ -389,7 +388,7 @@ namespace provallo
     size_t _zeropad_type;
 
   };
-  //
+  // max pooling layer
   class max_pooling_layer : public neuron_layer
   {
   public:
@@ -453,7 +452,7 @@ namespace provallo
     size_t _descent_type;
 
   };
-  //
+  // neural network
   class neural_net : public std::list<neuron_layer::ptr>
   {
   public:
@@ -666,7 +665,8 @@ namespace provallo
 
  
   };
-  //
+  // neural helper - helper class for DCGAN
+  // 
   class neural_helper
   {
 
@@ -878,7 +878,8 @@ namespace provallo
       matrix<real_t> getMatrix(size_t index, bool isTrainOrTestRequired = 1, bool greyLevel = 0) const;
 
   private:
-      // Résolution automatique de type parce que j'ai la flemme
+      // automatically determine the type and N entries of the dataset
+      // with template <template <typename...>
       decltype(cifar::read_dataset()) mDataset;
       CifarLabel                      mLabels;
 
@@ -983,6 +984,7 @@ namespace provallo
 
         std::vector<size_t> trainingLabels() const  
         {
+         
           return  mLabelTrain;
         }
 
@@ -990,7 +992,12 @@ namespace provallo
         {
           return mLabelNamesTest;
         }
-       
+        //positive integer labels for testing , translate to string with testingLabelNames
+        std::vector<size_t> testingLabels() const  
+        {
+          return  mLabelTest;
+        }
+
 
         Batch trainingBatch(bool greyLevel = false) const override;
         Batch testingBatch(bool greyLevel = false) const override ;
@@ -1019,6 +1026,7 @@ namespace provallo
      protected:
 
         void readNamesFile();
+        void splitDataFile();
         void readTrainFile();
         void readTestFile();
         matrix<real_t> mImageTrain;
@@ -1033,6 +1041,7 @@ namespace provallo
         std::string mNamesFile;
         std::string mTrainFile; //.data file
         std::string mTestFile;  //.test file
+        std::string mTrainFileOut; //.data file
         size_t mNbClasses;
         size_t mNbTrain;
         size_t mNbTest;
@@ -1049,9 +1058,9 @@ namespace provallo
         
         std::vector<matrix<real_t>> mImageTrainVector;
         std::vector<matrix<real_t>> mImageTestVector;
-        
+        real_t split_ratio=0.8;
         real_t get_value(size_t col,const std::string &token);
-
+        std::string get_fstem_name()const {return  mNamesFile.substr(0,mNamesFile.find_last_of("."));}  
         
    };
 
@@ -1201,66 +1210,38 @@ namespace provallo
           learning_task(const std::string& configuration_file);
 
  
-  		void runExperiments();
+        //run all experiments
+        void runExperiments();
+        //run a single experiment
+        void runSingleStochasticExperiment();
+        //run a single experiment from minibatch
+        void runSingleMinibatchExperiment();
 
-          void runSingleStochasticExperiment();
-
-  		void runSingleMinibatchExperiment();
-
-  		void resetExperiment();
+      /// reset the experiment
+        void resetExperiment();
 
 
-          /// Effectue une run d'apprentissage par méthode stochastique
-          /**
-           * Effectue une run d'apprentissage dont le nombre d'apprentissages est passé en paramètres
-           */
-          void runStochasticTeach();
+      
+      ///run stochastic training on the network
+      void runStochasticTeach();
 
-  		/// Effectue une run d'apprentissage par la méthode par batch
-  		/**
-  		 * Effectue une run d'apprentissage dont le nombre d'apprentissages est passé en paramètres
-  		 */
+  		///run stochastic training on the network
   		void runMinibatchTeach();
 
-          /// Effectue une run de tests sur D(G(z))
-          /**
-           * Effectue une run de test sur le batch de test
-  		 * @param limit  permet de limiter le nombre d'entrées de tests
-  		 * @param returnErrorRate deprecated
-           */
-          real_t runTestGen(int limit = -1, bool returnErrorRate = 1);
+      //run test generator, @limit is the number of images to generate and test @returnErrorRate is a boolean to return the error rate or not 
+      real_t runTestGen(int limit = -1, bool returnErrorRate = 1);
 
-          /// Effectue une run de tests sur D(x)
-          /**
-           * Effectue une run de test sur le batch de test
-  		 * @param limit permet de limiter le nombre d'entrées de tests
-  		 * @param returnErrorRate deprecated
-           */
+      //run test discriminator, @limit is the number of images to generate and test @returnErrorRate is a boolean to return the error rate or not
           real_t runTestDis(int limit = -1, bool returnErrorRate = 1);
 
-          /// Effectue une approximation du score des réseaux
-          //[deprecated] real_t gameScore(int nbImages);
-
-          /// Génère une image à partir d'un input
-          /**
-           * Effectue un process de l'input par le Generateur
-           * @param input un vecteur colonne, généralement, du bruit blanc
-           */
-          //[deprecated]          matrix<real_t> genProcessing(matrix<real_t> input);
-
+          
   	private:
-  		/// Génère un minibatch à partir d'un batch
-  		/**
-  		 * Génère un sous-ensemble du batch d'apprentissage ou du batch à partir de celui-ci
-  		 * @param batch le batch d'apprentissage ou le batch de test
-  		 */
+  	
+      //sample minibatch from training batch
+
   		Minibatch sampleMinibatch(Batch batch);
-
-
-  		/// Génère un minibatch d'images obtenues par le générateur
-  		/**
-  		 * Génère un minibatch d'images obtenues par le générateur
-  		 */
+      
+      //
   		Minibatch sampleGeneratedImagesFromNoiseMinibatch();
    //// Configuration
        private:

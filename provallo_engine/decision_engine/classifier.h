@@ -529,7 +529,7 @@ namespace provallo
                                             lacks_scoring_metric);
   }
   inline void
-  inspect_serialized_object(FILE *serialized_bytes, bool &is_isotree_model,
+  inspect_serialized_object(std::FILE *serialized_bytes, bool &is_isotree_model,
                             bool &is_compatible, bool &has_combined_objects,
                             bool &has_IsoForest, bool &has_ExtIsoForest,
                             bool &has_Imputer, bool &has_Indexer,
@@ -537,7 +537,7 @@ namespace provallo
                             {
                                 bool has_same_int_size, has_same_size_t_size, has_same_endianness,
                                 lacks_range_penalty, lacks_scoring_metric;
-                                inspect_serialized_object<FILE*>(serialized_bytes, is_isotree_model, is_compatible,
+                                inspect_serialized_object<std::FILE*>(serialized_bytes, is_isotree_model, is_compatible,
                                 has_combined_objects, has_IsoForest, has_ExtIsoForest, has_Imputer,
                                 has_Indexer, has_metadata, size_metadata, has_same_int_size,
                                 has_same_size_t_size, has_same_endianness, lacks_range_penalty,
@@ -588,7 +588,7 @@ namespace provallo
   void
   serialize_IsoForest(const iso_forest &model, char *out);
   void
-  serialize_IsoForest(const iso_forest &model, FILE *out);
+  serialize_IsoForest(const iso_forest &model, std::FILE *out);
   void
   serialize_IsoForest(const iso_forest &model, std::ostream &out);
   std::string
@@ -596,7 +596,7 @@ namespace provallo
   void
   deserialize_IsoForest(iso_forest &model, const char *in);
   void
-  deserialize_IsoForest(iso_forest &model, FILE *in);
+  deserialize_IsoForest(iso_forest &model,std::FILE *in);
   void
   deserialize_IsoForest(iso_forest &model, std::istream &in);
   void
@@ -605,7 +605,7 @@ namespace provallo
   serialize_ExtIsoForest(const ExtIsoForest &model, char *out);
 
   void
-  serialize_ExtIsoForest(const ExtIsoForest &model, FILE *out);
+  serialize_ExtIsoForest(const ExtIsoForest &model, std::FILE *out);
   void
   serialize_ExtIsoForest(const ExtIsoForest &model, std::ostream &out);
   std::string
@@ -613,7 +613,7 @@ namespace provallo
   void
   deserialize_ExtIsoForest(ExtIsoForest &model, const char *in);
   void
-  deserialize_ExtIsoForest(ExtIsoForest &model, FILE *in);
+  deserialize_ExtIsoForest(ExtIsoForest &model, std::FILE *in);
   void
   deserialize_ExtIsoForest(ExtIsoForest &model, std::istream &in);
   void
@@ -621,7 +621,7 @@ namespace provallo
   void
   serialize_Imputer(const Imputer &model, char *out);
   void
-  serialize_Imputer(const Imputer &model, FILE *out);
+  serialize_Imputer(const Imputer &model, std::FILE *out);
   void
   serialize_Imputer(const Imputer &model, std::ostream &out);
   std::string
@@ -629,7 +629,7 @@ namespace provallo
   void
   deserialize_Imputer(Imputer &model, const char *in);
   void
-  deserialize_Imputer(Imputer &model, FILE *in);
+  deserialize_Imputer(Imputer &model, std::FILE *in);
 
   void
   deserialize_Imputer(Imputer &model, std::istream &in);
@@ -641,7 +641,7 @@ namespace provallo
   serialize_Indexer(const TreesIndexer &model, char *out);
 
   void
-  serialize_Indexer(const TreesIndexer &model, FILE *out);
+  serialize_Indexer(const TreesIndexer &model, std::FILE *out);
 
   void
   serialize_Indexer(const TreesIndexer &model, std::ostream &out);
@@ -716,7 +716,7 @@ namespace provallo
   serialize_combined(const iso_forest *model, const ExtIsoForest *model_ext,
                      const Imputer *imputer, const TreesIndexer *indexer,
                      const char *optional_metadata,
-                     const size_t size_optional_metadata, FILE *out)
+                     const size_t size_optional_metadata, std::FILE *out)
   {
       //validate parameters and check if they are compatible
     bool is_isotree_model, is_compatible, has_combined_objects, has_IsoForest,
@@ -812,7 +812,7 @@ namespace provallo
                      const char *serialized_imputer,
                      const char *serialized_indexer,
                      const char *optional_metadata,
-                     const size_t size_optional_metadata, FILE *out)
+                     const size_t size_optional_metadata, std::FILE *out)
   {
 
       fwrite(serialized_model, sizeof(char), strlen(serialized_model), out);    
@@ -904,7 +904,7 @@ namespace provallo
   }
 
   inline void
-  deserialize_combined(FILE *in, iso_forest *model, ExtIsoForest *model_ext,
+  deserialize_combined(std::FILE *in, iso_forest *model, ExtIsoForest *model_ext,
                        Imputer *imputer, TreesIndexer *indexer,
                        char *optional_metadata)
   {
@@ -962,7 +962,7 @@ namespace provallo
   //serialize_Imputer
   inline void serialize_Imputer(const Imputer &imputer, std::ostream &out)
   {
-    signal_switcher ss;
+    provallo::signal_switcher ss;
     //write the watermark
     //auto pos_watermark = get_return_position(out);
     //write the model
@@ -1056,7 +1056,7 @@ namespace provallo
     return;
   }
 
-  inline void serialize_Imputer(const Imputer &imputer, FILE *out)
+  inline void serialize_Imputer(const Imputer &imputer, std::FILE *out)
   {
     signal_switcher ss;
     //write the watermark
@@ -1308,13 +1308,13 @@ namespace provallo
                                    real_t dist_matrix[]);
 
     void
-    serialize(FILE *out) const;
+    serialize(std::FILE *out) const;
 
     void
     serialize(std::ostream &out) const;
 
     static isolation_forest
-    deserialize(FILE *inp, int nthreads);
+    deserialize(std::FILE *inp, int nthreads);
 
     static isolation_forest
     deserialize(std::istream &inp, int nthreads);
