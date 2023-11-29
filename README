@@ -1,12 +1,12 @@
  
-```mermaid
+``` mermaid
 graph TD;
   provallo_nginx_extension;
   provallo_nginx_extension-->nginx_addon;
   provallo_nginx_extension-->provallo_engine;
   
   ```
-
+---------------------------------------------------------------------------------------------
 
 ++++
 
@@ -66,13 +66,13 @@ graph TD;
 
 + validate the service response with curl/wget over the server's location path make sure response is valid (expect 200 server response with : `provallo engine is up` or something similar before enough data is accumulated)
 
-+ check nginx statistics modules for provallo's extension metrics [icmp,udp,etc...]
++ check nginx statistics modules for provallo's extension metrics (icmp,udp,etc...)
  **extension structure** 
 
 ---------------------------------------------------------------------
 
 
- ```mermaid
+ ``` mermaid
 graph TD;
     provallo_nginx_extension-->nginx_addon;
     provallo_nginx_extension-->provallo_engine-->data;
@@ -88,7 +88,7 @@ graph TD;
 ---------------------------------------------------------------------
 
 
-![spike-train](./spikes.png)
+![spike-train](spikes.png)
 
 
 
@@ -101,13 +101,13 @@ Since Noisy datasets contains several categories our attacks LDA vectorizer succ
 replayed with fuzzdb dataset... 
 
 Easily compared the number of features vs potential number of classes : 
-for normal dataset, there aren't many diverse classifications or distinct characteristics, hence the number of classes , despite the permutation of data will be small see -  ![lda-normal](./lda_vectorizer.png)  
+for normal dataset, there aren't many diverse classifications or distinct characteristics, hence the number of classes , despite the permutation of data will be small see -  ![lda-normal](lda_vectorizer.png)  
 
 on the other hand  noisy data would should optimal number of classes for the data for the dataset would be 5- ![lda-attack](./lda_attack_vectorizer.png)
 
 ---------------------------------------------------------------------
 
-![BOW-NOISE](./vectorizer_fuzzdb_attacksLDA_VECTORIZER1.gnuplot_bow_cloud.gnuplot_bow.gif)
+![BOW-NOISE](vectorizer_fuzzdb_attacksLDA_VECTORIZER1.gnuplot_bow_cloud.gnuplot_bow.gif)
 
 ---------------------------------------------------------------------
 
@@ -117,7 +117,7 @@ Normal words are also fed into the  vectorizers :
 within the dictionary there are a few anomalies which are documents decsribing noise:
 
 
-![BOW-NORMAL](./vectorizer_fuzzdb_benignLDA_VECTORIZER3.gnuplot_bow_cloud.gnuplot_bow.gif)
+![BOW-NORMAL](vectorizer_fuzzdb_benignLDA_VECTORIZER3.gnuplot_bow_cloud.gnuplot_bow.gif)
 
  
 
@@ -130,12 +130,12 @@ each pipeline trains several models and generate accuracy matrices such as ROC c
 
 
 for example, famous UCI dataset https://archive.ics.uci.edu/dataset/50/image+segmentation  :
-![confusion](./softmax_test_confusion_matrix_segment.png)
+![confusion](softmax_test_confusion_matrix_segment.png)
 
 or for dynamically created datasets 
-![confusion](./provallo_net_confusion_matrix.png)
+![confusion](provallo_net_confusion_matrix.png)
 
-![confusion](./web_requests_confusion_matrix.png)
+![confusion](web_requests_confusion_matrix.png)
 
 
 The currently best performing models are autoencoded softmax , where the softmax contains an autoencoder with symmetric input output and hidden in addition to internal mapping of the softmax/softplus to the edges 

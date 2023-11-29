@@ -81,7 +81,7 @@ void initialize_engine()
     //nginx_thread_start(); 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "initializing engine");
     //initialize decision engine : create a pipeline builder and add stages 
-
+    
     provallo::pipeline_builder* builder = new pipeline_builder();
     
     builder->add_stage(new dataset_stage());
