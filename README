@@ -82,7 +82,7 @@ graph TD;
 ---------------------------------------------------------------------
 
 
-![spike-train](https://github.com/provallo-com/provallo_nginx_extension/blob/main/spikes.png)
+![spike-train](https://github.com/provallo-com/provallo_nginx_extension/blob/main/spikes.png?raw=true)
 
 
 
@@ -95,13 +95,13 @@ Since Noisy datasets contains several categories our attacks LDA vectorizer succ
 replayed with fuzzdb dataset... 
 
 Easily compared the number of features vs potential number of classes : 
-for normal dataset, there aren't many diverse classifications or distinct characteristics, hence the number of classes , despite the permutation of data will be small see -  ![lda-normal](https://github.com/provallo-com/provallo_nginx_extension/lda_vectorizer.png)  
+for normal dataset, there aren't many diverse classifications or distinct characteristics, hence the number of classes , despite the permutation of data will be small see -  ![lda-normal](https://github.com/provallo-com/provallo_nginx_extension/lda_vectorizer.png?raw=true)  
 
-on the other hand  noisy data would should optimal number of classes for the data for the dataset would be 5- ![lda-attack](https://github.com/provallo-com/provallo_nginx_extension/blob/main/lda_attack_vectorizer.png)
+on the other hand  noisy data would should optimal number of classes for the data for the dataset would be 5- ![lda-attack](https://github.com/provallo-com/provallo_nginx_extension/blob/main/lda_attack_vectorizer.png?raw=true)
 
 ---------------------------------------------------------------------
 
-![BOW-NOISE](https://github.com/provallo-com/provallo_nginx_extension/vblob/main/ectorizer_fuzzdb_attacksLDA_VECTORIZER1.gnuplot_bow_cloud.gnuplot_bow.gif)
+![BOW-NOISE](https://github.com/provallo-com/provallo_nginx_extension/vblob/main/ectorizer_fuzzdb_attacksLDA_VECTORIZER1.gnuplot_bow_cloud.gnuplot_bow.gif?raw=true)
 
 ---------------------------------------------------------------------
 
@@ -124,12 +124,12 @@ each pipeline trains several models and generate accuracy matrices such as ROC c
 
 
 for example, famous UCI dataset https://archive.ics.uci.edu/dataset/50/image+segmentation  :
-![confusion](https://github.com/provallo-com/provallo_nginx_extension/blob/main/softmax_test_confusion_matrix_segment.png)
+![confusion](https://github.com/provallo-com/provallo_nginx_extension/blob/main/softmax_test_confusion_matrix_segment.png?raw=true)
 
 or for dynamically created datasets 
-![confusion](https://github.com/provallo-com/provallo_nginx_extension/blob/main/provallo_net_confusion_matrix.png)
+![confusion](https://github.com/provallo-com/provallo_nginx_extension/blob/main/provallo_net_confusion_matrix.png?raw=true)
 
-![confusion](https://github.com/provallo-com/provallo_nginx_extension/blob/main/web_requests_confusion_matrix.png)
+![confusion](https://github.com/provallo-com/provallo_nginx_extension/blob/main/web_requests_confusion_matrix.png?raw=true)
 
 
 The currently best performing models are autoencoded softmax , where the softmax contains an autoencoder with symmetric input output and hidden in addition to internal mapping of the softmax/softplus to the edges 
