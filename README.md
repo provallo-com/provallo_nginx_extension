@@ -1,5 +1,4 @@
-<img height="10", src=\"https://www.provallo.com/assets/provallo_logo-f9fe8ea4.svg\">
-
+ 
 
 
 ```mermaid
