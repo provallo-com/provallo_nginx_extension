@@ -95,13 +95,13 @@ Since Noisy datasets contains several categories our attacks LDA vectorizer succ
 replayed with fuzzdb dataset... 
 
 Easily compared the number of features vs potential number of classes : 
-for normal dataset, there aren't many diverse classifications or distinct characteristics, hence the number of classes , despite the permutation of data will be small see -  ![lda-normal](https://github.com/provallo-com/provallo_nginx_extension/lda_vectorizer.png?raw=true)  
+for normal dataset, there aren't many diverse classifications or distinct characteristics, hence the number of classes , despite the permutation of data will be small see -  ![lda-normal](https://github.com/provallo-com/provallo_nginx_extension/blob/main/lda_vectorizer.png?raw=true)  
 
 on the other hand  noisy data would should optimal number of classes for the data for the dataset would be 5- ![lda-attack](https://github.com/provallo-com/provallo_nginx_extension/blob/main/lda_attack_vectorizer.png?raw=true)
 
 ---------------------------------------------------------------------
 
-![BOW-NOISE](https://github.com/provallo-com/provallo_nginx_extension/vblob/main/ectorizer_fuzzdb_attacksLDA_VECTORIZER1.gnuplot_bow_cloud.gnuplot_bow.gif?raw=true)
+![BOW-NOISE](https://github.com/provallo-com/provallo_nginx_extension/blob/main/ectorizer_fuzzdb_attacksLDA_VECTORIZER1.gnuplot_bow_cloud.gnuplot_bow.gif?raw=true)
 
 ---------------------------------------------------------------------
 
