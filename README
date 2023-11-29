@@ -8,10 +8,14 @@ graph TD;
   ```
 
 
+++++
+
 +  download your current nginx version source code 
 +  run nginx -V to copy configure parameters. 
 +  copy the parameters and run configure with the path to the  module    source  for example : 
-   
+
+++++
+
   `./configure  --add-dynamic-module=/opt/nginx/provallo-nginx-module  --add-module=/opt/nginx/provallo-nginx-module --with-cc-opt='-g -O2 -ffile-prefix-map=/build/nginx-zctdR4/nginx-1.18.0=. -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects -fstack-protector-strong -Wformat -Werror=format-security -fPIC -Wdate-time -D_FORTIFY_SOURCE=2' --with-ld-opt='-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -flto=auto -Wl,-z,relro -Wl,-z,now -fPIC' --prefix=/usr/share/nginx --conf-path=/etc/nginx/nginx.conf --http-log-path=/var/log/nginx/access.log --error-log-path=/var/log/nginx/error.log --lock-path=/var/lock/nginx.lock --pid-path=/run/nginx.pid --modules-path=/usr/lib/nginx/modules --http-client-body-temp-path=/var/lib/nginx/body --http-fastcgi-temp-path=/var/lib/nginx/fastcgi --http-proxy-temp-path=/var/lib/nginx/proxy --http-scgi-temp-path=/var/lib/nginx/scgi --http-uwsgi-temp-path=/var/lib/nginx/uwsgi --with-compat --with-debug --with-pcre-jit --with-http_ssl_module --with-http_stub_status_module --with-http_realip_module --with-http_auth_request_module --with-http_v2_module --with-http_dav_module --with-http_slice_module --with-threads --add-dynamic-module=/build/nginx-zctdR4/nginx-1.18.0/debian/modules/http-geoip2 --with-http_addition_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_sub_module`
 
    you can use a symbolic link (``ln -s``) to match the path to the downloaded source location. 
@@ -82,3 +86,63 @@ graph TD;
 ```
 
 ---------------------------------------------------------------------
+
+
+![spike-train](./spikes.png)
+
+
+
+We start the process by spike training, several options are recommended,RBM, helmholtz machine or gaussian refined spikes are currently supported. 
+
+ ---------------------------------------------------------------------
+
+ 
+Since Noisy datasets contains several categories our attacks LDA vectorizer successfully detects the categories of web based attacks 
+replayed with fuzzdb dataset... 
+
+Easily compared the number of features vs potential number of classes : 
+for normal dataset, there aren't many diverse classifications or distinct characteristics, hence the number of classes , despite the permutation of data will be small see -  ![lda-normal](./lda_vectorizer.png)  
+
+on the other hand  noisy data would should optimal number of classes for the data for the dataset would be 5- ![lda-attack](./lda_attack_vectorizer.png)
+
+---------------------------------------------------------------------
+
+![BOW-NOISE](./vectorizer_fuzzdb_attacksLDA_VECTORIZER1.gnuplot_bow_cloud.gnuplot_bow.gif)
+
+---------------------------------------------------------------------
+
+
+Normal words are also fed into the  vectorizers : 
+
+within the dictionary there are a few anomalies which are documents decsribing noise:
+
+
+![BOW-NORMAL](./vectorizer_fuzzdb_benignLDA_VECTORIZER3.gnuplot_bow_cloud.gnuplot_bow.gif)
+
+ 
+
+
+
+
+
+
+each pipeline trains several models and generate accuracy matrices such as ROC curves and confusion matrices, confusion matrices are plotted using gnuplot and can be configured to display the precise weight or labels of the predictions asocciated with the diagonal truth 
+
+
+for example, famous UCI dataset https://archive.ics.uci.edu/dataset/50/image+segmentation  :
+![confusion](./softmax_test_confusion_matrix_segment.png)
+
+or for dynamically created datasets 
+![confusion](./provallo_net_confusion_matrix.png)
+
+![confusion](./web_requests_confusion_matrix.png)
+
+
+The currently best performing models are autoencoded softmax , where the softmax contains an autoencoder with symmetric input output and hidden in addition to internal mapping of the softmax/softplus to the edges 
+
+
+bit-binary transposed models are experimental , and pipeline's transitional AI under development.
+
+
+
+
