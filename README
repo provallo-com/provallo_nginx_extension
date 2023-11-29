@@ -1,5 +1,18 @@
  
 
+ ```mermaid
+graph TD;
+    provallo_nginx_extension-->nginx_addon;
+    provallo_nginx_extension-->provallo_engine-->data;
+    provallo_nginx_extension-->provallo_engine-->decision_engine;
+    provallo_nginx_extension-->provallo_engine-->glue;
+    provallo_nginx_extension-->provallo_engine-->helpers;
+    provallo_nginx_extension-->provallo_engine-->parsers;
+    provallo_nginx_extension-->provallo_engine-->statistics;
+    provallo_nginx_extension-->provallo_engine-->third_party;
+    provallo_nginx_extension-->provallo_engine-->util; 
+```
+
 ++++
 
 +  download your current nginx version source code 
@@ -64,23 +77,10 @@
 ---------------------------------------------------------------------
 
 
- ```mermaid
-graph TD;
-    provallo_nginx_extension-->nginx_addon;
-    provallo_nginx_extension-->provallo_engine-->data;
-    provallo_nginx_extension-->provallo_engine-->decision_engine;
-    provallo_nginx_extension-->provallo_engine-->glue;
-    provallo_nginx_extension-->provallo_engine-->helpers;
-    provallo_nginx_extension-->provallo_engine-->parsers;
-    provallo_nginx_extension-->provallo_engine-->statistics;
-    provallo_nginx_extension-->provallo_engine-->third_party;
-    provallo_nginx_extension-->provallo_engine-->util; 
-```
-
 ---------------------------------------------------------------------
 
 
-![spike-train](spikes.png)
+![spike-train](https://github.com/provallo-com/provallo_nginx_extension/blob/main/spikes.png)
 
 
 
