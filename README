@@ -1,3 +1,6 @@
+[!provallo](https://www.provallo.com/assets/provallo_logo-f9fe8ea4.svg)
+
+
 ```mermaid
 graph TD;
     provallo_nginx_extension;
@@ -10,7 +13,7 @@ graph TD;
     provallo_nginx_extension-->provallo_engine-->statistics;
     provallo_nginx_extension-->provallo_engine-->third_party;
     provallo_nginx_extension-->provallo_engine-->util; 
-    
+    provallo_nginx_extension-->trainerbox-->training_utilities; 
 
 ```
  
@@ -80,10 +83,7 @@ graph TD;
 
 
 ---------------------------------------------------------------------
-![spikes]
-(https://raw.githubusercontent.com/provallo-com/provallo_nginx_extension/main/vectorizer_fuzzdb_benignLDA_VECTORIZER3.gnuplot_bow_cloud.gnuplot_bow.gif)
 ![spike-train](https://github.com/provallo-com/provallo_nginx_extension/blob/main/spikes.png?raw=true)
-
 
 
 We start the process by spike training, several options are recommended,RBM, helmholtz machine or gaussian refined spikes are currently supported. 
