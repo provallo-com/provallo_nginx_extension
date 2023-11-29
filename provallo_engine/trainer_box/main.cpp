@@ -3459,7 +3459,7 @@ bool fit_fuzzdb_test(const std::string &ff)
 } // end fit_fuzzdb_test
 void test_spike_train_generator()
 {
-
+ 
   real_t sigma = 1.0, mu = 0.1, dt = 0.1, t_min = 0.01, t_max = 1000.0;
   // create spike train generator
   provallo::gaussian_spike_train_generator<real_t> test_spike_train_generator(sigma, mu, dt, t_min, t_max);
@@ -3468,11 +3468,14 @@ void test_spike_train_generator()
   while (test_spike_train_generator.refine(train) <= 0.0)
   {
     std::cout << "[+] spike not  refined" << std::endl; 
+    mu+=0.01;
+    test_spike_train_generator.set_mu(mu);
+
     train = test_spike_train_generator.generate();
   }
   std::cout << "[+] spike train refined" << std::endl;
   // print spike train
-
+  std::cout << "[+] spike train  " << std::endl;
   std::cout << "[+] saving spike train size : " << std::to_string(train.size()) << std::endl;
   std::ofstream spike_train_file("spike_train.DAT", std::ios::binary | std::ios::ate);
   if (spike_train_file.is_open() && spike_train_file.good())
