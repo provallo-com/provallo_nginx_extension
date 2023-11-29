@@ -80,8 +80,8 @@ graph TD;
 
 
 ---------------------------------------------------------------------
-
-
+![spikes]
+(https://raw.githubusercontent.com/provallo-com/provallo_nginx_extension/main/vectorizer_fuzzdb_benignLDA_VECTORIZER3.gnuplot_bow_cloud.gnuplot_bow.gif)
 ![spike-train](https://github.com/provallo-com/provallo_nginx_extension/blob/main/spikes.png?raw=true)
 
 
