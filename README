@@ -111,7 +111,7 @@ Normal words are also fed into the  vectorizers :
 within the dictionary there are a few anomalies which are documents decsribing noise:
 
 
-![BOW-NORMAL](https://github.com/provallo-com/provallo_nginx_extension/blob/main/vectorizer_fuzzdb_benignLDA_VECTORIZER3.gnuplot_bow_cloud.gnuplot_bow.gif)
+![BOW-NORMAL](https://github.com/provallo-com/provallo_nginx_extension/blob/main/vectorizer_fuzzdb_benignLDA_VECTORIZER3.gnuplot_bow_cloud.gnuplot_bow.gif?raw=true)
 
  
 
