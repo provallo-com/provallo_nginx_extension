@@ -1,12 +1,4 @@
  
-``` mermaid
-graph TD;
-  provallo_nginx_extension;
-  provallo_nginx_extension-->nginx_addon;
-  provallo_nginx_extension-->provallo_engine;
-  
-  ```
----------------------------------------------------------------------------------------------
 
 ++++
 
