@@ -1261,6 +1261,7 @@ bool test_dataset_load()
 void train_web_requests_patterns();
 void test_web_requests_patterns();
 void validate_simple_softmax();
+bool benchmark_neural_network(const std::string banchmark_folder);
 int main(int argc, char *argv[])
 {
 
@@ -1268,10 +1269,13 @@ int main(int argc, char *argv[])
   {
     std::cout << argv[0] << " running...." << std::endl;
   }
-
-  test_matrix();
+  //to run the tests :
+  //validat matrix operations for debugging:
+  //test_matrix();
+  //validate softmax classifier 
   validate_simple_softmax();
-  // read nginx configuration file
+  // validate section readnig of  nginx configuration file
+  // 
   provallo::nginx_config_helper::configuration_helper config_helper;
   config_helper.dump();
 
@@ -1284,8 +1288,9 @@ int main(int argc, char *argv[])
     std::cout << "Test fit iso forest OK" << std::endl;
   }
 
-  train_web_requests_patterns();
 
+  train_web_requests_patterns();
+  
   //load pre-trained model and test with a diffrent dataset
   //test_web_requests_patterns();
   if (benchmark_classifiers("./db/benchmarks"))
@@ -1328,6 +1333,10 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
+  if(benchmark_neural_network("./db/benchmarks"))
+  {
+    std::cout<<"Benchmark neural networks OK"<<std::endl;
+  }
   return 0;
 }
 
@@ -1428,7 +1437,164 @@ bool test_vectorizers()
 
   return ret;
 }
+bool benchmark_neural_network(const std::string banchmark_folder)
+{
+  bool ret = false;
+  // bool buse_random_forest = false;
+  // bool test_ultra_fast_knn = false;
+  // iterate all the files in the folder, if it's a descrition file, build dataset and classifiers for it
+  std::vector<std::string> files = getFilesInFolder(banchmark_folder);
+  std::vector<std::string> description_files;
+  for (auto file : files)
+  {
+    if (file.find(".names") != std::string::npos)
+    {
+      description_files.push_back(file);
 
+      std::cout << "-- found description file : " << file << std::endl;
+    }
+  }
+
+  // iterate all the description files, build 'collector' and 'classifiers' for each of them
+  // bool sanity_check = false;
+  for (auto description_file : description_files)
+  {
+    std::string file_stem = description_file.substr(0, description_file.find(".names"));
+    std::string data_file = banchmark_folder + "/" + file_stem + ".data";
+    // std::string weights_file_name = banchmark_folder+"/"+file_stem+".weights";
+    // std::ifstream weights_ (weights_file_name);
+    std::map<std::string, Float> weights;
+    std::cout << "-- building dataset for : " << file_stem << std::endl;
+    //use provallo::name_source and neural network to build a classifier 
+    //use the classifier to test the dataset
+
+ 
+    provallo::names_source source(banchmark_folder + std::string("/") + file_stem);
+    //provallo::learning_task::task_configuration learn(build_task_from_source(source));
+    //provallo::learning_task task(learn);
+ 
+    //build a neural network for the discriminator. initialize vectors for the neural_network use kl for gen function 
+   provallo::neural_net *generator =nullptr, *discriminator =nullptr;
+   std::vector<size_t> layerTypes;
+   std::vector<size_t> layerSizes;
+   std::vector<size_t> layerChannels;
+   std::vector<std::vector<size_t>> layerArg;
+   std::vector<std::function<real_t(real_t)>> activations;
+
+   size_t nclasses = source.n_classes(); 
+    size_t nfeatures = source.n_features();
+    size_t nhidden =  nfeatures*2;
+    size_t noutput = nclasses;
+    size_t ninput = nfeatures;
+    size_t nchannels = 1;
+    size_t nfilters = 3;
+    size_t nkernel = 3;
+    size_t nstride = 1;
+    size_t npadding = 1;
+    size_t ngroups = 1;
+    size_t nbatch = 1;
+    size_t nepochs = 100;
+    size_t nbatch_size = 1;
+    size_t nlearning_rate = 0.01;
+    size_t nweight_decay = 0.01;
+    size_t nmomentum = 0.9;
+    size_t nstep_size = 1;
+    size_t ngamma = 0.1;
+    
+    //build a discriminator neural network :
+    //layer types : 0 - fully connected, 1 - convolutional, 2 - max pooling, 3 - average pooling, 4 - dropout, 5 - batch normalization, 6 - activation 
+    //layer sizes : number of neurons in the layer
+    //layer channels : number of channels in the layer
+    //layer args : arguments for the layer
+    //activation funs : activation functions for the layer
+    
+    //configure the layers,size,channels,arguments and activation functions based on the source inputs  
+    //input layers : 
+    layerTypes.push_back(0); //fully connected layer
+    layerSizes.push_back(ninput);
+    layerChannels.push_back(nchannels);
+    layerArg.push_back(std::vector<size_t>());
+    //input activation function: 
+    activations.push_back(provallo::sigmoid(0.1) );
+    //hidden layers :
+    layerTypes.push_back(0); //fully connected layer
+    layerSizes.push_back(nhidden);
+    layerChannels.push_back(nchannels);
+    layerArg.push_back(std::vector<size_t>());
+    //hidden activation function:
+    activations.push_back(provallo::sigmoid(0.1) );
+
+    //convolutional layer :
+    layerTypes.push_back(1); //convolutional layer
+    layerSizes.push_back(nhidden);
+    layerChannels.push_back(nchannels);
+    layerArg.push_back(std::vector<size_t>({nfilters,nkernel,nstride,npadding,ngroups}));
+    //convolutional activation function:
+    activations.push_back(provallo::sigmoid(0.1) );
+    
+    //max pooling layer :
+    layerTypes.push_back(2); //max pooling layer
+    layerSizes.push_back(nhidden);
+    layerChannels.push_back(nchannels);
+    layerArg.push_back(std::vector<size_t>({nfilters,nkernel,nstride,npadding,ngroups}));
+    //max pooling activation function:
+    activations.push_back(provallo::sigmoid(0.1) );
+
+    //average pooling layer :
+    layerTypes.push_back(3); //average pooling layer
+    layerSizes.push_back(nhidden);
+    layerChannels.push_back(nchannels);
+    layerArg.push_back(std::vector<size_t>({nfilters,nkernel,nstride,npadding,ngroups}));
+    //average pooling activation function:
+    activations.push_back(provallo::sigmoid(0.1) );
+
+    //dropout layer :
+    layerTypes.push_back(4); //dropout layer
+    layerSizes.push_back(nhidden);
+    layerChannels.push_back(nchannels);
+    layerArg.push_back(std::vector<size_t>({nfilters,nkernel,nstride,npadding,ngroups}));
+    //dropout activation function:
+    activations.push_back(provallo::sigmoid(0.1));
+    activations.push_back(provallo::sigmoid(0.1) );
+
+    discriminator = new provallo::neural_net(layerTypes,layerSizes,layerChannels,layerArg,activations);
+    generator = new provallo::neural_net(layerTypes,layerSizes,layerChannels,layerArg,activations);
+    //build a neural helper with discriminator and generator and KL-divergence loss function :
+    provallo::neural_helper helper(generator,discriminator,2);
+    
+    std::cout<<"-- building neural network for : "<<file_stem<<std::endl;
+    //build a neural network with the helper
+    std::cout<<"[+] features: "<<std::to_string(nfeatures)<<std::endl;
+    std::cout<<"[+] hidden: "<<std::to_string(nhidden)<<std::endl;
+    std::cout<<"[+] output: "<<std::to_string(noutput)<<std::endl;
+    std::cout<<"[+] classes: "<<std::to_string(nclasses)<<std::endl;
+    std::cout<<"[+] channels: "<<std::to_string(nchannels)<<std::endl;
+    std::cout<<"[+] momentum: "<<std::to_string( nmomentum)<<std::endl;
+        std::cout<<"[+] decay: "<<std::to_string( nweight_decay)<<std::endl;
+            std::cout<<"[+] epochs: "<<std::to_string( nepochs)<<std::endl;
+                std::cout<<"[+] batch size: "<<std::to_string( nbatch_size)<<std::endl;
+                    std::cout<<"[+] learning rate: "<<std::to_string( nlearning_rate)<<std::endl;
+                        std::cout<<"[+] step size: "<<std::to_string( nstep_size)<<std::endl;
+                            std::cout<<"[+] gamma: "<<std::to_string( ngamma)<<std::endl;
+                                                        std::cout<<"[+] batch size: "<<std::to_string( nbatch)<<std::endl;
+
+
+    //train the neural network with the training set :
+
+    // std::cout<< attributes <<std::endl<<std::endl;
+    //delete the neural network
+    delete generator;
+    delete discriminator;
+
+    ret = true;
+    // x+= std::getchar();
+    // checking zero knowledge distributed kmeans
+  } // for description files
+    // std::cout<<"-- Attributes information : "<<std::endl<<
+    // std::cout<< description_file<<std::endl;
+
+  return ret;
+}
 bool benchmark_classifiers(const std::string benchmark_folder)
 {
   bool ret = false;
@@ -2895,6 +3061,10 @@ bool fit_fuzzsb(const std::string &fit_fuzzsb_folder)
   {
     std::string file_name = "encoder_fuzzdb" + std::to_string(enc_index++) + ".json";
     enc->save("encoder_fuzzdb.json");
+
+    //plot autoencoder
+    enc->gnuplot(file_name + ".gnuplot");
+
     //  delete enc;
   }
   // delete vectorizers :
@@ -3469,6 +3639,7 @@ void test_spike_train_generator()
   {
     std::cout << "[+] spike not  refined" << std::endl; 
     mu+=0.01;
+    sigma+=0.01;
     test_spike_train_generator.set_mu(mu);
 
     train = test_spike_train_generator.generate();
@@ -4210,7 +4381,7 @@ void train_web_requests_patterns()
     label_index++;
     //update roc_curve file 
     if(roc_curve.is_open() && roc_curve.good())
-      roc_curve<<std::to_string(max_index)<<" "<<std::to_string(max_value)<<std::endl; 
+      roc_curve<<std::to_string(max_index)<<" "<<std::to_string(target_label)<<std::endl; 
     // vectorize and add to testing matrix with labels
   }
   // print testing results :
@@ -4811,7 +4982,49 @@ void train_web_requests_patterns()
       std::cout<<"[+] confusion matrix script saved"<<std::endl;
       roc_curve.clear();
       // save gnuplot script
+    softmax.gnuplot("provallo_softmax_model_web_requests_test.gnuplot"); 
+    //save softmax
+    softmax.save(std::string("provallo_softmax_model_web_requests_test.json"));
 
+    //save vectorizer
+    vectorizer.save(std::string("provallo_vectorizer_model_web_requests_test.json"));
+
+    //save model data 
+    if (model_data.is_open() && model_data.good())
+    {
+      //save the weights and biases of the softmax classifier 
+      
+      //go over hidden*output weights and save them 
+      for ( size_t i = 0; i < softmax.getHiddenDim(); i++)
+      {
+        for ( size_t j = 0; j < softmax.getOutputDim(); j++)
+        {
+          model_data<< softmax.getWeight1()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getBias1()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getWeight2()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getBias2()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getWeight1Inc()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getBias1Inc()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getWeight2Inc()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getBias2Inc()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getWeight1Grad()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getBias1Grad()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getWeight2Grad()[i*softmax.getOutputDim()+j]<<" ";
+          model_data<< softmax.getBias2Grad()[i*softmax.getOutputDim()+j]<<" ";
+
+          
+          
+        }
+        model_data<<std::endl;
+      }
+
+      model_data.close();
+    }
+    else
+    {
+      std::cout << "[+] error opening model data file" << std::endl;
+    }
+    std::cout << "[+] saving softmax classifier done" << std::endl;
 
 
  } // end test_web_requests_patterns

@@ -601,8 +601,11 @@ namespace provallo
     void
     reset ()
     {
+      if(this->size()>1)
       for (auto itr = begin (); itr != end (); ++itr)
-          	(*itr)->reset ();
+      {
+              if(*itr)(*itr)->reset ();
+      }
 
     }
     size_t
@@ -782,6 +785,7 @@ namespace provallo
           using Minibatch = Batch;
 
       public:
+
           sample_source(size_t labelTrainSize, size_t labelTestSize)
               : mLabelTrainSize(labelTrainSize)
               , mLabelTestSize(labelTestSize) {}
@@ -793,9 +797,17 @@ namespace provallo
               mLabelTrainSize = labelTrainSize;
               mLabelTestSize = labelTestSize;
           }
+      virtual const std::string& name() const =0;
+      virtual size_t get_input_size() const =0;
+      virtual size_t get_output_size() const =0;
+      virtual size_t get_training_size() const =0;
+      virtual size_t get_testing_size() const =0;
+      virtual size_t get_label_size() const =0;
       protected:
           size_t mLabelTrainSize;
           size_t mLabelTestSize;
+
+
 
   };
   ///
@@ -807,6 +819,16 @@ namespace provallo
 
           Batch trainingBatch(bool greyLevel = 0) const;
           Batch testingBatch(bool greyLevel = 0) const;
+          virtual const std::string& name() const 
+          {
+              static const std::string name = "MNIST";
+              return name;
+          }
+        size_t get_input_size() const { return 784; }
+        size_t get_output_size() const { return 10; }
+      virtual size_t get_training_size()  const { return mLabelTrainSize; }
+      virtual size_t get_testing_size() const { return mLabelTestSize; }
+      virtual size_t get_label_size()  const { return 10; }
 
       private:
           std::array<size_t, 10>    mLabels;
@@ -816,6 +838,7 @@ namespace provallo
 
           std::vector<matrix<real_t>>    mImageTest;
           matrix<size_t>                 mLabelTest;
+
 
   };
 
@@ -858,6 +881,33 @@ namespace provallo
       * @param greyLevel : détermine si l'on travaille sur les images en couleur ou en niveau de gris
       */
       Batch testingBatch(bool greyLevel) const;
+      virtual const std::string& name() const 
+      {
+          static const std::string name = "CIFAR10";
+          return name;
+      }
+
+
+      virtual size_t get_input_size() const 
+      {
+          return 3072;
+      }
+      virtual size_t get_output_size() const
+      {
+          return 10;
+      }
+      virtual size_t get_training_size() const 
+      {
+          return mLabelTrainSize;
+      }
+      virtual size_t get_testing_size() const 
+      {
+          return mLabelTestSize;
+      }
+      virtual size_t get_label_size() const
+      {
+          return 10;
+      }
 
   private:
       /// Permet de faire la conversion label (airplaine, dog...) vers un id cifar entre 0 et 9
@@ -942,9 +992,32 @@ namespace provallo
  
         names_source(const names_source& other)    ;
         names_source& operator=(const names_source& other)   ;
-        names_source(names_source&& other)    ;
         names_source& operator=(names_source&& other)   ;
         
+          virtual size_t get_input_size() const {
+            return nFeatures;
+          }
+      virtual size_t get_output_size() const {
+            return nClasses;
+          }
+      virtual size_t get_training_size() const {
+            return mNbTrain;
+          }
+      virtual size_t get_testing_size() const {
+            return mNbTest;
+          }
+      virtual size_t get_label_size() const {
+            return nClasses;
+          }
+
+
+        //get name:
+        const std::string& name() const override
+        {
+          static const std::string name = get_fstem_name(); //will only be called once per class.
+          return name;
+
+        }
         //nclasses
         size_t n_classes() const   {return nClasses;}
         //nfeatures
@@ -1060,7 +1133,18 @@ namespace provallo
         std::vector<matrix<real_t>> mImageTestVector;
         real_t split_ratio=0.8;
         real_t get_value(size_t col,const std::string &token);
-        std::string get_fstem_name()const {return  mNamesFile.substr(0,mNamesFile.find_last_of("."));}  
+        std::string get_fstem_name()const { 
+          
+          auto pos = mNamesFile.find_last_of("/");
+          if(pos!=std::string::npos)
+            return mNamesFile.substr(pos+1,mNamesFile.find_last_of(".")-pos-1);
+          else
+            return mNamesFile.substr(0,mNamesFile.find_last_of("."));
+            
+          
+        }
+         
+
         
    };
 
@@ -1114,7 +1198,7 @@ namespace provallo
   class source_processor
   {
       public:
-          source_processor(const std::string& CSVFileNameRes = "resultat", const std::string& CSVFileNameImg = "image");
+          source_processor(const std::string& CSVFileNameRes = "learning_results", const std::string& CSVFileNameImg = "image");
 
           error_processor& operator[](size_t teachIndex);
 
@@ -1195,7 +1279,8 @@ namespace provallo
 
       public:
           /// Constructeur par batchs
-          
+          learning_task(sample_source& source   ); 
+
           //default constructor
           learning_task();
           //constructor with configuration

@@ -686,6 +686,11 @@ namespace provallo
 
     neural_helper::neural_helper()
     {
+        _generator = nullptr;
+        _discriminator = nullptr;
+        _error_func_dis = coutDiscr();
+        _error_func_gen = coutGen();
+
     }
 
     neural_helper::neural_helper(neural_net::ptr generator, neural_net::ptr discriminator, size_t genFun)
@@ -1001,7 +1006,35 @@ namespace provallo
                               
                 return stream_;
     }
+    learning_task::learning_task(sample_source& source )  : _configuration()
+    {
+        // Charge la configuration de l'application
+        // loadConfig();
+        /// A réparer, cette fonctionnalité est pétée (et n'a jamais marché en fait)
+        /// _sourceprocessor : _sourceprocessor(mConfig.CSVFileNameResult,mConfig.CSVFileNameImage);
+        //*(_statscollector.getCSVFile()) << "Step" << _configuration.step << "dx" << _configuration.dx << endrow;
+        //set configuration parameters based on the source information : 
+         
+        (*mSourceProcessor.getCSVFile()) << "Step" << _configuration.step << "dx" << _configuration.dx << endrow;
+        mTeachingBatchDis = source.trainingBatch(false);
+        mTestingBatchDis = source.testingBatch(false);
+       // size_t n_features=source.get_input_size();
+        size_t n_classes=source.get_output_size();
+        //size_t n_samples=source.get_training_size();
+        //size_t n_test_samples=source.get_testing_size();
 
+        //set up configuration:
+        //resize the configuration parameters to fit the source information 
+            _configuration.chiffresATracer.resize(n_classes);
+            for (size_t i(0); i < n_classes; i++)
+                _configuration.chiffresATracer[i] = i;
+              _configuration.classesCifar.resize(n_classes);
+                for (size_t i(0); i < n_classes; i++)
+                    _configuration.classesCifar[i] = std::to_string(i);
+        
+        
+
+     }
     learning_task::learning_task() : _configuration()
     {
         // Charge la configuration de l'application
@@ -1009,6 +1042,7 @@ namespace provallo
         /// A réparer, cette fonctionnalité est pétée (et n'a jamais marché en fait)
         /// _sourceprocessor : _sourceprocessor(mConfig.CSVFileNameResult,mConfig.CSVFileNameImage);
         //*(_statscollector.getCSVFile()) << "Step" << _configuration.step << "dx" << _configuration.dx << endrow;
+        
         (*mSourceProcessor.getCSVFile()) << "Step" << _configuration.step << "dx" << _configuration.dx << endrow;
 
         try
@@ -1142,8 +1176,7 @@ namespace provallo
             export_weights();
             std::cout << "Exp num. " << (index + 1) << " Finished !" << std::endl;
         }
-
-        mSourceProcessor.exportData(true);
+         mSourceProcessor.exportData(true);
     }
 
     void learning_task::runSingleStochasticExperiment()
@@ -1198,7 +1231,7 @@ namespace provallo
     }
 
     void learning_task::resetExperiment()
-    {
+    {                
         mGenerator->reset();
         mDiscriminator->reset();
     }
@@ -2111,6 +2144,8 @@ namespace provallo
         mLabelsTrain.resize(names_rows.size(), 0 );   //length 0 size 1
         mLabelTrain.resize(names_rows.size(), 0 );   //length 0 size 1
         mImageTrain.resize(names_rows.size(), ColumnNames.size() );   //length 0 size 1
+
+        
         //parse definition for each column descriptor ( row ) in names file:
         size_t adjust_rows = 0;
 

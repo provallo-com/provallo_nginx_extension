@@ -895,7 +895,11 @@ namespace provallo
     {
        
       //hash the token
+      
+      
       bool is_unique = true;
+      token = reduce(token,"");
+
       uint64_t index = hash(token);
       
       //find hash in the hash map 
@@ -935,7 +939,8 @@ namespace provallo
       {
         //update samples,tokens,features counters 
         num_features++;
-      
+        num_words++;
+         
        }
       
       
