@@ -1851,6 +1851,9 @@ class principal_component_analysis
     //plot the .dat file:
     //set multiplot 
     ofs2<<"set multiplot"<<std::endl;
+    //set contour
+    ofs2<<"set contour"<<std::endl;
+    
     //plot scatter, with eigen values,eigen vectors, scatter plot data, pca components, explained variance, singular values 
     ofs2<<"splot '"<<filename<<".dat' using 1:2:3:3 with points pointtype 7   notitle"<<std::endl;
     //plot covariance matrix

@@ -1276,19 +1276,19 @@ int main(int argc, char *argv[])
   validate_simple_softmax();
   // validate section readnig of  nginx configuration file
   // 
-  provallo::nginx_config_helper::configuration_helper config_helper;
-  config_helper.dump();
-
+  
   std::getchar();
 
   test_spike_train_generator();
+#if DEBUG_ISOFOREST
+  provallo::nginx_config_helper::configuration_helper config_helper;
+  config_helper.dump();
 
   if (test_fit_iso_forest())
   {
     std::cout << "Test fit iso forest OK" << std::endl;
   }
-
-
+#endif
   train_web_requests_patterns();
   
   //load pre-trained model and test with a diffrent dataset
@@ -3640,8 +3640,8 @@ void test_spike_train_generator()
     std::cout << "[+] spike not  refined" << std::endl; 
     mu+=0.01;
     sigma+=0.01;
-    test_spike_train_generator.set_mu(mu);
-
+    test_spike_train_generator = provallo::gaussian_spike_train_generator<real_t>(sigma, mu, dt, t_min, t_max); 
+     
     train = test_spike_train_generator.generate();
   }
   std::cout << "[+] spike train refined" << std::endl;
@@ -3739,6 +3739,7 @@ void validate_simple_softmax ()
     while(test_spike_train_generator.refine(train)<=0.0)
     {
         std::cout<<"[+] spike not  refined"<<std::endl;
+        test_spike_train_generator.set_mu(mu+=0.01);
         train=test_spike_train_generator.generate();
     }
     //fill input and output matrices  
@@ -3772,7 +3773,7 @@ void validate_simple_softmax ()
     softmax.train(input_mat,out_mat);
     //test softmax classifier
 
-   if((oout-out_mat).sum()==0.0)
+   if((oout.maxCoeff()-out_mat.maxCoeff())==0.0)
    {
        std::cout<<"[+] softmax classifier test passed"<<std::endl;
    }
@@ -3780,7 +3781,10 @@ void validate_simple_softmax ()
    {
         //print the errors: 
        std::cout<<"[-] expected: "<<std::to_string(oout.maxCoeff())<<", got :"<<std::to_string( out_mat.maxCoeff())<<std::endl;
-       
+       std::cout<<"-------------------------"<<std::endl;
+       std::cout<<(provallo::matrix<real_t>)oout-out_mat<<std::endl;
+       std::cout<<"-------------------------"<<std::endl;
+
    }  
 
 }
@@ -4044,15 +4048,9 @@ void train_web_requests_patterns()
     {
       input_mat(0, i) = input[i];
     }
-
-    std::cout << "[+] training softmax classifier" << std::endl;
-    // print vectorize output
-    std::cout << "[+] vectorizer  output size = " << std::to_string( input.size()) << std::endl;
-    std::cout << "[+] softmax input size = " << std::to_string(softmax.getInputDim()) << std::endl;
-
-    // out_mat.fill(0.0); no need
-    // fill output with label from index
-
+    //add progress:
+    std::cout << "[+] training softmax classifier " <<  std::to_string(total_cases)<<"/"<<std::to_string(results.size() )<< std::endl;
+  
     size_t status_code = row[6].length() > 1 ? std::stoi(row[6]) : 0;
 
     if (status_code > 100 && status_code < 210)
@@ -4275,7 +4273,10 @@ void train_web_requests_patterns()
       input_mat(0, i) = input[i];
     }
 
-    std::cout << "[+] testing softmax classifier" << std::endl;
+    //std::cout << "[+] testing softmax classifier" << std::endl;
+    //display progress bar  
+    std::cout << "[+] testing softmax classifier : " << std::to_string(label_index) << "/" << std::to_string(results.size()) << std::endl;
+
     // print vectorize output
     //std::cout << "[+] vectorizer  output size = " << std::to_string(input.size()) << std::endl;
     //std::cout << "[+] softmax input size = " << std::to_string(softmax.getInputDim()) << std::endl;
@@ -4443,15 +4444,14 @@ void train_web_requests_patterns()
   //save roc curve
   roc_curve.close();
   //save roc curve script
-  if(roc_curve_script_file.is_open() && roc_curve_script_file.good())
-  {
+ 
     std::string roc_curve_script = "set terminal png\n"
-                                   "set output \"web_requests_roc_curve.png\"\n"
+                                   "set output \"provallo_web_requests_roc_curve.png\"\n"
                                    "set title \"web requests roc curve\"\n"
                                    "set xlabel \"Predicted class\"\n"
                                    "set ylabel \"Target Class\"\n"
-                                   "set xrange [0:5]\n"
-                                   "set yrange [0:5]\n"
+                                   "set xrange [0:1]\n"
+                                   "set yrange [0:1]\n"
                                    "set grid\n"
                                    "set key off\n"
                                    "set ticslevel 0\n"
@@ -4471,19 +4471,33 @@ void train_web_requests_patterns()
                                    "set style line 12 lc rgb '#dd181f' lt 1 lw 2 pt 29 ps 1.5\n"
                                     "set style line 13 lc rgb '#dd181f' lt 1 lw 2 pt 31 ps 1.5\n"
                                     "set style line 14 lc rgb '#dd181f' lt 1 lw 2 pt 33 ps 1.5\n"
-                                    // plot:
-                                    //   Warning: Single isoline (scan) is not enough for a pm3d plot.
-                                    //   Hint: Missing blank lines in the data file? See 'help pm3d' and FAQ.
-                                    //   Hint: If your data is all-zeros, you may need to use the 'set dgrid3d' command.
-                                    //plot predicted class vs target class
-                                    "plot \"web_requests_roc_curve.DAT\" using 1:2 with linespoints ls 1\n"; 
+                                    "function fpr(x,y){\n"
+                                    "  dx = (x[2] - x[1])\n"
+                                    "  sum = 0\n"
+                                    "  do for [i=1:words(x)] {\n"
+                                    "    sum = sum + (word(x,i) - word(x,i-1)) * (word(y,i) + word(y,i-1)) / 2\n"
+                                    "  }\n"
+                                    "  return sum / dx\n"
+                                    "}\n"
+
+                                    "function tpr(x,y) {\n"
+                                    "  dx = (x[2] - x[1])\n"
+                                    "  sum = 0\n"
+                                    "  do for [i=1:words(x)] {\n"
+                                    "    sum = sum + (word(x,i) - word(x,i-1)) * (word(y,i) + word(y,i-1)) / 2\n"
+                                    "  }\n"
+                                    "  return sum / dx\n"
+                                    "}\n"
+                                    //plot the roc curve with fpr and tpr
+                                    "plot \"web_requests_roc_curve.DAT\" using (fpr($1,$2)):(tpr($1,$2)) with linespoints ls 1\n";
+
       // save roc curve script        
       
         roc_curve_script_file<<roc_curve_script; 
         roc_curve_script_file.close(); 
         std::cout<<"[+] roc curve script saved"<<std::endl; 
-    
-  }
+
+ 
   // save gnuplot script
   if (gnuplot_script_file.is_open() && gnuplot_script_file.good())
   {
@@ -4491,11 +4505,14 @@ void train_web_requests_patterns()
     std::string gnuplot_script = " set terminal gif animate delay 100\n"
                                   "set output \"web_requests.gif\"\n" 
                                   "set title \"web requests\"\n"
-                                  "set xlabel \"Predicted class\"\n"
-                                  "set ylabel \"Target Class\"\n"
+                                  "set xlabel \" modex \"\n"
+                                  "set ylabel \" modey \"\n" 
+                                  "set zlabel \" modez \"\n"
                                   "set hidden3d\n"
-                                  "set xrange [0:5]\n"
-                                  "set yrange [0:5]\n"
+                                  "set xrange [0:1]\n"
+                                  "set yrange [0:1]\n"
+                                  "set zrange [0:1]\n"
+
                                   "set grid\n"
                                   "set multiplot\n"
                                   "set key off\n"
@@ -4513,13 +4530,30 @@ void train_web_requests_patterns()
                                   "set style line 8 lc rgb '#dd181f' lt 1 lw 2 pt 21 ps 1.5\n"
                                   "set style line 9 lc rgb '#dd181f' lt 1 lw 2 pt 23 ps 1.5\n"
                                   "set style line 10 lc rgb '#dd181f' lt 1 lw 2 pt 25 ps 1.5\n"
-                                  "do for [i=0:100] {\n"
-                                  "set view i,30,1,1\n"
-                                  "plot \"web_requests.DAT\" every ::::i using 1:2 with linespoints ls 1\n"
-                                 
+                                  "set style line 11 lc rgb '#dd181f' lt 1 lw 2 pt 27 ps 1.5\n"
+                                  //contour plot
+                                  "set contour\n"
+                                  "set cntrparam levels 10\n"
+                                  "set view map\n"
+                                  "unset surface\n"
+                                  "set table \"web_requests_contour.DAT\"\n"
+                                  "splot \"web_requests.DAT\" every ::::0 using 1:2:3 with lines\n"
+                                  "unset table\n"
+                                  "unset contour\n"
+                                  "set surface\n"
+                                  "set view 60,30,1,1\n"
+                                  "set xrange [0:1]\n"
+                                  "set yrange [0:1]\n"
+                                  "set zrange [0:1]\n"
+                                  "set grid\n"
+                                  //set function to fit the contour plot
+                                  "f(x,y) = a*x + b*y + c\n"
+                                  "fit f(x,y) \"web_requests_contour.DAT\" using 1:2:3 via a,b,c\n"
+                                  "set label 1 sprintf(\"z = %.2fx + %.2fy + %.2f\", a, b, c) at graph 0.02, 0.9\n"
                                   
-                                  "pause 0.1\n"
-                                  "}\n"
+                                  //plot the contour plot
+                                  "splot \"web_requests.DAT\" every ::::0 using 1:2:3 with lines ls 1, f(x,y) with lines ls 2\n"
+
 
                                   "unset multiplot\n";
                                   
@@ -4575,7 +4609,7 @@ void train_web_requests_patterns()
   } 
 
   //save confusion matrix script 
-  std::ofstream confusion_matrix_script("web_requests_confusion_matrix.gp", std::ios::binary | std::ios::ate);  
+  std::ofstream confusion_matrix_script("web_requests_confusion_matrix.gp");  
   if (confusion_matrix_script.is_open() && confusion_matrix_script.good())
   {
     std::string confusion_matrix_script_string = "set terminal png\n"
@@ -4688,13 +4722,14 @@ void train_web_requests_patterns()
   provallo::matrix<real_t> input_mat(1, 5);
   provallo::matrix<real_t> confusion_matrix_mat(5,5);
   confusion_matrix_mat.fill(0);
-  std::ofstream roc_curve("provallo_web_requests_roc_curve.DAT", std::ios::binary | std::ios::ate);
-  
-  std::ofstream gnuplot_script_file("provallo_web_requests.gnuplot", std::ios::binary | std::ios::ate);
-  std::ofstream confusion_matrix_script( "provallo_web_requests_test_confusion_matrix.gnuplot", std::ios::binary | std::ios::ate );
-  std::ofstream roc_curve_script_file("provallo_web_requests_roc_curve.gnuplot", std::ios::binary | std::ios::ate);
-  std::ofstream confusion_matrix("provallo_web_requests_confusion_matrix.DAT", std::ios::binary | std::ios::ate);
-  std::ofstream model_data("provallo_web_requests_model_data.DAT", std::ios::binary | std::ios::ate);
+  std::ofstream roc_curve("provallo_web_requests_roc_curve.DAT");
+   std::ofstream gnuplot_script_file("provallo_web_requests.gnuplot");
+  std::ofstream confusion_matrix_script( "provallo_web_requests_test_confusion_matrix.gnuplot"  );
+  std::ofstream roc_curve_script_file("provallo_web_requests_roc_curve.gnuplot" );
+  std::ofstream confusion_matrix("provallo_web_requests_confusion_matrix.DAT" );
+  std::ofstream model_data("provallo_web_requests_model_data.DAT" );
+  std::ofstream vectorizer_dump("provallo_web_requests_vectorizer.json" );
+
   //validate vectorizer:
   std::cout<<"[+] validating vectorizer : "<<std::endl;
   if ( vectorizer.get_bag_of_words().size() > 2)
@@ -4896,11 +4931,9 @@ void train_web_requests_patterns()
   // save roc curve
   roc_curve.close();
   // save roc curve script
-  if(roc_curve_script_file.is_open() && roc_curve_script_file.good())
-  {
-    std::string roc_curve_script = "set terminal png\n"
+   std::string roc_curve_script = "set terminal png\n"
                                    "set output \"web_requests_test_conf.png\"\n"
-                                   "set title \"web requests confusion_matrix\"\n"
+                                   "set title \"web requests ROC curve\"\n"
                                    "set xlabel \"Predicted labels\"\n"
                                    "set ylabel \"Target labels\"\n"
                                    "set grid\n"
@@ -4918,29 +4951,45 @@ void train_web_requests_patterns()
                                     "set style line 7 lc rgb '#dd181f' lt 1 lw 2 pt 19 ps 1.5\n"
                                     "set style line 8 lc rgb '#dd181f' lt 1 lw 2 pt 21 ps 1.5\n"
                                     //describe labels 
-                                    "set label 1 \"100-200\" at graph 0.1,0.9\n"
-                                    "set label 2 \"300-400\" at graph 0.1,0.8\n"
-                                    "set label 3 \"400-500\" at graph 0.1,0.7\n"
-                                    "set label 4 \"500-600\" at graph 0.1,0.6\n"
-                                    "set label 5 \"OTHER\" at graph 0.1,0.5\n"
+                                  
 
-                                    //set matrix size
-                                    "set xrange [0:5]\n"
-                                    "set yrange [0:5]\n"
+                                    //set matrix size prediction x target
+                                    "set xrange [0:1]\n"
+                                    //set matrix size prediction x target
+                                    "set yrange [0:1]\n"
                                     //set the palette
                                     "set palette defined ( 0 '#0060ad', 1 '#dd181f', 2 '#dd181f', 3 '#dd181f', 4 '#dd181f', 5 '#dd181f', 6 '#dd181f', 7 '#dd181f', 8 '#dd181f', 9 '#dd181f', 10 '#dd181f', 11 '#dd181f', 12 '#dd181f', 13 '#dd181f', 14 '#dd181f', 15 '#dd181f', 16 '#dd181f', 17 '#dd181f', 18 '#dd181f', 19 '#dd181f', 20 '#dd181f', 21 '#dd181f', 22 '#dd181f', 23 '#dd181f', 24 '#dd181f', 25 '#dd181f', 26 '#dd181f', 27 '#dd181f', 28 '#dd181f', 29 '#dd181f', 30 '#dd181f', 31 '#dd181f', 32 '#dd181f', 33 '#dd181f', 34 '#dd181f', 35 '#dd181f', 36 '#dd181f', 37 '#dd181f', 38 '#dd181f', 39 '#dd181f', 40 '#dd181f', 41 '#dd181f', 42 '#dd181f', 43 '#dd181f', 44 '#dd181f', 45 '#dd181f', 46 '#dd181f', 47 '#dd181f', 48 '#dd181f', 49 '#dd181f', 50 '#dd181f', 51 '#dd181f', 52 '#dd181f', 53 '#dd181f', 54 '#dd181f', 55 '#dd181f', 56 '#dd181f', 57 '#dd181f', 58 '#dd181f', 59 '#dd181f', 60 '#dd181f', 61 '#dd181f', 62 '#dd181f', 63 '#dd181f', 64 '#dd181f', 65 '#dd181f', 66 '#dd181f', 67 '#dd181f', 68 '#dd181f', 69 '#dd181f')\n"
                                     //choose heatmap style
                                     "set pm3d map\n"
+                                    "function fpr(x,y){\n"
+                                    "  dx = (x[2] - x[1])\n"
+                                    "  sum = 0\n"
+                                    "  do for [i=1:words(x)] {\n"
+                                    "    sum = sum + (word(x,i) - word(x,i-1)) * (word(y,i) + word(y,i-1)) / 2\n"
+                                    "  }\n"
+                                    "  return sum / dx\n"
+                                    "}\n"
 
-                                    //plot the confusion matrix
-                                    "plot \"web_requests_confusion_matrix.DAT\" matrix with image\n";
+                                    "function tpr(x,y) {\n"
+                                    "  dx = (x[2] - x[1])\n"
+                                    "  sum = 0\n"
+                                    "  do for [i=1:words(x)] {\n"
+                                    "    sum = sum + (word(x,i) - word(x,i-1)) * (word(y,i) + word(y,i-1)) / 2\n"
+                                    "  }\n"
+                                    "  return sum / dx\n"
+                                    "}\n"
                                     
+
+                                    
+                                    //plot roc curve:
+                                    "plot \"web_requests_roc_curve.DAT\" using (fpr($1,$2)):(tpr($1,$2)) with linespoints ls 1\n";
+                                    
+                                        
       // save roc curve script
       roc_curve_script_file<<roc_curve_script;
       roc_curve_script_file.close();
       std::cout<<"[+] roc curve script saved"<<std::endl;
-  }
-      //save confusion matrix script
+       //save confusion matrix script
       std::string dv = "set terminal png\n"
                                             "set output \"web_requests_confusion_matrix.png\"\n"
                                             "set title \"web requests confusion matrix\"\n"
@@ -4986,9 +5035,12 @@ void train_web_requests_patterns()
     //save softmax
     softmax.save(std::string("provallo_softmax_model_web_requests_test.json"));
 
-    //save vectorizer
-    vectorizer.save(std::string("provallo_vectorizer_model_web_requests_test.json"));
 
+    //save vectorizer
+    vectorizer.save(vectorizer_dump);
+    vectorizer_dump.close();
+    std::cout<<"[+] vectorizer saved"<<std::endl;
+ 
     //save model data 
     if (model_data.is_open() && model_data.good())
     {
@@ -5011,9 +5063,7 @@ void train_web_requests_patterns()
           model_data<< softmax.getBias1Grad()[i*softmax.getOutputDim()+j]<<" ";
           model_data<< softmax.getWeight2Grad()[i*softmax.getOutputDim()+j]<<" ";
           model_data<< softmax.getBias2Grad()[i*softmax.getOutputDim()+j]<<" ";
-
-          
-          
+ 
         }
         model_data<<std::endl;
       }

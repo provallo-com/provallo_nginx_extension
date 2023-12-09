@@ -446,8 +446,14 @@ namespace provallo
         
         void backprop(T *input, T *output, size_t size);
 
-        T *getWeight1();
-        T *getWeight2();
+        T *getWeight1()
+        {
+            return weight1;
+        }
+        T *getWeight2()
+        {
+            return weight2;
+        }
         void setInput(T *input);
         void setHidden(T *hidden);
         void setOutput(T *output);
@@ -475,8 +481,14 @@ namespace provallo
         real_x getSparsityParam() const;
         real_x getBeta() const;
 
-        T *getWeight1() const;
-        T *getWeight2() const;
+        T *getWeight1() const
+        {
+            return weight1;
+        }
+        T *getWeight2() const
+        {
+            return weight2;
+        }
         void setWeight1(T *weight1);
         void setWeight2(T *weight2);
         void setBias1(T *bias1);
@@ -502,10 +514,24 @@ namespace provallo
         void setBias1Inc(T* bias1Inc);
         void setBias2Inc(T* bias2Inc);
 
-        T *getWeight1Inc() const;
-        T *getWeight2Inc() const;
-        T *getBias1Inc() const;
-        T *getBias2Inc() const;
+        T *getWeight1Inc() const
+        {
+            return weight1Inc;
+        }
+        T *getWeight2Inc() const
+        {
+            return weight2Inc;
+        }
+
+        T *getBias1Inc() const
+        {
+            return bias1Inc;
+        }
+
+        T *getBias2Inc() const
+        {
+            return bias2Inc;
+        }
 
 
         void setWeight1Grad(T* setWeight1Grad); 
@@ -513,10 +539,22 @@ namespace provallo
         void setBias1Grad(T* setBias1Grad);
         void setBias2Grad(T* setBias2Grad);
 
-        T *getWeight1Grad() const;
-        T *getWeight2Grad() const;
-        T *getBias1Grad() const;
-        T *getBias2Grad() const;
+        T *getWeight1Grad() const
+        {
+            return weight1Grad;
+        }
+        T *getWeight2Grad() const
+        {
+            return weight2Grad;
+        }
+        T *getBias1Grad() const
+        {
+            return bias1Grad;
+        }
+        T *getBias2Grad() const
+        {
+            return bias2Grad;
+        }
 
 
         //previous values :
@@ -844,7 +882,21 @@ namespace provallo
 
 
 
-
+        //gnuplot 
+        void gnuplot(const std::string filename)
+        {
+            std::ofstream out(filename); 
+            size_t npos= filename.find_last_of('/',0) ;
+            std::string title = filename.substr(npos+1, filename.find("."));
+            
+            out << "set terminal png" << std::endl;
+            out << "set output \" "<<title<<"_autoencoder.png\"" << std::endl;
+            out << "set title \""<<title<<"autoencoder\"" << std::endl;
+            out << "set xlabel \"x\"" << std::endl;
+            out << "set ylabel \"y\"" << std::endl;
+            out << "plot \"autoencoder.dat\" using 1:2 title \"input\" with lines, \"autoencoder.dat\" using 1:3 title \"output\" with lines" << std::endl;
+            out.close();
+        }
 
         void updateWeight1Grad();   
         void updateWeight2Grad();
@@ -3452,19 +3504,24 @@ namespace provallo
         //we updated the input and outputs, now we can update the weights and backpropagate
         //the error
         //update weights:
+
         this->updateWeight1();
         this->updateWeight2();
         this->updateBias1();
         this->updateBias2();
-        //call forward 
-        forward();
+        //conjugategradient 
+        //call backprop
+        backprop();
+        //done 
+
+        //update output
 
         for(size_t i=0;i<outputDim&&i<size;i++)
         {
             output[i]=this->output[i];
         }
 
-        std::cout << "[+] autoencoder - feedforward done." << std::endl;
+        //std::cout << "[+] autoencoder - feedforward done." << std::endl;
 
         //done
 
@@ -3494,8 +3551,8 @@ namespace provallo
     {
         real_x loss = 0.0;
         real_x MSE=0.0;
-
-
+        static const size_t DEBUG_ITER = 1000;
+        static size_t iter = 0;
 
         //assume input_param is inputDim size and output_param is size,which is not necessirly
         //outDim size
@@ -3536,7 +3593,11 @@ namespace provallo
         {
             output_param[i]=output[i];
         }
-        std::cout<<"[+] DEBUG autoencoder - backprop done, MSE="<<MSE<<std::endl; 
+        if(iter++ % DEBUG_ITER == 0)
+        {
+            std::cout<<"[+] DEBUG autoencoder - backprop done, MSE="<<MSE<<std::endl; 
+        }
+        //done
 
  
     }
@@ -3684,16 +3745,6 @@ namespace provallo
         return momentum;
     }
 
-    template <typename T, typename real_x>
-    T *auto_encoder<T,real_x>::getWeight1() const
-    {
-        return weight1;
-    }
-    template <typename T, typename real_x>
-    T *auto_encoder<T,real_x>::getWeight2() const
-    {
-        return weight2;
-    }
     template <typename T, typename real_x>
     T *auto_encoder<T,real_x>::getBias1() const
     {
@@ -5410,7 +5461,7 @@ namespace provallo
         //update bias2Inc
         updateBias2Inc();
         
-        
+        //std::cout << "auto_encoder conjugateGradient end" << std::endl;
     }
 
     //clear()
@@ -5887,7 +5938,7 @@ namespace provallo
             }   
 
             //cross entropy:
-            
+
             //update output from softmax. 
             for(size_t i=0;i<output.size1();++i)
             {
@@ -6072,6 +6123,7 @@ namespace provallo
             this->loss = 0.;
             this->accuracy = 1.;
             this->cost = 0.;
+            const real_t epsilon = 0.0000001;
             //autoencoder :
             std::vector<real_t> target_indices;
             for (size_t i = 0; i < label_indices.size(); i++)
@@ -6082,6 +6134,10 @@ namespace provallo
             //softmax:
             //target:
             std::map<  size_t  , double > class_distribution ;
+            for(size_t n=0;n<n_classes;++n)
+            {
+                class_distribution.insert(std::make_pair(n,0.0));
+            }   
 
             double total_dist = 0.;
             matrix<real_t> target(input.rows(),n_classes);
@@ -6112,7 +6168,7 @@ namespace provallo
             }
 
             //balance distribution of labels:
- 
+            //balance_labels();
             //train:
             train(input,target);
 
@@ -6131,18 +6187,18 @@ namespace provallo
                     if( target(i,j)!=target(i,j) )
                         {
                             if(row_sum!=row_sum) 
-                                target(i,j) = 0.0001;
+                                target(i,j) =epsilon;
                             else if (row_sum==0.0)
                             {
-                                target(i,j) = 0.0001;
+                                target(i,j) =epsilon;
                             }
                             else
-                            target(i,j) = j*0.001;
+                            target(i,j) = j*epsilon;
                         }
                     //check max
                     if(target(i,j)>target(i,max_index))
                       { 
-                        prob = target(i,j)==target(i,j)?target(i,j):0.0001   ;
+                        prob = target(i,j)==target(i,j)?target(i,j):epsilon  ;
                         max_index = j;
 
                         if(prob==prob)
@@ -6152,7 +6208,7 @@ namespace provallo
                         }//else : prob is nan 
                         else{
                             //backpropogate nan/-nan :
-                            prob =  target(i,j) = 0.0001;
+                            prob =  target(i,j) = epsilon;
                         } 
 
                       }
@@ -6164,9 +6220,8 @@ namespace provallo
                 <<std::to_string(label_indices[i])<<" label, "<<std::to_string(prob/sum)<<" probability" 
                 << ", row sum : " << std::to_string(target.row_sum(i))<<    std::endl; 
 
-                
             } 
-
+            //done.
          }
         
         //train a single case
@@ -6548,6 +6603,7 @@ namespace provallo
             //write the graph to file
             out << "#!/usr/bin/gnuplot -persist" << std::endl;
             out << "set title \"softmax classifier\"" << std::endl;
+            out << "set terminal png size 800,600 enhanced font \"Helvetica,20\"" << std::endl;
             out << "set xlabel \"x\"" << std::endl;
             out << "set ylabel \"y\"" << std::endl;
             out << "set zlabel \"z\"" << std::endl;
@@ -6581,10 +6637,20 @@ namespace provallo
             out <<"set style line 16 lt 1 lw 1 lc rgb \"dark-gray\""<< std::endl;
             //set parallel view 
             out <<"set view equal xyz"<< std::endl; 
+            out <<"set contour base"<< std::endl;
+            out <<"set cntrparam levels 20"<< std::endl;
+            out <<"set style data lines"<< std::endl;
+            out <<"set style function lines"<< std::endl;
+            out <<"set style line 1 lt 1 lw 1 lc rgb \"red\""<< std::endl;
+            out <<"set style line 2 lt 1 lw 1 lc rgb \"blue\""<< std::endl;
+            out <<"set style line 3 lt 1 lw 1 lc rgb \"green\""<< std::endl;
+            out <<"set style line 4 lt 1 lw 1 lc rgb \"yellow\""<< std::endl;
+            out <<"set style line 5 lt 1 lw 1 lc rgb \"black\""<< std::endl;
+            out <<"set style line 6 lt 1 lw 1 lc rgb \"cyan\""<< std::endl;
+            
             //plot autoencoder weights 
             out << "splot \"" << filename << ".dat\" using 1:2:3:4 with points palette pt 7 ps 1 title \"softmax\"" << std::endl;
             //plot autoencoder
-            out << "pause -1" << std::endl;
             out.close();
             //done.
         }
