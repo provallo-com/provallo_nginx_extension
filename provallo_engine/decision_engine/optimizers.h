@@ -120,9 +120,11 @@ namespace provallo
 					}
 				}
 			}
-		};		
+		};
 
+		 
 
+		
 
 	}//namespace filters
 	 	
@@ -1253,7 +1255,7 @@ namespace provallo
 			};//struct FinalMutator
 	
 			}//namespace global
- 
+			
 	}//namespace provallo
 
 #endif /* DECISION_ENGINE_OPTIMIZERS_H_ */

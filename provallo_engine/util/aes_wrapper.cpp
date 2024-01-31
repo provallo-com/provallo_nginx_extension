@@ -14,7 +14,7 @@ namespace provallo
   aes_ifile::aes_ifile(const char *filename, const char *key_data)
   : _begin(0), _end(0), _current(0), _data(0), _key_data(key_data),_good(true) {
   	// Try to open the file
-  	int fd;
+  	int fd = -1;
   	if ((fd = open(filename, O_CREAT | O_RDONLY, 0600)) == -1) {
   		_good = false;
   		return;
@@ -23,7 +23,7 @@ namespace provallo
   	unsigned int salt[] = { 0xF9090909, 0x090909F9 };
   	if (aes_init((const unsigned char*)(_key_data.c_str()), _key_data.size(),
   			(unsigned char*)(&salt), en_(), de_())) {
-  		_good = false;
+  		_good = false;	
   		return;
   	}
   	// Get the number of bytes inside the file
@@ -36,19 +36,31 @@ namespace provallo
   	int bytes_read = read(fd, (void *)(ciphertext), size);
   	if(bytes_read != size) {
   		_good = false;
+		//deallocation
+		delete [] ciphertext;
   		return;
   	}
    	// Get plain text
   	_data = (const char *)(aes_decrypt(de_(), (unsigned char *)(ciphertext), &size));
   	// Setup the stream pointers 
 
+	if (_data == nullptr)
+	{
+		_good = false;
+		delete [] ciphertext;
+
+		return;
+	}
   	_begin = _data;
   	_end = _data + size;
   	_current = _data;
-   	// Close the file
-  	close(fd);
+
+   
+	_good = true;
   	// Delete cipher text
   	delete [] ciphertext;
+	// Close the file
+  	close(fd);
   }
 
   aes_ifile::int_type aes_ifile::underflow() {

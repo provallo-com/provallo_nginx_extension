@@ -11,6 +11,8 @@
 #include "../decision_engine/tree_classifiers.h"
 #include "../decision_engine/info_helper.h"
 #include "../third_party/sqlite.h"
+#include "../decision_engine/lstm.h"
+#include "../decision_engine/fast_matrix_forest.h"
 
 #include <dirent.h>
 #include <filesystem>
@@ -1068,8 +1070,19 @@ bool test_dataset_load_msource()
     confusion_gnuplot << "plot \"provallo_net_confusion_matrix.dat\" matrix with image" << std::endl;
     confusion_gnuplot.close();
     roc_curve.clear();
+    // clear the confusion matrix :
     predictions.clear();
+
     target.clear();
+    // clear the training set :
+    training.clear();
+    // clear the testing set :
+    testing.clear();
+    // clear the labels :
+    labels.clear();
+    // clear the source :
+    source.clear();
+
   }
 
   catch (const std::exception &e)
@@ -1262,8 +1275,18 @@ void train_web_requests_patterns();
 void test_web_requests_patterns();
 void validate_simple_softmax();
 bool benchmark_neural_network(const std::string banchmark_folder);
+void test_lstm(const std::string &test_lstm_folder);
+void compare_forest_to_hyperplane_matrix();
+void create_spike_train_animation(size_t number_of_frames,size_t number_of_spikes_per_frame,size_t number_of_neurons);
+
 int main(int argc, char *argv[])
 {
+
+
+  //
+  // for the website: 
+  //
+  create_spike_train_animation(100,100,100); 
 
   if (argc > 1)
   {
@@ -1273,10 +1296,15 @@ int main(int argc, char *argv[])
   //validat matrix operations for debugging:
   //test_matrix();
   //validate softmax classifier 
-  validate_simple_softmax();
+  // validate_simple_softmax();
   // validate section readnig of  nginx configuration file
   // 
-  
+
+
+  compare_forest_to_hyperplane_matrix();
+
+  test_lstm("./db/benchmarks");
+
   std::getchar();
 
   test_spike_train_generator();
@@ -2048,7 +2076,6 @@ bool benchmark_classifiers(const std::string benchmark_folder)
         confusion_gnuplot << "\"" << i << "\" " << i << ",";
       }
     }
-
     confusion_gnuplot << ")" << std::endl;
 
     confusion_gnuplot << "plot \"softmax_test_confusion_matrix_" << file_stem << ".dat\" matrix with image" << std::endl;
@@ -2063,6 +2090,7 @@ bool benchmark_classifiers(const std::string benchmark_folder)
     // save softmax results
 
     // save softmax classifier
+
     softmax.save("softmax_" + file_stem + ".json");
     // std::getchar();
 
@@ -2079,11 +2107,13 @@ bool benchmark_classifiers(const std::string benchmark_folder)
     // weights_.close();
     std::cout << "-- deleting description file .... " << std::endl
               << std::endl;
+    
+    // 
 
     description_file.clear();
     mdata.resize(1, 1);
     ret = true;
-
+    // x+= std::getchar();
     // clean up
     // delete factory
     // std::cout<<"-- deleting random factory .... "<<std::endl<<std::endl;
@@ -2092,7 +2122,6 @@ bool benchmark_classifiers(const std::string benchmark_folder)
     // std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
     // if(factory)
     //    delete factory;
-
     /*
           std::cout<<"-- deleting factory .... "<<std::endl<<std::endl;
           if(factory)
@@ -2113,7 +2142,263 @@ bool benchmark_classifiers(const std::string benchmark_folder)
   } // end for description_files
   return ret;
 } // end benchmark_classifiers
+void test_lstm(const std::string &test_lstm_folder)
+{
+  std::cout << "-- testing lstm .... " << std::endl
+            << std::endl;
+  // iterate all the files in the folder, if it's a descrition file, build dataset and classifiers for it
+  std::vector<std::string> files = getFilesInFolder(test_lstm_folder);
+  std::vector<std::string> description_files;
+  real_t accuracy = 0.0;
+  real_t precision = 0.0;
+  real_t recall = 0.0;
+  real_t f1 = 0.0;
+  real_t auc = 0.0;
+    
+  real_t fpr=0.0,tpr=0.0,fnr=0.0,tnr=0.0;
+  real_t tp=0.0,fp=0.0,fn=0.0,tn=0.0;
 
+  for (auto file : files)
+  {
+    if (file.find(".names") != std::string::npos)
+    {
+      description_files.push_back(file);
+
+      std::cout << "-- found description file : " << file << std::endl;
+    }
+  }
+  //create source
+  for ( auto& desc : description_files )
+  {
+    std::cout<<"-- testing lstm for : "<<desc<<std::endl;
+    //create source
+    std::string file_stem = desc.substr(0, desc.find(".names")); 
+    provallo::names_source source(test_lstm_folder + std::string("/") + file_stem);
+
+    provallo::learning_task learning_helper(source); 
+ 
+    //get the target column index :
+    size_t target_column = source.target_column(); 
+    if(target_column==0)
+    {
+      //validate the column name is the actual target and not target 
+      //descriptor :
+      if(source.trainingLabelNames()[0] == "target")
+      {
+         std::string target_name = source.trainingLabelNames()[target_column]; 
+         //find the target column index :
+          for ( size_t i = 0 ; i < source.trainingLabelNames().size() ; i++ )
+          {
+            if(source.trainingLabelNames()[i] == target_name)
+            {
+              target_column = i;
+              break;
+            }
+          } 
+       } //end if source.trainingLabelNames()[0] == "target"
+      
+    } //end if target_column == 0
+    //print source description :
+    std::cout<<"-- source description : "<<std::endl; 
+    std::cout<<source.n_features()<<" features "<<std::endl;  
+    std::cout<<source.n_classes()<<" classes "<<std::endl;
+    std::cout<<source.n_test()<<" test samples "<<std::endl;
+    std::cout<<source.n_train()<<" train samples "<<std::endl;
+    
+
+
+    //initialize LSTM with n_features as input size, n_hidden as hidden size, n_classes as output size and n_layers as number of layers 
+    provallo::LSTM<real_t> lstm(source.n_features(),source.n_features()*source.n_classes(),source.n_classes()); 
+    //create a batch of inputs and desired outputs
+    provallo::matrix<real_t> inputs = source.trainingSample(); 
+    provallo::matrix<real_t> outputs(inputs.size1(),1);
+    //confusion matrix 
+    provallo::matrix<real_t> confusion_(source.n_classes(),source.n_classes()); 
+    
+    //set the outputs to the labels 
+    auto training_labels = source.trainingLabels(); 
+    for ( size_t i = 0 ; i < inputs.size1() ; i++ )
+    {
+      outputs(i,0) =  training_labels[i];
+    }
+    provallo::super_tree<real_t,size_t> hyper_mat (/*X*/inputs ,/*y*/training_labels,
+    source.n_features(), inputs.size1()); 
+  
+
+    //train the LSTM with the inputs and outputs 
+    lstm.fit(inputs,outputs);
+   
+    std::cout<<"LTSM trained "<<std::endl;
+    std::cout<<"cross entropy loss : "<<std::to_string(lstm.get_ce_loss())<<std::endl; 
+    std::cout<<"kl loss : "<<std::to_string(lstm.get_kl_loss())<<std::endl; 
+
+
+    
+    auto predict_hyper = hyper_mat.predict(inputs);
+    //compare out with outputs to get the confusion matrix
+    //update confusion matrix
+    for(size_t i = 0 ; i < inputs.size1() ; i++)
+    {
+      confusion_(training_labels[i],predict_hyper[i])++; 
+    } 
+    //print confusion for hyper :
+    std::cout<<"-- hyper train confusion matrix : "<<std::endl; 
+    std::cout<<confusion_<<std::endl<<std::endl; 
+    //print eta for hyper :
+    std::cout<<"-- hyper training eta : "<<std::endl;
+    std::cout<<hyper_mat.get_eta()<<std::endl<<std::endl;
+
+
+    //reset confusion matrix 
+    confusion_.clear();
+
+    //pr = tp / (tp + fp) == 0 ? 1 : (tp + fp); 
+    //update correct/error rates
+    
+
+    
+    
+
+
+    //train the learning helper with the inputs and outputs 
+    //set evaluation metrics 
+       //create a batch of inputs and desired outputs
+    learning_helper.runSingleMinibatchExperiment(); 
+
+    //test the LSTM with the inputs and outputs 
+    //set evaluation metrics 
+       //create a batch of inputs and desired outputs
+    inputs = source.testingSample();
+    outputs.resize(inputs.size1(),1);
+    //set the outputs to the labels
+    auto test_labels = source.testingLabels();
+    for ( size_t i = 0 ; i < inputs.size1() ; i++ )
+    {
+      outputs(i,0) = test_labels[i];
+    }
+    //test the LSTM with the inputs and outputs
+    //call predict to get the predictions 
+    predict_hyper = hyper_mat.predict(inputs); //get the predictions from the hyper tree 
+    //compare out with outputs to get the confusion matrix 
+    //update confusion matrix
+    for(size_t i = 0 ; i < inputs.size1() ; i++)
+    {
+      confusion_(test_labels[i],predict_hyper[i])++;
+      
+    }
+    //print confusion for hyper :
+    std::cout<<"-- hyper test confusion matrix : "<<std::endl; 
+    std::cout<<confusion_<<std::endl<<std::endl; 
+    //print eta for hyper :
+    std::cout<<"-- hyper test eta : "<<std::endl; 
+    std::cout<<hyper_mat.get_eta()<<std::endl<<std::endl; 
+    //reset confusion matrix
+    confusion_.clear();
+
+
+    provallo::matrix<real_t> out = lstm.predict(inputs,1);
+    //get the outputs from the predictions 
+     
+    //compare out with outputs to get the confusion matrix 
+    //update confusion matrix
+    
+    //update correct/error rates
+    size_t correct = 0;
+    size_t errors = 0;
+    size_t target_class=0,predicted_class=0;
+    accuracy = 0.0; 
+    fpr = 0.0;
+    tpr = 0.0;
+    auc = 0.0;
+    f1 = 0.0;
+    fnr = 0.0;
+    tnr = 0.0;
+    tp = 0.0;
+    fp = 0.0;
+    fn = 0.0;
+    tn = 0.0;
+
+    //compare results with test set
+    for ( size_t i = 0 ; i < outputs.size1() ; i++ )
+    {
+      //get target class
+      target_class = outputs(i,0);
+      //get predicted class
+      predicted_class = out(i,0)  ;
+
+      //update confusion matrix :
+      confusion_(target_class,predicted_class)++; 
+      //update correct/error rates
+      correct += target_class == predicted_class;
+      errors += target_class != predicted_class;
+      //update fp,fn,tp,tn
+      if ( target_class == predicted_class )
+      {
+        tp += 1.;
+      }
+      else
+      {
+        //check if it's a false negative or a false positive
+        if ( target_class == 0 )
+        {
+          fn += 1.;
+        }
+        else if ( predicted_class == 0 )
+        {
+          fp += 1.;
+        }
+        else
+        {
+          tn += 1.;
+        }
+      }//end if target_class == predicted_class 
+    }//end for outputs.size1()
+    
+    //calculate prediction accuracy
+    accuracy = correct * 100.0 / (outputs.size1());
+    fpr = fp * 100.0 / outputs.size1();
+    tpr = tp * 100.0 / outputs.size1();
+    auc = fpr == 0.0 ? 1. : (tpr / fpr);
+    f1 = 2. * (tpr * fpr) / (tpr + fpr);
+    fnr = fn * 100.0 / outputs.size1(); 
+    tnr = tn * 100.0 / outputs.size1();
+    //Precision :
+    precision = tpr / (tpr + fp);
+    //Recall :
+    recall = tpr / (tpr + fn);
+    //calculate auc
+    //calculate confusion matrix
+    std::cout<<"-- lstm test accuracy : "<<std::to_string(accuracy)<<std::endl; 
+    std::cout<<"-- lstm test correct : "<<std::to_string(correct)<<std::endl;
+    std::cout<<"-- lstm test errors : "<<std::to_string(errors)<<std::endl;
+    std::cout<<"-- lstm test false positive rate : "<<std::to_string(fpr)<<std::endl;
+    std::cout<<"-- lstm test true positive rate : "<<std::to_string(tpr)<<std::endl;
+    std::cout<<"-- lstm test auc : "<<std::to_string(auc)<<std::endl;
+    std::cout<<"-- lstm test F1 : "<<std::to_string(f1)<<std::endl;
+    std::cout<<"-- lstm test precision : "<<std::to_string(precision)<<std::endl;
+    std::cout<<"-- lstm test recall : "<<std::to_string(recall)<<std::endl;
+    std::cout<<"-- fnr : "<<std::to_string(fnr)<<std::endl; 
+    std::cout<<"-- tnr : "<<std::to_string(tnr)<<std::endl;
+    std::cout<<"-- tpr : "<<std::to_string(tpr)<<std::endl; 
+    std::cout<<"-- fpr : "<<std::to_string(fpr)<<std::endl;
+
+    std::cout<<"-- lstm test confusion matrix : "<<std::endl;
+    //print confusion matrix
+    std::cout<<"-- lstm test results : "<<std::endl;
+    //save confusion matrix
+    std::ofstream confusion_file("lstm_test_confusion_matrix_"+desc+".dat");
+    //save the confusion_ data to file
+    confusion_file<<confusion_;
+    //close confusion file
+    confusion_file.close();
+    std::cout<<confusion_<<std::endl<<std::endl;
+    std::cout<<"-- lstm test results ---"<<std::endl<<std::endl;
+    std::getchar();
+
+  }//end for description_files
+  //create task
+
+} // end test_lstm
 provallo::learning_task::task_configuration build_task_from_source(provallo::names_source &src)
 {
   provallo::learning_task::task_configuration task;
@@ -2141,7 +2426,6 @@ provallo::learning_task::task_configuration build_task_from_source(provallo::nam
   task._ImgParIntervalleImg = 0;
   task.minibatchSize = 1;
   task.imageSizeSide = 1;
-
   task.imageSizeSide = 1;
   task.generatorPath = "./gen/";
   task.discriminatorPath = "./disc/dest";
@@ -3084,7 +3368,118 @@ bool fit_fuzzsb(const std::string &fit_fuzzsb_folder)
 
 } //  end of fit_fuzzdb
   //-----------------------------------------------------------------------------
+void create_spike_train_animation(size_t number_of_frames,size_t number_of_spikes_per_frame,size_t number_of_neurons)
+{
+  
+  real_t sigma = 1.0, mu = 0.1, dt = 0.1, t_min = 0.01, t_max = 1.0;
+  // create spike train generator
+  //assign ratio of number of neurons to number of spikes per frame 
+  // as dt, t_min, t_max are fixed, the only way to increase the number of spikes per frame is to increase the number of neurons 
+  // and the only way to increase the number of frames is to increase the number of spikes per frame 
 
+  dt = 1.0/real_t(number_of_neurons); 
+  
+  provallo::gaussian_spike_train_generator<real_t> test_spike_train_generator(sigma, mu, dt, t_min, t_max);
+  // generate spike train
+  std::vector<real_t> train = test_spike_train_generator.generate();
+  while (test_spike_train_generator.refine(train) <= 0.0)
+  {
+    std::cout << "[+] spike not  refined" << std::endl; 
+    mu+=0.01;
+    sigma+=0.01;
+    test_spike_train_generator = provallo::gaussian_spike_train_generator<real_t>(sigma, mu, dt, t_min, t_max); 
+     
+    train = test_spike_train_generator.generate();
+  }
+  
+    
+  std::cout << "[+] spike train generated" << std::endl; 
+  // refine spike train
+  
+
+  std::cout << "[+] spike train refined" << std::endl;
+  std::ofstream spikes_animation("spikes_animation.DAT",std::ios::app); 
+  if(!spikes_animation.is_open() || !spikes_animation.good())
+  {
+    std::cout << "[-] error opening spikes_animation.DAT file" << std::endl;
+    return;
+  } 
+
+  // create spike train animation
+  for(size_t i =0; i< number_of_frames; i++)
+  {
+
+    // create spike train
+    std::vector<real_t> spikes (test_spike_train_generator.generate()); 
+    real_t refine = test_spike_train_generator.refine(spikes); 
+
+
+    std::cout<<"[+] generated "<<std::to_string(spikes.size())<<" spikes, refine score : "<<std::to_string(refine) << std::endl; 
+
+    // append to the spikes_animation.DAT file 
+    for(size_t j =0; j< number_of_spikes_per_frame; j++)
+    {
+      std::cout<<"frame "<<std::to_string(i)<<",spike refine -> "<<std::to_string(j)<<std::endl;
+      
+      auto generated_frame = test_spike_train_generator.generate(); 
+      refine = test_spike_train_generator.refine(generated_frame); 
+      std::cout<<"[+] generated "<< std::to_string(generated_frame.size())<<" spikes, refine score : "<< std::to_string(refine)<<std::endl; 
+
+
+      //save the frame to the spikes_animation.DAT file 
+      for(size_t k =0; k< generated_frame.size(); k++)
+      {
+        auto& output =  test_spike_train_generator.get_output();
+        spikes_animation <<std::to_string((i*100)+(k)) << " " << std::to_string(output[k]) << " " << std::to_string(generated_frame[k]) << " " << std::endl ; 
+        
+        
+      }
+      spikes_animation << std::endl;
+
+    }
+    //close 
+    spikes_animation.close(); 
+    //write gnuplot script file for the animation:
+    std::ofstream gnuplot_script("spikes_animation.gnuplot",std::ios::app); 
+    if(!gnuplot_script.is_open() || !gnuplot_script.good())
+    {
+      std::cout << "[-] error opening spikes_animation.gnuplot file" << std::endl;
+      return;
+    } 
+    gnuplot_script << "set terminal gif animate delay 10" << std::endl; 
+    gnuplot_script << "set output 'spikes_animation.gif'" << std::endl; 
+    gnuplot_script << "set xrange [0:1]" << std::endl; 
+    gnuplot_script << "set yrange [0:1]" << std::endl;
+    gnuplot_script << "set zrange [0:1]" << std::endl; 
+    gnuplot_script << "set xlabel 'time'" << std::endl; 
+    gnuplot_script << "set ylabel 'neuron'" << std::endl; 
+    gnuplot_script << "set zlabel 'spike'" << std::endl; 
+    gnuplot_script << "set title 'provallo spike train animation'" << std::endl; 
+    gnuplot_script << "set pm3d" << std::endl; 
+    gnuplot_script << "set palette rgbformulae 33,13,10" << std::endl; 
+    gnuplot_script << "set hidden3d" << std::endl;
+    gnuplot_script << "set dgrid3d 100,100" << std::endl;
+    gnuplot_script << "set view 60,30" << std::endl;
+    gnuplot_script << "set ticslevel 0" << std::endl; 
+    gnuplot_script << "set isosamples 100" << std::endl;
+    //based on the number of frames loop through the DAT file and splot the spike trains 
+    gnuplot_script << "do for [i=0:" << std::to_string(number_of_frames) << "] {" << std::endl; 
+    gnuplot_script << "splot 'spikes_animation.DAT' index i using 1:2:3 with lines" << std::endl; 
+
+    //rotate the view 3 degrees every frame 
+    gnuplot_script << "set view 60,30+i*3" << std::endl; 
+    
+    gnuplot_script << "}" << std::endl;
+    gnuplot_script.close();
+    
+    std::getchar();
+    
+  } 
+
+  
+
+}
+  // create a spike train animation 
 // simplified version of fit_fuzzdb, for testing purposes:
 bool fit_fuzzdb_test(const std::string &ff)
 {
@@ -3630,9 +4025,26 @@ bool fit_fuzzdb_test(const std::string &ff)
 void test_spike_train_generator()
 {
  
-  real_t sigma = 1.0, mu = 0.1, dt = 0.1, t_min = 0.01, t_max = 1000.0;
+  real_t sigma = 1.0, mu = 0.1, dt = 0.1, t_min = 0.01, t_max = 1.0;
   // create spike train generator
   provallo::gaussian_spike_train_generator<real_t> test_spike_train_generator(sigma, mu, dt, t_min, t_max);
+  //set input array from random uniform distribution 
+  std::vector<real_t> input(1000); 
+
+  std::mt19937 gen(std::random_device{}() );
+  std::uniform_real_distribution<real_t> dist(0.0,1.0); 
+
+  for(auto &i : input)
+  {
+    i=dist(gen);
+  }
+  //
+  
+  test_spike_train_generator.set_input(input); 
+
+
+  //set output size 
+
   // generate spike train
   std::vector<real_t> train = test_spike_train_generator.generate();
   while (test_spike_train_generator.refine(train) <= 0.0)
@@ -3661,7 +4073,7 @@ void test_spike_train_generator()
       nlines++;
     }
     spike_train_file.close();
-
+    
     std::string gnuplot_script = "set terminal png\n"
                                  "set output \"spikes.png\"\n"
                                  "set title \"spike train\"\n"
@@ -3690,10 +4102,26 @@ void test_spike_train_generator()
                                  "set pm3d depthorder\n"
                                  "set pm3d interpolate 1,1\n"
                                  "set pm3d lighting primary 0.5 specular 0.5\n"
+                                 //set cbrange   
+                                 //"spikes_animation.gnuplot" line 18: *All* edges undefined or out of range, thus no plot.
+
                                  // splot:
+                                 "set palette rgbformulae 22,13,-31\n" // set palette rgbformulae 22,13,-31 
+                                   "set palette defined ( 0 \"white\", 1 \"red\" )\n" 
+                                  //cbrange and animation loop
+                                  "set cbrange [0:1]\n" 
+                                  "set cbtics ( 0, 1 )\n" 
+                                  "set cblabel \"spike\"\n"
+                                  "set terminal gif animate delay 10\n"
+                                  "set output \"spikes.gif\"\n"
+                                  "do for [i=0:1000] {\n"
+                                  //print which frame we are in 
+                                  "print \"frame \".i\n" 
+                                  //plot
+                                  "splot \"spike_train.DAT\" every ::::i with pm3d\n"
+                                  "}\n" ; 
 
-                                 "splot \"spike_train.DAT\"  with pm3d\n";
-
+                                  
     // plot:
     //"plot \"spike_train.DAT\" using 1:2 with lines\n"
 
@@ -3732,7 +4160,7 @@ void validate_simple_softmax ()
     provallo::matrix<real_t> out_mat(n_dimensions*n_classes,n_classes);
 
     //create spike generator
-    real_t sigma=1.0,mu=0.1,dt=0.1,t_min=0.01,t_max=1000.0;
+    real_t sigma=1.0,mu=0.1,dt=0.1,t_min=0.01,t_max=1.0;
     provallo::gaussian_spike_train_generator<real_t> test_spike_train_generator(sigma,mu,dt,t_min,t_max);
     //generate spike train
     std::vector<real_t> train=test_spike_train_generator.generate();
@@ -4887,7 +5315,7 @@ void train_web_requests_patterns()
   std::cout << "[+] correct classifications : " << std::to_string(correct_classifications) << std::endl;
   std::cout << "[+] error classifications : " << std::to_string(error_classifications) << std::endl;
   std::cout << "[+] softmax testing done" << std::endl;
-
+  
   //accuracy
   real_t accuracy = (real_t)correct_classifications / (real_t)total_cases;
   std::cout << "[+] accuracy : " << std::to_string(accuracy) << std::endl;
@@ -5078,3 +5506,302 @@ void train_web_requests_patterns()
 
 
  } // end test_web_requests_patterns
+
+// datasets = ["http", "smtp", "SA", "SF", "shuttle", "forestcover"]
+// saves 
+ void compare_forest_to_hyperplane_matrix() 
+ {
+    auto datasets = std::vector<std::string>{"http", "smtp", "SA", "SF", "shuttle", "forestcover"}; 
+    
+    //real_t outlier_ratio = 0.1;  
+    //count outlier values into ratio once predict is evaluated. 
+     
+    
+    std::vector<real_t> fpr_vector; 
+    std::vector<real_t> tpr_vector; 
+    std::vector<real_t> roc_area_vector; 
+    
+    std::vector<real_t> precision_recall_area;
+    //read the datasets and create super-tree 
+    std::vector<provallo::hashed_bag_of_words> vectorizers; 
+    //real_t outlier_ratio = 0.1; 
+    
+    //count outlier values into ratio once predict is evaluated.
+    //read datasets into matrices of X,y from numpy(.npy) formatted files :
+    //create a super-tree from the datasets 
+    //load the files:
+    std::cout<<"[+] loading datasets : "<<std::endl; 
+    for(auto& dat : datasets)
+    {
+      //read X,y
+      std::string X_file = std::string("./db/anomaly/")+dat+std::string("_X.csv"); 
+      std::string y_file = std::string("./db/anomaly/")+dat+std::string("_y.csv"); 
+      std::cout<<"[+] loading X : "<<X_file<<std::endl; 
+      std::cout<<"[+] loading y : "<<y_file<<std::endl; 
+      //load X,y 
+      std::vector<std::vector<real_t>> X_raw; 
+      provallo::matrix<real_t> X;  
+      provallo::matrix<real_t> y; 
+      
+      std::ifstream X_stream(X_file); 
+      std::ifstream y_stream(y_file);
+      std::string line;
+      while(std::getline(X_stream,line))
+      {
+        std::vector<real_t> row; 
+        std::stringstream ss(line); 
+        std::string value; 
+        if(line.length() <2)
+        {
+          continue; 
+        }
+        while(std::getline(ss,value,','))
+        {
+          row.push_back(std::stod(value)); 
+        }
+        X_raw.push_back(row); 
+      }
+      X_stream.close();
+      //convert X_raw to X matrix
+
+      if(X_raw.size() == 0 || X_raw[0].size() == 0)
+      {
+        if(X_raw.size()>0)
+        {
+          //maybe ignore the first row 
+          X_raw.erase(X_raw.begin());
+          if(X_raw.size() > 0)
+            std::cout<<"[+] error loading X : "<<X_file<<",size = "<<std::to_string(X_raw.size())<<std::to_string(X_raw[0].size())<< std::endl; 
+          continue;
+          
+        }
+        std::cout<<"[-] error loading X : "<<X_file<<std::endl; 
+        continue; 
+      } 
+      X.resize(X_raw.size(),X_raw[0].size());
+      for(size_t i=0;i<X_raw.size();i++)
+      {
+        for(size_t j=0;j<X_raw[0].size();j++)
+        {
+          X(i,j) = X_raw[i][j]; 
+          //check value is not nan or inf
+          if(std::isnan(X(i,j)) || std::isinf(X(i,j)))
+          {
+            //replace -inf with -1.0,inf with 1.0,nan with 0.0 
+            if(std::isinf(X(i,j)))
+            {
+              if(X(i,j) < 0)
+              {
+                X(i,j) = -1.0; 
+              }
+              else
+              {
+                X(i,j) = 1.0; 
+              }
+            }
+            else
+            {
+              X(i,j) = 0.0; 
+            } 
+
+          } 
+        }
+      }
+      //load y
+      std::vector<std::vector<real_t>> y_raw;
+      while(std::getline(y_stream,line))
+      {
+        std::vector<real_t> row; 
+        std::stringstream ss(line); 
+        std::string value; 
+        while(std::getline(ss,value,','))
+        {
+          row.push_back(std::stod(value)); 
+        }
+        y_raw.push_back(row); 
+      }
+      y_stream.close();
+      //convert y_raw to y matrix
+      y.resize(y_raw.size(),y_raw[0].size());
+      for(size_t i=0;i<y_raw.size();i++)
+      {
+        for(size_t j=0;j<y_raw[0].size();j++)
+        {
+          y(i,j) = y_raw[i][j]; 
+          //check value is not nan or inf 
+          if(std::isnan(y(i,j)) || std::isinf(y(i,j)))
+          {
+            //replace -inf with -1.0,inf with 1.0,nan with 0.0 
+            if(std::isinf(y(i,j)))
+            {
+              if(y(i,j) < 0)
+              {
+                y(i,j) = -1.0; 
+              }
+              else
+              {
+                y(i,j) = 1.0; 
+              }
+            }
+            else
+            {
+              y(i,j) = 0.0; 
+            } 
+
+          }
+
+        }
+      }
+     
+     //get number of classes,features from X,y
+      size_t n_classes = size_t(y.max())- size_t(y.min())+1; 
+
+      size_t n_features = 0;
+      if(X.size1() > 0 && X.size2() > 0)
+      {
+        n_features = X.size2(); 
+      }
+      else
+      {
+        std::cout<<"[-] error loading X : "<<X_file<<std::endl; 
+        continue; 
+      }
+        
+
+       
+      //create a super-tree from the datasets and fit X to y
+      std::cout<<"[+] creating super-tree from dataset : "<<dat<<std::endl; 
+      //print the number of classes and features 
+      std::cout<<"[+] n_classes : "<<n_classes<<std::endl; 
+      std::cout<<"[+] n_features : "<<n_features<<std::endl;
+      auto time_start = std::chrono::high_resolution_clock::now(); 
+
+
+      std::vector<size_t> y_vector(y.begin(),y.end()); 
+
+      provallo::super_tree<real_t,size_t> hyper_matrix(X,y_vector,X.size2(),y.size2());
+      //configure hyper_matrix 
+      hyper_matrix.set_eta(0.1);
+      hyper_matrix.set_momentum(0.9);
+      //fit X to y
+      std::cout<<"[+] fitting X to y : "<<dat<<std::endl;
+
+
+      //transform y to a vector of size_t 
+      hyper_matrix.fit(X,y_vector);
+      auto time_end = std::chrono::high_resolution_clock::now(); 
+      auto elapsed_fit_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_end-time_start); 
+
+      std::cout<<"[+] fit time : "<<std::to_string(elapsed_fit_time.count())<<std::endl; 
+
+
+
+      //save the decision function to file in a comma separated format 
+      auto score = hyper_matrix.score(X,y_vector);
+      std::cout<<"[+] saving train score to file : "<<dat<<std::endl; 
+      std::string decision_function_file = std::string("./df/")+dat+std::string("_decision_function.csv"); 
+      std::ofstream decision_function(decision_function_file); 
+      //save the score to file 
+
+      for(size_t i=0;i<score.size()-1;i++)
+      {
+        decision_function<<std::to_string(score[i])<<",";
+      }
+      decision_function<<std::to_string(  score[score.size()-1])<<std::endl; 
+
+      decision_function.close();
+      
+      //measure predict time 
+      auto start_time = std::chrono::high_resolution_clock::now(); 
+
+      std::vector<size_t> yy = hyper_matrix.predict(X); 
+      auto end_time = std::chrono::high_resolution_clock::now(); 
+      auto elapsed_predict_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time); 
+      std::cout<<"[+] predict time : "<<std::to_string(elapsed_predict_time.count())<<std::endl; 
+
+      //save the predictions to file 
+      std::cout<<"[+] saving predictions to file : "<<dat<<std::endl; 
+      std::string predictions_file = std::string("./pred/")+dat+std::string("_predictions.csv"); 
+      std::ofstream predictions(predictions_file); 
+      //save yy to file
+      for(size_t i=0;i<yy.size()-1;i++)
+      {
+        predictions<<std::to_string(yy[i])<<",";
+      }
+      predictions<<std::to_string(yy[yy.size()-1])<<std::endl;
+      predictions.close();
+
+      //compare yy to y
+      std::cout<<"[+] comparing yy to y : "<<dat<<std::endl; 
+      size_t correct_predictions = 0;  
+      real_t accuracy = 0.,precision=0.,recall=0.,f1_score=0.; 
+      real_t true_positives=0.,true_negatives=0.,false_positives=0.,false_negatives=0.; 
+      real_t anomaly_ratio = 0.0; 
+
+      for(size_t i=0;i<yy.size();i++)
+      {
+        //if prediction is out of class boundaries, it's an anomaly 
+        if(yy[i] < y.min() || yy[i] > y.max())
+        {         
+          std::cout<<"[+] anomaly detected on sample index : "<<std::to_string(i)<<std::endl; 
+          anomaly_ratio+=1.0/(real_t)yy.size(); 
+
+        }
+
+        if(yy[i] == y(0,i))
+        {
+          correct_predictions++; 
+          if(yy[i] == 1)
+          {
+            true_positives++; 
+          }
+          else
+          {
+            true_negatives++; 
+          }
+        }
+        else
+        {
+          if(yy[i] == 1)
+          {
+            false_positives++; 
+          }
+          else
+          {
+            false_negatives++; 
+          }
+        }
+      } 
+
+      //calculate accuracy
+      accuracy = (real_t)correct_predictions/(real_t)yy.size();
+      //calculate precision
+      precision =(false_positives>0)? (real_t)true_positives/(real_t)(true_positives+false_positives):1.;
+      //calculate recall
+      recall = (real_t)true_positives/(real_t)(true_positives+false_negatives);
+      //calculate f1_score
+      f1_score = (precision+recall>0)? 2.0*(precision*recall)/(precision+recall):1.;
+
+      
+      //accomulate auc roc 
+      //calculate fpr,tpr,roc_areas :
+      //fpr = false_positives/(false_positives+true_negatives) 
+      //print accuracy
+
+      std::cout<<"[+] accuracy : "<<accuracy<<std::endl; 
+      std::cout<<"[+] precision : "<<precision<<std::endl;
+      std::cout<<"[+] recall : "<<recall<<std::endl;
+      std::cout<<"[+] f1_score : "<<f1_score<<std::endl;
+      std::cout<<"[+] eta : "<<hyper_matrix.get_eta()<<std::endl; 
+      std::cout<<"[+] momentum : "<<hyper_matrix.get_momentum()<<std::endl; 
+      std::cout<<"[+] anomaly ratio : "<<std::to_string(anomaly_ratio)<<std::endl; 
+      
+      //calculate fpr,tpr,roc_areas :
+      //create a vectorizer from the super-tree
+      //check if the super  is valid 
+      //save results to file 
+ 
+    }
+    std::getchar();
+    
+ }

@@ -123,6 +123,7 @@ struct loss
 	{
 		return loss_func(x,y);
 	}
+	 
 	T grad(T x, T y) const
 	{
 		return loss_grad(x,y);
@@ -130,7 +131,20 @@ struct loss
 	T hess(T x, T y) const
 	{
 		return loss_hess(x,y);
-	}	
+	}
+	//apply loss function on container
+	template <typename T1> 
+	T1 apply(T1 x, T1 y) const
+	{
+		T1 res(x);
+		for(size_t i = 0; i < x.size1(); i++)
+			for(size_t j = 0; j < x.size2(); j++)
+				res(i,j) = loss_func(x(i,j),y(i,j));
+		return res;
+		
+
+	}
+
 };
 //kullback-leibler divergence loss
 template <class T>
@@ -153,6 +167,7 @@ struct kl_loss : public loss<T>
 	}
 	static T hess(T x, T y)
 	{
+		x =x;
 		return (1/(y*(1-y)) + 1/((1-y)*y));
 	}
 };
@@ -161,7 +176,7 @@ template <class T>
 struct ce_loss : public loss<T>
 {
 	ce_loss():
-		loss<T>(ce_loss<T>::loss_func,ce_loss<T>::grad, ce_loss<T>::hess)
+		loss<T>(ce_loss<T>::loss_func,ce_loss<T>::grad, ce_loss<T>::hess) 
 	{
 	}
 	static T loss_func(T x, T y)
@@ -196,7 +211,7 @@ struct hinge_loss : public loss<T>
 	}
 	static T hess(T x, T y)
 	{
-		return 0;
+		return 0 *((x+y)/(y+x));
 	}
 
 };	
@@ -218,7 +233,7 @@ struct huber_loss : public loss<T>
 	}
 	static T hess(T x, T y)
 	{
-		return 1;
+		return 1 *((x+y)/(y+x));
 	}
 
 };	
@@ -284,7 +299,7 @@ struct quantile_loss : public loss<T>
 	}
 	static T hess(T x, T y)
 	{
-		return 1;
+		return 1 *((x+y)/(y+x));
 	}
 
 };	
@@ -306,7 +321,8 @@ struct squared_loss : public loss<T>
 	}
 	static T hess(T x, T y)
 	{
-		return 1;
+		//avoid warning
+		return 1 *((x+y)/(y+x));
 	}
 
 };	
@@ -328,7 +344,7 @@ struct smoothed_hinge_loss : public loss<T>
 	}
 	static T hess(T x, T y)
 	{
-		return 0;
+		return 0.0*x*y;
 	}
 
 };		
@@ -350,7 +366,8 @@ struct squared_hinge_loss : public loss<T>
 	}
 	static T hess(T x, T y)
 	{
-		return 0;
+		//avoid warning
+		return 0.0*x*y;
 	}
 
 };	

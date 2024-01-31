@@ -537,7 +537,8 @@ namespace provallo
     {
       return data[row * _cols + col];
     }
-     matrix_base(size_t rows, size_t cols);
+    matrix_base(size_t rows, size_t cols);
+    matrix_base(const matrix_base &m);
     virtual ~matrix_base();
     virtual void
     clear();
@@ -925,6 +926,79 @@ namespace provallo
             min = data_[i * size2_ + j];
       return min;
     }
+    // max 
+    matrix<T> max(const matrix<T> &m) const
+    {
+      assert(size1_ == m.size1_ && size2_ == m.size2_);
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+        {
+          if (data_[i * size2_ + j] > m(i, j))
+            tmp(i, j) = data_[i * size2_ + j];
+          else
+            tmp(i, j) = m(i, j);
+        }
+      return tmp;
+    }
+    // min
+    matrix<T> min(const matrix<T> &m) const
+    {
+      assert(size1_ == m.size1_ && size2_ == m.size2_);
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+        {
+          if (data_[i * size2_ + j] < m(i, j))
+            tmp(i, j) = data_[i * size2_ + j];
+          else
+            tmp(i, j) = m(i, j);
+        }
+      return tmp;
+    }
+    T max()const 
+    {
+      T max = data_[0];
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          if (data_[i * size2_ + j] > max)
+            max = data_[i * size2_ + j];
+      return max;
+    } 
+    T min()const 
+    {
+      T min = data_[0];
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          if (data_[i * size2_ + j] < min)
+            min = data_[i * size2_ + j];
+      return min;
+    }
+    matrix<T> exp()const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = std::exp(data_[i * size2_ + j]);
+      return tmp;
+    }
+
+    matrix<T> log()const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = std::log(data_[i * size2_ + j]);
+      return tmp;
+    }
+    matrix<T> pow(const T &value)const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = std::pow(data_[i * size2_ + j], value);
+      return tmp;
+    }
 
     //cwiseProduct of two matrices
     //matrix<T> cwiseProduct implementation: calculates the columnwise product of two matrices
@@ -1085,6 +1159,39 @@ namespace provallo
         sum += data_[i * size2_ + col];
       return sum;
     }
+    T col_min(size_t col)const
+    {
+      T min = data_[0 * size2_ + col];
+      for (size_t i = 0; i < size1_; i++)
+        if (data_[i * size2_ + col] < min)
+          min = data_[i * size2_ + col];
+      return min;
+    }
+    T col_max(size_t col)const
+    {
+      T max = data_[0 * size2_ + col];
+      for (size_t i = 0; i < size1_; i++)
+        if (data_[i * size2_ + col] > max)
+          max = data_[i * size2_ + col];
+      return max;
+    }
+    T row_min(size_t row)const
+    {
+      T min = data_[row * size2_ + 0];
+      for (size_t i = 0; i < size2_; i++)
+        if (data_[row * size2_ + i] < min)
+          min = data_[row * size2_ + i];
+      return min;
+    }
+    T row_max(size_t row)const
+    {
+      T max = data_[row * size2_ + 0];
+      for (size_t i = 0; i < size2_; i++)
+        if (data_[row * size2_ + i] > max)
+          max = data_[row * size2_ + i];
+      return max;
+    }
+
     T row_mean(size_t row)const
     {
       T sum = 0;
@@ -1141,8 +1248,12 @@ namespace provallo
     }
     void remove_column(size_t col)
     {
+      
       size_t new_col_size = size2_ - 1;
-
+      //make sure col is not out of range 
+      if(col>=size2_)
+        return;
+         
       T* tmp = new T[size1_ * new_col_size];
       for (size_t i = 0; i < size1_; i++)
       {
@@ -1151,10 +1262,11 @@ namespace provallo
         for (size_t j = col; j < new_col_size; j++)
           tmp[i * new_col_size + j] = data_[i * size2_ + j + 1];
       }
-      delete[] data_;
+      T* old_data= data_;
       data_ = tmp;
+      
+      delete[] old_data;
       size2_--;
-
     }
     void reduce_rows(size_t nRows,bool endian=true)
     {
@@ -1177,7 +1289,6 @@ namespace provallo
       delete[] data_;
       data_ = tmp;
       size1_ = new_row_size;
-      
     }
     std::vector<real_t> row_entropy()const 
     {
@@ -1222,6 +1333,17 @@ namespace provallo
         data_ = tmp;
         size1_--;
     }
+ 
+    //tanh
+    matrix<T> tanh() const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; ++j)
+          tmp(i, j) = std::tanh(data_[i * size2_ + j]);
+      return tmp;
+    }
+
     virtual ~matrix()
     {
       //avoid double free : 
@@ -1267,7 +1389,28 @@ namespace provallo
 
       return ret;
     }
+    //for T-x
+    matrix<T> operator -() const
+    {
+      matrix<T> ret = *this;
 
+      for (size_t i = 0; i < ret.size1_; i++)
+        for (size_t j = 0; j < ret.size2_; ++j)
+          ret(i, j) = -ret(i, j);
+
+      return ret;
+    }
+    //for T+x
+    matrix<T> operator +() const
+    {
+      matrix<T> ret = *this;
+
+      for (size_t i = 0; i < ret.size1_; i++)
+        for (size_t j = 0; j < ret.size2_; ++j)
+          ret(i, j) = +ret(i, j);
+
+      return ret;
+    }
      matrix<T> operator+(const T &value) const
     {
        matrix<T> ret = *this;
@@ -1676,7 +1819,22 @@ namespace provallo
           ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
       return ret;
     } 
-
+    matrix<T> slice(size_t row_start, size_t row_end) const
+    {
+      matrix<T> ret(row_end - row_start, size2());
+      for (size_t i = row_start; i < row_end; i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i - row_start, j) = (*this)(i, j);
+      return ret;
+    }
+    matrix<T> slice(size_t row_start, size_t row_end, size_t col_start, size_t col_end) const
+    {
+      matrix<T> ret(row_end - row_start, col_end - col_start);
+      for (size_t i = row_start; i < row_end; i++)
+        for (size_t j = col_start; j < col_end; j++)
+          ret(i - row_start, j - col_start) = (*this)(i, j);
+      return ret;
+    }
     size_type
     rows() const
     {
@@ -1920,7 +2078,7 @@ namespace provallo
         ret += (a[i]-mean(a))*(b[i]-mean(b));
       return ret/(size1()-1);
     }
- 
+
     void get_eigen_values_and_vectors(std::vector<T> &eigen_values, matrix<T> &eigen_vectors) const
     {
       //calculate eigen values and vectors
@@ -2091,7 +2249,7 @@ namespace provallo
       return sqrt_prod;
     }
     matrix<T>
-    transpose()
+    transpose() const
     {
 
       matrix<T> transp(size2(), size1());
@@ -2100,7 +2258,7 @@ namespace provallo
           transp(i, j) = element(j, i);
       return transp;
     }
-    matrix<T> reverse()
+    matrix<T> reverse() const
     {
       matrix<T> reverse(size1(), size2());
       for (typename matrix<T>::size_type i = 0; i < size2(); ++i)
@@ -2296,13 +2454,22 @@ namespace provallo
                      data_.begin(), std::plus<T>());
       return *this;
     }
-
+    matrix<T> &
+    operator-=(const T &rhs)
+    {
+      std::transform(data_.begin(), data_.end(), data_.begin(),
+                     std::bind2nd(std::minus<T>(), rhs));
+      return *this;
+    }
     matrix<T> &
     operator-=(const matrix<T> &rhs)
     {
-      assert(size1_ == rhs.size1_ && size2_ == rhs.size2_);
-      std::transform(data_.begin(), data_.end(), rhs.data_.begin(),
-                     data_.begin(), std::minus<T>());
+      size_t min_col = std::min(size2_, rhs.size2_); 
+      size_t min_row = std::min(size1_, rhs.size1_); 
+      for(size_t i=0;i<min_row;i++)
+        for(size_t j=0;j<min_col;j++)
+          data_[i*size2_+j] -= rhs(i,j);
+    
       return *this;
     }
 
@@ -2563,9 +2730,13 @@ namespace provallo
   {
   //  assert(a.size1() == b.size1() && a.size2() == b.size2());
 
-    matrix<T> result(a);
-    std::transform(a.begin(), a.end(), b.begin(), result.begin(),
-                   std::plus<T>());
+    size_t m_col = std::min(a.size2(), b.size2()); 
+    size_t m_row = std::min(a.size1(), b.size1());
+    matrix<T> result(m_row, m_col);
+    for(size_t i=0;i<m_row;i++)
+      for(size_t j=0;j<m_col;j++)
+        result(i,j) = a(i,j) + b(i,j);
+
     return result;
   }
 
@@ -2573,16 +2744,17 @@ namespace provallo
   matrix<T>
   operator-(const matrix<T> &a, const matrix<T> &b)
   {
-    static matrix<T> result(a);
-    result.resize(a.size1(), a.size2()); 
+    size_t m_col = std::min(a.size2(), b.size2());
+    size_t m_row = std::min(a.size1(), b.size1());
+    matrix<T> result(m_row, m_col);
+    for(size_t i=0;i<m_row;i++)
+      for(size_t j=0;j<m_col;j++)
+        result(i,j) = a(i,j) - b(i,j);
 
-    std::transform(a.begin(), a.end(), b.begin(), result.begin(),
-                   std::minus<T>());
     return result;
    }
 
   //for x-matrix  x = 1-x
-
   template <class T>
     const matrix<T> operator-(const T &lval,const matrix<T>& rval) 
     {
@@ -3934,7 +4106,7 @@ namespace provallo
   template <typename T>
   matrix<T> operator/(const T &b, const matrix<T> &a)
   {
-    matrix<T> ret;
+    matrix<T> ret(a.size1(), a.size2());
     for (typename matrix<T>::size_type i = 0; i < a.size1(); i++)
     {
       for (typename matrix<T>::size_type j = 0; j < a.size2(); j++)
@@ -3949,7 +4121,7 @@ namespace provallo
   template <typename T>
   matrix<T> operator/(const matrix<T> &a, const T &b)
   {
-    matrix<T> ret;
+    matrix<T> ret(a.size1(), a.size2());
     for (typename matrix<T>::size_type i = 0; i < a.size1(); i++)
     {
       for (typename matrix<T>::size_type j = 0; j < a.size2(); j++)
@@ -3964,7 +4136,7 @@ namespace provallo
   template <typename T>
   matrix<T> operator/(const matrix<T> &a, const matrix<T> &b)
   {
-    matrix<T> ret;
+    matrix<T> ret(a.size1(), a.size2());
     for (typename matrix<T>::size_type i = 0; i < a.size1(); i++)
     {
       for (typename matrix<T>::size_type j = 0; j < a.size2(); j++)

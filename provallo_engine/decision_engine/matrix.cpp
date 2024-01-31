@@ -19,6 +19,17 @@ namespace provallo
 	//clear ();		
   }
 
+  matrix_base::matrix_base (const matrix_base &other) :
+	  data (NULL),_rows(other._rows),_cols(other._cols)
+  {
+	data = new double[_rows * _cols];
+	for (size_t i = 0; i < _rows; i++)
+	  for (size_t j = 0; j < _cols; j++) 
+			pos (i, j) = other.pos(i,j);	
+  }
+ 	
+
+
   matrix_base::~matrix_base ()
   {
     if (data)

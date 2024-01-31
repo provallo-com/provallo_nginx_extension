@@ -88,8 +88,8 @@ namespace provallo
       double
       get_normal_distribution () const
       {
-	//std::normal_distribution<double > d {mean_value,std_dev_value};
-	return 0.;
+        //std::normal_distribution<double > d {mean_value,std_dev_value};
+        return 0.;
       }
     };
 

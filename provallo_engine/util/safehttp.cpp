@@ -6,9 +6,107 @@
  */
 
 #include "safehttp.h"
+#include <map>
 #include <iostream>
+
 namespace provallo
 {
+  const std::map<size_t, std::string> http_status_map =
+  {
+  { 100, "Continue" },
+  { 101, "Switching Protocols" },
+  { 102, "Processing" },
+  { 200, "OK" },
+  { HTTP_STATUS_CREATED, "Created" },
+  { HTTP_STATUS_ACCEPTED, "Accepted" },
+  { HTTP_STATUS_NON_AUTHORITATIVE, "Non-Authoritative Information" },
+  { HTTP_STATUS_NO_CONTENT, "No Content" },
+  { HTTP_STATUS_RESET_CONTENT, "Reset Content" },
+  { HTTP_STATUS_PARTIAL_CONTENTS, "Partial Content" },
+  { HTTP_STATUS_MULTI_WEBDAV, "Multi-Status" },
+  { HTTP_STATUS_WD_REPORTED, "Already Reported" },
+  { HTTP_STATUS_IM_USED, "IM Used" },
+  { HTTP_STATUS_MULTIPLE_CHOICES, "Multiple Choices" },
+  { HTTP_STATUS_MOVED_PERMANENTLY, "Moved Permanently" },
+  { HTTP_STATUS_MOVED_TEMPORARILY, "Found" },
+  { HTTP_STATUS_SEE_OTHER, "See Other" },
+  { HTTP_STATUS_NOT_MODIFIED, "Not Modified" },
+  { HTTP_STATUS_USE_PROXY, "Use Proxy" },
+  { HTTP_STATUS_SWITCH_PROXY, "Switch Proxy" },
+  { HTTP_STATUS_TEMPORARY_REDIRECT, "Temporary Redirect" },
+  {HTTP_STATUS_PERMANENT_REDIRECT, "Permanent Redirect" },
+  { HTTP_STATUS_BAD_REQUEST, "Bad Request" },
+  { HTTP_STATUS_UNAUTHORIZED, "Unauthorized" },
+  { HTTP_STATUS_PAYMENT_REQUIRED, "Payment Required" },
+  { HTTP_STATUS_FORBIDDEN, "Forbidden" },
+  { HTTP_STATUS_NOT_FOUND, "Not Found" },
+  { HTTP_STATUS_NOT_ALLOWED, "Method Not Allowed" },
+  { HTTP_STATUS_NOT_ACCEPTABLE, "Not Acceptable" },
+  { HTTP_STATUS_PROXY_AUTH_REQ, "Proxy Authentication Required" },
+  { HTTP_STATUS_REQ_TIMEOUT, "Request Timeout" },
+  { HTTP_STATUS_CONFLICT, "Conflict" },
+  { HTTP_STATUS_GONE, "Gone" },
+  { HTTP_STATUS_LENGTH_REQUIRED, "Length Required" },
+  { HTTP_STATUS_PRECONDITION_FAILED, "Precondition Failed" },
+  { HTTP_STATUS_PAYLOAD_TOO_BIG, "Payload Too Large" },
+  { HTTP_STATUS_URI_TOO_BIG, "URI Too Long" },
+  { HTTP_STATUS_UNSUPPORTED_MEDIA, "Unsupported Media Type" },
+  { HTTP_STATUS_RANGE_UNSATISFIABLE, "Range Not Satisfiable" },
+  { HTTP_STATUS_EXP_FAILED, "Expectation Failed" },
+  { HTTP_STATUS_IM_A_TEAPOT, "I'm a teapot" },
+  { HTTP_STATUS_MISDIRECTED_REQ, "Misdirected Request" },
+  { HTTP_STATUS_UNPROCESSED_ENT, "Unprocessable Entity" },
+  { HTTP_STATUS_WD_LOCK, "Locked" },
+  { HTTP_STATUS_FAILED_DEP, "Failed Dependency" },
+  { HTTP_STATUS_UPGRADE_REQUIRED, "Upgrade Required" },
+  { HTTP_STATUS_PRECON_REQUIRED, "Precondition Required" }, 
+    { HTTP_STATUS_TOO_MANY_REQ, "Too Many Requests" },
+    { HTTP_STATUS_HEADER_FIELD_TOO_BIG, "Request Header Fields Too Large" },
+    { HTTP_STATUS_LEGAL_BLOCK, "Unavailable For Legal Reasons" },
+    { HTTP_STATUS_INTERNAL, "Internal Server Error" },
+    { HTTP_STATUS_NOT_IMPLEMENTED, "Not Implemented" },
+    { HTTP_STATUS_BAD_GATEWAY, "Bad Gateway" },
+    { HTTP_STATUS_SERVICE_UNAVAIL, "Service Unavailable" },
+    { HTTP_STATUS_GW_TIMEOUT, "Gateway Timeout" },
+    { HTTP_STATUS_VERSION_UNSUP, "HTTP Version Not Supported" },
+    { HTTP_VARIANT_NEGOTIATION, "Variant Also Negotiates" },
+    { HTTP_INSUFFICIENT_STORAGE, "Insufficient Storage" },
+    { HTTP_LOOP_DETECTED, "Loop Detected" },
+    { HTTP_STATUS_NOT_EXTENDED, "Not Extended" },
+    { HTTP_STATUS_NETWORK_UNAVAILABLE, "Network Authentication Required" } ,
+    
+    //add cloudflare status codes
+    { HTTP_STATUS_CLOUDFLARE_UNKNOWN_ERROR, "Web server is returning an unknown error" },
+    { HTTP_STATUS_CLOUDFLARE_WEB_SERVER_IS_DOWN, "Web server is down" },
+    { HTTP_STATUS_CLOUDFLARE_CONNECTION_TIMED_OUT, "Connection timed out" },
+    { HTTP_STATUS_CLOUDFLARE_ORIGIN_IS_UNREACHABLE, "Origin is unreachable" },
+    { HTTP_STATUS_CLOUDFLARE_A_TIMEOUT_OCCURRED, "A timeout occurred" },
+    { HTTP_STATUS_CLOUDFLARE_SSL_HANDSHAKE_FAILED, "SSL handshake failed" },
+    { HTTP_STATUS_CLOUDFLARE_INVALID_SSL_CERTIFICATE, "Invalid SSL certificate" }, 
+    { HTTP_STATUS_CLOUDFLARE_RAILGUN_ERROR, "Railgun error" },
+    { HTTP_STATUS_CLOUDFLARE_ORIGIN_DNS_ERROR, "Origin DNS error" }, 
+    { HTTP_STATUS_CLOUDFLARE_UNKNOWN_HOST, "Unknown host" },
+    { HTTP_STATUS_CLOUDFLARE_PAGE_EXPIRED, "Page Expired" },
+    { HTTP_STATUS_CLOUDFLARE_HOST_NOT_FOUND, "Host Not Found" },
+    { HTTP_STATUS_CLOUDFLARE_SSL_CERTIFICATE_ERROR, "SSL Certificate Error" },
+    { HTTP_STATUS_CLOUDFLARE_BAD_GATEWAY, "Bad Gateway" },
+    { HTTP_STATUS_CLOUDFLARE_INVALID_HOSTNAME, "Invalid Hostname" },
+    { HTTP_STATUS_CLOUDFLARE_UPSTREAM_SERVER_ERROR, "Upstream Server Error" },
+    { HTTP_STATUS_CLOUDFLARE_GATEWAY_TIMEOUT, "Gateway Timeout" },
+
+    //end of cloudflare status codes
+    //add custom status codes
+    { HTTP_STATUS_CUSTOM_ERROR, "Custom Error" },
+    { HTTP_STATUS_INVALID_REQUEST, "Invalid Request" },
+    { HTTP_STATUS_INVALID_RESPONSE, "Invalid Response" },
+    { HTTP_STATUS_INVALID_HEADER, "Invalid Header" },
+    { HTTP_STATUS_INVALID_CONTENT, "Invalid Content" }
+
+
+    
+    
+     };
+
 
   safe_http_parser::safe_http_parser() :
           _headerStart(0), _bodyStart(0), _parsedTo(0), _state(0), _keyIndex(0), _valueIndex(0), _contentLength(0),
@@ -261,7 +359,7 @@ namespace provallo
           {
               return &_data[index + strlen(key) + 2]; //maybe tokenize?
           }
-      }
+      } 
 
       return NULL;
   }
@@ -270,8 +368,7 @@ namespace provallo
   {
       return _contentLength;
   }
-
-
+ 
   // Helper function to print HTTP header
   static void printHttpHeader(std::ostream& out, const char* header, size_t size) {
       for(size_t i = 0 ; i < size ; i++) {

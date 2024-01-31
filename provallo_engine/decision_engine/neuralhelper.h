@@ -185,7 +185,7 @@ namespace provallo
         _deallocate = true;
       }
     }
-
+    
     void
     operator() (int id);
 
@@ -195,6 +195,7 @@ namespace provallo
 	return *_result;
       return empty;
     }
+
     operator const type_matrix ()const {
       type_matrix empty(0,0);
       if(_result)
@@ -668,109 +669,7 @@ namespace provallo
 
  
   };
-  // neural helper - helper class for DCGAN
-  // 
-  class neural_helper
-  {
-
-  public:
-    neural_helper();
-    neural_helper (neural_net *generator, neural_net *discriminator,
-		   size_t genFunType);
-
-    neural_helper(const neural_helper& other):_generator(other._generator), 
-    _discriminator(other._discriminator), _error_func_dis(other._error_func_dis),_error_func_gen(other._error_func_gen){}
-
-    neural_helper(neural_helper&& other):_generator(std::move(other._generator)), 
-    _discriminator(std::move(other._discriminator)), _error_func_dis(other._error_func_dis),_error_func_gen(other._error_func_gen){}    
-
-    
-
-
-    neural_helper&  operator=(const neural_helper& other)
-    {
-        _generator = other._generator;
-        _discriminator = other._discriminator;
-        _error_func_dis = other._error_func_dis;
-        _error_func_gen = other._error_func_gen;
   
-       return *this;
-    }
-    neural_helper&  operator=(neural_helper&& other){
-      _generator = std::move(other._generator);
-      _discriminator = std::move(other._discriminator);
-       return *this;
-    }
-    
-    inline const neural_net::ptr getGenerator() const{
-      return _generator;
-    }
-    const neural_net::ptr getDiscriminator() const{
-      return _discriminator;
-    }
-
-
-    neural_helper (neural_net::ptr generator, neural_net::ptr  discriminator,
-    		   size_t genFun);
-
-    void
-    backpropDiscriminator (matrix<real_t> input, matrix<real_t> desiredOutput,
-			   real_t step = 0.2, real_t dx = 0.05);
-
-    void
-    backpropGenerator (matrix<real_t> input, matrix<real_t> desiredOutput,
-		       real_t step = 0.2, real_t dx = 0.05);
-
-    void
-    minibatchDiscriminatorBackprop (neural_net::ptr network,
-				    matrix<real_t> input,
-				    matrix<real_t> desiredOutput, real_t step =
-					0.2,
-				    real_t dx = 0.05);
-
-    void
-    minibatchGeneratorBackprop (neural_net::ptr network, matrix<real_t> input,
-				matrix<real_t> desiredOutput, real_t step = 0.2,
-				real_t dx = 0.05);
-
-    void
-    updateNetworkWeights (neural_net::ptr network, size_t minibatchSize =
-			      1);
-
-  private:
-
-    void
-    propagateError (neural_net::ptr network, matrix<real_t> xnPartialDerivative, real_t step);
-
-    matrix<real_t>
-    propagateErrorMinibatch (neural_net::ptr network,
-			     matrix<real_t> xnPartialDerivative, real_t step);
-
-    matrix<real_t>
-    propagateErrorDiscriminatorInvariant (matrix<real_t> xnPartialDerivative);
-
-    matrix<real_t>
-    calculateInitialErrorVector (matrix<real_t> output,
-				 matrix<real_t> desiredOutput, real_t dx);
-
-    matrix<real_t>
-    calculateInitialErrorVectorGen (matrix<real_t> output,
-				    matrix<real_t> desiredOutput, real_t dx);
-
-
-
-
-    void gnuplot(const std::string & file );
-
-  private:
-    neural_net::ptr _generator;
-    neural_net::ptr _discriminator;
-
-    ErrorFun _error_func_dis;
-    ErrorFun _error_func_gen;
-    size_t gen_func_size;
-
-  };
   //
   class sample_source
   {
@@ -806,8 +705,6 @@ namespace provallo
       protected:
           size_t mLabelTrainSize;
           size_t mLabelTestSize;
-
-
 
   };
   ///
@@ -1068,7 +965,7 @@ namespace provallo
         //positive integer labels for testing , translate to string with testingLabelNames
         std::vector<size_t> testingLabels() const  
         {
-          return  mLabelTest;
+          return  mLabelsTest;
         }
 
 
@@ -1076,9 +973,10 @@ namespace provallo
         Batch testingBatch(bool greyLevel = false) const override ;
         void print();
         //destructeur
-        virtual ~names_source()  
-        {
-          //std::cout << "names_source destructor" << std::endl;
+
+        void clear()
+      {
+        //std::cout << "names_source clear" << std::endl;
           //clear vectors
           ColumnNames.clear();
           mColumnDesc.clear();
@@ -1092,7 +990,14 @@ namespace provallo
           mImageTrainVector.clear();
           mImageTestVector.clear();
           mLabelNames.clear();
+          //std::cout << "names_source clear end" << std::endl;
+       } 
+      
 
+        virtual ~names_source()  
+        {
+          //std::cout << "names_source destructor" << std::endl;
+          clear();
           //std::cout << "names_source destructor end" << std::endl;
 
         }
@@ -1144,8 +1049,6 @@ namespace provallo
           
         }
          
-
-        
    };
 
   //source class for sqlite fstem 
@@ -1214,7 +1117,110 @@ namespace provallo
           csvfile                     mCSVImg;
   };
 
+  class neural_helper
+  {
 
+  public:
+    neural_helper();
+    neural_helper(names_source& source, size_t genFunType); 
+    
+    neural_helper (neural_net *generator, neural_net *discriminator,
+		   size_t genFunType);
+
+    neural_helper(const neural_helper& other):_generator(other._generator), 
+    _discriminator(other._discriminator), _error_func_dis(other._error_func_dis),_error_func_gen(other._error_func_gen){}
+
+    neural_helper(neural_helper&& other):_generator(std::move(other._generator)), 
+    _discriminator(std::move(other._discriminator)), _error_func_dis(other._error_func_dis),_error_func_gen(other._error_func_gen){}    
+
+    
+
+
+    neural_helper&  operator=(const neural_helper& other)
+    {
+        _generator = other._generator;
+        _discriminator = other._discriminator;
+        _error_func_dis = other._error_func_dis;
+        _error_func_gen = other._error_func_gen;
+  
+       return *this;
+    }
+    neural_helper&  operator=(neural_helper&& other){
+      _generator = std::move(other._generator);
+      _discriminator = std::move(other._discriminator);
+       return *this;
+    }
+    
+    inline const neural_net::ptr getGenerator() const{
+      return _generator;
+    }
+    const neural_net::ptr getDiscriminator() const{
+      return _discriminator;
+    }
+
+
+    neural_helper (neural_net::ptr generator, neural_net::ptr  discriminator,
+    		   size_t genFun);
+
+    void
+    backpropDiscriminator (matrix<real_t> input, matrix<real_t> desiredOutput,
+			   real_t step = 0.2, real_t dx = 0.05);
+
+    void
+    backpropGenerator (matrix<real_t> input, matrix<real_t> desiredOutput,
+		       real_t step = 0.2, real_t dx = 0.05);
+
+    void
+    minibatchDiscriminatorBackprop (neural_net::ptr network,
+				    matrix<real_t> input,
+				    matrix<real_t> desiredOutput, real_t step =
+					0.2,
+				    real_t dx = 0.05);
+
+    void
+    minibatchGeneratorBackprop (neural_net::ptr network, matrix<real_t> input,
+				matrix<real_t> desiredOutput, real_t step = 0.2,
+				real_t dx = 0.05);
+
+    void
+    updateNetworkWeights (neural_net::ptr network, size_t minibatchSize =
+			      1);
+
+  private:
+
+
+    void
+    propagateError (neural_net::ptr network, matrix<real_t> xnPartialDerivative, real_t step);
+
+    matrix<real_t>
+    propagateErrorMinibatch (neural_net::ptr network,
+			     matrix<real_t> xnPartialDerivative, real_t step);
+
+    matrix<real_t>
+    propagateErrorDiscriminatorInvariant (matrix<real_t> xnPartialDerivative);
+
+    matrix<real_t>
+    calculateInitialErrorVector (matrix<real_t> output,
+				 matrix<real_t> desiredOutput, real_t dx);
+
+    matrix<real_t>
+    calculateInitialErrorVectorGen (matrix<real_t> output,
+				    matrix<real_t> desiredOutput, real_t dx);
+
+
+
+
+    void gnuplot(const std::string & file );
+
+  private:
+    neural_net::ptr _generator;
+    neural_net::ptr _discriminator;
+
+    ErrorFun _error_func_dis;
+    ErrorFun _error_func_gen;
+    size_t gen_func_size;
+
+  };
 
   class learning_task
   {
@@ -1267,6 +1273,10 @@ namespace provallo
               friend std::ofstream& operator << (std::ofstream& stream , const task_configuration& config);
               friend std::ifstream& operator >> (std::ifstream& stream, task_configuration& config);  
 
+              //for console input/output :
+              friend std::ostream& operator << (std::ostream& stream , const task_configuration& config); 
+              friend std::istream& operator >> (std::istream& stream, task_configuration& config);
+              
           };
     
       public:
@@ -1317,7 +1327,20 @@ namespace provallo
       real_t runTestGen(int limit = -1, bool returnErrorRate = 1);
 
       //run test discriminator, @limit is the number of images to generate and test @returnErrorRate is a boolean to return the error rate or not
-          real_t runTestDis(int limit = -1, bool returnErrorRate = 1);
+      real_t runTestDis(int limit = -1, bool returnErrorRate = 1);
+
+      void printConfiguration() const
+      {
+        std::cout << _configuration << std::endl; 
+
+
+      }
+      void print() const
+      {
+        std::cout << "learning_task" << std::endl;
+        printConfiguration();
+        std::cout << "learning_task end" << std::endl;
+      }
 
           
   	private:

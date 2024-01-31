@@ -18,5 +18,4 @@
 
 #define extract_bit(number, bit) (((number) >> (bit)) & 1)
 
- 
 #endif /* DECISION_ENGINE_CRIT_H_ */

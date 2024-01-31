@@ -86,7 +86,10 @@ namespace provallo
 	
 		if(res>0)
 		res = fclose(cmdline);
-
+        if(res<0)
+        {
+            std::cerr << "[-]Error closing file " << cmdline_file << std::endl;
+        }
 
   	}
 

@@ -27,7 +27,8 @@ namespace provallo
             cross_validation
         }; 
 
-    private:
+        
+        private:
 
         mode _mode; //dataset mode : training , testing , cross_validation
        

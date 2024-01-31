@@ -14,7 +14,6 @@
 namespace provallo
 {
     using type_matrix = matrix<real_t>;
-
     //  Sigmoid
     ActivationFun
     sigmoid(real_t lambda)
@@ -477,10 +476,10 @@ namespace provallo
             this->push_back(
                 neuron_layer::ptr((layerSizes[i] == 0) ? (neuron_layer *)new fully_connected_layer(layerSizes[i], layerSizes[i + 1], weightVector[i], biasVector[i], activationFuns[i], descentType) : (layerSizes[i] == 2) ? (neuron_layer *)new convolution_layer(layerSizes[i], layerSizes[i + 1], weightVector, activationFuns[i])
                                                                                                                                                                                                                             : // @suppress("Ambiguous problem")
-                                                                                                                                                                                                       (layerSizes[i] == 3) ? (neuron_layer *)new noisy_layer(layerSizes[i], layerSizes[i + 1], activationFuns[i], descentType)
+(layerSizes[i] == 3) ? (neuron_layer *)new noisy_layer(layerSizes[i], layerSizes[i + 1], activationFuns[i], descentType)
                                                                                                                                                                                                    : (layerSizes[i] == 4)   ? (neuron_layer *)new zero_pad_layer(layerSizes[i], layerSizes[i + 1], 0)
                                                                                                                                                                                                                             : nullptr));
-    }
+    }                                                                                                                                                                                                       
 
     // convolution stuff:
     std::recursive_mutex convolution_operator::mtx;
@@ -580,8 +579,6 @@ namespace provallo
 
         //update local members 
         _buffer_activation_level = output;
-        
-
         return output;
     }
     type_matrix convolution_layer::layer_backpropagation(const type_matrix &xnPartialDerivative, real_t step)
@@ -606,7 +603,6 @@ namespace provallo
         // return the x(n-1) PartialDerivative
         size_t incrementDimension = 2 * (weightDimension - 1);
         size_t zeroPaddingDimension = incrementDimension + ynDerivDimension;
-
         type_matrix ynZeroPadding = type_matrix::Zero(ynPartialDerivative.rows(), zeroPaddingDimension * zeroPaddingDimension);
         for (size_t n = 0; n < ynPartialDerivative.rows(); n++) // Pour chaque channel...
         {
@@ -632,7 +628,6 @@ namespace provallo
             resultat = resultat + type_matrix(o);
         }
         update_layer_weights();
-
         //calculate mean squared error  
         for (size_t i(0); i < _buffer_activation_level.size1(); i++)
             for (size_t j(0); j < _buffer_activation_level.size2(); j++)
@@ -641,8 +636,6 @@ namespace provallo
 
         //debugging:
         std::cout << "[+]convolution mean squared error : " << mean_squared_error << std::endl;
-
-        
         return resultat;
     }
     type_matrix convolution_layer::convolution(const type_matrix &input, const type_matrix &filtre, bool sommerLignes)
@@ -692,6 +685,59 @@ namespace provallo
         _error_func_gen = coutGen();
 
     }
+    //neural_helper::neural_helper(names_source::ptr source, size_t genFun)
+    //    : _generator(source->getGenerator()), _discriminator(source->getDiscriminator()), _error_func_dis(coutDiscr()) 
+    
+    neural_helper::neural_helper(names_source& source, size_t genFun)
+        : _generator(nullptr), _discriminator(nullptr), _error_func_dis(coutDiscr()), _error_func_gen(coutGen()) 
+    {
+        switch (genFun)
+        {
+        case 0:
+            _error_func_gen = coutGen();
+            break;
+        case 1:
+            _error_func_gen = genMinMax();
+            break;
+        case 2:
+            _error_func_gen = genKLDiv();
+            break;
+        default:
+            _error_func_gen = coutGen();
+            break;
+        }
+        //initialize generator and discriminator from source 
+        size_t nclasses = source.n_classes();
+        size_t nfeatures = source.n_features();
+        //layer types : input,convolutional,fully connected,fully connected,output 
+        std::vector<size_t> layerTypes = { 0, 2, 0, 0, 0 };
+        //generator
+        //layer sizes for the input,convolutional,fully connected and output layers 
+
+        std::vector<size_t> layerSizes = { nfeatures, 100, 100, nclasses }; 
+        
+        std::vector<size_t> layerChannels = { 0, 0, 0, 0 };
+        std::vector<std::vector<size_t>> layerArg = { {0}, {0}, {0}, {0} };
+        std::vector<ActivationFun> activationFuns = { sigmoid(10.f), sigmoid(10.f), sigmoid(10.f), sigmoid(10.f) };
+        size_t descentType = 0;
+        _generator = std::make_shared<neural_net>(layerTypes, layerSizes, layerChannels, layerArg, activationFuns, descentType); 
+
+        //discriminator
+        layerSizes = { nfeatures, 100, 100, nclasses };
+        layerTypes = { 0, 2, 0, 0, 0 };
+
+        layerChannels = { 0, 0, 0, 0 };
+        layerArg = { {0}, {0}, {0}, {0} };
+        activationFuns = { sigmoid(10.f), sigmoid(10.f), sigmoid(10.f), sigmoid(10.f) };
+        descentType = 0;
+        _discriminator = std::make_shared<neural_net>(layerTypes, layerSizes, layerChannels, layerArg, activationFuns, descentType);
+        
+        //train later in batch processing 
+        
+
+        
+
+    } 
 
     neural_helper::neural_helper(neural_net::ptr generator, neural_net::ptr discriminator, size_t genFun)
         : _generator(std::move(generator)), _discriminator(std::move(discriminator)), _error_func_dis(coutDiscr())
@@ -824,7 +870,10 @@ namespace provallo
         }
         return errorVect;
     }
-
+    //backpropDiscriminator
+    //backpropGenerator
+    
+    //******************SOURCE****************
     error_processor::error_processor()
         : mErrorsGen(),
           mErrorsDis()
@@ -1630,7 +1679,7 @@ namespace provallo
         : sample_source(labelTrainSize, labelTestSize), mDataset(cifar::read_dataset<std::vector, std::vector, uint8_t, uint8_t>()), mLabels(labels)
     {
         if (mLabelTrainSize > 50000)
-            throw std::logic_error("Erreur : dépassement d'indice sur le batch de train");
+            throw std::logic_error("Erreur : indice trop grand sur le batch d'entrainement");
         if (mLabelTestSize > 10000)
             throw std::logic_error("Erreur : dépassement d'indice sur le batch de test");
     }
@@ -1877,6 +1926,8 @@ namespace provallo
                     readTestFile();
                 }
             }
+
+
              
     }
         //std::cout << "names_source::names_source - " << mNames.size() << " names loaded" << std::endl;
@@ -1973,6 +2024,7 @@ namespace provallo
             col.index = i;
             col.name = name;
             mColumnDesc[i] = col;
+            
 
 
         }//for each column descriptor
@@ -1993,7 +2045,7 @@ namespace provallo
             }
         }
         //check if target column is valid:
-        if(targetColumn == old_target )
+        if(targetColumn == old_target || target_column_name.length() == 0 )
         {
             std::cout <<"[-]could not find target column in names file:[" <<target_column_name<<"]"<< std::endl;
             for(size_t i=0; i < ColumnNames.size(); ++i)
@@ -2010,7 +2062,7 @@ namespace provallo
         ColumnNames.erase(ColumnNames.begin() + old_target);
         //remove old_target from discrete map:
         mDiscreteMap.erase(old_target);
-
+        
         
         //print discrete values of target column:
         std::cout << "[+]names_source::names_source - " << mDiscreteMap[targetColumn].size() << " labels loaded" << std::endl;
@@ -2018,8 +2070,6 @@ namespace provallo
         {
             std::cout << "\t[+]names_source::names_source - target values:" << it->first << " : " << it->second << std::endl;
         }
-
-
         //update label names from the values of the target column:
         //get the number of labels: 
  
@@ -2034,9 +2084,19 @@ namespace provallo
             
 
         }
-
+        //update label names from the values of the target column: 
+        //update targetColumn index according to target_column_name
+        for(size_t i=0; i < ColumnNames.size(); ++i)
+        {
+            if(ColumnNames[i] == target_column_name)
+            {
+                this->targetColumn = i;
+            }
+        } 
         mLabelNamesTest=mLabelNames;
         mLabelNamesTrain=mLabelNames;
+        this->nFeatures = mColumnDesc.size(); 
+
         splitDataFile();
 
         //std::cout << "names_source::names_source - " << mLabelNames.size() << " labels loaded" << std::endl;
@@ -2134,8 +2194,9 @@ namespace provallo
             throw std::runtime_error("names_source::readTrainFile - Failed to load " + mTrainFile  );
         }
         
-        while (std::getline(trainFile, line))
+        while (trainFile.good()&&!trainFile.eof())
         {
+            std::getline(trainFile, line);
             if(line.size()>2&&line[0]!='|'&&line[0]!='#')
                  names_rows.push_back(std::string(line.c_str()));
         }
@@ -2143,40 +2204,41 @@ namespace provallo
 
         mLabelsTrain.resize(names_rows.size(), 0 );   //length 0 size 1
         mLabelTrain.resize(names_rows.size(), 0 );   //length 0 size 1
-        mImageTrain.resize(names_rows.size(), ColumnNames.size() );   //length 0 size 1
+        if(nFeatures == 0)
+        {
+            nFeatures = mColumnDesc.size();
+        }
 
-        
+        mImageTrain.resize( names_rows.size(), nFeatures);   //length 0 size 1
         //parse definition for each column descriptor ( row ) in names file:
         size_t adjust_rows = 0;
-
+        std::vector<size_t> row_indices;
         for ( i=0; i < names_rows.size(); ++i)
         {
+            //parse each row:
 
             if (names_rows[i].length()<2|| names_rows[i][0] == '|' || names_rows[i][0] == '#') {
+                //add index to adjust_rows: 
+                row_indices.push_back(i);
                 adjust_rows++;
                 continue;
             }
             std::istringstream iss( names_rows[i] );
             std::string token = "#";
             j=0;
+            
             while (std::getline(iss, token, ','))
             {
-                
-                if(token[0] == '|' || token[0] == '#') {
-                    adjust_rows++;
-                    break;
-                 }
                 //reduce token:
-                token = reduce(token, "");
+                token = reduce(token, " ");
                 //get discrete or continuous value: translated to double
-                
+                //addrow 
                 mImageTrain(i,j) =  get_value(j,token);
 
                 if(j==targetColumn)
                 {  
-
-
-                    std::cout<<"[+++ DEBUG +++] fitting label : "<<token<< "at target column :"<<targetColumn << std::endl;
+ 
+                    std::cout<<"[+++ DEBUG +++] fitting label : "<<token<< "at target column :"<<this->target_column() << std::endl;
 
                     if (mDiscreteMap[targetColumn].size()>1)
                         mLabelTrain[i] = mDiscreteMap[targetColumn][token];
@@ -2188,16 +2250,20 @@ namespace provallo
              }
 
         }   
-        if(adjust_rows > 0) {
-            
-            mImageTrain.reduce_rows(adjust_rows);
+        //remove ignored rows:
+        for(size_t i=0; i < row_indices.size(); ++i)
+        {
+            mImageTrain.remove_row(row_indices[i]-i);
+            mLabelTrain.erase(mLabelTrain.begin() + row_indices[i]-i);
+            mLabelsTrain.erase(mLabelsTrain.begin() + row_indices[i]-i);
+        }
 
-         }
         //create a batch from train data:
   
         //std::cout << "names_source::readTrainFile - " << mBatchTrain.size() << " samples loaded" << std::endl;
+        //update number of classes:
+        this->mNbClasses= this->nClasses = mDiscreteMap[targetColumn].size(); 
 
-        this->nClasses = mDiscreteMap[targetColumn].size(); 
         mLabelTrainSize = mImageTrain.size1();
         
         //features are the columns that are not the target column and not ignored columns:
@@ -2215,7 +2281,7 @@ namespace provallo
         std::cout << "[+]names_source::readTrainFile - " << std::to_string(mImageTrain.size1()) << " samples loaded" << std::endl;
 
        
-        //remove columns from image train that are ignored or target column:
+        //remove columns from image train that are ignored or target description column:
         for(size_t i=0; i < ColumnNames.size(); ++i)
         {
             if(i == targetColumn || this->mColumnDesc[i].type==col_type::ignore || ColumnNames[i] == "ignore" || ColumnNames[i] == "target")
@@ -2223,14 +2289,11 @@ namespace provallo
                 mImageTrain.remove_column(i);
             }
         }
-
-
-
         names_rows.erase(names_rows.begin(), names_rows.end());
-
-        
-
         names_rows = std::vector<std::string>();
+        //update number of training samples:
+        this->mNbTrain  = mImageTrain.size1(); 
+        
 
     }
     void names_source::print()
@@ -2288,9 +2351,23 @@ namespace provallo
             throw std::runtime_error("names_source::readTestFile - Failed to load " + mTestFile  );
         }       
         std::string line  = "";
+        size_t ignored_lines = 0;
         std::vector<std::string> names;
-        while (std::getline(testFile, line))
+        while (testFile.is_open()&&!testFile.eof() )
         {
+
+            if( std::getline(testFile, line) )
+            {
+                if(line.size() > 1&& line[0] != '|' && line[0] != '#')
+                    names.push_back(line.c_str());
+            }
+            else
+            {
+                //ignore line:
+                ignored_lines++;
+
+            }
+
             if(line.size()>2&&line[0]!='|'&&line[0]!='#')
             {
                 //fix line with /000 at the end: 
@@ -2298,25 +2375,34 @@ namespace provallo
                 std::replace(line.begin(), line.end(), '\000', '\0'); // replace all 'x' to 'y' 
 
                 names.push_back(line.c_str());
+            } 
+            else
+            {
+                ignored_lines++;
             }
+
         }   
+        std::cout<<"[+]DEBUG - names_source::readTestFile - "<<names.size()<<" samples loaded,"<<std::to_string(ignored_lines)<<" ignored " <<std::endl; 
         testFile.close();
         mLabelsTest.resize(names.size(), 0 );   //length 0 size 1
         mLabelTest.resize(names.size(), 0 );   //length 0 size 1
-        mImageTest.resize(names.size(), ColumnNames.size() );   //length 0 size 1
+        mImageTest.resize(names.size(),  nFeatures );   //length 0 size 1
         //parse definition for each column descriptor ( row ) in names file:
-        
+        std::vector<size_t> remove_rows;
         //std::cout << "names_source::readTestFile - " << mBatchTest.size() << " samples loaded" << std::endl;
-        for ( i=0; i < names.size(); ++i)
+        for ( i=0; i < names.size(); i++)
         {
             std::istringstream iss(names[i].c_str());
             std::string token;
             j=0;
+            if(token[0] == '|' || token[0] == '#') {
+                    remove_rows.push_back(i); 
+                    continue;
+
+            }
             while (std::getline(iss, token, ','))
             {
-                if(token[0] == '|' || token[0] == '#') {
-                    continue;
-                 }
+               
                  mImageTest(i,j) =  get_value(j,token);
                 if(j==targetColumn)
                 {
@@ -2329,8 +2415,8 @@ namespace provallo
                         mLabelTest[i] = std::stod(token);
                 }
                 j++;
-             }
- 
+             }//while
+
         }       
         mLabelsTest= mLabelTest;
         //create a batch from test data:
@@ -2342,9 +2428,18 @@ namespace provallo
                 mImageTest.remove_column(i);
             }
         }
-        std::cout << "names_source::readTestFile - " << std::to_string(mImageTest.size1()*mImageTest.size2()) << " samples loaded" << std::endl;
+        //remove rows from image test that are ignored or target column: 
+        for(size_t i=0; i < remove_rows.size(); ++i)
+        {
+            std::cout<<"[+]DEBUG - names_source::readTestFile - removing row : "<<remove_rows[i]<<std::endl;
+
+            mImageTest.remove_row(remove_rows[i]);
+        } 
+        std::cout << "names_source::readTestFile - " << std::to_string(mImageTest.size1()) << " samples loaded" << std::endl;
         names = std::vector<std::string>();
+        this->mNbTest   = mLabelsTest.size();
         
+        this->mLabelsTest=mLabelsTest;
      }
      names_source::names_source(const names_source& other) : sample_source(other),  mLabelTrain(other.mLabelTrain), mLabelTest(other.mLabelTest), mLabelNames(other.mLabelNames), ColumnNames(other.ColumnNames), mNamesFile(other.mNamesFile)      
     {
@@ -2378,5 +2473,18 @@ namespace provallo
         Batch testingBatch;
         return testingBatch;
     }   
+
+
+ 
+    //console i/o print for task_configuration:
+    std::ostream& operator<<(std::ostream& os, const learning_task::task_configuration& config)
+    {
+        os << "task_configuration:" << std::endl;
+        os << "\t" << "databaseToUse:" << config.databaseToUse << std::endl;
+        os << "\t" << "type:" << config.typeOfExperiment << std::endl;
+        os << "\t" << "train size:" << config.labelTrainSize << std::endl;
+        os << "\t" << "test size:" << config.labelTestSize << std::endl; 
+        return os;    
+    }
 
 } /* namespace provallo */

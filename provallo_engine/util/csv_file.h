@@ -12,6 +12,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "../decision_engine/matrix.h"
+
 
 namespace provallo {
 class csvfile;
@@ -47,6 +49,7 @@ public:
 	{
 		fs_ << std::endl;
 	}
+ 
 
 	csvfile& operator << ( csvfile& (* val)(csvfile&))
 	{
@@ -71,9 +74,7 @@ public:
 		fs_ << val << separator_;
 		return *this;
 	}
-};
-
-
+}; 
 inline static csvfile& endrow(csvfile& file)
 {
 	file.endrow();

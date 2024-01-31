@@ -51,11 +51,7 @@ class singleton
     singleton& operator=(const singleton&) = delete;
     singleton(singleton&&) = delete;
     singleton& operator=(singleton&&) = delete;
-
-    //TODO: add thread safe copy constructor
-    //TODO: add thread safe copy assignment
-    //TODO: add thread safe move constructor
-
+    
 };  
 
 //initialize static members
@@ -76,8 +72,6 @@ std::atomic_bool singleton<T>::initialized(false);
 //template <typename T>
 //std::atomic_bool singleton<T>::destroyed(false);
 
-
-
-
+ 
 } // namespace provallo
 #endif

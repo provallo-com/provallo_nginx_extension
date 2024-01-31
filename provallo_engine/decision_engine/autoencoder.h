@@ -397,12 +397,14 @@ namespace provallo
             
 
             forward(input, size);
-            for (size_t i=0;i<std::min(outputDim,outputSize);i++)
-            {
-                output[i] = this->output[i];
-                 
-            }
-            //update gradients
+
+            //copy the output
+            
+            //don't forget to update the gradients 
+            backward(input, size, output, outputSize);
+            update();
+            
+
 
 
         }
@@ -6483,7 +6485,8 @@ namespace provallo
                 target[i] = max_index;
                 
             }    
-            
+            target_matrix.clear();
+            output.clear();
             //done.
 
         }

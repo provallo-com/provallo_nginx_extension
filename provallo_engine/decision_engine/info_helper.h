@@ -21,8 +21,7 @@
 
 namespace provallo
 {
-
-
+ 
     //optimal spike decoding filter :
     //optimal linear kernel for spike train decoding 
     //see : https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2781884/
@@ -179,6 +178,11 @@ namespace provallo
 
 
         public:
+        gaussian_spike_train_generator()
+        : _sigma(1.0) , _mu(0.0) , _dt(1.0) ,_t(0.0) , _t_max(1.0),_t_min(0.0), _t_step(1.0), _p(0.5), _q(0.5), _G(2), _p_u_k_G(2), _p_u_G(2), _p_k_G(2), _joint_distribution(2), _recognition_distribution(2), _recognition_model(2), _p_u_k(2), _p_u(2), _p_k(2)
+        {
+            init();
+        }
         gaussian_spike_train_generator(real_t sigma, real_t mu, real_t dt, real_t t_min, real_t t_max   )
         : _sigma(sigma) , _mu(mu) , _dt(dt) ,_t(t_min) , _t_max(t_max),_t_min(t_min), _t_step(t_min), _p(0.5), _q(0.5), _G(2), _p_u_k_G(2), _p_u_G(2), _p_k_G(2), _joint_distribution(2), _recognition_distribution(2), _recognition_model(2), _p_u_k(2), _p_u(2), _p_k(2)
         {
@@ -186,6 +190,14 @@ namespace provallo
         }
         ~gaussian_spike_train_generator()
         {
+        }
+        void init(size_t in,size_t out)
+        {
+            _input.resize(in);
+            _output.resize(out);
+            //initialize the random distribution : 
+            init();
+
         }
         void reset()
         {
@@ -320,7 +332,36 @@ namespace provallo
             return _p_k;
         }
 
-        
+        //set G
+        void set_G(const std::vector<real_t> &G)
+        {
+            _G = G;
+        }
+        //get G
+        const std::vector<real_t> & get_G() const
+        {
+            return _G;
+        }
+        //set input
+        void set_input(const std::vector<real_t> &input)
+        {
+            _input = input;
+        }
+        //get input
+        const std::vector<real_t> & get_input() const
+        {
+            return _input;
+        }
+        //set t
+        void set_t(real_t t)
+        {
+            _t = t;
+        }
+        //get t
+        real_t get_t()
+        {
+            return _t;
+        }
 
         //initialize the generator :
         void init()
@@ -358,6 +399,20 @@ namespace provallo
                 _recognition_model[i] = distribution(gen);
 
             }   
+
+            //set default input 
+            _input.resize(n);
+            for (size_t i = 0; i < n; i++)
+            {
+                _input[i] = distribution(gen);
+            }
+            //set default output
+            _output.resize(n);
+            for (size_t i = 0; i < n; i++)
+            {
+                _output[i] = distribution(gen);
+            }
+            
             //set gaussian /mixed  distribution :
             //p[u,k;G] = p[u|k;G] * p[k;G]
             //p[u|k;G] = p[u,k;G] / p[k;G]
@@ -382,9 +437,21 @@ namespace provallo
                 _recognition_model[i] = _p_u_k_G[i] * _p_u_G[i];
 
             }   
+            //set default mixing proportions :
+            _p = 0.5;
+            _q = 1.0 - _p;
+            //set default generative model :
+            _G.resize(n);
+            for (size_t i = 0; i < n; i++)
+            {
+                _G[i] = distribution(gen);
+            }
 
         }
-        
+        real_t refine()
+        {
+            return refine(_input);
+        }
         //refine the generator with EM algorithm :
         //gamma : mixing proportions 
         //https://en.wikipedia.org/wiki/Mixture_model#Gaussian_mixture_model
@@ -393,13 +460,22 @@ namespace provallo
             real_t result=0.0;
             this->_p = 0.5;
             this->_q = 1.0 - this->_p;
-            this->_input.resize(_input.size()+input.size());
-            this->_input.insert(this->_input.end(), input.begin(), input.end());
+            if( this->_input!=input) {
+                this->_input = input;
+            }
             std::uniform_real_distribution<real_t> distribution(0.0, 1.0);
             std::uniform_int_distribution<int> distribution_int(0, 1);
             std::random_device rd;
             std::mt19937 gen(rd());
+            std::gamma_distribution<real_t> gamma_distribution(1.0, 1.0); //gamma distribution with mean 1 and variance 1 : 
+            std::normal_distribution<real_t> normal_distribution(0.0, 1.0); //gaussian distribution with mean 0 and variance 1 :
+
+            //gaussian distribution with mean 0 and variance 1 : 
             provallo::Gaussian<real_t> gaussian(0.0, 1.0);
+            gaussian.set_variance(1.0);
+            gaussian.set_mean(0.0);
+            gaussian.set_stddev(1.0);
+            //initialize the random distribution :
             if( _G.size()==0)
             {
                 _G.resize(input.size());
@@ -424,22 +500,24 @@ namespace provallo
             matrix<real_t> non_invertible_gv(input.size(), _G.size());
             matrix<real_t> gaussian_matrix(input.size(), _G.size());
             //initialize gamma <P([v|u;G])> :
+            _p = 0.0;
+            _q = 0.0;
             for (size_t i = 0; i < input.size(); i++)
             {
                 for (size_t j = 0; j < _G.size(); j++)
                 {
                     real_t gauss = gaussian();
+                    //real_t g = gamma_distribution(gen);
                     if(gauss!=gauss)
                     {
                         //avoid -nan/nan
                         gauss=0.0;
                     }
+                    //update gamma :
                     gamma(i,j) = _G[j] * input[i]   ;
                     SIGMA(i,j)  = input[i]/2.0*gamma(i,j);
                     gv(i,j) = gamma(i,j) * _p_u_k_G[i];
                     gaussian_matrix(i,j) =gauss;
-
-
                     //separate invertible and non-invertible matrices :
                     invertible_gamma(i,j) = gamma(i,j);
                     invertible_SIGMA(i,j)  = SIGMA(i,j);
@@ -452,14 +530,20 @@ namespace provallo
                     gaussian.set_mean(_G[j]);
                     gaussian.set_variance(SIGMA(i,j)); 
                                      
-                }
+                }//end for j
                 generative[i] = _G[i] * input[i] * _p_u_k_G[i] * _p_u_G[i];
-
                 recognition[i] = _G[i] * input[i] * _p_u_k_G[i] * _p_u_G[i];
                 result += generative[i];
-            }
+
+                //debug _p and _q :
+                std::cout<<"_p : "<<_p<<std::endl;
+                std::cout<<"_q : "<<_q<<std::endl;
+                std::cout<<"left:"<<std::to_string((input.size()-i)*_G.size())<<std::endl;            
+                } //end for i
+        
             _p= _p/input.size();
             _q= _q/input.size();
+        
             //initialize joint distribution :
             this->_joint_distribution.resize(input.size());
             for (size_t i = 0; i < input.size(); i++)
@@ -563,8 +647,10 @@ namespace provallo
             for ( size_t i=0 ; i < input.size(); i++ )
             {
                 _output[i] = F[i]==F[i]?F[i] : 0.;
-            } 
-            return result;
+            }  
+            std::cout<<"[+] infohelper debug gaussian refine returning: "
+            <<std::to_string(result/real_t(input.size()))<< std::endl; 
+            return result / real_t(input.size()); 
 
         }
         //get output:
@@ -572,6 +658,12 @@ namespace provallo
         {
             return _output;
         }
+        void reset_steps()
+        {
+            _t_step = _t_min;
+            _t = _t_min;
+        }
+
         //generate a spike train :
         std::vector<real_t> generate()
         {
@@ -580,6 +672,7 @@ namespace provallo
             std::uniform_int_distribution<int> distribution_int(0, 1);
             std::random_device rd;
             std::mt19937 gen(rd());
+            reset_steps();
             //generate a spike train :
             while (_t_step < _t_max)
             {
@@ -593,6 +686,7 @@ namespace provallo
                 {
                     result.push_back(0.0);
                 }
+
             }
             return result;
         }       
@@ -769,7 +863,6 @@ namespace provallo
         size_t _t;//time
         size_t _t_step;//time step
         
-        gaussian_spike_train_generator<T> _generator;
         std::vector<real_t> _input;
         std::vector<real_t> _output;
         std::vector<real_t> _generative_model;
@@ -782,15 +875,35 @@ namespace provallo
         std::vector<real_t> _W_phase;
         std::vector<real_t> _Q_phase;
         std::vector<real_t> _DKL_phase;
-        
-
+        gaussian_spike_train_generator<T> _generator;
+        real_t _alpha = 0.99;//learning rate 
         public:
-        helmholtz_machine(size_t n=1, size_t m=1, size_t k=1, size_t l=1, size_t t=0, size_t t_step=0):_generator(n,m,k,l,t,t_step)
+        helmholtz_machine(size_t n=1, size_t m=1, size_t k=1, size_t l=1, size_t t=0, size_t t_step=0):_n(n),_m(m),_k(k),_l(l),_t(t),_t_step(t_step),_generator(1.0,0.0,0.1,0.0,1.0)
         {
-        }    
+            init();
+        }   
+
         ~helmholtz_machine()
         {
-        }   
+        } 
+        void init(size_t in, size_t out) 
+        {
+            _generator.init(in,out);
+            _input.resize(in);
+            _output.resize(out);
+            _generative_model.resize(out);
+            _recognition_model.resize(in);
+            _recognition_distribution.resize(in);
+            _random_distribution.resize(in);
+            _joint_distribution.resize(in);
+            _random_uniform_distribution.resize(in);
+            _F_phase.resize(in);
+            _W_phase.resize(in);
+            _Q_phase.resize(in);
+            _DKL_phase.resize(in);
+            _alpha = 0.99;
+            reset();
+        }  
         void reset()
         {
             _generator.reset();
@@ -900,7 +1013,47 @@ namespace provallo
         {
             _generator.set_recognition_model(recognition_model);
         }
-        void init()
+        //generate: 
+        std::vector<real_t> generate()
+        {
+            //generate a spike train :
+            std::vector<real_t> result;
+            std::uniform_real_distribution<real_t> distribution(0.0, 1.0); 
+            std::uniform_int_distribution<int> distribution_int(0, 1);
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            while (_generator.get_t_step() < _generator.get_t_max())
+            {
+                _generator.set_t_step(_generator.get_t_step() + _generator.get_dt());
+                _generator.set_t(_generator.get_t() + _generator.get_dt());
+                if (distribution(gen) < _generator.get_p())
+                {
+                    result.push_back(1.0);
+                }
+                else
+                {
+                    result.push_back(0.0);
+                }
+            }   
+            return result;
+        }
+        void refine()
+        {
+            refine(_input);
+        }
+        real_t refine(const std::vector<real_t> input)
+        {
+            real_t res = 0.0;
+            _generator.set_input(input);
+            res = _generator.refine();
+            _output = _generator.get_output();
+            return res;
+        }
+
+        //refine the generator with EM algorithm :
+        //gamma : mixing proportions
+        //https://en.wikipedia.org/wiki/Mixture_model#Gaussian_mixture_model
+         void init()
         {
             _generator.init();
             //initialize the random distribution :
@@ -929,7 +1082,7 @@ namespace provallo
                 _joint_distribution[i] = gaussian();
                 _recognition_distribution[i] = gaussian();
                 _random_uniform_distribution[i] = gaussian();
-                gaussian.set_mean(_generator.get_generative_model()[i]);
+                gaussian.set_mean(_generator.get_G()[i]);
                 gaussian.set_variance(_generator.get_sigma());
 
             }   
@@ -946,8 +1099,43 @@ namespace provallo
                 _recognition_distribution[i] = _recognition_distribution[i] * _random_distribution[i];
                 _random_uniform_distribution[i] = _random_uniform_distribution[i] * _random_distribution[i];
             }
-
-
+            //set default mixing proportions :
+            _generator.set_p(0.5);
+            _generator.set_q(1.0 - _generator.get_p());
+            //set default generative model :
+            _generator.set_G(_generative_model);
+            //initialize the recognition model :
+            _generator.set_recognition_model(_recognition_model);
+            //initialize the recognition distribution :
+            _generator.set_recognition_distribution(_recognition_distribution);
+            //initialize the random distribution :
+            _generator.set_random_distribution(_random_distribution);
+            //initialize the joint distribution :
+            _generator.set_joint_distribution(_joint_distribution);
+            //initialize the random uniform distribution :
+            _generator.set_random_uniform_distribution(_random_uniform_distribution);
+            //initialize the F phase :
+            this->_F_phase=_random_uniform_distribution;
+            //initialize the W phase :
+            this->_W_phase=_random_uniform_distribution;
+            //initialize the Q phase :
+            this->_Q_phase=_random_uniform_distribution;
+            //initialize the DKL phase :
+            this->_DKL_phase=_random_uniform_distribution;
+            
+            
+            //set default input
+            _input.resize(n);
+            for (size_t i = 0; i < n; i++)
+            {
+                _input[i] = gaussian();
+            }
+            //set default output
+            _output.resize(n);
+            for (size_t i = 0; i < n; i++)
+            {
+                _output[i] = gaussian();
+            }
             
         }
         void set_random_uniform_distribution(const std::vector<real_t> &p_u_k)
@@ -986,13 +1174,18 @@ namespace provallo
         {
             _output = output;
         }
+        
         const std::vector<real_t> & get_output() const
         {
             return _output;
         }
        
+        std::vector<real_t> & get_output() 
+        {
+            return _output;
+        }
          
-           
+ 
         void set_F_phase(const std::vector<real_t> &F_phase)
         {
             _F_phase = F_phase;
@@ -1135,6 +1328,7 @@ namespace provallo
             //apply the wake phase :
             reset();
             //generate a spike train :
+            
             _input = _generator();
             //refine the generator :
             _output = _generator(_input);
@@ -1166,7 +1360,77 @@ namespace provallo
 
             //apply the wake phase :
             //v ~P[v;G],u~P[u|v;G]
-            //w-> w+eta(v-f(w+W dot u))
+            //w-> w+eta(v-f(w+W dot(u)
+            //W-> W+eta(v-f(w+W dot(u))u
+
+            //update the generative model :
+            for (size_t i = 0; i < _generative_model.size(); i++)
+            {
+                _generative_model[i] = _generative_model[i] + _generator.get_eta() * (_output[i] - _generative_model[i]);
+            } 
+            //update the random distribution : 
+            for (size_t i = 0; i < _random_distribution.size(); i++)
+            {
+                _random_distribution[i] = _random_distribution[i] + _generator.get_eta() * (_output[i] - _random_distribution[i]);
+            }
+            //update the joint distribution :
+            for (size_t i = 0; i < _joint_distribution.size(); i++)
+            {
+                _joint_distribution[i] = _joint_distribution[i] + _generator.get_eta() * (_output[i] - _joint_distribution[i]);
+            }
+            //update the recognition distribution :
+            for (size_t i = 0; i < _recognition_distribution.size(); i++)
+            {
+                _recognition_distribution[i] = _recognition_distribution[i] + _generator.get_eta() * (_output[i] - _recognition_distribution[i]);
+            }
+            //update the recognition model :
+            for (size_t i = 0; i < _recognition_model.size(); i++)
+            {
+                _recognition_model[i] = _recognition_model[i] + _generator.get_eta() * (_output[i] - _recognition_model[i]);
+            } 
+            //update the random uniform distribution : 
+            for (size_t i = 0; i < _random_uniform_distribution.size(); i++)
+            {
+                _random_uniform_distribution[i] = _random_uniform_distribution[i] + _generator.get_eta() * (_output[i] - _random_uniform_distribution[i]);
+            } 
+            //update the F phase :
+            for (size_t i = 0; i < _F_phase.size(); i++)
+            {
+                _F_phase[i] = _F_phase[i] + _generator.get_eta() * (_output[i] - _F_phase[i]);
+            } 
+            //update the W phase :
+            for (size_t i = 0; i < _W_phase.size(); i++)
+            {
+                _W_phase[i] = _W_phase[i] + _generator.get_eta() * (_output[i] - _W_phase[i]);
+            }
+            //update the Q phase :
+            for (size_t i = 0; i < _Q_phase.size(); i++)
+            {
+                _Q_phase[i] = _Q_phase[i] + _generator.get_eta() * (_output[i] - _Q_phase[i]);
+            }
+            //update the DKL phase :
+            for (size_t i = 0; i < _DKL_phase.size(); i++)
+            {
+                _DKL_phase[i] = _DKL_phase[i] + _generator.get_eta() * (_output[i] - _DKL_phase[i]);
+            } 
+            //update the generative model :
+            for (size_t i = 0; i < _generative_model.size(); i++)
+            {
+                _generative_model[i] = _generative_model[i] + _generator.get_eta() * (_output[i] - _generative_model[i]);
+            }
+            //update the random distribution again :
+            for (size_t i = 0; i < _random_distribution.size(); i++)
+            {
+                _random_distribution[i] = _random_distribution[i] + _generator.get_eta() * (_output[i] - _random_distribution[i]);
+            }
+            //update the joint distribution again : 
+            for (size_t i = 0; i < _joint_distribution.size(); i++)
+            {
+                _joint_distribution[i] = _joint_distribution[i] + _generator.get_eta() * (_output[i] - _joint_distribution[i]);
+            } 
+            //update the output:
+            
+            //done :
 
 
         }   
@@ -1221,20 +1485,79 @@ namespace provallo
         gaussian_spike_train_generator<T> _generator;
         public:
         
-        boltzman_base( size_t n=1, size_t m=1, size_t k=1, size_t l=1, size_t t=1, size_t t_step=1):_generator(n,m,k,l,t,t_step)
+        boltzman_base( size_t n=1, size_t m=1, size_t k=1, size_t l=1, size_t t=1, size_t t_step=1):_n(n),_m(m),_k(k),_l(l),_t(t),_t_step(t_step),_sigma(1.0),_mu(0.0),_dt(0.1),_t_min(0.0),_t_max(1.0),_p(0.5),_q(1.0-_p),_generator(1.0,0.0,0.1,0.0,1.0)
+        {
+            init();
+        } 
+        void init(size_t in ,size_t out)
+        {
+            _generator.init(in,out);
+            _input.resize(in);
+            _output.resize(out);
+            _generative_model.resize(out);
+            _recognition_model.resize(in);
+            _recognition_distribution.resize(in);
+            _random_distribution.resize(in);
+            _joint_distribution.resize(in);
+            _random_uniform_distribution.resize(in);
+            _F_phase.resize(in);
+            _W_phase.resize(in);
+            _Q_phase.resize(in);
+            _DKL_phase.resize(in);
+            reset();
+
+        }
+        void init() 
         {
             //initialize the random distribution :
             //p[u,k;G] = p[u|k;G] * p[k;G]
             Gaussian<real_t> gaussian(0.0, 1.0);
-            
-            _random_distribution.resize(n);
-            _generative_model.resize(n);
-            _recognition_model.resize(n);
-            _joint_distribution.resize(n);
-            _recognition_distribution.resize(n);
-            _random_uniform_distribution.resize(n);
+            _random_distribution.resize(_n);
+            _generative_model.resize(_n);
+            _recognition_model.resize(_n);
+            _joint_distribution.resize(_n);
+            _recognition_distribution.resize(_n);
+            _random_uniform_distribution.resize(_n);
+             //set default input
+            _input.resize(_n);
+            for (size_t i = 0; i < _n; i++)
+            {
+                _input[i] = gaussian();
+            }
+            //set default output
+            _output.resize(_n);
+            for (size_t i = 0; i < _n; i++)
+            {
+                _output[i] = gaussian();
+            }
+            //set default F phase :
+            _F_phase.resize(_n);
+            for (size_t i = 0; i < _n; i++)
+            {
+                _F_phase[i] = gaussian();
+            }
+            //set default W phase :
+            _W_phase.resize(_n);
+            for (size_t i = 0; i < _n; i++)
+            {
+                _W_phase[i] = gaussian();
+            }
+            //set default Q phase :
+            _Q_phase.resize(_n);
+            for (size_t i = 0; i < _n; i++)
+            {
+                _Q_phase[i] = gaussian();
+            }
+            //set default DKL phase :
+            _DKL_phase.resize(_n);
+            for (size_t i = 0; i < _n; i++)
+            {
+                _DKL_phase[i] = gaussian();
+            }
+            //set default generative model :
+            _generative_model.resize(_n);
             //set random values for the generative model :
-            for (size_t i = 0; i < n; i++)
+            for (size_t i = 0; i < _n; i++)
             {
                 _random_distribution[i] =gaussian();
                 _generative_model[i] = gaussian();
@@ -1242,57 +1565,97 @@ namespace provallo
                 _joint_distribution[i] = gaussian();
                 _recognition_distribution[i] = gaussian();
                 _random_uniform_distribution[i] = gaussian();
-                gaussian.set_mean(_generator.get_generative_model()[i]);
-                gaussian.set_variance(_generator.get_sigma());
+                gaussian.set_mean(_generative_model[i]);
+                gaussian.set_variance(_sigma);
 
-            }
+            }   
             //set gaussian /mixed  distribution :
             //p[u,k;G] = p[u|k;G] * p[k;G]
             //p[u|k;G] = p[u,k;G] / p[k;G]
             //p[k;G] = sum_u p[u,k;G]
-            //p[u|k;G] = p[u,k;G] / sum_u p[u,k;G]
-            
-            for (size_t i = 0; i < n; i++)
+            //p[u|k;G] = p[u,k;G] / sum_u p[u,k;G] 
+            for (size_t i = 0; i < _n; i++)
             {
                 _generative_model[i] = _generative_model[i] * _random_distribution[i];
                 _recognition_model[i] = _recognition_model[i] * _random_distribution[i];
                 _joint_distribution[i] = _joint_distribution[i] * _random_distribution[i];
                 _recognition_distribution[i] = _recognition_distribution[i] * _random_distribution[i];
                 _random_uniform_distribution[i] = _random_uniform_distribution[i] * _random_distribution[i];
-            }   
-            //set the generator :
+            }
+            //set default mixing proportions :
+            _p = 0.5;
+            _q = 1.0 - _p;
+            //set default generative model :
+            _generator.set_G(_generative_model);
+            //initialize the recognition model :
+            _generator.set_recognition_model(_recognition_model);
+            //initialize the recognition distribution :
+            _generator.set_recognition_distribution(_recognition_distribution);
+            //initialize the random distribution :
+            _generator.set_random_distribution(_random_distribution);
+            //initialize the joint distribution :
+            _generator.set_joint_distribution(_joint_distribution);
+            //initialize the random uniform distribution :
+            _generator.set_random_uniform_distribution(_random_uniform_distribution);
+            //initialize the F phase :
+            this->_F_phase = _random_uniform_distribution; 
+            //initialize the W phase :
+            this->_W_phase = _random_uniform_distribution;
+            //initialize the Q phase :
+            this->_Q_phase = _random_uniform_distribution;
+            //initialize the DKL phase :
+            this->_DKL_phase = _random_uniform_distribution;
             
-            //iterate once to update values :
+
+            //initialize the output :
+            _output.resize(_n);
+            for (size_t i = 0; i < _n; i++)
+            {
+                _output[i] = gaussian();
+            }
+            
+           
+
+        }
+        std::vector<real_t> generate()
+        {
             //generate a spike train :
-            _input = _generator();
-            //refine the generator :
-            _output = _generator(_input);
-            //update the recognition model :
-            _recognition_model = _generator.get_recognition_model();
-            //update the recognition distribution :
-            _recognition_distribution = _generator.get_recognition_distribution();
-            //update the random distribution :
-            _random_distribution = _generator.get_random_distribution();
-            //update the joint distribution :
-            _joint_distribution = _generator.get_joint_distribution();
-            //update the random uniform distribution :
-            _random_uniform_distribution = _generator.get_random_uniform_distribution();
-            //update the F phase :
-            _F_phase = _generator.get_F_phase();
-
-            //update the W phase :
-            _W_phase = _generator.get_W_phase();
-
-            //update the Q phase :
-            _Q_phase = _generator.get_Q_phase();
-            //update the DKL phase :
-            _DKL_phase = _generator.get_DKL_phase();
-            //update the generative model :
-            _generative_model = _generator.get_generative_model();
-             
-
-            
+            std::vector<real_t> result;
+            std::uniform_real_distribution<real_t> distribution(0.0, 1.0); 
+            std::uniform_int_distribution<int> distribution_int(0, 1);
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            while (_t_step < _t_max)
+            {
+                _t_step += _dt;
+                _t += _dt;
+                if (distribution(gen) < _p)
+                {
+                    result.push_back(1.0);
+                }
+                else
+                {
+                    result.push_back(0.0);
+                }
+            }   
+            return result;
         }   
+        void refine()
+        {
+            refine(_input);
+        }
+        real_t refine(const std::vector<real_t> input)
+        {
+            real_t res = 0.0;
+            _generator.set_input(input);
+
+            res = _generator.refine();
+            _output = _generator.get_output();
+
+            maximize();
+
+            return res;
+        }
         ~boltzman_base()
         {
         }
@@ -1437,16 +1800,13 @@ namespace provallo
         //calculate the lyaounov :
         real_t lyapunov()
         {
-
-            //L(I) = <lnQ[v]-lnP[v]>_Q + Nvk  -lnZ
+             //L(I) = <lnQ[v]-lnP[v]>_Q + Nvk  -lnZ
             real_t result = 0.0;
             for (size_t i = 0; i < _output.size(); i++)
             {
-                result += _output[i] * std::log(_output[i]) - _output[i] * std::log(_output[i]);
-
+                result += _output[i]*std::log(_output[i]) - _output[i] * std::log(_output[i]);
             }
             result = result / _output.size();
-
             return -result;
         }
         //calculate the free energy :
@@ -1544,8 +1904,7 @@ namespace provallo
         // maximize the expectation of the log-likelihood :
         // use DKL to maximize the expectation of the log-likelihood :
         // DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
-        
-
+        // 
         real_t  maximize()
         {
             //maximize the expectation of the log-likelihood :
@@ -1553,26 +1912,15 @@ namespace provallo
             //DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
             //maximize and set _output to the results  :
             real_t result = 0.0;
-            //update the phases :   
-            //update the F phase :
-            _F_phase = _generator.get_F_phase();
-            //update the W phase :
-            _W_phase = _generator.get_W_phase();
-            //update the Q phase :
-            _Q_phase = _generator.get_Q_phase();
-            //update the DKL phase :
-            _DKL_phase = _generator.get_DKL_phase();
-            //maximize the expectation of the log-likelihood : 
-            //use DKL to maximize the expectation of the log-likelihood :
-            //DKL(Q[v;u],P[v|u;G] * P[u;G]) = sum_v Q[v;u] ln  P[v|u;G] * P[u;G] - sum_v Q[v;u] ln P[v;G]
-            //maximize and set _output to the results  :
+            
             size_t n = std::min(_DKL_phase.size(), _output.size());
             for (size_t i = 0; i < n; i++)
             {
                 result += _DKL_phase[i];
                 _output[i] = _DKL_phase[i];
             }
-            return result;    
+            return result;
+            
         }
         //minimize the expectation of the log-likelihood :
         //use DKL to minimize the expectation of the log-likelihood :
@@ -1601,12 +1949,33 @@ namespace provallo
             }
              return result;
         }
+        //get output :
+        const std::vector<real_t> & get_output() const
+        {
+            return _output;
+        }   
+        std::vector<real_t> & get_output() 
+        {
+            return _output;
+        }
+        //set output :
+        void set_output(const std::vector<real_t> &output)
+        {
+            _output = output;
+        }
+        //get input :
+        const std::vector<real_t> & get_input() const
+        {
+            return _input;
+        }
+        //set input :
 
+        void set_input(const std::vector<real_t> &input)
+        {
+            _input = input;
+        }
 
-
-
-            
-
+ 
     };
 
 
