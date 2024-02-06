@@ -274,8 +274,6 @@ namespace provallo
             relu(matrix<T>& x)
             {
                 x =x*x.max();
-
-
             }
             static void
             relu_derivative(matrix<T>& x)
@@ -288,6 +286,14 @@ namespace provallo
                 x = (x - x.max()).exp();
                 x = x / x.sum();
             }
+            //softmax derivative 
+            static void
+            softmax_derivative(matrix<T>& x)
+            {
+                x = x * (1.0 - x);
+            }
+            
+
     };
 
     template<typename T>

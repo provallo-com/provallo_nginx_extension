@@ -1286,7 +1286,7 @@ int main(int argc, char *argv[])
   //
   // for the website: 
   //
-  create_spike_train_animation(100,100,100); 
+  //create_spike_train_animation(100,100,100); 
 
   if (argc > 1)
   {
@@ -3404,6 +3404,8 @@ void create_spike_train_animation(size_t number_of_frames,size_t number_of_spike
     std::cout << "[-] error opening spikes_animation.DAT file" << std::endl;
     return;
   } 
+  auto xrange_min =0.0, xrange_max = 100.0, yrange_min = 0.0, yrange_max = 100.0; 
+
 
   // create spike train animation
   for(size_t i =0; i< number_of_frames; i++)
@@ -3430,14 +3432,40 @@ void create_spike_train_animation(size_t number_of_frames,size_t number_of_spike
       for(size_t k =0; k< generated_frame.size(); k++)
       {
         auto& output =  test_spike_train_generator.get_output();
-        spikes_animation <<std::to_string((i*100)+(k)) << " " << std::to_string(output[k]) << " " << std::to_string(generated_frame[k]) << " " << std::endl ; 
+        //check ranges : 
+        if(output[k]*refine < yrange_min)
+        {
+          yrange_min = output[k]*refine; 
+        }
+        if(output[k]*refine > yrange_max)
+        {
+          yrange_max = output[k]*refine; 
+        }
+        if((i*100)+(k) < xrange_min)
+        {
+          xrange_min = (i*100)+(k); 
+        }
+        if((i*100)+(k) > xrange_max)
+        {
+          xrange_max = (i*100)+(k); 
+        }
+
+        //zrange_min = 0.0, zrange_max = 100.0; 
+
+        auto q = test_spike_train_generator.get_q();
+        auto p = test_spike_train_generator.get_p(); 
+
+        spikes_animation <<std::to_string((i*100)+(k)) << " " << std::to_string(output[k]*refine) << " " << std::to_string(generated_frame[k]+q/refine*real_t(k)-p) << " " <<   std::endl;
         
-        
-      }
+       }
       spikes_animation << std::endl;
 
     }
     //close 
+   
+    
+    } 
+
     spikes_animation.close(); 
     //write gnuplot script file for the animation:
     std::ofstream gnuplot_script("spikes_animation.gnuplot",std::ios::app); 
@@ -3448,23 +3476,34 @@ void create_spike_train_animation(size_t number_of_frames,size_t number_of_spike
     } 
     gnuplot_script << "set terminal gif animate delay 10" << std::endl; 
     gnuplot_script << "set output 'spikes_animation.gif'" << std::endl; 
-    gnuplot_script << "set xrange [0:1]" << std::endl; 
-    gnuplot_script << "set yrange [0:1]" << std::endl;
-    gnuplot_script << "set zrange [0:1]" << std::endl; 
+    
+    //set the labels : 
     gnuplot_script << "set xlabel 'time'" << std::endl; 
     gnuplot_script << "set ylabel 'neuron'" << std::endl; 
     gnuplot_script << "set zlabel 'spike'" << std::endl; 
+    //set the ranges : 
+    gnuplot_script << "set xrange ["<<std::to_string(xrange_min)<<":"<<std::to_string(xrange_max)<<"]" << std::endl; 
+    gnuplot_script << "set yrange ["<<std::to_string(yrange_min)<<":"<<std::to_string(yrange_max)<<"]" << std::endl; 
+    gnuplot_script << "set zrange ["<<std::to_string(0.0)<<":"<<std::to_string(100.0)<<"]" << std::endl; 
     gnuplot_script << "set title 'provallo spike train animation'" << std::endl; 
     gnuplot_script << "set pm3d" << std::endl; 
     gnuplot_script << "set palette rgbformulae 33,13,10" << std::endl; 
     gnuplot_script << "set hidden3d" << std::endl;
-    gnuplot_script << "set dgrid3d 100,100" << std::endl;
+    gnuplot_script << "set dgrid3d 500,500" << std::endl;
     gnuplot_script << "set view 60,30" << std::endl;
     gnuplot_script << "set ticslevel 0" << std::endl; 
-    gnuplot_script << "set isosamples 100" << std::endl;
+   
     //based on the number of frames loop through the DAT file and splot the spike trains 
     gnuplot_script << "do for [i=0:" << std::to_string(number_of_frames) << "] {" << std::endl; 
-    gnuplot_script << "splot 'spikes_animation.DAT' index i using 1:2:3 with lines" << std::endl; 
+    
+    //get delta for animation smoothing : 
+    gnuplot_script << "delta = 1.0/" << std::to_string(number_of_frames) << std::endl; 
+    //splot the spikes_animation.DAT file with smooth animation pm3d
+    gnuplot_script << "splot 'spikes_animation.DAT' index i using 1:2:3::3 with lines palette title 'spike train' smooth unique" << std::endl; 
+    //print frame + delta : 
+    gnuplot_script << "print 'frame '.i" << std::endl; 
+
+
 
     //rotate the view 3 degrees every frame 
     gnuplot_script << "set view 60,30+i*3" << std::endl; 
@@ -3473,10 +3512,6 @@ void create_spike_train_animation(size_t number_of_frames,size_t number_of_spike
     gnuplot_script.close();
     
     std::getchar();
-    
-  } 
-
-  
 
 }
   // create a spike train animation 

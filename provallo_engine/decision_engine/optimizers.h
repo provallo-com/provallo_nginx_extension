@@ -1256,6 +1256,27 @@ namespace provallo
 	
 			}//namespace global
 			
+	
 	}//namespace provallo
+
+	// ----- Genetic Algorithm operators for the real value function
+	struct Initializer
+	{
+		template <class Function, class Array>
+		static void
+		initialize(const Function &function, Array *values,
+				   std::random_device &random)
+		{
+			initArray(values, function);
+			std::mt19937 gen(random);
+			std::uniform_int_distribution<> uniform(0, RAND_MAX);
+
+			for (size_t i = 0; i < values->size(); ++i)
+				(*values)[i] = function.left(i) + (function.right(i) - function.left(i)) * uniform(gen);
+		}
+	};	
+	// ----- Genetic Algorithm operators for the real value function 
+		
+
 
 #endif /* DECISION_ENGINE_OPTIMIZERS_H_ */

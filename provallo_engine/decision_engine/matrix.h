@@ -1470,7 +1470,8 @@ namespace provallo
         return data_[0];
       }
       
-    }
+    } 
+
 
     const_reference 
     element(size_type i, size_type j)const
@@ -1835,6 +1836,144 @@ namespace provallo
           ret(i - row_start, j - col_start) = (*this)(i, j);
       return ret;
     }
+
+    //Nonlinear stability and bifurcation theory  Hans Troger,Alois Steindl 
+
+    //Get divergent elements for f(x) : 
+    std::vector<std::pair<size_t, size_t>> divergent(std::function<T(T)> f) const
+    {
+      std::complex<T> c;
+      std::vector<std::pair<size_t, size_t>> ret; 
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = f((*this)(i, j));
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for 
+      return ret;
+    }   
+    //get divergent elements for f(x,y) : 
+    std::vector<std::pair<size_t, size_t>> divergent(std::function<T(T,T)> f , std::vector<T> y) const
+    {
+      std::complex<T> c;
+      std::vector<std::pair<size_t, size_t>> ret; 
+      //make sure y has the same size as the matrix
+      if(y.size()!=size1())
+        return ret;
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = f((*this)(i, j),y[i]);
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+      return ret;
+
+    }  
+
+    //get fluttering elements for f(x) : 
+    std::vector<std::pair<size_t, size_t>> flutter(std::function<T(T)> f) const
+    {
+      std::complex<T> c;
+      std::vector<std::pair<size_t, size_t>> ret; 
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = f((*this)(i, j));
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+      return ret; 
+
+    }
+    //get fluttering elements for f(x,y) : 
+    std::vector<std::pair<size_t, size_t>> flutter(std::function<T(T,T)> f , std::vector<T> y) const
+    {
+      std::complex<T> c;
+      std::vector<std::pair<size_t, size_t>> ret; 
+      //make sure y has the same size as the matrix 
+      if(y.size()!=size1())
+        return ret;
+      for (size_t i = 0; i < size1(); i++)  
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = f((*this)(i, j),y[i]);
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for 
+      return ret;
+    } 
+    //get stable elements for f(x) :
+    std::vector<std::pair<size_t, size_t>> stable(std::function<T(T)> f) const
+    {
+      std::vector<std::pair<size_t, size_t>> ret;
+      std::complex<T> c(T(0.0));
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++){
+          c= f((*this)(i, j));
+          if (!std::isinf(c.real()) && !std::isnan(c.real()) && !std::isinf(c.imag()) && !std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+
+      return ret;
+
+    } 
+    //get stable elements for f(x,y) : 
+    std::vector<std::pair<size_t, size_t>> stable(std::function<T(T,T)> f , std::vector<T> y) const
+    {
+      std::vector<std::pair<size_t, size_t>> ret; 
+      std::complex<T> c;
+      //make sure y has the same size as the matrix 
+      if(y.size()!=size1())
+        return ret; 
+
+      for (size_t i = 0; i < size1(); i++)  
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = f((*this)(i, j),y[i]);
+          if (!std::isinf(c.real()) && !std::isnan(c.real()) && !std::isinf(c.imag()) && !std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+      return ret;
+    }     
+
+    //get unstable elements for f(x) : 
+    std::vector<std::pair<size_t, size_t>> unstable(std::function<T(T)> f) const
+    {
+      std::complex<T> c;
+      std::vector<std::pair<size_t, size_t>> ret; 
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = f((*this)(i, j));
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+
+      return ret;
+    }   
+    //get unstable elements for f(x,y) :  
+    std::vector<std::pair<size_t, size_t>> unstable(std::function<T(T,T)> f , std::vector<T> y) const
+    {
+      std::vector<std::pair<size_t, size_t>> ret; 
+      //make sure y has the same size as the matrix 
+      if(y.size()!=size1())
+        return ret; 
+      //check if inf or -inf 
+      std::complex<T> c; 
+      for (size_t i = 0; i < size1(); i++){
+        for (size_t j = 0; j < size2(); j++){
+          c = f((*this)(i, j),y[i]);
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        
+        } //for
+      }//for
+      
+      return ret;
+    } 
+  
     size_type
     rows() const
     {
