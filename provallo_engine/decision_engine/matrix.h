@@ -682,13 +682,13 @@ namespace provallo
       }
      }
 
-    matrix(const T* ptr,size_t size1,size_t size2):size1_(size1),size2_(size2),data_(nullptr)
+    matrix(const T* dat_ptr,size_t size1,size_t size2):size1_(size1),size2_(size2),data_(nullptr)
     {
       size_t a_size=size1_*size2_;
       if(a_size>0)
       {
         data_ = new T[a_size];
-        std::copy(ptr, ptr + a_size, data_);
+        std::copy(dat_ptr,dat_ptr + a_size, data_);
       }
      }
 
@@ -1041,6 +1041,65 @@ namespace provallo
           tmp(i, j) = data_[i * size2_ + j] * value;
       return tmp;
     }
+
+    T det()const
+    {
+      //return determinant of the matrix :
+      if(size1_!=size2_)
+      {
+        std::cerr<<"Matrix is not square, determinant is not defined"<<std::endl;
+        return 0;
+      }
+      else
+      {
+        if(size1_==1)
+          return data_[0];
+        else if(size1_==2)
+          return data_[0]*data_[3]-data_[1]*data_[2];
+        else
+        {
+          T det = 0;
+          for(size_t i=0;i<size1_;i++)
+          {
+            matrix<T> tmp = remove_row(i);
+            det += std::pow(-1,i)*data_[i*size2_]*tmp.det();
+          }
+          return det;
+        }
+      } 
+    }
+    //inverse of a matrix (const version)
+    matrix<T> inverse() const
+    {
+      
+      if(size1_!=size2_)
+      {
+        //make it sqrt of total size 
+        size_t size = std::sqrt(size1_ * size2_); 
+        matrix<T> tmp(size, size); 
+        matrix<T> adj(size, size); 
+        T det = this->det(); 
+
+        if (det == 0)
+          return tmp; 
+        adj = adjoint();
+        tmp = adj.cwiseProduct(1 / det);
+
+        return tmp;
+      } 
+      else
+      {
+        matrix<T> tmp(size1_, size2_);
+        matrix<T> adj(size1_, size2_);
+        T det = this->det();
+        if (det == 0)
+          return tmp;
+        adj = adjoint();
+        tmp = adj.cwiseProduct(1 / det);
+        return tmp;
+      } 
+      
+    } 
     //remove column - copy matrix twice, non const version of the function is more efficient
 
     matrix<T> remove_column(size_t col) const
@@ -1341,6 +1400,51 @@ namespace provallo
       for (size_t i = 0; i < size1_; i++)
         for (size_t j = 0; j < size2_; ++j)
           tmp(i, j) = std::tanh(data_[i * size2_ + j]);
+      return tmp;
+    }
+
+    //sigmoid
+    matrix<T> sigmoid() const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; ++j)
+          tmp(i, j) = 1.0 / (1.0 + std::exp(-data_[i * size2_ + j]));
+      return tmp;
+    } 
+    //relu
+    matrix<T> relu() const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; ++j)
+          tmp(i, j) = std::max(0.0, data_[i * size2_ + j]);
+      return tmp;
+    } 
+    //softmax
+    matrix<T> softmax() const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+      {
+        T sum = 0;
+        for (size_t j = 0; j < size2_; j++)
+          sum += std::exp(data_[i * size2_ + j]);
+        for (size_t j = 0; j < size2_; j++)
+          tmp(i, j) = std::exp(data_[i * size2_ + j]) / sum;
+      }
+      return tmp;
+    }
+    //identity
+    matrix<T> identity() const
+    {
+      matrix<T> tmp(size1_, size2_);
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          if (i == j)
+            tmp(i, j) = 1;
+          else
+            tmp(i, j) = 0;
       return tmp;
     }
 
@@ -1974,6 +2078,67 @@ namespace provallo
       return ret;
     } 
   
+    //default stable: 
+    std::vector<std::pair<size_t, size_t>> stable() const
+    {
+      std::vector<std::pair<size_t, size_t>> ret;
+      std::complex<T> c;
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++){
+          c = (*this)(i, j);
+          if (!std::isinf(c.real()) && !std::isnan(c.real()) && !std::isinf(c.imag()) && !std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+
+      return ret;
+
+    } 
+    //default unstable:
+    std::vector<std::pair<size_t, size_t>> unstable() const
+    {
+      std::vector<std::pair<size_t, size_t>> ret;
+      std::complex<T> c;
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = (*this)(i, j);
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+
+      return ret;
+    } 
+    //default flutter:  
+    std::vector<std::pair<size_t, size_t>> flutter() const
+    {
+      std::vector<std::pair<size_t, size_t>> ret;
+      std::complex<T> c;
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = (*this)(i, j);
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+
+      return ret;
+    }   
+    //default divergent:
+    std::vector<std::pair<size_t, size_t>> divergent() const
+    {
+      std::vector<std::pair<size_t, size_t>> ret;
+      std::complex<T> c;
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+        {
+          c = (*this)(i, j);
+          if (std::isinf(c.real()) || std::isnan(c.real()) || std::isinf(c.imag()) || std::isnan(c.imag()))
+            ret.push_back(std::make_pair(i, j));
+        } //for
+
+      return ret;
+    } 
+
     size_type
     rows() const
     {
@@ -1984,19 +2149,17 @@ namespace provallo
     {
       return size2();
     }
-    array_type &
+    inline array_type &
     data()
-    {
-
+    { 
       return data_;
     }
 
 
-    const array_type &
+    inline const array_type &
     data()const
     {
-
-      return data_;
+       return data_;
     }
     void fill(const T &val)
     {
@@ -2163,9 +2326,10 @@ namespace provallo
         real_t ret = 0;
         array_type a = row(i);
         array_type b = row(j);
-        for(size_t i=0;i<size1();i++)
-          ret += (a[i]-mean(a))*(b[i]-mean(b));
-        return ret/(size1()-1);
+        for(size_t k=0;k<size1_;k++)
+          ret += (a[k]-mean(a))*(b[k]-mean(b)); 
+
+        return (size1_>1)? ret/real_t(size1()-1) : ret; 
         
       //return eigen_values(row(i),row(j));
     }
@@ -2405,6 +2569,34 @@ namespace provallo
           reverse(i, j) = element(size1() - i, size2() - j);
       return reverse;
     }
+    //conjugate
+    matrix<T> conjugate() const
+    {
+      matrix<T> conjugate(size1(), size2());
+      for (typename matrix<T>::size_type i = 0; i < size1(); ++i)
+        for (typename matrix<T>::size_type j = 0; j < size2(); ++j)
+          conjugate(i, j) = std::conj(element(i, j)).real();
+      return conjugate;
+    }
+    //adjoint
+    matrix<T> adjoint() const
+    {
+      matrix<T> adjoint(size2(), size1());
+      for (typename matrix<T>::size_type i = 0; i < size2(); ++i)
+        for (typename matrix<T>::size_type j = 0; j < size1(); ++j)
+          adjoint(i, j) = std::conj(element(j, i)).real();
+      return adjoint;
+    } 
+    //conjugate transpose
+    matrix<T> conjugate_transpose() const
+    {
+      matrix<T> conjugate_transpose(size2(), size1());
+      for (typename matrix<T>::size_type i = 0; i < size2(); ++i)
+        for (typename matrix<T>::size_type j = 0; j < size1(); ++j)
+          conjugate_transpose(i, j) = std::conj(element(j, i)).real() ;
+      return conjugate_transpose;
+    }
+
 
     iterator
     begin()
@@ -2596,7 +2788,7 @@ namespace provallo
     matrix<T> &
     operator-=(const T &rhs)
     {
-      std::transform(data_.begin(), data_.end(), data_.begin(),
+      std::transform(&data_[0], &data_[size1_*size2_], &data_[0],
                      std::bind2nd(std::minus<T>(), rhs));
       return *this;
     }
@@ -2616,8 +2808,8 @@ namespace provallo
     operator*=(const matrix<T> &rhs)
     {
       assert(size1_ == rhs.size1_ && size2_ == rhs.size2_);
-      std::transform(data_.begin(), data_.end(), rhs.data_.begin(),
-                     data_.begin(), std::multiplies<T>());
+      std::transform(&data_[0], &data_[size1_*size2_], &rhs.data_[0],
+                      &data_[0], std::multiplies<T>());
       return *this;
     } 
 
@@ -2625,48 +2817,24 @@ namespace provallo
     operator/=(const matrix<T> &rhs)
     {
       assert(size1_ == rhs.size1_ && size2_ == rhs.size2_);
-      std::transform(data_.begin(), data_.end(), rhs.data_.begin(),
-                     data_.begin(), std::divides<T>());
+      std::transform(&data_[0], &data_[size1_*size2_], rhs.data_.begin(),
+                      &data_[0], std::divides<T>());  
       return *this;
     }
     //  real determinant
     T real_det()const
     {
-      T ret = 0;
-      //calculate determinant of matrix
-      if (size1_ == 1)
-      {
-        ret = data_[0];
-      }
-      else if (size1_ == 2)
-      {
-        ret = data_[0] * data_[3] - data_[1] * data_[2];
-      }
-      else
-      {
-        for (size_t i = 0; i < size1_; i++)
-        {
-          matrix<T> temp(size1_ - 1, size1_ - 1);
-          for (size_t j = 1; j < size1_; j++)
-          {
-            for (size_t k = 0; k < size1_; k++)
-            {
-              if (k < i)
-              {
-                temp(j - 1, k) = data_[j * size1_ + k];
-              }
-              else if (k > i)
-              {
-                temp(j - 1, k - 1) = data_[j * size1_ + k];
-              }
+            T det = 0;
+            size_t min=std::min(this->size1_,this->size2_); 
+            for (size_t i = 0; i < min; i++) {
+                det += this->data_[i * this->size2_ + i];
             }
-          }
-          ret += data_[i] * pow(-1, i) * temp.real_det();
-        }
-      } 
-      return ret;
-
+            det = std::abs(det)  * (this->size1_ == this->size2_ ? 1 : 0); 
+            
+            return det;
+      
     }
+        //calculate the determinant of the smaller matrices allready with power -1 appied
 
     //serialize matrices to binary file 
     
@@ -2733,7 +2901,7 @@ namespace provallo
         out << std::endl;
       }
     } 
-  private:
+  protected:
     size_type size1_;
     size_type size2_;
     array_type data_;
@@ -3875,7 +4043,7 @@ namespace provallo
   {
     matrix<FloatType> ident(n, n, FloatType());
     for (size_t i = 0; i < n; ++i)
-      ident(i, i) = 1;
+      ident(i, i) = 1.0;
     return ident;
   }
 
@@ -4317,5 +4485,21 @@ namespace provallo
     return ifs;
   } 
 
+
+
+  //Tikhonov regularization for matrix a and b with lambda 
+
+  template <typename T> 
+  matrix<T> tikhonov(const matrix<T> &a, const matrix<T> &b, const T &lambda)
+  {
+    matrix<T> a_transpose = a.transpose();
+    matrix<T> a_transpose_a = a_transpose * a; 
+    matrix<T> a_transpose_b = a_transpose * b; 
+    matrix<T> a_transpose_a_lambda = a_transpose_a + lambda 
+    *a_transpose_a.identity(); 
+    matrix<T> a_transpose_a_lambda_inv = a_transpose_a_lambda.inverse(); 
+    matrix<T> x = a_transpose_a_lambda_inv * a_transpose_b; 
+    return x;
+  }
 } /* namespace provallo */ ;
 #endif /* DECISION_ENGINE_MATRIX_H_ */

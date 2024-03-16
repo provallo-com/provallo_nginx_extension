@@ -292,7 +292,7 @@ namespace provallo
             {
                 x = x * (1.0 - x);
             }
-            
+            //
 
     };
 
@@ -486,8 +486,7 @@ namespace provallo
                 weights = weights + momentum * velocity - learning_rate * gradients;
             }
     };
-     
-
+      
 }//end namespace provallo
 
 

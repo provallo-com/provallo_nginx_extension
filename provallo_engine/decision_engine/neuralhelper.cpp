@@ -14,6 +14,8 @@
 namespace provallo
 {
     using type_matrix = matrix<real_t>;
+    using complex_matrix = matrix<std::complex<real_t>>; // complex matrix type 
+    
     //  Sigmoid
     ActivationFun
     sigmoid(real_t lambda)
@@ -132,7 +134,66 @@ namespace provallo
             return res;
         };
     }
+     
+    //  Cross-Entropy Error Function
+    ErrorFun crossEntropy() {
+        return [](type_matrix v1, type_matrix v2) {
+            real_t res = 0;
+            for (size_t i = 0; i < v1.size1(); i++) {
+                for (size_t j = 0; j < v2.size2(); j++) {
+                    res += -1 * std::log<real_t>(v1(i, j) + 0.0000001).real();
+                }
+            }
+            return res;
+        };  
+    }
+    //Wasserstein distance
 
+    ErrorFun genWasserstein () {
+        return  [](type_matrix v1, type_matrix v2) 
+        
+        {
+            real_t res = 0;
+            for (size_t i = 0; i < v1.size1(); i++)
+            {
+                for (size_t j = 0; j < v2.size2(); j++)
+                {
+                    res += -1 * std::log<real_t>(v1(i, j) + 0.0000001).real();
+                }
+            }
+            return res;
+        };
+    
+    }
+    
+    //  Mean Squared Error Function
+    ErrorFun genMSE() { return [](type_matrix v1, type_matrix v2)
+        {
+            real_t res = 0;
+            for (size_t i = 0; i < v1.size1(); i++)
+            {
+                for (size_t j = 0; j < v2.size2(); j++)
+                {
+                    res += -1. * std::log<real_t>( fabs(v1(i, j) - (1 - v2(i, j)))).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
+                }
+            }
+            return res;
+        };
+    }
+    //genBCE    
+    ErrorFun genBCE() {
+        return [](type_matrix v1, type_matrix v2) {
+            real_t res = 0;
+            for (size_t i = 0; i < v1.size1(); i++) {
+                for (size_t j = 0; j < v2.size2(); j++) {
+                    res += -1 * std::log<real_t>(v1(i, j) + 0.0000001).real();
+                }
+            }
+            return res;
+        };
+    }   
+    
+    
     zero_pad_layer::~zero_pad_layer()
     {
     }

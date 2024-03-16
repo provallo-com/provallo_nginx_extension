@@ -154,7 +154,7 @@ namespace provallo
     void
     run_query (const std::string &query);
   };
-
+  
 } /* namespace provallo */
 
 #endif /* MINIDAL_H_ */

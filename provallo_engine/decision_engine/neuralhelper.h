@@ -45,7 +45,24 @@ namespace provallo
   genMinMax ();
   ErrorFun
   genKLDiv ();
+  
+  ErrorFun
+  genJSDiv ();
+  ErrorFun
 
+  genWasserstein ();
+  ErrorFun
+  genHinge ();
+  ErrorFun
+  genLog ();
+  ErrorFun
+  genExp ();
+  ErrorFun
+  genCrossEntropy ();
+  ErrorFun
+  genBCE ();
+  ErrorFun
+  genMSE ();
   //nueron layer interface 
   class neuron_layer
   {

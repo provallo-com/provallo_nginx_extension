@@ -85,6 +85,8 @@ class web_collector : public stat_collector
     web_collector& operator=(web_collector&&) = delete;
     virtual void collect() override;
     protected:
+    std::string _raw_decoded;
+    
 };
  
 } // namespace provallo

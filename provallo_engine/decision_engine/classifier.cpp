@@ -17,6 +17,10 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+
+#define square(x) std::pow(x, 2.0) // x^2 
+
+
 namespace provallo
 {
 

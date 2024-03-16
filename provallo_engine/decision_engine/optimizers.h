@@ -9,8 +9,13 @@
 
 #include "matrix.h"
 #include "utils.h"
-namespace provallo
-{
+
+//fnv1a hash fwd decl:
+uint64_t fnv1a(const std::string &str);
+
+namespace provallo {
+	
+	//Filters :
 	namespace filters 
 	{
 
@@ -94,9 +99,9 @@ namespace provallo
 			size_t _window; //window size
 			std::function<uint64_t(const std::string&)> _hash;
 			std::vector<bool> _bloom;
-
+			
 		public:
-			bloom_filter(size_t window) : _window(window),_hash(provallo::fnv1a),_bloom(window) {}
+			bloom_filter(size_t window) : _window(window),_hash(fnv1a),_bloom(window) {}
 			void filter (const std::vector<std::string> &v)
 			{
 				for (auto e : v)
@@ -464,7 +469,6 @@ namespace provallo
 
 
 		
-
 		template <typename Array, typename Function,
 				  typename InitializerSetter = default_operator_args,
 				  typename ComparatorSetter = default_operator_args>
@@ -880,7 +884,7 @@ namespace provallo
 		struct elitist_selector
 		{
 			// Elitism rate
-			static float _elitism_rate;
+			static real_t _elitism_rate;
 
 			// Default selector (roulette wheel selector)
 			// Population : population class
@@ -897,7 +901,7 @@ namespace provallo
 				// Number of best parents
 				size_t nelite(_elitism_rate * npop);
 				// Sanity check
-				if (nelite == 0)
+				if ((nelite^(~nelite)) == 0)
 					nelite = 1;
 				// Put the best parents into the buffer
 				for (size_t i = 0; i < npop; ++i)
@@ -1061,7 +1065,7 @@ namespace provallo
 		{
 		};
 
-	}
+	}//namespace GENETIC
 
 	namespace global
 	{
@@ -1254,29 +1258,11 @@ namespace provallo
 				}
 			};//struct FinalMutator
 	
-			}//namespace global
+	 
+		}//namespace global
 			
 	
 	}//namespace provallo
-
-	// ----- Genetic Algorithm operators for the real value function
-	struct Initializer
-	{
-		template <class Function, class Array>
-		static void
-		initialize(const Function &function, Array *values,
-				   std::random_device &random)
-		{
-			initArray(values, function);
-			std::mt19937 gen(random);
-			std::uniform_int_distribution<> uniform(0, RAND_MAX);
-
-			for (size_t i = 0; i < values->size(); ++i)
-				(*values)[i] = function.left(i) + (function.right(i) - function.left(i)) * uniform(gen);
-		}
-	};	
-	// ----- Genetic Algorithm operators for the real value function 
-		
-
-
+	 
+ 
 #endif /* DECISION_ENGINE_OPTIMIZERS_H_ */

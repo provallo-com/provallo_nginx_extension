@@ -177,7 +177,8 @@ namespace provallo
         real_t prb_word_given_topic_and_document = 0.0;
         real_t prb_word_given_topic_and_document_sum = 0.0;
         real_t prb_word_given_topic_and_document_sum_total = 0.0;
-        
+        real_t prb_word_given_topic_and_document_sum_total_sum= 0.0;
+        real_t prb_word_given_topic_and_document_sum_total_sum_total = 0.0; 
         //real_t prb_word_given_topic_and_document_sum_total_sum = 0.0;
         //real_t prb_word_given_topic_and_document_sum_total_sum_total = 0.0;
         
@@ -201,14 +202,17 @@ namespace provallo
           _n_components = sample.size();
           _n_top_words = sample.size();
           _n_iter = sample.size()*sample.size()*data.size();
+
           prb_topic_given_document = bow_probability/_n_topics;
           prb_word_given_topic = bow_probability/_n_topics;
           prb_word_given_topic_and_document = prb_topic_given_document * prb_word_given_topic; 
           prb_word_given_topic_and_document_sum = prb_word_given_topic_and_document_sum + prb_word_given_topic_and_document;
           prb_word_given_topic_and_document_sum_total = prb_word_given_topic_and_document_sum_total + prb_word_given_topic_and_document_sum;
+          prb_word_given_topic_and_document_sum_total_sum =
+          prb_word_given_topic_and_document_sum_total_sum + prb_word_given_topic_and_document_sum_total ;
 
-          real_t prb_word_given_topic_and_document_sum_total_sum = prb_word_given_topic_and_document_sum_total_sum + prb_word_given_topic_and_document_sum_total;  
-          real_t prb_word_given_topic_and_document_sum_total_sum_total = prb_word_given_topic_and_document_sum_total_sum_total + prb_word_given_topic_and_document_sum_total_sum;
+          prb_word_given_topic_and_document_sum_total_sum_total = prb_word_given_topic_and_document_sum_total_sum_total + prb_word_given_topic_and_document_sum_total_sum;
+
           //add components:
           _lda_components.push_back(prb_word_given_topic_and_document_sum_total_sum_total); 
           //add explained_variance

@@ -129,58 +129,45 @@ namespace provallo
                 std::string parameter_value = "default";
                 std::string line;
                 std::istringstream iss(section_content);
+                //if { is found, call parse_section again with the content of the section until the closing } 
+                //if another { is found, call parse_section again with the content of the section  until the closing } 
+                //each sectin may have subsections and parameters:
+                //i.e. server {
+                //          listen 80;
+                //          server_name example.com;
+                //          location / {
+                //              root /var/www/example.com;....
+
                 while (std::getline(iss, line))
                 {
-                    // std::cout << line << std::endl;
-                    // check if line is a comment
-                    if (line[0] == '#')
+                    //if line starts with #, ignore 
+                    //if line starts with section name and contains { parse section read until closing } and call parse_section with each section
+                    if (line.length() || line.find_first_of('#') != std::string::npos)
                     {
-                        // ignore
+                        //ignore
+                    }
+                    else if (line.find_first_of('{') != std::string::npos)
+                    {
+                        //parse section
+                        subsection_name = line.substr(0, line.find_first_of('{'));
+                        parameter_value = line.substr(line.find_first_of('{') + 1);
+                        parse_section(file_name, section_name, parameter_value);
+                    }
+                    else if (line.find_first_of('}') != std::string::npos)
+                    {
+                        //ignore
                     }
                     else
                     {
-                        // check if line is a section
-                        if (line[0] == ' ')
-                        {
-                            // check if line is a subsection
-                            if (line[1] == ' ')
-                            {
-                                // check if line is a parameter
-                                if (line[2] == ' ')
-                                {
-                                    // parameter
-                                    // std::cout << "parameter" << std::endl;
-                                    // std::cout << line << std::endl;
-                                    // std::cout << line.find(" ") << std::endl;
-                                    // std::cout << line.find(";") << std::endl;
-                                    parameter_name = line.substr(line.find(" ") + 1, line.find(";") - line.find(" ") - 1);
-                                    parameter_value = line.substr(line.find(";") + 1, line.length() - line.find(";") - 1);
-                                    // std::cout << parameter_name << std::endl;
-                                    // std::cout << parameter_value << std::endl;
-                                    configuration[file_name][section_name][subsection_name][parameter_name] = parameter_value;
-                                }
-                                else
-                                {
-                                    // subsection
-                                    // std::cout << "subsection" << std::endl;
-                                    // std::cout << line << std::endl;
-                                    subsection_name = line.substr(line.find(" ") + 1, line.find("{") - line.find(" ") - 1);
-                                    // std::cout << subsection_name << std::endl;
-                                    configuration[file_name][section_name][subsection_name];
-                                }
-                            }
-                            else
-                            {
-                                // section
-                                // std::cout << "section" << std::endl;
-                                // std::cout << line << std::endl;
-                                section_name = line.substr(line.find(" ") + 1, line.find("{") - line.find(" ") - 1);
-                                // std::cout << section_name << std::endl;
-                                configuration[file_name][section_name];
-                            }
-                        } // end if
-                    }     // end else
-                }         // end while
+                        //parse section
+                        parameter_name = line.substr(0, line.find_first_of('{'));
+                        parameter_value = line.substr(line.find_first_of('{') + 1);
+                        configuration[file_name][section_name][subsection_name][parameter_name] = parameter_value;
+                    }
+                }              // end while
+                // parse section
+                
+
             }             // end parse_section
 
             void parse_sections(std::string file_name, std::string file_content)
@@ -198,94 +185,36 @@ namespace provallo
                 std::string parameter_name = "default";
                 std::string parameter_value = "default";
                 std::string line;
+                std::string section_value;
                 std::istringstream iss(file_content);
                 while (std::getline(iss, line))
                 {
-                    // std::cout << line << std::endl;
-                    // check if line is a comment
-                    if (line[0] == '#')
-                    {
-                        // ignore
-                    }
-                    else
-                    {
-                        // check if line is a section
-                        if (line.find('{') != std::string::npos)
-                        {
-                            // check if line is a subsection
-                            if (line.find('{') != std::string::npos)
-                            {
-                                // check if line is a parameter
-                                if (line.find('{') != std::string::npos)
-                                {
-                                    // parameter
-                                    // std::cout << "parameter" << std::endl;
-                                    // std::cout << line << std::endl;
-                                    // std::cout << line.find(" ") << std::endl;
-                                    // std::cout << line.find(";") << std::endl;
-                                    parameter_name = line.substr(line.find(" ") + 1, line.find(";") - line.find(" ") - 1);
-                                    parameter_value = line.substr(line.find(";") + 1, line.length() - line.find(";") - 1);
-                                    // std::cout << parameter_name << std::endl;
-                                    // std::cout << parameter_value << std::endl;
-                                    configuration[file_name][section_name][subsection_name][parameter_name] = parameter_value;
-                                }
-                                else
-                                {
-                                    // subsection
-                                    // std::cout << "subsection" << std::endl;
-                                    // std::cout << line << std::endl;
-                                    subsection_name = line.substr(line.find(" ") + 1, line.find("{") - line.find(" ") - 1);
-                                    // std::cout << subsection_name << std::endl;
-                                    configuration[file_name][section_name][subsection_name];
-                                }
-                            }
-                            else
-                            {
-                                // section
-                                // std::cout << "section" << std::endl;
-                                // std::cout << line << std::endl;
-                                section_name = line.substr(line.find(" ") + 1, line.find("{") - line.find(" ") - 1);
-                                // std::cout << section_name << std::endl;
-                                configuration[file_name][section_name];
-                            }
-                        } // end if
-                        else
-                        {
-                            // check if line is a section
-                            if (line.find('}') != std::string::npos)
-                            {
-                                // check if line is a subsection
-                                if (line.find('}') != std::string::npos)
-                                {
-                                    // check if line is a parameter
-                                    if (line.find('}') != std::string::npos)
-                                    {
-                                        // parameter
-                                        // std::cout << "parameter" << std::endl;
-                                        // std::cout << line << std::endl;
-                                        // std::cout << line.find(" ") << std::endl;
-                                        // std::cout << line.find(";") << std::endl;
-                                        parameter_name = line.substr(line.find(" ") + 1, line.find(";") - line.find(" ") - 1);
-                                        parameter_value = line.substr(line.find(";") + 1, line.length() - line.find(";") - 1);
-                                        // std::cout << parameter_name << std::endl;
-                                        // std::cout << parameter_value << std::endl;
-                                        configuration[file_name][section_name][subsection_name][parameter_name] = parameter_value;
-                                    }
-                                }
-                                else
-                                {
-                                    // subsection
-                                    // std::cout << "subsection" << std::endl;
-                                    // std::cout << line << std::endl;
-                                    subsection_name = line.substr(line.find(" ") + 1, line.find("{") - line.find(" ") - 1);
-                                    // std::cout << subsection_name << std::endl;
-                                    configuration[file_name][section_name][subsection_name];
-                                }
+                   //if line starts with #, ignore 
+                   //if line starts with section name and contains { parse section read until closing } and call parse_section with each section
+                   if(line.length()||line.find_first_of('#')!=std::string::npos ) 
+                   {
+                          //ignore
+                     }
+                     else if(line.find_first_of('{')!=std::string::npos)
+                     {
+                          //parse section
+                          section_name = line.substr(0,line.find_first_of('{'));
+                          section_value = line.substr(line.find_first_of('{')+1);
+                          parse_section(file_name,section_name,section_value);
+                     }
+                     else if(line.find_first_of('}')!=std::string::npos)
+                     {
+                          //ignore
+                     }
+                     else
+                     {
+                          //parse section
+                          section_name = line.substr(0,line.find_first_of('{'));
+                          section_value = line.substr(line.find_first_of('{')+1);
+                          parse_section(file_name,section_name,section_value);
 
-                            } // end if
-                        }     //     std::cout << line << std::endl;
-                    }         // end else
-                }             // end while
+                   }
+                }
             }                 // end parse_sections
 
             // getters

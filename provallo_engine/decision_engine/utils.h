@@ -8,7 +8,6 @@
 #ifndef DECISION_ENGINE_UTILS_H_
 #define DECISION_ENGINE_UTILS_H_
 #include <math.h>
-#include <cmath>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -22,21 +21,23 @@
 #include <vector>
 #include <string>
 #include <bits/unique_ptr.h>
+#include <cmath>
 
-#ifndef real_t
-#define real_t double     /* supported: float, double */
-#endif
-#ifndef sparse_ix
-#define sparse_ix int64_t  /* supported: int, int64_t, size_t */
-#endif
+#include <cstddef> 
 
-#define square(x) ((x) * (x))
+//use std::pow instead of pow to avoid ambiguity 
 
+	#ifndef real_t
+	#define real_t double     /* supported: float, double */
+	#endif
+	#ifndef sparse_ix
+	#define sparse_ix int64_t  /* supported: int, int64_t, size_t */
+	#endif
+
+//#define square(x) ((x)*(x))
 #define likely(x) __builtin_expect((bool)(x), true)
-
 #define unlikely(x) __builtin_expect((bool)(x), false)
 #define THRESHOLD_EXACT_S 87670 /* difference is <5e-4 */
-
 #define pow2(n) ( ((size_t) 1) << (n) )
 #define div2(n) ((n) >> 1)
 #define mult2(n) ((n) << 1)
@@ -47,22 +48,16 @@
 #define ix_comb(i, j, n, ncomb) (  ((i) < (j))? ix_comb_(i, j, n, ncomb) : ix_comb_(j, i, n, ncomb)  )
 #define calc_ncomb(n) (((n) % 2) == 0)? (div2(n) * ((n)-(size_t)1)) : ((n) * div2((n)-(size_t)1))
 #define THRESHOLD_LONG_DOUBLE (size_t)1e6
-
 #define RNG_engine std::mt19937_64
 #define UniformUnitInterval std::uniform_real_distribution<double>
 #define hashed_set std::unordered_set
 #define hashed_map std::unordered_map
 #define is_na_or_inf(x) (std::isnan(x) || std::isinf(x))
-
-
 //pendantic mode
 #define UNDEF_REFERENCE(x)   ptrdiff_t var_unreference  = (ptrdiff_t) (&(x)) ; var_unreference++;
 #define UNDEF_REFERENCE2(x)  var_unreference = (ptrdiff_t) (&(x)); var_unreference++;
-
-
 #define set_return_position(x)  NULL
 #define return_to_position(x,y)
-
 namespace provallo
 {
 #if SIZE_MAX == UINT32_MAX /* 32-bit systems */
@@ -591,7 +586,7 @@ struct welsch_loss : public loss<T>
     inline double
     harmonic (size_t n)
     {
-      ldouble_safe temp = (ldouble_safe) 1 / square((ldouble_safe )n);
+      ldouble_safe temp = (ldouble_safe) 1 / std::pow<ldouble_safe>(n);
       return -(ldouble_safe) 0.5 * temp
 	  * ((ldouble_safe) 1 / (ldouble_safe) 6
 	      - temp
@@ -613,15 +608,15 @@ struct welsch_loss : public loss<T>
 
     if (likely(x < 1.0e17))
       {
-	z = 1.0 / (x * x);
-	z2 = square(z);
+	z = 1.0 /std::pow (x ,2 );
+	z2 = std::pow (z, 2); 
 	y = z
 	    * (8.33333333333333333333E-2 - 8.33333333333333333333E-3 * z
 		+ 3.96825396825396825397E-3 * z2
 		- 4.16666666666666666667E-3 * z2 * z
-		+ 7.57575757575757575758E-3 * square(z2)
-		- 2.10927960927960927961E-2 * square(z2) * z
-		+ 8.33333333333333333333E-2 * square(z2) * z2);
+		+ 7.57575757575757575758E-3 * std::pow(z2,2)
+		- 2.10927960927960927961E-2 * std::pow(z2,2) * z
+		+ 8.33333333333333333333E-2 * std::pow(z2,2) * z2);
       }
     else
       {
@@ -642,7 +637,7 @@ struct welsch_loss : public loss<T>
 	return 2. * (digamma (approx_sample_size + 1.) + EULERS_GAMMA - 1.);
       else
 	{
-	  ldouble_safe temp = (ldouble_safe) 1 / square(approx_sample_size);
+	  ldouble_safe temp = (ldouble_safe) 1 / std::pow<ldouble_safe>(approx_sample_size,2);
 	  return (ldouble_safe) 2 * std::log (approx_sample_size)
 	      + (ldouble_safe) 2
 		  * ((ldouble_safe) EULERS_GAMMA - (ldouble_safe) 1)
@@ -814,9 +809,9 @@ struct welsch_loss : public loss<T>
 
   template<class WorkerMemory>
     provallo::RecursionState::RecursionState (WorkerMemory &workspace,
-					      bool full_state)
+					      bool fs)
     {
-      this->full_state = full_state;
+      this->full_state = fs;
 
       this->split_ix = workspace.split_ix;
       this->end = workspace.end;
@@ -1084,7 +1079,7 @@ struct welsch_loss : public loss<T>
        The difference can be put to a closed form. */
       if (cnt > added)
 	{
-	  s += square(m)
+	  s += std::pow<real_t>(m,2)
 	      * ((real_t) added * ((real_t) 1 - (real_t) added / (real_t) cnt));
 	  m *= (real_t) added / (real_t) cnt;
 	}
@@ -1594,7 +1589,7 @@ struct welsch_loss : public loss<T>
        The difference can be put to a closed form. */
       if (cnt > added)
 	{
-	  s += square(m)
+	  	s += std::pow(m,2.0)
 	      * (added
 		  * ((ldouble_safe) 1
 		      - (ldouble_safe) added / (ldouble_safe) cnt));
@@ -2614,12 +2609,12 @@ struct welsch_loss : public loss<T>
       if (n <= 1)
 	return 0;
 
-      ldouble_safe cum_var = -square(p[pos[0]]) / 3.0
+      ldouble_safe cum_var = -std::pow(p[pos[0]],2.0) / 3.0
 	  - p[pos[0]] * p[pos[1]] / 2.0 + p[pos[0]] / 3.0
-	  - square(p[pos[1]]) / 3.0 + p[pos[1]] / 3.0;
+	  - std::pow(p[pos[1]],2.0) / 3.0 + p[pos[1]] / 3.0;
       for (size_t cat1 = 2; cat1 < n; cat1++)
 	{
-	  cum_var += p[pos[cat1]] / 3.0 - square(p[pos[cat1]]) / 3.0;
+	  cum_var += p[pos[cat1]] / 3.0 - std::pow(p[pos[cat1]],2.) / 3.0;
 	  for (size_t cat2 = 0; cat2 < cat1; cat2++)
 	    cum_var -= p[pos[cat1]] * p[pos[cat2]] / 2.0;
 	}
@@ -2634,8 +2629,8 @@ struct welsch_loss : public loss<T>
 	return 0;
 
       number tot = std::accumulate (pos, pos + n, (number) 0, [&counts]
-      (number tot, const size_t ix) 
-	{ return tot + counts[ix];});
+      (number total, const size_t ix) 
+	{ return total + counts[ix];});
       ldouble_safe cnt_div = (ldouble_safe) tot;
       for (size_t cat = 0; cat < n; cat++)
 	p[pos[cat]] = (ldouble_safe) counts[pos[cat]] / cnt_div;
@@ -2664,16 +2659,16 @@ struct welsch_loss : public loss<T>
 
       ldouble_safe cum_var;
       if (cat_exclude != 1)
-	cum_var = -square(p[pos[0]]) / 3.0 - p[pos[0]] * p[pos[1]] / 2.0
-	    + p[pos[0]] / 3.0 - square(p[pos[1]]) / 3.0 + p[pos[1]] / 3.0;
+	cum_var = -std::pow(p[pos[0]],2.) / 3.0 - p[pos[0]] * p[pos[1]] / 2.0
+	    + p[pos[0]] / 3.0 - std::pow(p[pos[1]],2.) / 3.0 + p[pos[1]] / 3.0;
       else
-	cum_var = -square(p[pos[0]]) / 3.0 - p[pos[0]] * p[pos[2]] / 2.0
-	    + p[pos[0]] / 3.0 - square(p[pos[2]]) / 3.0 + p[pos[2]] / 3.0;
+	cum_var = -std::pow(p[pos[0]],2.) / 3.0 - p[pos[0]] * p[pos[2]] / 2.0
+	    + p[pos[0]] / 3.0 - std::pow(p[pos[2]],2.) / 3.0 + p[pos[2]] / 3.0;
       for (size_t cat1 = (cat_exclude == 1) ? 3 : 2; cat1 < n; cat1++)
 	{
 	  if (pos[cat1] == ix_exclude)
 	    continue;
-	  cum_var += p[pos[cat1]] / 3.0 - square(p[pos[cat1]]) / 3.0;
+	  cum_var += p[pos[cat1]] / 3.0 - std::pow(p[pos[cat1]],2.) / 3.0;
 	  for (size_t cat2 = 0; cat2 < cat1; cat2++)
 	    {
 	      if (pos[cat2] == ix_exclude)
@@ -3019,7 +3014,7 @@ struct welsch_loss : public loss<T>
 
 	  if (xsd)
 	    {
-	      variances[workspace.col_chosen] = square(xsd);
+	      variances[workspace.col_chosen] = std::pow(xsd,2);
 	      if (workspace.tree_kurtoses != NULL)
 		variances[workspace.col_chosen] *=
 		    workspace.tree_kurtoses[workspace.col_chosen];
@@ -3579,7 +3574,7 @@ struct welsch_loss : public loss<T>
 	    }
 	  return hash;
 	}	
-	constexpr std::uint64_t wang64(const std::uint64_t &x) {
+	inline std::uint64_t wang64(const uint64_t &x) {
   		std::uint64_t y(x);
 		y = (~y) + (y << 21);  // y = (y << 21) - y - 1;
 		y = y ^ (y >> 24);
@@ -3590,8 +3585,8 @@ struct welsch_loss : public loss<T>
 		y = y + (y << 31);
 		return y;
 	}
-	constexpr std::uint32_t wang32(const std::uint32_t &x) {
-  		std::uint32_t y(x);
+	 inline uint32_t wang32(const uint32_t &x) {
+  		uint32_t y(x);
 		y = (~y) + (y << 15);  // y = (y << 15) - y - 1;
 		y = y ^ (y >> 12);
 		y = (y + (y << 2)) + (y << 4);  // y * 21
@@ -3601,8 +3596,8 @@ struct welsch_loss : public loss<T>
 		y = y + (y << 1) + (y << 4);  // y * 21 * 5
 		return y;
 	}
-	constexpr std::uint16_t wang16(const std::uint16_t &x) {
-  		std::uint16_t y(x);
+	 inline  uint16_t wang16(const uint16_t &x) {
+  		uint16_t y(x);
 		y = (~y) + (y << 7);  // y = (y << 7) - y - 1;
 		y = y ^ (y >> 4);
 		y = (y + (y << 3)) + (y << 4);  // y * 21

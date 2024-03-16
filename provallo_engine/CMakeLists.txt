@@ -19,6 +19,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -D_GLIBCXX_USE_CXX11_ABI=0 -W
 #set the include directories
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/util ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_CURRENT_SOURCE_DIR}/glue ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine  ${CMAKE_CURRENT_SOURCE_DIR}/parsers ${CMAKE_CURRENT_SOURCE_DIR}/helpers ${CMAKE_CURRENT_SOURCE_DIR}/statistics ${CMAKE_CURRENT_SOURCE_DIR}/third_party )   
 
+#enable AVX options to the compiler
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mavx2 -mfma -mfpmath=sse -march=native -mtune=native -O3 -fPIC -fno-omit-frame-pointer -fno-strict-aliasing  -fno-stack-protector -fno-strict-overflow -fno-delete-null-pointer-checks -fno-lifetime-dse -fno-merge-all-constants")    
+
 
 #set the source files 
 

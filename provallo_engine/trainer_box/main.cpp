@@ -13,6 +13,8 @@
 #include "../third_party/sqlite.h"
 #include "../decision_engine/lstm.h"
 #include "../decision_engine/fast_matrix_forest.h"
+#include "../decision_engine/cpumatrix.h"
+//for tikhnov regularization
 
 #include <dirent.h>
 #include <filesystem>
@@ -186,6 +188,48 @@ void test_matrix()
  
 }
 
+
+bool test_tikhonov()
+{
+  //create pseudo data for tikhonov regularization 
+  
+
+  provallo::matrix<real_t> A(3, 3); 
+  A(0,0) = 1.0/std::pow(std::exp(1.0),2.);
+  A(0,1) = 2.0/std::pow(std::exp(2.0),2.);
+  A(0,2) = 3.0/std::pow(std::exp(3.0),2.);
+  A(1,0) = 4.0/std::pow(std::exp(4.0),2.);
+  A(1,1) = 5.0/std::pow(std::exp(5.0),2.);
+  A(1,2) = 6.0/ std::pow(std::exp(6.0),2.);
+  A(2,0) = 7.0/std::pow(std::exp(7.0),2.);
+  A(2,1) = 8.0/std::pow(std::exp(8.0),2.);
+  A(2,2) = 9.0/std::pow(std::exp(9.0),2.);
+  
+  //matrix B:
+  provallo::matrix<real_t> B(3, 3); 
+  B(0,0) = 1.0/std::pow(std::exp(1.0),2.);
+  B(0,1) = 2.0/std::pow(std::exp(2.0),2.);
+  B(0,2) = 3.0/std::pow(std::exp(3.0),2.);
+
+  B(1,0) = 4.0/std::pow(std::exp(4.0),2.);
+  B(1,1) = 5.0/std::pow(std::exp(5.0),2.);
+  B(1,2) = 6.0/ std::pow(std::exp(6.0),2.);
+  
+  B(2,0) = 7.0/std::pow(std::exp(7.0),2.);
+  B(2,1) = 8.0/std::pow(std::exp(8.0),2.);
+  B(2,2) = 9.0/std::pow(std::exp(9.0),2.);
+
+  
+  real_t lambda = 0.1; 
+  
+  provallo::matrix<real_t> A_tikhonov = provallo::tikhonov(A,B,lambda); 
+  
+  std::cout<<"A_tikhonov : "<<std::endl;
+  std::cout<<A_tikhonov<<std::endl;
+  return true;
+
+
+}
 // alternative to dataset load
 provallo::matrix<real_t> read_data_file(const std::string &filepath)
 {
@@ -1299,8 +1343,11 @@ int main(int argc, char *argv[])
   // validate_simple_softmax();
   // validate section readnig of  nginx configuration file
   // 
-
-
+ 
+  //test cpu matrix capabilities: 
+  
+  //finish the gnuplot script
+  
   compare_forest_to_hyperplane_matrix();
 
   test_lstm("./db/benchmarks");
@@ -2204,8 +2251,8 @@ void test_lstm(const std::string &test_lstm_folder)
     std::cout<<source.n_classes()<<" classes "<<std::endl;
     std::cout<<source.n_test()<<" test samples "<<std::endl;
     std::cout<<source.n_train()<<" train samples "<<std::endl;
-    
 
+    
 
     //initialize LSTM with n_features as input size, n_hidden as hidden size, n_classes as output size and n_layers as number of layers 
     provallo::LSTM<real_t> lstm(source.n_features(),source.n_features()*source.n_classes(),source.n_classes()); 
@@ -2225,6 +2272,33 @@ void test_lstm(const std::string &test_lstm_folder)
     source.n_features(), inputs.size1()); 
   
 
+    std::cout<<"General stability: ";
+
+    //get stability,divergence,flutter and undamped:
+    auto stability = inputs.stable();
+    auto divergence = inputs.divergent();
+    auto flutter = inputs.flutter();
+    auto unstable = inputs.unstable();
+
+
+    std::cout <<"-- stable input : "<<std::to_string(stability.size())<<std::endl;  
+    std::cout <<"--  divergent input  : "<<std::to_string(divergence.size())<<std::endl;
+    std::cout <<"-- flutter input : "<<std::to_string(flutter.size())<<std::endl;
+    std::cout <<"-- unstable input : "<<std::to_string(unstable.size())<<std::endl;
+    //hyperplane stability: 
+    std::cout<<"Hyperplane stability: "; 
+    //get stability,divergence,flutter and undamped: 
+    auto hyper_stability = hyper_mat.stability();
+    auto hyper_divergence = hyper_mat.divergent_stability(); 
+    auto hyper_flutter = hyper_mat.flutter_stability();
+    auto hyper_unstable = hyper_mat.unstable_stability();
+    
+    std::cout <<"-- stable input : "<<std::to_string(hyper_stability)<<std::endl; 
+    std::cout <<"--  divergent input  : "<<std::to_string(hyper_divergence)<<std::endl;
+    std::cout <<"-- flutter input : "<<std::to_string(hyper_flutter)<<std::endl;
+    std::cout <<"-- unstable input : "<<std::to_string(hyper_unstable)<<std::endl;
+
+
     //train the LSTM with the inputs and outputs 
     lstm.fit(inputs,outputs);
    
@@ -2232,11 +2306,12 @@ void test_lstm(const std::string &test_lstm_folder)
     std::cout<<"cross entropy loss : "<<std::to_string(lstm.get_ce_loss())<<std::endl; 
     std::cout<<"kl loss : "<<std::to_string(lstm.get_kl_loss())<<std::endl; 
 
-
+  
     
     auto predict_hyper = hyper_mat.predict(inputs);
     //compare out with outputs to get the confusion matrix
     //update confusion matrix
+    
     for(size_t i = 0 ; i < inputs.size1() ; i++)
     {
       confusion_(training_labels[i],predict_hyper[i])++; 
@@ -2247,7 +2322,8 @@ void test_lstm(const std::string &test_lstm_folder)
     //print eta for hyper :
     std::cout<<"-- hyper training eta : "<<std::endl;
     std::cout<<hyper_mat.get_eta()<<std::endl<<std::endl;
-
+  
+    
 
     //reset confusion matrix 
     confusion_.clear();
@@ -5718,16 +5794,28 @@ void train_web_requests_patterns()
       //configure hyper_matrix 
       hyper_matrix.set_eta(0.1);
       hyper_matrix.set_momentum(0.9);
+      //
+ 
       //fit X to y
       std::cout<<"[+] fitting X to y : "<<dat<<std::endl;
 
 
       //transform y to a vector of size_t 
       hyper_matrix.fit(X,y_vector);
+      
       auto time_end = std::chrono::high_resolution_clock::now(); 
       auto elapsed_fit_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_end-time_start); 
 
       std::cout<<"[+] fit time : "<<std::to_string(elapsed_fit_time.count())<<std::endl; 
+      auto stability = hyper_matrix.stability();
+      auto divergence = hyper_matrix.divergent_stability(); 
+      auto flutter = hyper_matrix.flutter_stability();
+      auto unstable = hyper_matrix.unstable_stability();
+    
+      std::cout<<"[+] stability : "<<std::to_string(stability)<<std::endl;
+      std::cout<<"[+] divergence : "<<std::to_string(divergence)<<std::endl;
+      std::cout<<"[+] flutter : "<<std::to_string(flutter)<<std::endl;
+      std::cout<<"[+] unstable : "<<std::to_string(unstable)<<std::endl;
 
 
 

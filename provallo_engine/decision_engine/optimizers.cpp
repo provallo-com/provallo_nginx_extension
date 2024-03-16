@@ -6,13 +6,5 @@
  */
 
 #include "optimizers.h"
-
-namespace provallo
-{
-
-  namespace GENETIC
-  {
-    float elitist_selector::_elitism_rate (0.4);
-  }
-
-} /* namespace provallo */
+//default values
+real_t provallo::GENETIC::elitist_selector::_elitism_rate (0.4); 

@@ -16,8 +16,7 @@ namespace provallo
     auto data = km.load_csv ("iris.data.csv");
     if (data.size ())
       {
-
-		clustering_parameters<float> parameters (3);
+ 		clustering_parameters<float> parameters (3);
 		auto kmeans = provallo::kmeans_lloyd<float, 2> (data, parameters);
 		dataset_base dbb (data.size () - 1, 3, 2);
 		dataset_ptr train = nullptr, valid = nullptr;

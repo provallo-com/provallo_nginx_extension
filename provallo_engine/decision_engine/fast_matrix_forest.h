@@ -396,8 +396,70 @@ struct  matrix_indices : public std::pair<size_t,size_t>
                         
        }
 
-
+    
         static std::atomic_uint64_t hplane_count;
+        //ifstream/ofstream
+        friend std::ifstream & operator>>(std::ifstream & is,tag_hyperplane & other)
+        {
+            is>>other.hplane_id;
+            is>>other.hplane_indices;
+            is>>other.hplane_depth;
+            is>>other.hplane_level;
+            is>>other.hplane_parent;
+            is>>other.hplane_left;
+            is>>other.hplane_right;
+            is>>other.hplane_dim;
+            is>>other.hplane_feature;
+            is>>other.hplane_feature_index;
+            is>>other.hplane_feature_index_left;
+            is>>other.hplane_feature_index_right;
+            is>>other.hplane_feature_value;
+            is>>other.hplane_feature_value_left;
+            is>>other.hplane_feature_value_right;
+            is>>other.hplane_feature_value_min;
+            is>>other.hplane_feature_value_max;
+            is>>other.hplane_feature_value_range;
+            is>>other.weight;
+            is>>other.score;
+            //is>>other.distribution;
+            return is;
+        }   
+        friend std::ofstream & operator<<(std::ofstream & os,const tag_hyperplane & other)
+        {
+            os<<other.hplane_id<<std::endl;
+            os<<other.hplane_indices<<std::endl;
+            os<<other.hplane_depth<<std::endl;
+            os<<other.hplane_level<<std::endl;
+            os<<other.hplane_parent<<std::endl;
+            os<<other.hplane_left<<std::endl;
+            os<<other.hplane_right<<std::endl;
+            os<<other.hplane_dim<<std::endl;
+            os<<other.hplane_feature<<std::endl;
+            os<<other.hplane_feature_index<<std::endl;
+            os<<other.hplane_feature_index_left<<std::endl;
+            os<<other.hplane_feature_index_right<<std::endl;
+            os<<other.hplane_feature_value<<std::endl;
+            os<<other.hplane_feature_value_left<<std::endl;
+            os<<other.hplane_feature_value_right<<std::endl;
+            os<<other.hplane_feature_value_min<<std::endl;
+            os<<other.hplane_feature_value_max<<std::endl;
+            os<<other.hplane_feature_value_range<<std::endl;
+            os<<other.weight<<std::endl;
+            os<<other.score<<std::endl;
+            //os<<other.distribution<<std::endl;
+            return os;
+        }   
+
+        //support for matrix<hplane> : 
+        // 1. matrix<hplane> m(10,10);
+        // 2. m(0,0)=hplane(
+        // 3. m(0,0).hplane_id=0;
+        // 4. m(0,0).hplane_indices=matrix_indices(0,0);
+        // 5. m(0,0).hplane_depth=0;
+        // 6. m(0,0).hplane_level=0;
+        // 7. m(0,0).hplane_parent=0;
+        ///
+        //operators:    
 
 	} hplane; 
     //hyperplane  
@@ -1979,6 +2041,50 @@ class super_tree {
             std::cout<<std::endl;
         }
       }
+      //get stability of the model 
+        real_t stability()
+        {
+            auto values_stability = _super_tree_values.stable().size(); 
+            auto values_projection_stability = _super_tree_values_projection.stable().size();
+            auto probabilities_stability = _super_tree_probabilities.stable().size();
+            
+            auto hplane_stability = 0;// _super_tree_hplane.stable([](hplane& hplane){return hplane.hplane_feature_value;}   ).size();
+
+
+            return (values_stability+values_projection_stability+probabilities_stability+hplane_stability)/4.0; 
+            
+        }   
+        real_t divergent_stability()
+        {
+            auto values_stability = _super_tree_values.divergent();
+            auto values_projection_stability = _super_tree_values_projection.divergent(); 
+            auto probabilities_stability = _super_tree_probabilities.divergent(); 
+            //auto hplane_stability = 0;// _super_tree_hplane.divergent([](hplane& hplane){return hplane.hplane_feature_value;}   ); 
+            return (values_stability.size()+values_projection_stability.size()+probabilities_stability.size())/3.0;         
+
+        }   
+
+        real_t flutter_stability()
+        {
+            auto values_stability = _super_tree_values.flutter();
+            auto values_projection_stability = _super_tree_values_projection.flutter(); 
+            auto probabilities_stability = _super_tree_probabilities.flutter(); 
+            //auto hplane_stability = _super_tree_hplane.flutter(); 
+            return (values_stability.size()+values_projection_stability.size()+probabilities_stability.size())/3.0;
+
+            //return (values_stability.size()+values_projection_stability.size()+probabilities_stability.size()+hplane_stability.size())/4.0;         
+        } 
+        real_t unstable_stability()
+        {
+            auto values_stability = _super_tree_values.stable();
+            auto values_projection_stability = _super_tree_values_projection.stable(); 
+            auto probabilities_stability = _super_tree_probabilities.stable(); 
+            //auto hplane_stability = _super_tree_hplane.stable(); 
+            return (values_stability.size()+values_projection_stability.size()+probabilities_stability.size())/3.0; 
+
+             //return (values_stability.size()+values_projection_stability.size()+probabilities_stability.size()+hplane_stability.size())/4.0;     
+        }
+ 
       real_t get_eta() const
       {
           return eta;

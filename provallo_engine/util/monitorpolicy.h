@@ -32,7 +32,7 @@ namespace provallo
     visit (const std::vector<uint8_t> &actions)=0;
 
     virtual
-    ~policy_visitor ()=0;
+    ~policy_visitor (){}
 
   };
 
@@ -144,6 +144,7 @@ namespace provallo
     virtual
     ~log_policy_visitor ()
     {
+
     }
   };
 

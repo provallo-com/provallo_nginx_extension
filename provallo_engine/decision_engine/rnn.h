@@ -16,8 +16,7 @@
 
 #include "matrix.h"
 #include "utils.h"
-//RNN Denoiser model 
-//
+ 
 #define WEIGHTS_SCALE (1.f/256)
 
 #define MAX_NEURONS 128

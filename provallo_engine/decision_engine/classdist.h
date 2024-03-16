@@ -60,7 +60,7 @@ namespace provallo
     {
       this->_histogram=std::move(other._histogram);
       this->_sum=std::move(other._sum);
-
+      
       return *this;
 
     }
