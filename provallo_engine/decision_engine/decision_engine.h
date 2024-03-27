@@ -80,5 +80,7 @@ template<typename T>
       }
     return false;
   }
+ 
 
+  
 #endif /* DECISION_ENGINE_DECISION_ENGINE_H_ */

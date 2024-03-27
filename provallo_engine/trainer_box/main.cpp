@@ -33,6 +33,7 @@
 
 #include <math.h>
 #include "../helpers/configuration_helper.h"
+#include "../decision_engine/stimuli.h"
 provallo::classifier *_lastclassifier = nullptr;
 provallo::isolation_forest *iso_last_fit = nullptr;
 
@@ -1347,7 +1348,16 @@ int main(int argc, char *argv[])
   //test cpu matrix capabilities: 
   
   //finish the gnuplot script
-  
+  //test tikhonov regularization:
+
+  if(!  test_tikhonov())
+  {
+    std::cout<<"Test tikhonov failed"<<std::endl;
+  }
+  else
+  {
+    std::cout<<"Test tikhonov OK"<<std::endl;
+  }
   compare_forest_to_hyperplane_matrix();
 
   test_lstm("./db/benchmarks");

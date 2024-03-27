@@ -30,7 +30,10 @@ set (PROVALLO_ENGINE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/data/minidal.cpp ${CMAK
 ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/matrix.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/classdist.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/attribute.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/kNearestNeighbor.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/decision_engine.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/distributedkmeans.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/parameters.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/pipelinebuilder.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/dataset.cpp  
 ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/neuralhelper.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/classifier.cpp ${CMAKE_CURRENT_SOURCE_DIR}/statistics/statcollector.cpp ${CMAKE_CURRENT_SOURCE_DIR}/glue/linuxglue.cpp ${CMAKE_CURRENT_SOURCE_DIR}/glue/turnserverglue.cpp ${CMAKE_CURRENT_SOURCE_DIR}/glue/gluelinuxinvoker.cpp ${CMAKE_CURRENT_SOURCE_DIR}/glue/glueprocessinfo.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/monitorpolicy.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/basic_encoding.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/portanalyzer.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/aes_wrapper.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/ip_address.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/procwatcher.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/hash_tools.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/interface_info.cpp ${CMAKE_CURRENT_SOURCE_DIR}/util/safehttp.cpp ${CMAKE_CURRENT_SOURCE_DIR}/third_party/sqlite.cpp ${CMAKE_CURRENT_SOURCE_DIR}/helpers/netlinkstatshelper.cpp ${CMAKE_CURRENT_SOURCE_DIR}/helpers/netlinkhelper.cpp ${CMAKE_CURRENT_SOURCE_DIR}/helpers/netfilterhelper.cpp ${CMAKE_CURRENT_SOURCE_DIR}/decision_engine/fast_matrix_forest.cpp )
 
-
+#set the source files for the prefrontal test executable :
+set(PFC_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/trainer_box/prefrontal_cortex_simulation.cpp ${PROVALLO_ENGINE_SOURCES} ) 
+#add the test executable:
+add_executable(pfc_test ${PFC_TEST_SOURCES} )
 #set the source files
 set(SOURCE_FILES ${PROVALLO_ENGINE_SOURCES}     
         ${CMAKE_CURRENT_SOURCE_DIR}/trainer_box/main.cpp)   
@@ -38,15 +41,21 @@ set(SOURCE_FILES ${PROVALLO_ENGINE_SOURCES}
 #set the executable 
 add_executable(provallo_engine ${SOURCE_FILES})
 
+
+
+
 #set the libraries
 target_link_libraries(provallo_engine pthread crypto ssl elf nfnetlink netfilter_queue sqlite3 ) 
 
+#set the libraries
+target_link_libraries(pfc_test pthread crypto ssl elf nfnetlink netfilter_queue sqlite3 ) 
 #set the install target
-install(TARGETS provallo_engine DESTINATION bin)
+install(TARGETS provallo_engine pfc_test DESTINATION bin)
+
+install(TARGETS  pfc_test DESTINATION bin)
 
 #add compilation flags for the test
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11  -Wno-unused-local-typedefs   -Wall -Wextra -Wno-deprecated  -Werror -fprofile-arcs -ftest-coverage")   
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11  -Wno-unused-local-typedefs   -Wall -Wextra -Wno-deprecated  -Werror -fprofile-arcs -ftest-coverage ")   
 
 #set the cpack
 set(CPACK_GENERATOR "DEB")

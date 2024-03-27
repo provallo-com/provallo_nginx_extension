@@ -78,7 +78,8 @@ namespace provallo
             {
                 for (size_t j = 0; j < v2.size2(); j++)
 
-                    res += -1. * std::log<real_t>( fabs(v1(i, j) - (1 - v2(i, j)))).real(); // Permet d'inverser le desiredOutput -> donc ajout du signe -
+                    res += -1. * std::log<real_t>( fabs(v1(i, j) - (1 - v2(i, j)))).real(); //allow to reverse the desiredOutput -> so add the sign - 
+                    
             }
             return res;
         };

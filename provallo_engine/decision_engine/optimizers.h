@@ -15,7 +15,7 @@ uint64_t fnv1a(const std::string &str);
 
 namespace provallo {
 	
-	//Filters :
+	//Filters : mean, median, max, bloom
 	namespace filters 
 	{
 
@@ -132,7 +132,7 @@ namespace provallo {
 		
 
 	}//namespace filters
-	 	
+	//quasi newton optimization:
 	namespace QN
 	{
 		// Quasi-Newton methods

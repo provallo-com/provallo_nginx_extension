@@ -1042,8 +1042,39 @@ namespace provallo
       return tmp;
     }
 
+    T asym_similarity(const matrix<T> &m) const
+    {
+     // size is not equal, use minimum size 
+      size_t min_size1 = std::min(size1_, m.size1_); 
+      size_t min_size2 = std::min(size2_, m.size2_); 
+      T sim = 0; 
+      for (size_t i = 0; i < min_size1; i++)
+        for (size_t j = 0; j < min_size2; j++)
+          sim += data_[i * size2_ + j] * m(i, j);
+      return sim;
+      
+    }
+    //similarity between two matrices 
+    T sym_similarity(const matrix<T> &m) const
+    {
+      assert(size1_ == m.size1_ && size2_ == m.size2_);
+      T sim = 0;
+      for (size_t i = 0; i < size1_; i++)
+        for (size_t j = 0; j < size2_; j++)
+          sim += data_[i * size2_ + j] * m(i, j);
+      return sim;
+    } 
+    T similarity(const matrix<T> &m) const
+    {
+      if(size1_==m.size1_ && size2_==m.size2_)
+        return sym_similarity(m);
+      else
+        return asym_similarity(m);
+    } 
+ 
     T det()const
     {
+      T det(T(0));
       //return determinant of the matrix :
       if(size1_!=size2_)
       {
@@ -1058,15 +1089,31 @@ namespace provallo
           return data_[0]*data_[3]-data_[1]*data_[2];
         else
         {
-          T det = 0;
-          for(size_t i=0;i<size1_;i++)
+          
+          size_t size1=size1_; 
+          size_t size2=size2_; 
+          for(size_t i=0;i<size1;i++)
           {
-            matrix<T> tmp = remove_row(i);
-            det += std::pow(-1,i)*data_[i*size2_]*tmp.det();
+            matrix<T> tmp(size1-1,size2-1); 
+            for(size_t j=1;j<size1;j++)
+              for(size_t k=0;k<size2;k++)
+              {
+                if(k<i)
+                  tmp(j-1,k)=data_[j*size2_+k];
+                else if(k>i)
+                  tmp(j-1,k-1)=data_[j*size2_+k];
+              } 
+            
+            if(i%2==0)  
+              det+=data_[i*size2]*tmp.det();
+            else
+              det-=data_[i*size2]*tmp.det();
+            
           }
-          return det;
+          
         }
       } 
+      return det;
     }
     //inverse of a matrix (const version)
     matrix<T> inverse() const

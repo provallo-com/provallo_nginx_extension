@@ -602,8 +602,10 @@ namespace provallo
         //std::cout << "input: " << input << std::endl;
         
       }
+ 
       return input;
-    }
+      
+     }
 
     type_matrix
     processNetwork ()

@@ -32,11 +32,10 @@ namespace provallo
     enum dataset_status: uint8_t{ UNINITIALIZED,INITIALIZED,LOADED,PROCESSED };
     enum dataset_mode: uint8_t{ READ,WRITE } ;
     //dataset classes
-    
-
+     
   namespace lda
   {
- 
+      
     class LDA
     {
       size_t 
@@ -76,9 +75,7 @@ namespace provallo
       std::vector<real_t> _lda_whiten;
       std::vector<real_t> _lda_transform;
       std::vector<real_t> _lda_transformed_data;
-      
-
-
+       
       public:
       LDA():  _n_topics(10),
               _n_features(1000),
@@ -5213,6 +5210,36 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
 
  };
 
+  //pretrained models loaders: 
+  //load the tokenizer and 
+  //the pre-trained word embeddings 
+  //transforms it using the pre-trained word embeddings
+
+
+  template <typename T> 
+  class AutoTokenizer 
+  {
+    //import auto tokenizer from hugging face 
+    const std::string _model_name; 
+    const std::string _model_path; 
+    const std::string _tokenizer_path; 
+    const std::string _word_embeddings_path; 
+    const std::string _word_embeddings_model; 
+    const std::string _word_embeddings_type; 
+
+    public :
+    AutoTokenizer(const std::string& model_name, const std::string& model_path, const std::string& tokenizer_path, const std::string& word_embeddings_path, const std::string& word_embeddings_model, const std::string& word_embeddings_type)   
+    : _model_name(model_name), _model_path(model_path), _tokenizer_path(tokenizer_path), _word_embeddings_path(word_embeddings_path), _word_embeddings_model(word_embeddings_model), _word_embeddings_type(word_embeddings_type)
+    {
+      //load the tokenizer and the pre-trained word embeddings 
+      //transforms it using the pre-trained word embeddings
+    } 
+    //load the tokenizer and the pre-trained word embeddings from the pre-trained path : 
+    void load(const std::string& model_name, const std::string& model_path, const std::string& tokenizer_path, const std::string& word_embeddings_path, const std::string& word_embeddings_model, const std::string& path)
+    {
+ 
+    } 
+  };
 
 } /* namespace provallo */
 
