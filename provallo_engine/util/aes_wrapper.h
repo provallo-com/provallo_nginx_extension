@@ -119,8 +119,7 @@ namespace provallo
 			std::size_t _size_of_buffer;
 			// Overflow count
 			std::size_t _overflow_cnt;
-
-			// Encryption data
+  			// Encryption data
 			auto_evp_cipher_ctx en_, de_;
 			std::string _key_data;
 	};

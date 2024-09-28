@@ -310,7 +310,94 @@ namespace provallo {
     //bitwise operators:
     //---------------------------------------------------------------------------------//
 
+    template <class T,size_t N> 
+    bit_type<T,N> operator&(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a & b;
+    }
+    template <class T,size_t N> 
+    bit_type<T,N> operator|(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a | b;
+    } 
+    template <class T,size_t N> 
+    bit_type<T,N> operator^(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a ^ b;
+    } 
+    template <class T,size_t N> 
+    bit_type<T,N> operator~(const bit_type<T,N> &a)
+    {
+        return ~a;
+    } 
+    template <class T,size_t N> 
+    bit_type<T,N> operator<<(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a << b;
+    }
+    template <class T,size_t N>
+    bit_type<T,N> operator>>(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a >> b;
+    }
+    template <class T,size_t N>
+    bit_type<T,N> operator<<(const bit_type<T,N> &a, size_t i)
+    {
+        return a << i;
+    } 
+    template <class T,size_t N> 
+    bit_type<T,N> operator>>(const bit_type<T,N> &a, size_t i)
+    {
+        return a >> i;
+    } 
 
+    //---------------------------------------------------------------------------------//
+    //comparison operators:
+    //---------------------------------------------------------------------------------//
+
+
+    template <class T,size_t N>
+    bool operator==(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a == b;
+    }
+    template <class T,size_t N>
+    bool operator!=(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a != b;
+    }
+    template <class T,size_t N>
+    bool operator<(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a < b;
+    }
+    template <class T,size_t N>
+    bool operator>(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a > b;
+    }
+    template <class T,size_t N>
+    bool operator<=(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a <= b;
+    }
+    template <class T,size_t N>
+    bool operator>=(const bit_type<T,N> &a, const bit_type<T,N> &b)
+    {
+        return a >= b;
+    }
+    //---------------------------------------------------------------------------------//
+    
+    
+    
+    
+    //dna sequence:
+    typedef bit_type<uint8_t,2> dna_base; 
+    typedef std::vector<dna_base> dna_sequence; 
+    typedef matrix<dna_base> dna_matrix; 
+    
+    
+    
     #pragma pack()
 
 }

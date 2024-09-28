@@ -386,8 +386,22 @@ namespace provallo
             s.amplitude = _amplitude; 
             s.frequency = _frequency; 
             s.phase = _phase; 
-            //return the stimuli: 
-            return s; 
+            s.box.x = 0;
+            s.box.y = 0;
+            s.box.width = 100;
+            s.box.height = 100;
+                std::vector<T> v = _boltzman.generate(); 
+                //get the stimuli:
+                s.amplitude = v[0]; 
+                s.frequency = v[1];
+                s.phase = v[2];
+                s.box.x = v[3]; 
+                s.box.y = v[4];
+                s.box.width = v[5];
+                s.box.height = v[6];
+                //return the stimuli:
+                return s;
+                
         } 
         //stimuli function for aperiodic stimuli: 
         sta_stimuli<T> stimuli_function_aperiodic(T t) 
@@ -411,8 +425,7 @@ namespace provallo
             //return the stimuli: 
             return s; 
         }   
-
-    };
+     };
 
 };
 #endif

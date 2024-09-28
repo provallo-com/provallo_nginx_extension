@@ -1251,7 +1251,7 @@ namespace provallo
         }
         y =  X+y;
 
-        return predict(y.array(), y.rows(),true );
+        return predict(y.begin(), y.rows(),true );
     }
 
     std::vector<real_t>

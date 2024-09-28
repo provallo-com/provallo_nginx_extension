@@ -65,10 +65,10 @@ namespace provallo
 
   // Array :
   template <class T, std::size_t N>
-  class array
+  class fixed_array
   {
   public:
-    T elems[N]; // fixed-size array of elements of type T
+    T elems[N]; // fixed-size fixed_array of elements of type T
 
   public:
     // type definitions
@@ -114,7 +114,7 @@ namespace provallo
     }
 
     // Default constructor
-    array()
+    fixed_array()
     {
       std::fill(elems, elems + N, T());
     }
@@ -169,8 +169,8 @@ namespace provallo
       assert(i < N);
       return elems[i];
     }
-    const array<T, N> &operator*(const T &value) const;
-    const array<T, N> &operator/(const T &value) const;
+    const fixed_array<T, N> &operator*(const T &value) const;
+    const fixed_array<T, N> &operator/(const T &value) const;
 
     // at() with range check
     reference
@@ -234,7 +234,7 @@ namespace provallo
 
     // swap (note: linear complexity)
     void
-    swap(array<T, N> &y)
+    swap(fixed_array<T, N> &y)
     {
       for (size_type i = 0; i < N; ++i)
         std::swap(elems[i], y.elems[i]);
@@ -252,17 +252,19 @@ namespace provallo
       return elems;
     }
 
-    // use array as C array (direct read/write access to data)
+    // use fixed_array as C fixed_array (direct read/write access to data)
     T *
-    c_array()
+    c_fixed_array()
     {
       return elems;
     }
+    //
+    
 
     // assignment with type conversion
     template <typename T2>
-    array<T, N> &
-    operator=(const array<T2, N> &rhs)
+    fixed_array<T, N> &
+    operator=(const fixed_array<T2, N> &rhs)
     {
       std::copy(rhs.begin(), rhs.end(), begin());
       return *this;
@@ -288,7 +290,7 @@ namespace provallo
     {
       if (i >= size())
       {
-        std::out_of_range e("array<>: index out of range");
+        std::out_of_range e("fixed_array<>: index out of range");
         throw e;
       }
     }
@@ -297,38 +299,38 @@ namespace provallo
   // comparisons
   template <class T, std::size_t N>
   bool
-  operator==(const array<T, N> &x, const array<T, N> &y)
+  operator==(const fixed_array<T, N> &x, const fixed_array<T, N> &y)
   {
     return std::equal(x.begin(), x.end(), y.begin());
   }
   template <class T, std::size_t N>
   bool
-  operator<(const array<T, N> &x, const array<T, N> &y)
+  operator<(const fixed_array<T, N> &x, const fixed_array<T, N> &y)
   {
     return std::lexicographical_compare(x.begin(), x.end(), y.begin(),
                                         y.end());
   }
   template <class T, std::size_t N>
   bool
-  operator!=(const array<T, N> &x, const array<T, N> &y)
+  operator!=(const fixed_array<T, N> &x, const fixed_array<T, N> &y)
   {
     return !(x == y);
   }
   template <class T, std::size_t N>
   bool
-  operator>(const array<T, N> &x, const array<T, N> &y)
+  operator>(const fixed_array<T, N> &x, const fixed_array<T, N> &y)
   {
     return y < x;
   }
   template <class T, std::size_t N>
   bool
-  operator<=(const array<T, N> &x, const array<T, N> &y)
+  operator<=(const fixed_array<T, N> &x, const fixed_array<T, N> &y)
   {
     return !(y < x);
   }
   template <class T, std::size_t N>
   bool
-  operator>=(const array<T, N> &x, const array<T, N> &y)
+  operator>=(const fixed_array<T, N> &x, const fixed_array<T, N> &y)
   {
     return !(x < y);
   }
@@ -336,60 +338,60 @@ namespace provallo
   // global swap()
   template <class T, std::size_t N>
   inline void
-  swap(array<T, N> &x, array<T, N> &y)
+  swap(fixed_array<T, N> &x, fixed_array<T, N> &y)
   {
     x.swap(y);
   }
 
   template <class T, std::size_t N>
-  array<T, N>
-  operator*(const T &scalar, const array<T, N> &b)
+  fixed_array<T, N>
+  operator*(const T &scalar, const fixed_array<T, N> &b)
   {
-    array<T, N> result;
+    fixed_array<T, N> result;
     std::transform(b.begin(), b.end(), result.begin(),
                    std::bind1st(std::multiplies<T>(), scalar));
     return result;
   }
 
   template <class T, std::size_t N>
-  array<T, N>
-  operator*(const array<T, N> &a, const array<T, N> &b)
+  fixed_array<T, N>
+  operator*(const fixed_array<T, N> &a, const fixed_array<T, N> &b)
   {
-    array<T, N> result;
+    fixed_array<T, N> result;
     std::transform(a.begin(), a.end(), b.begin(), result.begin(),
                    std::multiplies<T>());
     return result;
   }
 
   template <class T, std::size_t N>
-  array<T, N>
-  operator+(const array<T, N> &a, const array<T, N> &b)
+  fixed_array<T, N>
+  operator+(const fixed_array<T, N> &a, const fixed_array<T, N> &b)
   {
-    array<T, N> result;
+    fixed_array<T, N> result;
     std::transform(a.begin(), a.end(), b.begin(), result.begin(),
                    std::plus<T>());
     return result;
   }
 
   template <class T, std::size_t N>
-  array<T, N>
-  operator-(const array<T, N> &a, const array<T, N> &b)
+  fixed_array<T, N>
+  operator-(const fixed_array<T, N> &a, const fixed_array<T, N> &b)
   {
-    array<T, N> result;
+    fixed_array<T, N> result;
     std::transform(a.begin(), a.end(), b.begin(), result.begin(),
                    std::minus<T>());
     return result;
   }
 
   template <class T, std::size_t N>
-  T dot(const array<T, N> &a, const array<T, N> &b)
+  T dot(const fixed_array<T, N> &a, const fixed_array<T, N> &b)
   {
     return std::inner_product(a.begin(), a.end(), b.begin(), T());
   }
 
   template <class T, std::size_t N>
   std::ostream &
-  operator<<(std::ostream &out, const array<T, N> &a)
+  operator<<(std::ostream &out, const fixed_array<T, N> &a)
   {
     std::size_t i = 0;
     out << std::string("(");
@@ -552,7 +554,7 @@ namespace provallo
 
   public:
     typedef T value_type;
-    typedef T *array_type;
+    typedef T *fixed_array_type;
     typedef T *iterator;
     typedef const T *const_iterator;
     typedef T &reference;
@@ -1909,15 +1911,15 @@ namespace provallo
       return size2_;
     }
 
-    array_type row(size_t i)
+    fixed_array_type row(size_t i)
     {
-      array_type ret  = reinterpret_cast<array_type>( data_ + (i * cols()));    
+      fixed_array_type ret  = reinterpret_cast<fixed_array_type>( data_ + (i * cols()));    
       return ret;
     }
  
-    array_type row(size_t i) const
+    fixed_array_type row(size_t i) const
     {
-      array_type ret  = reinterpret_cast<array_type>(
+      fixed_array_type ret  = reinterpret_cast<fixed_array_type>(
           data() + (i * cols()));
       return ret;
     }
@@ -1930,7 +1932,14 @@ namespace provallo
           ret(i, j) = std::pow(std::abs((*this)(i, j)), N);
       return ret;
     }
-
+    matrix<std::complex<T>> operator()()const
+    {
+      matrix<std::complex<T>> ret(size1(), size2());
+      for (size_t i = 0; i < size1(); i++)
+        for (size_t j = 0; j < size2(); j++)
+          ret(i, j) = element(i, j);
+      return ret;
+    }
      matrix<T> lpNorm(double N) const
     {
       matrix<T> ret(size1(), size2());
@@ -2196,14 +2205,14 @@ namespace provallo
     {
       return size2();
     }
-    inline array_type &
+    inline fixed_array_type &
     data()
     { 
       return data_;
     }
 
 
-    inline const array_type &
+    inline const fixed_array_type &
     data()const
     {
        return data_;
@@ -2226,14 +2235,14 @@ namespace provallo
     {
       return covariance(row(i),row(j));
     }
-    real_t covariance(array_type a,array_type b) const
+    real_t covariance(fixed_array_type a,fixed_array_type b) const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
         ret += (a[i]-mean(a))*(b[i]-mean(b));
       return ret/(size1()-1);
     }
-    real_t mean(const array_type &a) const
+    real_t mean(const fixed_array_type &a) const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -2274,7 +2283,7 @@ namespace provallo
       return correlation(data_+i*size2(),data_+j*size2());
 
     }
-    real_t correlation(const array_type &a,const  array_type &b) const
+    real_t correlation(const fixed_array_type &a,const  fixed_array_type &b) const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -2308,7 +2317,7 @@ namespace provallo
     {
       return variance(row(i),row(j));
     }
-    real_t variance(array_type &a,array_type &b) const
+    real_t variance(fixed_array_type &a,fixed_array_type &b) const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -2328,7 +2337,7 @@ namespace provallo
       return std(row(i),row(j));
     } 
 
-    real_t std(const array_type &a,const array_type &b) const
+    real_t std(const fixed_array_type &a,const fixed_array_type &b) const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -2371,8 +2380,8 @@ namespace provallo
     real_t eigen_values(size_t i,size_t j) const
     {
         real_t ret = 0;
-        array_type a = row(i);
-        array_type b = row(j);
+        fixed_array_type a = row(i);
+        fixed_array_type b = row(j);
         for(size_t k=0;k<size1_;k++)
           ret += (a[k]-mean(a))*(b[k]-mean(b)); 
 
@@ -2380,7 +2389,7 @@ namespace provallo
         
       //return eigen_values(row(i),row(j));
     }
-    real_t eigen_values(const array_type &a,const array_type &b)  const
+    real_t eigen_values(const fixed_array_type &a,const fixed_array_type &b)  const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -2402,7 +2411,7 @@ namespace provallo
     {
       return eigen_vectors(row(i),row(j));
     }
-    real_t eigen_vectors(const array_type &a,const array_type &b) const
+    real_t eigen_vectors(const fixed_array_type &a,const fixed_array_type &b) const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -2421,7 +2430,7 @@ namespace provallo
     {
       return eigen_values_and_vectors(row(i),row(j));
     }
-    real_t eigen_values_and_vectors(array_type &a,array_type &b)  const
+    real_t eigen_values_and_vectors(fixed_array_type &a,fixed_array_type &b)  const
     {
       real_t ret = 0;
       for(size_t i=0;i<size1();i++)
@@ -2469,11 +2478,11 @@ namespace provallo
 
     }      
     
-    const array_type &
+    const fixed_array_type &
     as_diagonal()
     {
 
-      static array_type diagonal_instance = nullptr;
+      static fixed_array_type diagonal_instance = nullptr;
 
       if (diagonal_instance)
         delete diagonal_instance;
@@ -2729,8 +2738,8 @@ namespace provallo
       this->clear(); 
       
       }
-    const array_type &
-    array() const
+    const fixed_array_type &
+    fixed_array() const
     {
       return data_;
     }
@@ -2951,7 +2960,7 @@ namespace provallo
   protected:
     size_type size1_;
     size_type size2_;
-    array_type data_;
+    fixed_array_type data_;
   };
   template <class T>
   bool
@@ -3039,10 +3048,10 @@ namespace provallo
   }
    
   template <class T, std::size_t N>
-  const array<T, N> &
-  array<T, N>::operator*(const T &a) const
+  const fixed_array<T, N> &
+  fixed_array<T, N>::operator*(const T &a) const
   {
-    static array<T, N> result = *this;
+    static fixed_array<T, N> result = *this;
 
     for (size_t i = 0; i < result.size(); ++i)
       result[i] = result[i] * a;
@@ -3051,10 +3060,10 @@ namespace provallo
   }
 
   template <class T, std::size_t N>
-  const array<T, N> &
-  array<T, N>::operator/(const T &a) const
+  const fixed_array<T, N> &
+  fixed_array<T, N>::operator/(const T &a) const
   {
-    static array<T, N> result = *this;
+    static fixed_array<T, N> result = *this;
 
     for (size_t i = 0; i < result.size(); ++i)
       result[i] = result[i] / a;
@@ -3063,11 +3072,11 @@ namespace provallo
   }
 
   template <class T, std::size_t N>
-  array<T, N>
-  operator*(const matrix<T> &a, const array<T, N> &b)
+  fixed_array<T, N>
+  operator*(const matrix<T> &a, const fixed_array<T, N> &b)
   {
     assert(a.size2() == N);
-    array<T, N> result;
+    fixed_array<T, N> result;
     for (size_t i = 0; i < result.size(); ++i)
     {
       T sum(0);
@@ -3150,7 +3159,7 @@ namespace provallo
   public:
     // Type definitions
     typedef T value_type;
-    typedef T *array_type;
+    typedef T *fixed_array_type;
     typedef T *iterator;
     typedef const T *const_iterator;
     typedef T &reference;
@@ -3171,8 +3180,8 @@ namespace provallo
       std::fill(data_, data_ + N * M, init);
     }
 
-    // Dense matrix constructor with defined size and an initial data array
-    bounded_matrix(const array_type &data)
+    // Dense matrix constructor with defined size and an initial data fixed_array
+    bounded_matrix(const fixed_array_type &data)
     {
       std::copy(data, data + N * M, data_);
     }
@@ -3270,14 +3279,14 @@ namespace provallo
       return M;
     }
     // Return a constant reference to the internal storage of a dense matrix, i.e. the raw data
-    const array_type &
+    const fixed_array_type &
     data() const
     {
       return data_;
     }
 
     // Return a reference to the internal storage of a dense matrix, i.e. the raw data
-    array_type &
+    fixed_array_type &
     data()
     {
       return data_;
@@ -3437,10 +3446,10 @@ namespace provallo
 
   // Naive matrix multiplication
   template <class T, std::size_t N, std::size_t M>
-  array<T, N>
-  operator*(const bounded_matrix<T, N, M> &a, const array<T, M> &b)
+  fixed_array<T, N>
+  operator*(const bounded_matrix<T, N, M> &a, const fixed_array<T, M> &b)
   {
-    array<T, N> result;
+    fixed_array<T, N> result;
     for (size_t i = 0; i < N; ++i)
     {
       T sum(0);
@@ -3479,10 +3488,10 @@ namespace provallo
     return result;
   }
 
-  // Initialize array
+  // Initialize fixed_array
   template <class T, std::size_t N>
   void
-  resizeArray(array<T, N> *values, size_t dim)
+  resizeArray(fixed_array<T, N> *values, size_t dim)
   {
   }
   
@@ -3585,7 +3594,7 @@ namespace provallo
     
     //typedef typename Array::value_type value_type;
     typedef typename Array::size_type size_type;
-    // Initialize and copy array
+    // Initialize and copy fixed_array
     Array result(point);
     for (size_type i = 0; i < result.size(); ++i)
       result[i] = partial_derivative(function, point, h, i);
@@ -3680,23 +3689,23 @@ namespace provallo
   // Calculate hessian matrix
   template <typename Function, typename FloatType, std::size_t N>
   bounded_matrix<FloatType, N, N>
-  bounded_hessian(Function function, array<FloatType, N> &point,
-                  const typename array<FloatType, N>::value_type &h)
+  bounded_hessian(Function function, fixed_array<FloatType, N> &point,
+                  const typename fixed_array<FloatType, N>::value_type &h)
   {
     // Hessian matrix
     bounded_matrix<FloatType, N, N> mhessian;
     // Loop over each element of the matrix
-    for (typename array<FloatType, N>::size_type i = 0; i < point.size();
+    for (typename fixed_array<FloatType, N>::size_type i = 0; i < point.size();
          ++i)
     {
-      PartialDeriv<Function, array<FloatType, N>> first_deriv(function, h,
+      PartialDeriv<Function, fixed_array<FloatType, N>> first_deriv(function, h,
                                                               i);
-      for (typename array<FloatType, N>::size_type j = 0; j < point.size();
+      for (typename fixed_array<FloatType, N>::size_type j = 0; j < point.size();
            ++j)
       {
         // Calculate second derivative (i,j)
-        PartialDeriv<PartialDeriv<Function, array<FloatType, N>>,
-                     array<FloatType, N>>
+        PartialDeriv<PartialDeriv<Function, fixed_array<FloatType, N>>,
+                     fixed_array<FloatType, N>>
             second_deriv(first_deriv, h, j);
         mhessian(i, j) = second_deriv(point);
       }
@@ -4015,19 +4024,19 @@ namespace provallo
     // Quadratic term
     bounded_matrix<FloatType, N, N> _a;
     // Linear term
-    array<FloatType, N> _b;
+    fixed_array<FloatType, N> _b;
     // Constant
     FloatType _c;
 
   public:
     Quadratic(const bounded_matrix<FloatType, N, N> &a,
-              array<FloatType, N> b /*= array<FloatType,N>()*/,
+              fixed_array<FloatType, N> b /*= fixed_array<FloatType,N>()*/,
               const FloatType &c = FloatType()) : _a(a), _b(b), _c(c)
     {
     }
 
     FloatType
-    operator()(const array<FloatType, N> &point) const
+    operator()(const fixed_array<FloatType, N> &point) const
     {
       FloatType quad = dot(point, (_a * point));
       return (0.5 * quad - dot(_b, point) + _c);
@@ -4075,7 +4084,7 @@ namespace provallo
   // Transpose a vector
   template <typename T, std::size_t N>
   matrix<T>
-  transpose(const array<T, N> &vec)
+  transpose(const fixed_array<T, N> &vec)
   {
     matrix<T> transp(1, vec.size());
     for (typename matrix<T>::size_type i = 0; i < N; ++i)
@@ -4094,7 +4103,7 @@ namespace provallo
     return ident;
   }
 
-  // Check if a vector (array) has nan values
+  // Check if a vector (fixed_array) has nan values
   template <typename T>
   bool
   isNan(const std::vector<T> &vec)
@@ -4108,9 +4117,9 @@ namespace provallo
 
   template <typename T, std::size_t N>
   bool
-  isNan(const array<T, N> &vec)
+  isNan(const fixed_array<T, N> &vec)
   {
-    for (typename array<T, N>::size_type i = 0; i < N; ++i)
+    for (typename fixed_array<T, N>::size_type i = 0; i < N; ++i)
       if (isnan(vec[i]))
         return true;
     return false;
@@ -4533,7 +4542,23 @@ namespace provallo
   } 
 
 
+  //Kolmorogov-Smirnov test 
+  template <typename T>
+  T kolmogorov_smirnov(const matrix<T> & data )
+  {
+    T d = 0.0;
+    for (typename matrix<T>::size_type i = 0; i < data.size1(); i++)
+    {
+      for (typename matrix<T>::size_type j = 0; j < data.size2(); j++)
+      {
+        T d1 = std::abs(data(i, j) - T(0.5));
+        if (d1 > d)
+          d = d1;
+      }
+    } // end for
 
+    return d;
+  } // end kolmogorov_smirnov
   //Tikhonov regularization for matrix a and b with lambda 
 
   template <typename T> 

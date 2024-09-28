@@ -1,5 +1,5 @@
 /*
- * uti`ls.h
+ * utils.h
  *
  *  Created on: Mar 22, 2023
  *      Author: kardon
@@ -603,14 +603,14 @@ struct welsch_loss : public loss<T>
     /* check for positive integer up to 128 */
     if (unlikely((x <= 64) && (x == std::floor (x))))
       {
-	return harmonic_recursive (1.0, (double) x) - EULERS_GAMMA;
+			return harmonic_recursive (1.0, (double) x) - EULERS_GAMMA;
       }
 
-    if (likely(x < 1.0e17))
+      if (likely(x < 1.0e17))
       {
-	z = 1.0 /std::pow (x ,2 );
-	z2 = std::pow (z, 2); 
-	y = z
+		z = 1.0 /std::pow (x ,2 );
+		z2 = std::pow (z, 2); 
+		y = z
 	    * (8.33333333333333333333E-2 - 8.33333333333333333333E-3 * z
 		+ 3.96825396825396825397E-3 * z2
 		- 4.16666666666666666667E-3 * z2 * z
@@ -618,7 +618,7 @@ struct welsch_loss : public loss<T>
 		- 2.10927960927960927961E-2 * std::pow(z2,2) * z
 		+ 8.33333333333333333333E-2 * std::pow(z2,2) * z2);
       }
-    else
+	   else
       {
 		y = 0.0;
       }

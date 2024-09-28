@@ -65,6 +65,35 @@ bool test_fit_iso_forest();
 bool test_dataset_load();
 void test_spike_train_generator();
 
+
+//progress bar helper: 
+
+template <typename T>
+void progress_bar(T index, T total, const std::string& text = "")  
+{
+   
+   //lock the 2 bottom lines of the output for the progress bar
+   //and draw the progress relative to the total number of elements in the dataset
+
+   real_t ratio = static_cast<real_t>(index) / static_cast<real_t>(total); 
+   size_t bar_width = 50;
+   std::string bar = std::string(bar_width, '='); 
+
+   size_t pos = bar_width * ratio;
+   bar.replace(pos, 1, ">"); 
+   bar.replace(bar_width - 1,pos, " ");
+ 	 std::cout << "\033[3A" << std::flush;
+   std::cout << bar << " " << static_cast<int>(ratio * 100.0) << "%" <<  std::endl<<text<<std::endl;  
+      
+   //flush the output:
+   
+   std::cout << "\r\033[2K" << std::flush;
+   
+
+}
+
+
+
 template <size_t N>
 std::vector<provallo::point<N>, int> load_dataset_as_points_and_lables(const std::string &filename)
 {
@@ -1358,11 +1387,11 @@ int main(int argc, char *argv[])
   {
     std::cout<<"Test tikhonov OK"<<std::endl;
   }
-  compare_forest_to_hyperplane_matrix();
+  // use this to compare the hyperplane to iso-forest matrix 
+  // with python iso-forest script
+  //compare_forest_to_hyperplane_matrix();
 
-  test_lstm("./db/benchmarks");
-
-  std::getchar();
+  
 
   test_spike_train_generator();
 #if DEBUG_ISOFOREST
@@ -1376,6 +1405,11 @@ int main(int argc, char *argv[])
 #endif
   train_web_requests_patterns();
   
+  std::getchar();
+
+  test_lstm("./db/benchmarks");
+
+  std::getchar();
   //load pre-trained model and test with a diffrent dataset
   //test_web_requests_patterns();
   if (benchmark_classifiers("./db/benchmarks"))
@@ -2276,6 +2310,7 @@ void test_lstm(const std::string &test_lstm_folder)
     auto training_labels = source.trainingLabels(); 
     for ( size_t i = 0 ; i < inputs.size1() ; i++ )
     {
+  
       outputs(i,0) =  training_labels[i];
     }
     provallo::super_tree<real_t,size_t> hyper_mat (/*X*/inputs ,/*y*/training_labels,
@@ -3420,17 +3455,22 @@ bool fit_fuzzsb(const std::string &fit_fuzzsb_folder)
   std::cout << "[+] error classifications : " << std::to_string(error_classifications) << std::endl;
   std::cout << "[+] softmax training done" << std::endl;
 
+  std::cout << "[+] saving softmax classifier  " << std::endl;
+
   // save softmax classifier
   // save softmax classifier --> softmax_softmax_fuzzdb_test.json
   softmax.save("softmax_fuzzdb_test.json");
-  std::cout << "[+] saving softmax classifier done" << std::endl;
+  //gnuplot softmax_fuzzdb_test.gnuplot --> softmax_fuzzdb_test .gnuplot 
+  softmax.gnuplot("softmax_fuzzdb_test.gnuplot"); 
+
+  std::cout << "[+] saving softmax classifier done" << std::endl; 
 
   // save autoencoders
   size_t enc_index = 1;
   for (auto &enc : autoencoders)
   {
     std::string file_name = "encoder_fuzzdb" + std::to_string(enc_index++) + ".json";
-    enc->save("encoder_fuzzdb.json");
+    enc->save( file_name );
 
     //plot autoencoder
     enc->gnuplot(file_name + ".gnuplot");
@@ -4598,8 +4638,10 @@ void train_web_requests_patterns()
       input_mat(0, i) = input[i];
     }
     //add progress:
-    std::cout << "[+] training softmax classifier " <<  std::to_string(total_cases)<<"/"<<std::to_string(results.size() )<< std::endl;
+    //std::cout << "[+] training softmax classifier " <<  std::to_string(total_cases)<<"/"<<std::to_string(results.size() )<< std::endl;
   
+    progress_bar(total_cases, results.size(), "softmax classifier training"); 
+
     size_t status_code = row[6].length() > 1 ? std::stoi(row[6]) : 0;
 
     if (status_code > 100 && status_code < 210)
@@ -4670,6 +4712,7 @@ void train_web_requests_patterns()
     }
     else
     {
+      label_target = 4;
       std::cout << "[+] error : unknown status code : " << std::to_string(label_target) << std::endl;
     }
     confusion_matrix_mat(label_target,max_index)++; 
@@ -4824,7 +4867,9 @@ void train_web_requests_patterns()
 
     //std::cout << "[+] testing softmax classifier" << std::endl;
     //display progress bar  
-    std::cout << "[+] testing softmax classifier : " << std::to_string(label_index) << "/" << std::to_string(results.size()) << std::endl;
+    //std::cout << "[+] testing softmax classifier : " << std::to_string(label_index) << "/" << std::to_string(results.size()) << std::endl;
+    progress_bar(label_index, results.size(),"[+] testing softmax classifier"); 
+
 
     // print vectorize output
     //std::cout << "[+] vectorizer  output size = " << std::to_string(input.size()) << std::endl;
@@ -4901,6 +4946,7 @@ void train_web_requests_patterns()
     else
     {
       std::cout << "[+] error : unknown status code : " << std::to_string(target_label) << std::endl;
+      target_label = 4;
     }
     confusion_matrix_mat(target_label,max_index)++;
     if (max_index == target_label)
@@ -5325,8 +5371,7 @@ void train_web_requests_patterns()
           // DEBUG:
           //std::cout << "[+] vectorizer added sum = " << std::to_string(sum) << ",value = " << std::to_string(sum / vectorized.size()) << std::endl;
           //roc_curve << std::to_string(sum) << " " << std::to_string(sum / vectorized.size()) << std::endl; 
-          
-          input.push_back(sum / real_t(vectorized.size()));
+           input.push_back(sum / real_t(vectorized.size()));
         }
       }
     }
@@ -5938,3 +5983,4 @@ void train_web_requests_patterns()
     std::getchar();
     
  }
+ 

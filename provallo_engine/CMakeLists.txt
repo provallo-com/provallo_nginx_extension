@@ -42,6 +42,8 @@ set(SOURCE_FILES ${PROVALLO_ENGINE_SOURCES}
 add_executable(provallo_engine ${SOURCE_FILES})
 
 
+add_executable(prefrontal_cortex_simulation ${PROVALLO_ENGINE_SOURCES}  ${CMAKE_CURRENT_SOURCE_DIR}/trainer_box/prefrontal_cortex_simulation.cpp ) 
+
 
 
 #set the libraries

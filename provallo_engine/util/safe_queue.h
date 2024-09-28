@@ -141,7 +141,7 @@ namespace provallo
       return _queue.size ();
     }
 
-
+    
 }
 
 #endif //SAFE_QUEUE_H_

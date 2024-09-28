@@ -374,7 +374,7 @@ namespace provallo {
 		// Initialize array
 		template <class T, std::size_t N, class Function>
 		void
-		initArray(array<T, N> *values, const Function &function)
+		initArray(fixed_array<T, N> *values, const Function &function)
 		{
 		}
 
@@ -1141,7 +1141,7 @@ namespace provallo {
 		// Initialize array
 		template <class T, std::size_t N, class Function>
 		void
-		initArray(array<T, N> *values, const Function &function)
+		initArray(fixed_array<T, N> *values, const Function &function)
 		{
 		}
 

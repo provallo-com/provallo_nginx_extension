@@ -27,7 +27,10 @@ namespace provallo
     //vae : http://arxiv.org/pdf/1312.6114v10.pdf
     //variational autoencoder : http://arxiv.org/pdf/1312.6114v10.pdf
     //http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf
-    
+
+    //lightweight implementation of autoencoder 
+    //
+
     
 
     template <typename T, typename real_x = real_t>
@@ -1955,6 +1958,7 @@ namespace provallo
             delete[] weight2GradPrevPrev;
             weight2GradPrevPrev = nullptr;
         }
+        
         
         //done
     }

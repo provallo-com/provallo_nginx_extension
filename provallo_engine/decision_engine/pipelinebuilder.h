@@ -3041,7 +3041,7 @@ class tsne_vectorizer : public vectorizer<std::string, real_t>
     std::vector<real_t> svr_predict( matrix<real_t>  foot );
     std::vector<real_t> svr_transform( matrix<real_t>  foot );
     std::vector<real_t> svr_fit_transform( matrix<real_t>  foot );
-
+    
   };
 
   struct stage_descriptor

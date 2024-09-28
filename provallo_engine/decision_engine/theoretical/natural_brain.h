@@ -881,8 +881,11 @@ namespace provallo {
             virtual ~cerebrocerebellum() {
             }
         };
+
         //each lobe is responsible for a set of regions in the brain 
 
+        //create a a trainer for responses to signals. 
+        
 }//end namespace provallo 
 
 //end of file

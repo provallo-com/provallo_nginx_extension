@@ -6,6 +6,7 @@
  */
 
 
+
 #include "utils.h"
 
 #include "Density.hpp"
@@ -18769,7 +18770,7 @@ std::istream& isotree::operator>>(std::istream &ist, isolation_forest &model)
 		//_isoforest->set_seed(_seed>>32&0xFFFFFFFF|_seed&0xFFFFFFFF );
 
 		matrix<real_t> training_data = transform_data();
-		_isoforest->fit(training_data.array(), training_data.rows(), training_data.cols()); // std::cout << "res size " << res.size() << std::endl;
+		_isoforest->fit(training_data.begin(), training_data.rows(), training_data.cols()); // std::cout << "res size " << res.size() << std::endl;
 
 		// std::cout << "res " << res[0] << std::endl;
 

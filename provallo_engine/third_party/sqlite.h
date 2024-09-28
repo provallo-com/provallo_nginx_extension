@@ -267,7 +267,7 @@ namespace io
 
       ~stmt ()
       {
-	if (_stmt)
+		if (_stmt)
 	  ::sqlite3_finalize (_stmt);
       }
 
